@@ -1,0 +1,83 @@
+[
+    {
+        "zoom_level": 0,
+        "admin_level_tiling_configs": [
+            {
+                "level": 0,
+                "simplify_tolerance": 0
+            }
+        ]
+    },
+    {
+        "zoom_level": 1,
+        "admin_level_tiling_configs": [
+            {
+                "level": 0,
+                "simplify_tolerance": 0
+            }
+        ]
+    },
+    {
+        "zoom_level": 2,
+        "admin_level_tiling_configs": [
+            {
+                "level": 0,
+                "simplify_tolerance": 0
+            }
+        ]
+    },
+    {
+        "zoom_level": 3,
+        "admin_level_tiling_configs": [
+            {
+                "level": 0,
+                "simplify_tolerance": 0
+            }
+        ]
+    },
+    {
+        "zoom_level": 4,
+        "admin_level_tiling_configs": [
+            {
+                "level": 0,
+                "simplify_tolerance": 0
+            }
+        ]
+    },
+    {
+        "zoom_level": 5,
+        "admin_level_tiling_configs": [
+            {
+                "level": 0,
+                "simplify_tolerance": 0
+            }
+        ]
+    },
+    {
+        "zoom_level": 6,
+        "admin_level_tiling_configs": [
+            {
+                "level": 0,
+                "simplify_tolerance": 0
+            }
+        ]
+    },
+    {
+        "zoom_level": 7,
+        "admin_level_tiling_configs": [
+            {
+                "level": 0,
+                "simplify_tolerance": 0
+            }
+        ]
+    },
+    {
+        "zoom_level": 8,
+        "admin_level_tiling_configs": [
+            {
+                "level": 0,
+                "simplify_tolerance": 0
+            }
+        ]
+    }
+]

@@ -1,0 +1,87 @@
+.header-root {
+    background-color: var(--primary-color);
+}
+
+.header-root .nav-header {
+    height: 4rem;
+    width: 100%;
+    z-index: 1001;
+}
+
+.header-root .nav-header.menu {
+    color: var(--primary-color);
+    display: flex;
+    flex: 1;
+    height: 100%;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.header-root .nav-header li:first-child {
+    padding-left: 1.5rem;
+}
+
+.header-root .nav-header .nav-header-separator {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.header-root .nav-header .nav-header-separator div {
+    height: 100%;
+    border-left: solid 1px white;
+}
+
+.header-root .nav-header .nav-header-logo {
+    padding-right: 0.3rem !important;
+}
+
+.header-root .nav-header li {
+    padding: 0.7rem 0.5rem;
+}
+
+.header-root .nav-header .nav-header-logo a {
+    height: 90% !important;
+}
+
+.header-root .nav-header.menu a {
+    color: var(--anti-primary-color);
+    display: block;
+    height: 100%;
+    text-decoration: none;
+}
+
+.header-root .nav-header .nav-header-logo img {
+    height: 37.45px;
+    vertical-align: unset !important;
+}
+
+.header-root .nav-header .nav-header-title {
+    margin: 0 auto 0 0;
+    padding-left: 0 !important;
+    font-family: "Arial";
+}
+
+.header-root .nav-header li {
+    padding: 0.7rem 0.5rem;
+}
+
+.header-root .nav-header .nav-header-title button {
+    min-width: unset;
+    border-radius: 0;
+    border: unset;
+    color: #fff;
+    font-weight: 300;
+    margin-top: -0.2rem;
+    padding: 0;
+    background: unset;
+    letter-spacing: .02857em;
+    cursor: pointer;
+    font-size: 2rem !important;
+    line-height: 1.5 !important;
+}
+
+.header-root .nav-header button a {
+    font-weight: 500;
+    font-family: Arial, Helvetica, sans-serif;
+}

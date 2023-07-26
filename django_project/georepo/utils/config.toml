@@ -1,0 +1,11 @@
+[cache]                             # configure a tile cache
+type = "file"                       # a file cache will cache to the local file system
+basepath = "${LAYER_TILES_PATH}"    # where to write the file cache
+
+# register data providers
+[[providers]]
+name = "docker_postgis"     # provider name is referenced from map layers (required)
+type = "postgis"            # the type of data provider. currently only supports postgis (required)
+uri = "postgres://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOST}:5432/${DATABASE_NAME}" # PostGIS connection string (required)
+srid = 3857                 # The default srid for this provider. Defaults to WebMercator (3857) (optional)
+max_connections = 100       # The max connections to maintain in the connection pool. Default is 100. (optional)

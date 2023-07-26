@@ -1,0 +1,80 @@
+<!-- templates/user_signup.html -->
+{% load static %}
+{% load randombg %}
+{% randombg as random_bg_image %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GeoRepo | Sign Up</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css?family=Rubik:300,300i,500,500i"/>
+    <link rel="stylesheet" href={% static 'base.css' %}>
+    <link rel="stylesheet" href={% static 'login.css' %}>
+    <link rel="stylesheet" href={% static 'navbar.css' %}>
+    <style>
+        .login-main .background {
+            background: url('{% static random_bg_image %}');
+            background-size: cover;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
+    <script>
+        $(function() {
+            // Add refresh button after field (this can be done in the template as well)
+            $('img.captcha').after(
+                    $('<a href="#void" class="captcha-refresh">Refresh</a>')
+                    );
+
+            // Click-handler for the refresh-link
+            $('.captcha-refresh').click(function(){
+                var $form = $(this).parents('form');
+                var url = location.protocol + "//" + window.location.hostname + ":"
+                        + location.port + "/captcha/refresh/";
+
+                // Make the AJAX-call
+                $.getJSON(url, {}, function(json) {
+                    $form.find('input[name="captcha_0"]').val(json.key);
+                    $form.find('img.captcha').attr('src', json.image_url);
+                });
+
+                return false;
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="login-app">
+        <div class="login-root">
+            <div class="login-header">
+                {% include "navbar.html" %}
+            </div>
+            <div class="login-main">
+                <div class="background">
+                </div>
+                <div class="login-container signup-form">
+                    <div class="login-form-header">
+                        Submit Sign Up Request
+                    </div>
+                    <div class="login-form">
+                        {% if sign_up_success %}
+                            <p>Your request has been successfully submitted.</p>
+                        {% else %}
+                            <p>You can submit a request for sign up to GeoRepo Administrator. You will be notified via email once your request has been approved/rejected.</p>
+                            <form class="basic-form" action="" method="post">
+                                {% csrf_token %}
+                                {{ form }}
+                                <button type="submit">Submit</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "st_intersects_test",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "id": 1 }, "geometry": { "type": "MultiPolygon", "coordinates": [ [ [ [ 70.245934560412223, 32.725792632923152 ], [ 70.358838006732782, 32.625361078928698 ], [ 70.493403160777646, 32.752049248346538 ], [ 70.27612966814911, 32.744828679105105 ], [ 70.245934560412223, 32.725792632923152 ] ] ] ] } }
+]
+}

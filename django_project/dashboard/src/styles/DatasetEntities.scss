@@ -1,0 +1,130 @@
+#dataset-entities-container {
+    height: 100%;
+    
+    #dataset-entities-map {
+        flex: 2;
+
+        .map-wrap {
+            height: 100%;
+        }
+    }
+    #dataset-entities-list {
+        flex: 2;
+
+        .entities-table-root {
+            height: 100%;
+
+            .entities-table {
+                width: 100%;
+
+                & > div:first-child {
+                    height: 100%;
+                }
+            }
+        }
+    }
+
+}
+
+.filter-button-container {
+    width: 100%;
+    height: 100%;
+
+    &.box {
+        border: 1px solid var(--primary-color);
+    }
+
+    & > button.no-value {
+        width: 100%;
+        height: 100%;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.75rem;
+        color: var(--primary-color);
+    }
+
+    & > .value-container {
+        width: 100%;
+        height: 100%;
+        padding: 0 0.5rem;
+
+        .value-label {
+            text-align: left;
+            padding-left: 0.5rem;
+            color: var(--primary-color);
+            cursor: pointer;
+            line-height: 0.5rem;
+
+            & > span {
+                font-weight: 600;
+                font-size: 0.5rem;
+                line-height: 0.6rem;
+            }
+        }
+
+        .value-data {
+            max-width: 100%;
+            color: var(--primary-color);
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            line-height: 0.8rem;
+
+            .value-text {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-size: 1rem;
+                line-height: 1rem;
+            }
+
+            .value-remove {
+                padding: 0px;
+                font-size: 1rem;
+            }
+        }
+    }
+}
+
+.filter-button-has-value {
+    width: 100%;
+
+    label {
+        color: var(--primary-color);
+    }
+
+    .MuiInputBase-root {
+        padding-left: 0;
+    }
+
+    .Mui-disabled input {
+        height: unset;
+        width: 100%;
+        padding: 5px 5px;
+        color: var(--primary-color);
+        -webkit-text-fill-color: unset;
+        cursor: pointer;
+        font-size: 0.8rem;
+    }
+    
+    .Mui-disabled fieldset {
+        border-color: var(--primary-color) !important;
+        border-radius: 0;
+        bottom: -2px;
+    }
+
+    button.value-remove {
+        padding: 0px 0px 0px 4px;
+    }
+}
+
+.cucode-entities {
+    .MuiPaper-root .MuiToolbar-root {
+        display: none;
+    }
+
+    .MuiTableFooter-root {
+        display: none;
+    }
+}

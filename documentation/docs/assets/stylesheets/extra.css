@@ -1,0 +1,31 @@
+.color-indicator {
+    display: inline-block;
+    border-radius: 3px;
+    height: 13px;
+    width: 13px;
+}
+
+.md-content__button {
+    display: none;
+}
+
+.md-clipboard {
+    background: rgb(255, 255, 255, 0.3);
+    border-radius: 3px;
+    box-shadow: 6px 7px 7px -5px rgba(0, 0, 0, 0.1);
+    -webkit-box-shadow: 6px 7px 7px -5px rgba(0, 0, 0, 0.1);
+    -moz-box-shadow: 6px 7px 7px -5px rgba(0, 0, 0, 0.1);
+}
+
+.md-clipboard:focus {
+    color: inherit;
+}
+
+.md-clipboard:focus,
+.highlight:hover .md-clipboard {
+    background: rgb(255, 255, 255, 1);
+    box-shadow: 6px 7px 7px -5px rgba(0, 0, 0, 0.7);
+    -webkit-box-shadow: 6px 7px 7px -5px rgba(0, 0, 0, 0.7);
+    -moz-box-shadow: 6px 7px 7px -5px rgba(0, 0, 0, 0.7);
+    transition: .2s;
+}

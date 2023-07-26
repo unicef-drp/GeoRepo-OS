@@ -1,0 +1,10 @@
+@import 'variables.scss';
+
+.MaintanceCardContent {
+    background-color: $warning;
+    padding-bottom: 16px !important;
+
+    .MaintenanceIcon {
+        background-color: $warning;
+    }
+}

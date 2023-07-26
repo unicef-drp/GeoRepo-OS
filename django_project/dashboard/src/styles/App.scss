@@ -1,0 +1,338 @@
+@import 'variables';
+
+.loading-container {
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.App {
+  text-align: center;
+  // use 100vh for lazy load fix
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.TableActionContent {
+  display: flex;
+  justify-content: center;
+  .MuiButtonBase-root:not(.MuiIconButton-root) {
+    min-width: 100px !important;
+  }
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-float infinite 3s ease-in-out;
+  }
+}
+
+.App-header {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+}
+
+.App-link {
+  color: rgb(112, 76, 182);
+}
+
+@keyframes App-logo-float {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+
+main {
+  flex-grow: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  height: 100%;
+
+  & > div {
+    overflow: hidden;
+
+    -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
+    -moz-box-sizing: border-box; /* Firefox, other Gecko */
+    box-sizing: border-box; /* Opera/IE 8+ */
+  }
+}
+
+.AdminContent {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+  background-color: #F4F4F4;
+
+  & > div {
+    border-radius: $border-radius;
+    // margin: 0 1rem 1rem 1rem;
+    margin: 0 0 0 0;
+    background-color: white;
+    // padding: 0 2rem;
+  }
+
+  .AdminContentHeader {
+    background: white;
+    border-radius: 0;
+    box-shadow: $box-shadow-sm;
+    color: $primary-color;
+    display: flex;
+    margin: 0 0 0 0;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid;
+    border-color: rgba(0, 0, 0, 0.12);
+
+    .AdminContentHeader-Left {
+      text-align: left;
+      flex-grow: 1;
+      padding: 0.5rem 0;
+
+      span, a {
+        color: $primary-color;
+        display: inline-block;
+        margin-right: 0.5rem;
+      }
+    }
+
+    .AdminContentHeader-Right {
+      button {
+        margin-left: 0.5rem;
+      }
+      .AdminContentText {
+        padding: 0.5rem 0;
+      }
+    }
+  }
+
+  .AdminBaseInput {
+    background-color: white;
+    padding: 0.5rem;
+
+    .MuiFormControl-root {
+      background-color: $base-almost-white-color;
+      margin-top: 0 !important;
+      width: 100%;
+
+      .MuiOutlinedInput-root {
+        width: 100%;
+
+        input {
+          padding: 0.5rem 1rem 0.5rem 0;
+        }
+
+        .MuiOutlinedInput-notchedOutline {
+          border: unset;
+        }
+
+        &:hover {
+          .MuiOutlinedInput-notchedOutline {
+            border: unset;
+          }
+        }
+      }
+    }
+  }
+
+  .AdminContentMain {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding-left: 8px;
+  }
+
+  .MuiDataGrid-actionsCell {
+    grid-gap: 0 !important;
+  }
+}
+
+.AdminSelectDataForm {
+  .MuiBox-root {
+    .AdminContent {
+      padding-top: 1rem;
+    }
+
+    display: flex;
+    flex-direction: column;
+    width: 1140px;
+    height: 90%;
+    max-width: 90%;
+  }
+}
+
+.AddButton {
+  color: green;
+}
+
+.RemoveButton {
+  color: $error;
+}
+
+.DeleteButton {
+  color: $error;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.5;
+  }
+}
+
+.ThemeButton {
+  svg {
+    margin-right: 0.5rem;
+  }
+}
+
+.FormContainer {
+  padding: 20px;
+  max-height: 100%;
+  overflow-y: auto;
+
+  .MuiPaper-root {
+    margin-bottom: 50px;
+  }
+
+  .button-submit-container {
+    display: flex;
+    flex-direction: row-reverse;
+  }
+
+  @include media(small-down) {
+    .MuiGrid-item {
+      padding-top: 10px;
+    }
+  }
+
+  .FormContent {
+    width: 100%;
+    input {
+      width: 100%;
+    }
+    .disabled-text {
+      color: gray;
+    }
+    .form-label {
+      display: flex;
+      align-items: center;
+      text-align: left;
+    }
+    & > .MuiGrid-container {
+      padding-bottom: 1em;
+    }
+    .field-container.MuiGrid-container {
+      padding-bottom: 1em;
+      align-items: center;
+    }
+    .field-container.align-start.MuiGrid-container {
+      align-items: flex-start;
+    }
+    .language-select {
+      text-align: left;
+    }
+    .default-check-box {
+      padding-top: 8px;
+    }
+    .form-label.multi-inputs {
+      display: flex;
+      align-items: flex-start;
+      text-align: left;
+      padding-top: 16.5px;
+    }
+    .MuiGrid-container.default-check-box-container {
+      padding-bottom: 0em;
+    }
+    .MuiAutocomplete-inputRoot{
+      height: auto;
+      min-height: 1.4375em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding: 16.5px 14px;
+      padding-left: 14px !important;
+    }
+    .id-type-search {
+      .MuiAutocomplete-endAdornment {
+        top: calc(50% - 20px);
+        right: 9px !important;
+        // remove clear for id type search
+        display: none;
+      }
+    }
+    .ButtonContent {
+      display: flex;
+      align-items: center;
+      .MuiCircularProgress-root {
+        margin-right: 20px;
+      }
+    }
+    .form-sublabel {
+      font-size: 0.9rem;
+      text-align: left;
+    }
+  }
+
+  .submit-button-container {
+    margin-left: auto;
+    text-align: right;
+
+    button {
+      width: 100%;
+    }
+  }
+}
+
+.InputHideArrows {
+  input[type=number]::-webkit-inner-spin-button, 
+  input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+  }  
+}
+
+// MUI Table
+.MuiPaper-root {
+  .MuiToolbar-root {
+    min-height: 50px;
+    height: 50px;
+  }
+
+  .MuiTable-root {
+    tr > th {
+      padding: 8px !important;
+
+      .MuiButton-root {
+        padding: 0.5rem !important;
+        margin-right: 0px !important;
+      }
+    }
+
+    tr > td {
+      padding: 8px !important;
+    }
+  }
+}
+// MUI Table for main data listing
+.main-data-list {
+  .MuiTable-root {
+    tr > td {
+      padding: 16px !important;
+    }
+  }
+}

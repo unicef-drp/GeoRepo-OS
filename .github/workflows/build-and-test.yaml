@@ -1,0 +1,90 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        python-version:
+          - 3.10.4
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+
+      - name: Test installing development dependencies
+        working-directory: deployment/docker
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Run Flake8 test
+        run: flake8 .
+
+  django_test:
+    needs: lint
+    name: 'Django Test'
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python-version:
+          - 3.10.4
+    env:
+      APP_IMAGE: kartoza/georepo
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Build test image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: deployment/docker/Dockerfile
+          push: false
+          load: true
+          target: dev
+          tags: ${{ env.APP_IMAGE }}:dev
+          cache-from: |
+            type=gha,scope=test
+            type=gha,scope=prod
+          cache-to: type=gha,scope=test
+      - name: Run docker-compose services
+        working-directory: deployment
+        run: |
+          echo "Override docker-compose for testing purposes"
+          cp docker-compose.test.yml docker-compose.override.yml
+          cd ../
+          make devweb
+          make wait-db
+          make sleep
+          make create-test-db
+      - name: Run Coverage test
+        working-directory: deployment
+        run: |
+          cat << EOF | docker-compose exec -T dev bash
+          python manage.py makemigrations
+          python manage.py migrate
+          python manage.py collectstatic --noinput --verbosity 0
+          export DJANGO_SETTINGS_MODULE=core.settings.test && coverage run manage.py test && coverage xml
+          EOF
+          docker cp georepo_dev:/home/web/django_project/coverage.xml ../coverage.xml
+      - name: Show Coverage
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: orgoro/coverage@v3
+        with:
+          coverageFile: coverage.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload coverage to codecov
+        if: ${{ github.event_name == 'push' }}
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true

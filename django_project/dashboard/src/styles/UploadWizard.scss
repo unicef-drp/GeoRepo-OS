@@ -1,0 +1,53 @@
+.UploadWizard {
+  min-height: 300px;
+
+  .MuiBox-root {
+    padding-top: 10px !important;
+  }
+  .description-box {
+    text-align: left;
+  }
+  .UploadWizardContent {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    &.scrollable {
+      overflow-y: auto;
+    }
+    .Step2Content {
+      overflow-y: auto;
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+    }
+  }
+}
+
+.Step2 {
+  .MuiButtonBase-root {
+    min-height: 40px;
+    height: 100%;
+  }
+}
+
+
+.Step1 {
+  .dzu-inputLabelWithFiles {
+    margin-top: 0px;
+    margin-left: 0px;
+    padding: 0px;
+    width: 150px;
+    padding: 0.5rem 1rem !important;
+  }
+  .dzu-dropzone {
+    &.dzu-dropzoneDisabled {
+      opacity: 1;
+    }
+  }
+}
+
+.Step3Container {
+  .Step3Content {
+    overflow-y: auto;
+  }
+}

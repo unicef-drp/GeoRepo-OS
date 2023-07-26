@@ -1,0 +1,50 @@
+<!-- templates/registration/logout.html -->
+{% load static %}
+{% load randombg %}
+{% randombg as random_bg_image %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GeoRepo | Logout</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css?family=Rubik:300,300i,500,500i"/>
+    <link rel="stylesheet" href={% static 'base.css' %}>
+    <link rel="stylesheet" href={% static 'login.css' %}>
+    <link rel="stylesheet" href={% static 'navbar.css' %}>
+        <style>
+            .login-main .background {
+                background: url('{% static random_bg_image %}');
+                background-size: cover;
+            }
+        </style>
+</head>
+<body>
+    <div class="login-app">
+        <div class="login-root">
+            <div class="login-header">
+                {% include "../navbar.html" %}
+            </div>
+            <div class="login-main">
+                <div class="background">
+                </div>
+                <div class="login-container logout">
+                    <div class="login-form-header">
+                        Logged Out
+                    </div>
+                    <div class="login-form">
+                        <p>Thanks for spending some quality time with the web site today.</p>
+                        <p>
+                            <a class="login-link" href="{% url 'login' %}">Log In Again</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+</body>
+</html>

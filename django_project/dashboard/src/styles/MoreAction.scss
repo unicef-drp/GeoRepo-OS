@@ -1,0 +1,21 @@
+/* ==========================================================================
+   More Action style
+   ========================================================================== */
+
+@import 'variables';
+
+.MoreActionItem {
+  & > div,
+  & > a {
+    display: flex;
+    padding: 0;
+  }
+
+  & > a {
+    color: $base-black-color !important;
+  }
+
+  svg {
+    margin-right: 0.5rem;
+  }
+}

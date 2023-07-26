@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "outDir": "./bundles/",
+    "noImplicitAny": true,
+    "module": "esnext",
+    "target": "es5",
+    "jsx": "react",
+    "allowJs": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "lib": [
+      "ES2021.String",
+      "dom"
+    ],
+  },
+}

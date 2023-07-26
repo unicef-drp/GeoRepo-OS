@@ -1,0 +1,61 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "React: Install dependencies",
+        "type": "shell",
+        "command": "npm install --legacy-peer-deps",
+        "options": {
+          "cwd": "${workspaceFolder}/django_project/dashboard"
+        },
+        "group": "build",
+        "problemMatcher": []
+      },
+      {
+        "label": "React: Webpack-dev-server",
+        "type": "shell",
+        "command": "npm run serve",
+        "port": 9000,
+        "options": {
+          "cwd": "${workspaceFolder}/django_project/dashboard"
+        },
+        "group": "build",
+        "problemMatcher": []
+      },
+      {
+        "label": "Django: Migrate",
+        "type": "shell",
+        "command": "python manage.py migrate",
+        "group": "build",
+        "options": {
+          "cwd": "${workspaceFolder}/django_project"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Django: Make Migrations",
+        "type": "shell",
+        "command": "python manage.py makemigrations",
+        "group": "build",
+        "options": {
+          "cwd": "${workspaceFolder}/django_project"
+        },
+        "problemMatcher": []
+      },
+      {
+          "label": "Test All",
+          "type": "shell",
+          "command": "python manage.py test"
+      },
+      {
+          "label": "Test GeoRepo",
+          "type": "shell",
+          "command": "python manage.py test georepo"
+      },
+      {
+          "label": "Test Dashboard",
+          "type": "shell",
+          "command": "python manage.py test dashboard"
+      },
+    ]
+}

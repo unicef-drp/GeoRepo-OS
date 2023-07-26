@@ -1,0 +1,155 @@
+/* ==========================================================================
+   Navbar : Deprecated, reusing css from admin dashboard
+   ========================================================================== */
+
+@import '../styles/variables';
+
+header {
+  background-color: $navbar-background-color;
+
+  .NavHeader {
+    height: 4rem;
+    width: 100%;
+    z-index: 1001;
+
+    .MuiGrid-root {
+      padding: ($global-spacing * 0.7) ($global-spacing * 0.5);
+
+      &:first-child {
+        padding-left: $global-spacing * 1.5;
+      }
+    }
+
+    &.Menu {
+      color: var(--primary-color);
+      display: flex;
+      flex: 1;
+      height: 100%;
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+
+      a {
+        color: var(--anti-primary-color);
+        text-underline: none;
+        display: block;
+        height: 100%;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+
+    button {
+      border: unset;
+      color: white;
+      font-weight: 300;
+      padding: 0;
+      background: unset;
+      letter-spacing: 0.02857em;
+      cursor: pointer;
+
+      &:active,
+      &:focus-visible,
+      &:focus,
+      &:hover {
+        background: none;
+        border: unset;
+        box-shadow: unset;
+        outline: none !important;
+      }
+
+      a {
+        font-weight: 500;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      svg {
+        height: 1.8rem;
+        width: 1.8rem;
+        display: block;
+        margin: auto;
+      }
+    }
+
+    .NavHeaderTitle {
+      margin: 0 auto 0 0;
+      padding-left: 0 !important;
+      font-family: 'Arial';
+      align-items: center;
+      padding-top: 0.5rem;
+
+      button {
+        min-width: unset;
+        border-radius: 0;
+        font-size: 2.5rem;
+      }
+    }
+
+    .NavHeaderLogo {
+      padding-right: 0.3rem !important;
+
+      img {
+        height: 90%;
+        vertical-align: unset !important;
+      }
+    }
+
+    .NavHeaderSeparator {
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+
+      div {
+        height: 100%;
+        border-left: solid 1px white;
+      }
+    }
+
+    .NavHeader-Options {
+      display: flex;
+      padding: 4px;
+
+      .NavHeader-Options-Icon {
+        padding-top: 0.3rem;
+        padding-left: 0.3rem;
+      }
+    }
+
+    .NavHeaderRight {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-end;
+      font-size: 1rem;
+      padding: 0.7rem;
+
+      &.First {
+        padding-left: 3rem;
+      }
+
+      .NavHeader-UserMenuContainer {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        .NavHeader-Username {
+          color: white;
+          margin-right: 1rem;
+        }
+      }
+
+    }
+
+    .HeaderTitle {
+      background: $primary-color;
+      color: $anti-primary-color;
+      padding-right: 1rem;
+      font-weight: $base-font-regular;
+    }
+  }
+}
+
+.MenuItem-Header {
+  padding: 0 !important;
+}

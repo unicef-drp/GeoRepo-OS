@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Uploader</title>
+    {% load render_bundle from webpack_loader %}
+    <script>
+        const csrfToken = "{{ csrf_token }}";
+    </script>
+</head>
+<body>
+    <div id="app"></div>
+    {% render_bundle 'App' 'css' %}
+    {% render_bundle 'Uploader' 'js' %}
+</body>
+</html>

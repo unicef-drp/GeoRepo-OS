@@ -1,0 +1,155 @@
+version: '3.8'
+
+volumes:
+  static-data:
+  media-data:
+  reports-data:
+  conf-data:
+  tegola-data:
+  layer-tiles:
+  arcgis-configs:
+  database:
+  django-cache:
+  nginx-cache:
+  backups-data:
+
+x-common-django:
+  &default-common-django
+  image: kartoza/georepo:${DJANGO_TAG:-0.0.1}
+  environment:
+    # editable in .env
+    - DATABASE_NAME=${DATABASE_NAME:-django}
+    - DATABASE_USERNAME=${DATABASE_USERNAME:-docker}
+    - DATABASE_PASSWORD=${DATABASE_PASSWORD:-docker}
+    - DATABASE_HOST=${DATABASE_HOST:-db}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+    - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+    - LAYER_TILES_PATH=${LAYER_TILES_PATH:-/opt/layer_tiles}
+    - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-core.settings.prod}
+    - INITIAL_FIXTURES=${INITIAL_FIXTURES:-True}
+    - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-[]}
+    - LAYER_TILES_BASE_URL=${LAYER_TILES_BASE_URL}
+    - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
+    - SENTRY_DSN=${SENTRY_DSN}
+
+    # Email where alters should be sent. This will be used by let's encrypt and as the django admin email.
+    - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+    - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+    - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+    - DSN_TRAVIS=${DSN_TRAVIS}
+    - OGR_GEOJSON_MAX_OBJ_SIZE=${OGR_GEOJSON_MAX_OBJ_SIZE:-2000MB}
+    - AZURE_B2C_CLIENT_ID=${AZURE_B2C_CLIENT_ID}
+    - AZURE_B2C_CLIENT_SECRET=${AZURE_B2C_CLIENT_SECRET}
+    - AZURE_B2C_TENANT_NAME=${AZURE_B2C_TENANT_NAME}
+    - AZURE_B2C_POLICY_NAME=${AZURE_B2C_POLICY_NAME}
+    - B2C_ADMIN_EMAIL=${B2C_ADMIN_EMAIL}
+    # email variables
+    - EMAIL_HOST=${EMAIL_HOST:-smtp}
+    - EMAIL_PORT=${EMAIL_PORT:-25}
+    - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+    - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+    - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
+    - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
+    - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-noreply@kartoza.com} 
+  volumes:
+    - static-data:/home/web/static
+    - media-data:/home/web/media
+    - reports-data:/home/web/reports
+    - tegola-data:/opt/tegola_config
+    - layer-tiles:/opt/layer_tiles
+    - arcgis-configs:/home/web/arcgis
+    - django-cache:/home/web/django_cache
+  restart: on-failure
+
+services:
+  redis:
+    image: bitnami/redis:7.0.2
+    container_name: "georepo_redis"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+
+  db:
+    image: kartoza/postgis:14-3.2
+    container_name: "georepo_db"
+    shm_size: 1gb
+    environment:
+      - ALLOW_IP_RANGE=0.0.0.0/0
+      - POSTGRES_DBNAME=${DATABASE_NAME:-django}
+      - POSTGRES_USER=${DATABASE_USERNAME:-docker}
+      - POSTGRES_PASS=${DATABASE_PASSWORD:-docker}
+
+  dbbackups:
+    image: kartoza/pg-backup:14-3.2
+    container_name: "georepo_dbbackups"
+    environment:
+      # take care to let the project name below match that
+      # declared in the top of the makefile
+      - DUMPPREFIX=PG_GeoSight
+      # These are all defaults anyway, but setting explicitly in
+      # case we ever want to ever use different credentials
+      - POSTGRES_USER=${DATABASE_USERNAME:-docker}
+      - POSTGRES_PASS=${DATABASE_PASSWORD:-docker}
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=db
+      - POSTGRES_DBNAME=${DATABASE_NAME:-django}
+      - DBLIST=django
+    volumes:
+      - backups-data:/backups
+    restart: on-failure:5
+
+  django:
+    <<: *default-common-django
+    container_name: "georepo_django"
+    command: 'uwsgi --ini /uwsgi.conf'
+    links:
+      - db
+      - worker
+
+  worker:
+    <<: *default-common-django
+    container_name: "georepo_worker"
+    entrypoint: []
+    command: '/bin/bash -c /home/web/django_project/worker_entrypoint.sh'
+    links:
+      - redis
+      - celery_beat
+
+  celery_beat:
+    <<: *default-common-django
+    container_name: "georepo_celery_beat"
+    entrypoint: []
+    command: 'celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler'
+
+  auth:
+    <<: *default-common-django
+    container_name: "georepo_auth"
+    entrypoint: []
+    command: 'uwsgi --ini /uwsgi_auth.conf'
+
+  dev:
+    image: kartoza/georepo_dev
+    <<: *default-common-django
+    container_name: "georepo_dev_django"
+    entrypoint: []
+
+  webpack-watcher:
+    image: kartoza/georepo_dev
+    <<: *default-common-django
+    container_name: "georepo_webpack_watcher"
+    entrypoint: [ ]
+
+  nginx:
+    image: nginx
+    hostname: nginx
+    volumes:
+      - conf-data:/etc/nginx/conf.d:ro
+      - static-data:/home/web/static
+      - media-data:/home/web/media
+      - layer-tiles:/home/web/layer_tiles
+      - arcgis-configs:/home/web/arcgis
+      - nginx-cache:/home/web/nginx_cache
+    links:
+      - auth
+      - django
+      - worker

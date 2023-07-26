@@ -1,0 +1,67 @@
+/* ==========================================================================
+   Table style
+   ========================================================================== */
+
+@import '../styles/variables';
+
+.AdminList {
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 !important;
+
+  .MoreActionIcon {
+    width: 20px;
+    height: 20px;
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .AdminTable {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+
+    .MuiPaper-root {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .AdminTableDelete {
+    color: $error;
+  }
+
+  .AdminTable-Loading {
+    padding: 1rem;
+  }
+
+  .CellLink {
+    color: $primary-color !important;
+  }
+
+  .AdminFooter {
+    color: azure;
+    margin-top: auto;
+    padding: 12px;
+    border-top: 1px solid #c9c6c6;
+    display: flex;
+    flex-direction: row-reverse;
+  }
+
+  .TableActionContent {
+    .MuiButtonBase-root {
+        &.Mui-disabled {
+            pointer-events: auto;
+        }
+    }
+}
+
+}

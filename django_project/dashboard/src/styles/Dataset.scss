@@ -1,0 +1,15 @@
+body {
+  // use 100vh for lazy load fix
+  height: 100vh;
+  overflow-y: hidden;
+}
+
+.list-container {
+  height: calc(100% - 90px);
+  display: flex;
+  flex-direction: column;
+
+  .AdminTable {
+    overflow-y: auto;
+  }
+}

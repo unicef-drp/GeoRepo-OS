@@ -1,0 +1,97 @@
+<!-- templates/registration/login.html -->
+{% load static %}
+{% load randombg %}
+{% randombg as random_bg_image %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GeoRepo | Login</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css?family=Rubik:300,300i,500,500i"/>
+    <link rel="stylesheet" href={% static 'base.css' %}>
+    <link rel="stylesheet" href={% static 'login.css' %}>
+    <link rel="stylesheet" href={% static 'navbar.css' %}>
+        <style>
+            .login-main .background {
+                background: url('{% static random_bg_image %}');
+                background-size: cover;
+            }
+        </style>
+</head>
+<body>
+    <div class="login-app">
+        <div class="login-root">
+            <div class="login-header">
+                {% include "../navbar.html" %}
+            </div>
+            <div class="login-main">
+                <div class="background">
+                </div>
+                <div class="login-container">
+                    <div class="login-form-header">
+                        Welcome to GeoRepo
+                    </div>
+                    <div class="login-form">
+                        {% if logged_out %}
+                            <div style="margin-bottom: 20px;">
+                                <p>Thanks for spending some quality time with the web site today.</p>
+                            </div>
+                        {% endif %}
+                        {% if no_access %}
+                            <div style="margin-bottom: 20px;">
+                                <p>
+                                    You are not allowed to access GeoRepo. Please contact administrator to request access or try to use different account!
+                                </p>
+                                <p>
+                                    <form class="basic-form" action="{% url 'signup-view' %}" method="GET">
+                                        <button type="submit">Request Access</button>
+                                    </form>
+                                </p>
+                            </div>
+                        {% endif %}
+                        {% if use_azure_auth %}
+                            <form class="basic-form" action="{% url 'azure_auth:login' %}" method="GET">
+                                <input type="hidden" name="next" value="{{ redirect_next_uri }}" /> 
+                                <button type="submit">Log In</button>
+                            </form>
+                        {% else %}
+                            <form class="basic-form" method="post">
+                                <div>
+                                    {% csrf_token %}
+                                </div>
+                                {{ form.non_field_errors }}
+                                <div class="field-container">
+                                    {{ form.username.errors }}
+                                    <label for="{{ form.username.id_for_label }}">Username</label>
+                                    <div class="input-container username-input-container">
+                                        {{ form.username }}
+                                    </div>
+                                </div>
+                                <div class="field-container">
+                                    {{ form.password.errors }}
+                                    <label for="{{ form.password.id_for_label }}">Password</label>
+                                    <div class="input-container password-input-container">
+                                        {{ form.password }}
+                                    </div>
+                                </div>
+                                <button type="submit">Log In</button>
+                            </form>
+                            <div style="margin-top: 1rem;">
+                                <form class="basic-form" action="{% url 'signup-view' %}" method="GET">
+                                    <button type="submit">Request Access</button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+</body>
+</html>

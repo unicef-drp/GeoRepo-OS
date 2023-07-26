@@ -1,0 +1,307 @@
+/* ==========================================================================
+    Materialize
+   ========================================================================== */
+@import './variables.scss';
+
+.AdminTable {
+  .MuiPaper-root {
+    box-shadow: none !important;
+  }
+  .MuiToolbar-root {
+    h6 {
+      text-align: left;
+      font-weight: bold;
+    }
+  }
+}
+
+.MuiList-root {
+  padding: 0 !important;
+}
+
+.MuiButton-root {
+  text-transform: unset !important;
+  padding: 0.5rem 1rem !important;
+
+  &:disabled {
+    pointer-events: auto !important;
+    cursor: not-allowed !important;
+    opacity: 0.5;
+
+    &:hover {
+      opacity: 0.5
+    }
+  }
+
+  &:hover {
+    opacity: $base-hovered-opacity;
+  }
+
+  .MuiTouchRipple-root {
+    display: none;
+  }
+}
+
+.MuiButton-primary {
+  background-color: $primary-color !important;
+  border: 1px solid $primary-color !important;
+  color: $anti-primary-color !important;
+}
+
+.MuiButton-success {
+  background-color: $ok !important;
+  border: 1px solid $ok !important;
+  color: $anti-primary-color !important;
+}
+
+.MuiButton-error {
+  background-color: $dark-error !important;
+  border: 1px solid $dark-error !important;
+  color: $anti-primary-color !important;
+}
+
+.MuiButton-warning {
+  background-color: $dark-warning !important;
+  border: 1px solid $dark-warning !important;
+  color: $anti-primary-color !important;
+}
+
+.MuiButton-secondary {
+  background-color: $secondary-color !important;
+  border: 1px solid $secondary-color !important;
+  color: $anti-secondary-color !important;
+
+  a {
+    color: $anti-primary-color !important;
+  }
+
+  &.Basic {
+    padding: 0.5rem !important;
+    min-width: 0;
+
+    svg {
+      margin-right: 0;
+    }
+  }
+
+  &.Reverse {
+    background-color: $anti-secondary-color !important;
+    border: 1px solid $secondary-color !important;
+    color: $secondary-color !important;
+
+    &:hover {
+      background-color: $secondary-color !important;
+      color: $anti-secondary-color !important;
+    }
+
+    &.Mui-disabled {
+      background-color: $anti-secondary-color !important;
+      border: 1px solid $secondary-color !important;
+      color: $secondary-color !important;
+      -webkit-text-fill-color: $secondary-color !important;
+
+      svg {
+        display: block !important;
+      }
+    }
+  }
+}
+
+.MuiButton-primary-text {
+  color: $primary-color !important;
+}
+
+.MuiListSubheader-root {
+  color: $primary-color !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+}
+
+.MuiAccordionSummary-title {
+  flex-grow: 1;
+}
+
+.MuiButtonLike {
+  cursor: pointer;
+
+  &:hover {
+    opacity: $base-hovered-opacity;
+  }
+}
+
+.UserMenu-Links {
+  .MuiMenuItem-root {
+    a {
+      display: block;
+      padding: 6px 16px;
+      width: 100%;
+    }
+  
+    span {
+      display: block;
+      padding: 6px 16px;
+      width: 100%;
+      color: -webkit-link;
+    }
+  }
+}
+
+.MuiButtonMedium {
+  min-width: 90px;
+}
+
+/* ==========================================================================
+    Select with search
+   ========================================================================== */
+.MuiAutocomplete-root {
+  .MuiFormControl-root {
+    margin-top: 0 !important;
+
+    .MuiOutlinedInput-root {
+      //padding-top: 5px;
+      //padding-bottom: 5px;
+      padding-right: 40px !important;
+      //padding-left: 0 !important;
+
+      .MuiAutocomplete-input {
+        padding: 0;
+      }
+    }
+
+    .MuiAutocomplete-endAdornment {
+      .MuiButtonBase-root {
+        min-height: unset;
+      }
+    }
+  }
+
+  .MuiButtonBase-root {
+    border-radius: 5px;
+  }
+}
+
+/* ==========================================================================
+    MUI Data Grid
+   ========================================================================== */
+
+
+.MuiDataGrid-root {
+  border: none !important;
+
+  div {
+    &:focus,
+    &:focus-visible,
+    &:focus-within {
+      outline: none !important;
+    }
+  }
+
+  .MuiDataGrid-columnHeader {
+    color: $primary-color;
+
+    .MuiButtonBase-root {
+      color: $primary-color;
+    }
+
+    .MuiDataGrid-columnHeaderTitle {
+      font-weight: 600 !important;
+    }
+  }
+
+  .MuiDataGrid-columnSeparator {
+    display: none !important;
+  }
+
+  .MuiDataGrid-row:hover {
+    background-color: $base-almost-white-color !important;
+  }
+
+  .MuiDataGrid-columnHeader,
+  .MuiDataGrid-cell {
+    padding: 0 1rem !important;
+
+    &.MuiDataGrid-columnHeaderCheckbox {
+      padding: 0 !important;
+    }
+  }
+
+  .MuiDataGrid-cell {
+    a {
+      color: inherit;
+      display: block;
+      height: 20px !important;
+
+      svg {
+        height: 100%;
+        width: 20px !important;
+      }
+    }
+
+    button {
+      &:not(.TextButton) {
+        a {
+          width: 20px !important;
+
+          svg {
+            width: 100%;
+          }
+        }
+      }
+    }
+
+    .TextButton {
+      height: 100%;
+      line-height: 1 !important;
+
+      a {
+        height: 30px !important;
+      }
+
+      .MuiButtonBase-root {
+        height: 100%;
+        padding: 0 1rem !important;
+
+        svg {
+          height: 20px !important;
+        }
+      }
+
+      &:hover {
+        background-color: unset;
+      }
+    }
+  }
+}
+
+
+.MuiButton-Div {
+  align-items: center;
+  display: inline-flex !important;
+  border-radius: $border-radius;
+  line-height: 1.5;
+}
+
+.MuiDataGridTable {
+  height: 500px;
+}
+
+.MuiDataGrid-main {
+  .MuiSelect-select {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    background: inherit;
+    min-width: 50px;
+  }
+}
+
+.MuiDataGrid-ActionsColumn {
+  -webkit-box-pack: end !important;
+  -ms-flex-pack: end !important;
+  -webkit-justify-content: flex-end !important;
+  justify-content: end !important;
+}
+
+.MuiCircularProgress-root {
+  color: $primary-color !important;
+}

@@ -1,0 +1,27 @@
+.layer-config-container {
+  .button-submit-container {
+      display: flex;
+      flex-direction: row-reverse;
+      margin-top: 20px;
+    }
+
+  #layer-config-form {
+    .form-label {
+      display: flex;
+      align-items: center;
+      text-align: left;
+    }
+    .MuiGrid-container {
+      padding-bottom: 1em;
+    }
+  }
+}
+
+.load-layer-config-container {
+  .load-button-container {
+    margin-top: 1em;
+  }
+}
+
+
+  

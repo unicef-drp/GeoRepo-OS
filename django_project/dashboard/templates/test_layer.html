@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Add a vector tile source</title>
+    <meta name="viewport"
+          content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+    <script src="https://unpkg.com/maplibre-gl@2.1.9/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@2.1.9/dist/maplibre-gl.css"
+          rel="stylesheet"/>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Roboto", "Lucida Grande", Verdana, Arial, sans-serif;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+        .dataset {
+            background-color: rgba(248, 248, 248, 0.47);
+            z-index: 999;
+            position: absolute;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<div class="dataset">
+    Dataset : {{ label }} <div id="zoom"></div>
+</div>
+<script>
+    var map = new maplibregl.Map({
+        container: 'map',
+        style:
+            'https://api.maptiler.com/maps/hybrid/style.json?key={{ maptiler_api_key }}',
+        zoom: 5,
+        center: {% if center %} {{ center.coordinates }} {% else %} [0, 0] {% endif %}
+    });
+
+    var nav = new maplibregl.NavigationControl();
+    map.addControl(nav, 'top-right');
+
+    document.getElementById('zoom').innerHTML = 'Zoom : ' + map.getZoom();
+
+    map.on('zoom', () => {
+      document.getElementById('zoom').innerHTML = 'Zoom : ' + map.getZoom().toFixed(2);
+    });
+
+    map.on('load', function () {
+        map.addSource('{{ label }}', {
+          'type': 'vector',
+          "tiles": ["{{ layer_tiles_base_url }}{{ vector_tiles_path }}&token={{ user.auth_token }}"],
+          "tolerance": 0
+        });
+
+      {% if bbox %}
+        map.fitBounds([
+          [{{ bbox.0 }}, {{ bbox.1 }}],
+          [{{ bbox.2 }}, {{ bbox.3 }}]
+        ])
+      {% endif %}
+
+      {% for layer_config in layers_configs %}
+        map.addLayer({{ layer_config | safe }})
+      {% endfor %}
+    });
+</script>
+
+</body>
+</html>

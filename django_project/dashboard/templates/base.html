@@ -1,0 +1,58 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GeoRepo</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon">
+    <title>{% block head_title %}{% endblock %}</title>
+    <style>
+        :root {
+            --primary-color: {{ preferences.primary_color }};
+            --anti-primary-color: {{ preferences.anti_primary_color }};
+
+            --secondary-color: {{ preferences.secondary_color }};
+            --anti-secondary-color: {{ preferences.anti_secondary_color }};
+
+            --tertiary-color: {{ preferences.tertiary_color }};
+            --anti-tertiary-color: {{ preferences.anti_tertiary_color }};
+            }
+    </style>
+    <link href="https://unpkg.com/maplibre-gl@2.1.9/dist/maplibre-gl.css"
+          rel="stylesheet"/>
+    {% block extra_head %}
+    {% endblock %}
+</head>
+
+<script>
+  window.preferences = {{ preferences|safe }};
+  const csrfToken = "{{ csrf_token }}";
+  window.csrfToken = csrfToken;
+  window.updateUploadSessionUrl = "{% url 'update-upload-session' %}";
+  window.layerUploadList = "{% url 'layer-upload-list' %}";
+  window.updateLayerUpload = "{% url 'update-layer-upload' %}";
+  window.datasetEntityList = "{% url 'dataset-entity-list' %}";
+  window.validateUploadSession = "{% url 'validate-upload-session' %}";
+  window.uploadSessionUpdateStep = "{% url 'upload-session-update-step' %}";
+  window.entityRevisions = "{% url 'entity-revisions' %}";
+  window.georepoCodeVersion = "{{ georepo_code_version }}";
+  {% if user.is_authenticated %}
+    window.user_name = "{{ user.username }}";
+    window.user_id = "{{ user.id }}";
+    window.is_staff = "{{ user.is_staff }}" === 'True'
+    window.is_admin = "{{ user.is_superuser }}" === 'True'
+  {% else %}
+  window.user = {};
+  {% endif %}
+  {% if use_azure_auth %}
+    window.logoutURL = "{% url 'azure_auth:logout' %}";
+  {% else %}
+    window.logoutURL = "{% url 'logout' %}";
+  {% endif %}
+</script>
+<body>
+{% block content %}
+{% endblock %}
+</body>
+</html>

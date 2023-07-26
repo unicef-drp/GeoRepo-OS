@@ -1,0 +1,106 @@
+@import './variables.scss';
+
+.Step3Container {
+  height: 100%;
+  min-height: 500px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+
+  .AdminList {
+    width: 100%;
+  }
+
+  .AdminBaseInput {
+    width: 100%;
+  }
+
+  .MuiTableBody-root {
+    td {
+      max-width: 200px;
+    }
+  }
+
+  .ListItemSecondary {
+    margin: 0;
+    font-family: "Roboto","Helvetica","Arial",sans-serif;
+    font-weight: 400;
+    font-size: 0.875rem;
+    line-height: 1.43;
+    letter-spacing: 0.01071em;
+    color: rgba(0, 0, 0, 0.6);
+    display: block;
+  }
+
+}
+
+.Step4Container {
+  .AdminList {
+    .AdminTable {
+      .MuiPaper-root {
+        height: unset;
+      }
+    }
+  }
+}
+
+.MuiDataGrid-root .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitle {
+  font-weight: 500 !important;
+}
+
+.error-report-button-container {
+  margin-top: 20px;
+}
+
+.error-modal {
+  width: 90%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #ffffff;
+  border-radius: 4px;
+  padding: 20px;
+  box-shadow: bisque;
+
+  .error-summary.warning {
+    background-color: $light-warning;
+    color: #FFFFFF;
+  }
+
+  .error-summary.error {
+    background-color: $light-error;
+    color: #FFFFFF;
+  }
+
+}
+
+.rematch-modal {
+  width: 60%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #ffffff;
+  border-radius: 4px;
+  padding: 20px;
+  box-shadow: bisque;
+  max-height: 80%;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  table {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .overlap-title {
+    color: white;
+    position: absolute;
+    justify-content: center;
+    margin-top: -22px;
+    display: flex;
+    width: 100%;
+  }
+}

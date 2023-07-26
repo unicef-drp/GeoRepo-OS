@@ -1,0 +1,11 @@
+{
+"type": "FeatureCollection",
+"name": "level_1",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "type": "City", "OBJECTID": 3, "iso3": "PAK", "adm1_name": "Khyber Pakhtunkhwa", "adm1_altnm": null, "adm1_id": 901430, "adm0_name": "Pakistan", "adm0_id": 188, "mapclr": "PAK", "rb": "RBB", "disp_area": "no", "salb_id": "PAK003", "source": "WFP CO", "source_id": null, "source_dat": null, "lst_update": "2022-08-22", "validity": 0, "Shape_Leng": 28.7981539719, "Shape_Area": 9.8577397059299994, "name_1": "Khyber Pakhtunkhwa", "code_1": "PAK003", "code_0": "PAK" }, "geometry": {  } },
+{ "type": "Feature", "properties": { "type": "City", "OBJECTID": 3, "iso3": "AUT", "adm1_name": "Vorarlberg", "adm1_altnm": null, "adm1_id": 901430, "adm0_name": "Vorarlberg", "adm0_id": 188, "mapclr": "AUT", "rb": "RBB", "disp_area": "no", "salb_id": "AUT-20200921-8", "source": "WFP CO", "source_id": null, "source_dat": null, "lst_update": "2022-08-22", "validity": 0, "Shape_Leng": 28.7981539719, "Shape_Area": 9.8577397059299994, "name_1": "Vorarlberg", "code_1": "AUT-20200921-8", "code_0": "AUT" }, "geometry": {  } },
+{ "type": "Feature", "properties": { "type": "City", "OBJECTID": 3, "iso3": "VCT", "adm1_name": "Saint Andrew2", "adm1_altnm": null, "adm1_id": 901430, "adm0_name": "Saint Andrew2", "adm0_id": 188, "mapclr": "VCT", "rb": "RBB", "disp_area": "no", "salb_id": "VCT-20210414-2", "source": "WFP CO", "source_id": null, "source_dat": null, "lst_update": "2022-08-22", "validity": 0, "Shape_Leng": 28.7981539719, "Shape_Area": 9.8577397059299994, "name_1": "Saint Andrew2", "code_1": "VCT-20210414-2", "code_0": "VCT" }, "geometry": {  } },
+{ "type": "Feature", "properties": { "type": "City", "OBJECTID": 3, "iso3": "VCT", "adm1_name": "Saint Andrew", "adm1_altnm": null, "adm1_id": 901430, "adm0_name": "Saint Andrew", "adm0_id": 188, "mapclr": "VCT", "rb": "RBB", "disp_area": "no", "salb_id": "VCT-20210414-3", "source": "WFP CO", "source_id": null, "source_dat": null, "lst_update": "2022-08-22", "validity": 0, "Shape_Leng": 28.7981539719, "Shape_Area": 9.8577397059299994, "name_1": "Saint Andrew", "code_1": "VCT-20210414-3", "code_0": "VCT" }, "geometry": {  } }
+]
+}

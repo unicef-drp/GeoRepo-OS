@@ -1,0 +1,50 @@
+html, body, #app, .App {
+  height: 100%;
+}
+
+.content-body {
+  min-height: 300px;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.uploader-container {
+  width: 100%;
+  padding: 20px 0px;
+}
+
+.layer-format {
+  margin-bottom: 20px;
+}
+
+.layer-format .MuiFormControl-root {
+  margin-right: 10px;
+  margin-left: 10px;
+}
+
+.dzu-dropzone .MuiPaper-root {
+  width: auto;
+  overflow: initial !important;
+  padding: 10px;
+}
+
+.dzu-dropzone {
+  max-height: 450px;
+  overflow: auto;
+}
+
+.button-container {
+  margin-top: auto;
+  margin-left: auto;
+}
+
+.button-container button {
+  width: 150px;
+}
+
+.display-linebreak {
+  white-space: pre-line;
+}

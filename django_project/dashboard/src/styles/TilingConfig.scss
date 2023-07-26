@@ -1,0 +1,11 @@
+@import './variables.scss';
+
+.tiling-config-matrix {
+    .MuiButton-root:disabled {
+        opacity: unset;
+        color: unset;
+    }
+    tr > th {
+        text-align: center;
+    }
+}

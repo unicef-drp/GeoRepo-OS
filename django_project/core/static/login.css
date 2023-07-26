@@ -1,0 +1,232 @@
+body {
+    font-family: "Rubik",sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    width: 100vw;
+    margin: 0;
+    line-height: 1.5;
+    font-size: 1rem;
+    font-weight: 300;
+}
+
+.login-app {
+    height: 100%;
+    width: 100%;
+}
+
+.login-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    width: 100%;
+}
+
+.login-root .login-header {
+    background-color: var(--primary-color);
+}
+
+.login-main {
+    flex-grow: 1;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+}
+
+.login-main .background {
+    flex-grow: 1;
+    background: url('Brand_Template_PPT_Presentation.pptx_6.jpg');
+    background-size: cover;
+}
+
+.login-main .login-container {
+    background-color: white;
+    height: 100%;
+    width: 400px;
+    padding: 0 2rem;
+    box-sizing: border-box;
+    padding-top: 3rem;
+    overflow-y: auto;
+}
+
+.login-container .login-form-header {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.login-container .login-form {
+    margin-top: 1rem;
+    background-color: #fff;
+    flex-grow: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.login-container .login-form .errorlist {
+    color: var(--error-color);
+    margin: 0;
+    padding: 0;
+    margin-block-end: 2rem;
+}
+
+.login-form .basic-form {
+    padding: 0;
+    color: var(--secondary-color);
+}
+
+.login-form .basic-form .basic-form-section,
+.login-form .basic-form .field-container {
+    margin-block-start: 0;
+    margin-block-end: 2rem;
+}
+
+.basic-form textarea, .basic-form input, .basic-form select {
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,.23);
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: 300;
+}
+
+.basic-form input, .basic-form select {
+    background: #fff;
+    border-radius: 0.2rem;
+    box-sizing: border-box;
+    padding: 0.5rem;
+    width: 100%;
+}
+
+.basic-form label {
+    font-weight: 500;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.login-form .basic-form label::after {
+    content: " *";
+}
+
+.basic-form .input-container {
+    display:inline-block;
+    position:relative;
+    width: 100%;
+}
+
+.basic-form .input-container.username-input-container:before{
+    content:"";
+    position:absolute;
+    width:40px;
+    height:40px;
+    top:0px;
+    left:0px;
+    background: url('person_black_24dp.svg') no-repeat scroll 10px 7px;
+}
+
+.basic-form .input-container.password-input-container:before{
+    content:"";
+    position:absolute;
+    width:40px;
+    height:40px;
+    top:0px;
+    left:0px;
+    background: url('lock_black_24dp.svg') no-repeat scroll 10px 7px;
+}
+
+.basic-form .input-container input{
+    font-family: Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 400;
+    font-size: 1rem;
+    line-height: 1.4375em;
+    letter-spacing: 0.00938em;
+    color: rgba(0, 0, 0, 0.87);
+    box-sizing: border-box;
+    cursor: text;
+    height: 2.5rem;
+    padding-left: 50px;
+}
+
+.basic-form .input-container input:hover {
+    border: 1px solid var(--secondary-color);
+}
+
+.basic-form .input-container input:focus-visible {
+    border-color: var(--secondary-color);
+    border-width: 2px;
+    outline: none;
+}
+
+.login-form .basic-form button {
+    border-radius: 0;
+    width: 100%;
+    background-color: var(--secondary-color) !important;
+    border: 1px solid var(--secondary-color) !important;
+    color: var(--anti-secondary-color) !important;
+    padding: 0.5rem 1rem !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    font-family: Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 500;
+    min-width: 64px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms, box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms, border-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms, color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+}
+
+.login-form .basic-form button:hover {
+    text-decoration: none;
+    opacity: .8;
+}
+
+a.login-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.15s, background 0.15s;
+}
+
+.login-container.logout p {
+    padding: 0;
+    line-height: 140%;
+}
+
+.signup-form .login-form-header {
+    margin-bottom: 0;
+}
+
+.signup-form .login-form {
+    margin-top: 0;
+}
+
+.signup-form .login-form .basic-form label {
+    margin-top: 0.5rem;
+}
+
+.signup-form .login-form .basic-form label::after {
+    content: "";
+}
+
+.signup-form .login-form .basic-form label.required::after {
+    content: " (required)";
+    font-style: italic;
+    font-size: 12px;
+}
+
+.signup-form .login-form .basic-form button {
+    margin-top: 1rem;
+}
+
+.signup-form .login-form .basic-form textarea {
+    padding: 10px 8px;
+}
+
+.signup-form .login-form .errorlist {
+    margin-block-end: 1rem;
+}
+
+.signup-form .login-form .captcha-refresh {
+    height: 36px;
+    display: inline-block;
+    margin-left: 0.5rem;
+}

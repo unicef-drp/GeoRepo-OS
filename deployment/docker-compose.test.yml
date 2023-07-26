@@ -1,0 +1,28 @@
+version: '3.9'
+services:
+  dev:
+    image: ${APP_IMAGE}:dev
+    container_name: georepo_dev
+    links:
+      - db:db
+    volumes:
+      - static-data:/home/web/static:rw
+      - media-data:/home/web/media:rw
+      - reports-data:/home/web/reports
+    environment:
+      # editable in .env
+      - DATABASE_NAME=${DATABASE_NAME:-django}
+      - DATABASE_USERNAME=${DATABASE_USERNAME:-docker}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-docker}
+      - DATABASE_HOST=${DATABASE_HOST:-db}
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - DJANGO_SETTINGS_MODULE=core.settings.dev
+      - INITIAL_FIXTURES=${INITIAL_FIXTURES:-True}
+
+      # Email where alters should be sent. This will be used by let's encrypt and as the django admin email.
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+    entrypoint: []

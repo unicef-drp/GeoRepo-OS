@@ -1,0 +1,154 @@
+@import './variables.scss';
+
+.DetailMatchRow {
+    .GreenCell {
+        background-color: #1e9220;
+        color: #FFFFFF;
+    }
+
+    .RedCell {
+        background-color: #ce4c4c;
+        color: #FFFFFF;
+    }
+
+    .GrayCell {
+        background-color: $base-almost-gray-color;
+        color: unset;
+    }
+
+    &.NoComparison {
+        .GreenCell {
+            background-color: $base-almost-gray-color;
+            color: unset;
+        }
+        .RedCell {
+            background-color: $base-almost-gray-color;
+            color: unset;
+        }
+    }
+
+    .MuiTableCell-body.StickyCell {
+        background-color: white;
+    }
+
+    &:hover {
+        background-color: rgb(237 237 237) !important;
+        .MuiTableCell-body:not(.GreenCell, .RedCell, .GrayCell) {
+            background-color: rgb(237 237 237) !important;
+        }
+        .StickyCell {
+            background-color: rgb(237 237 237) !important;
+        }
+    }
+
+    &.WarningCell:not(.Mui-selected) {
+        background-color: $light-warning;
+        .MuiTableCell-body:not(.GreenCell, .RedCell, .GrayCell) {
+            background-color: $light-warning;
+        }
+        .MuiTableCell-body.StickyCell {
+            background-color: $light-warning;
+        }
+    }
+
+    
+    &.Mui-selected, &.Mui-selected:hover {
+        background-color: rgb(237 237 237) !important;
+        .StickyCell {
+            background-color: rgb(237 237 237) !important;
+        }
+        &.WarningCell {
+            background-color: rgb(237 237 237) !important;
+        }
+    }
+
+    .MatchingStatusIcon {
+        font-size: 0.5rem;
+    }
+}
+
+.CompactTableContainer {
+    .ButtonContainer {
+        padding: 0.2rem 0rem;
+        .MuiButton-root {
+            min-width: 90px;
+            padding: 0.2rem 1rem !important
+        }
+
+        .GreenCell {
+            background-color: #1e9220;
+            color: #FFFFFF;
+        }
+
+        .GrayCell {
+            background-color: $base-almost-gray-color;
+            color: unset;
+        }
+    }
+}
+
+.DetailMatchCompactTable {
+    .CompactTableHeader {
+        width: 30%;
+    }
+    .NewEntityHeader {
+        text-align: center;
+        font-weight: bold;
+        width: 35%;
+        color: #FFFFFF;
+        background-color: #1e9220;
+    }
+    .MatchingEntityHeader {
+        text-align: center;
+        font-weight: bold;
+        width: 35%;
+        color: #FFFFFF;
+        background-color: #FF2400;
+    }
+
+    &.MuiTable-root {
+        tr > th, tr > td {
+            padding: 0px 8px !important;
+        }
+
+        .SingleCell {
+            text-align: center;
+        }
+    }
+    .DetailMatchRow {
+        .MatchingStatusIcon {
+            &.GreenCircle {
+                color: #1e9220;
+            }
+            &.RedCircle {
+                color: #ce4c4c;
+            }
+            &.GrayCircle {
+                color: $base-almost-gray-color;
+            }
+            &.NoComparison {
+                color: $base-almost-gray-color !important;
+            }
+            &.WarningCircle {
+                color: $light-warning;
+            }
+        }
+    }
+}
+
+.detail-match-info {
+    .GreenCell {
+        background-color: #1e9220;
+        color: #FFFFFF;
+    }
+
+    .RedCell {
+        background-color: #ce4c4c;
+        color: #FFFFFF;
+    }
+
+    .GrayCell {
+        background-color: $base-almost-gray-color;
+        color: unset;
+    }
+}

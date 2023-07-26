@@ -1,0 +1,14 @@
+.add-user-modal {
+    width: 30%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #ffffff;
+    border-radius: 4px;
+    padding: 20px;
+    box-shadow: bisque;
+    max-height: 80%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}

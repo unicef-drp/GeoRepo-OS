@@ -1,0 +1,106 @@
+version: '3.9'
+services:
+  db:
+    volumes:
+      - ./volumes/database:/var/lib/postgresql/14
+      - ./volumes/backups:/backups
+    ports:
+      - "4432:5432"
+
+  dbbackups:
+    volumes:
+      - ./volumes/backups:/backups
+
+  django:
+    build:
+      context: ../
+      dockerfile: deployment/docker/Dockerfile
+      target: prod
+    volumes:
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+      - ./volumes/media:/home/web/media
+      - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/layer_tiles:/opt/layer_tiles
+      - ./volumes/django_cache:/home/web/django_cache
+      - ./volumes/arcgis-configs:/home/web/arcgis
+
+  worker:
+    volumes:
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+      - ./volumes/media:/home/web/media
+      - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/layer_tiles:/opt/layer_tiles
+      - ./volumes/django_cache:/home/web/django_cache
+      - ./volumes/arcgis-configs:/home/web/arcgis
+
+  celery_beat:
+    volumes:
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+      - ./volumes/media:/home/web/media
+      - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/layer_tiles:/opt/layer_tiles
+      - ./volumes/django_cache:/home/web/django_cache
+      - ./volumes/arcgis-configs:/home/web/arcgis
+
+  auth:
+    build:
+      context: ../
+      dockerfile: deployment/docker/Dockerfile
+      target: prod
+    volumes:
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+      - ./volumes/media:/home/web/media
+      - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/layer_tiles:/opt/layer_tiles
+      - ./volumes/django_cache:/home/web/django_cache
+      - ./volumes/arcgis-configs:/home/web/arcgis
+
+  webpack-watcher:
+    command: bash -c 'cd /home/web/django_project/dashboard/; npm run dev-watch'
+    volumes:
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+      - ./volumes/media:/home/web/media
+      - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/layer_tiles:/opt/layer_tiles
+      - ./volumes/django_cache:/home/web/django_cache
+
+  dev:
+    build:
+      context: ../
+      dockerfile: deployment/docker/Dockerfile
+      target: dev
+    volumes:
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+      - ./volumes/media:/home/web/media
+      - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/layer_tiles:/opt/layer_tiles
+      - ./volumes/django_cache:/home/web/django_cache
+      - ./volumes/arcgis-configs:/home/web/arcgis
+    ports:
+      # for django test server
+      - "51102:8080"
+      # for ssh
+      - "51103:22"
+      - "51105:8081"
+
+  nginx:
+    volumes:
+      - ./nginx/sites-enabled:/etc/nginx/conf.d:ro
+      - ./volumes/static:/home/web/static
+      - ./volumes/media:/home/web/media
+      - ./volumes/layer_tiles:/home/web/layer_tiles
+      - ./volumes/nginx_cache:/home/web/nginx_cache
+      - ./volumes/arcgis-configs:/home/web/arcgis
+    ports:
+      - "${HTTP_PORT:-8888}:80"
+      - "9001:9001"
+    links:
+      - auth
+      - django
+      - worker

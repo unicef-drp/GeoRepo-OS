@@ -1,0 +1,18 @@
+.MuiTableHead-root {
+  th {
+    color: var(--primary-color);
+    font-weight: bold;
+  }
+}
+
+.MuiSelect-outlined {
+  text-align: left;
+}
+
+.dataset-upload-status {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  padding-right: 10px;
+}

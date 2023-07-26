@@ -1,0 +1,8 @@
+{
+    "type": "FeatureCollection",
+    "name": "entity_parent",
+    "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+    "features": [
+    { "type": "Feature", "properties": { "id": 1, "name": "parent1" }, "geometry": { "type": "MultiPolygon", "coordinates": [ [ [ [ 36.826230306334125, 36.950734052639234 ], [ 38.496434623968561, 36.988441188628322 ], [ 38.577394063003965, 35.891607144710363 ], [ 36.8761368098491, 35.949276882105437 ], [ 36.826230306334125, 36.950734052639234 ] ] ] ] } }
+    ]
+}
