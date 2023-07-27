@@ -23,5 +23,6 @@ class ThirdPartyApplicationAdmin(admin.ModelAdmin):
         url = reverse('azure_auth:third-party')
         return f'{scheme}{current_site.domain}{url}?client_id={obj.client_id}'
 
+
 admin.site.register(RegisteredDomain, RegisteredDomainAdmin)
 admin.site.register(ThirdPartyApplication, ThirdPartyApplicationAdmin)
