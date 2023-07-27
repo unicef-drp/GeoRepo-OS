@@ -57,8 +57,8 @@ LOGGING = {
 }
 
 WEBPACK_LOADER['DEFAULT']['CACHE'] = DEBUG
-WEBPACK_LOADER['DEFAULT']['STATS_FILE'] = absolute_path(
-    'dashboard', 'webpack-stats.dev.json'
+WEBPACK_LOADER['DEFAULT']['STATS_FILE'] = os.path.join(
+    DJANGO_ROOT, 'dashboard', 'webpack-stats.dev.json'
 )
 
 # use ssl
