@@ -416,7 +416,10 @@ class TilingConfigCheckStatus(AzureAuthRequiredMixin, APIView):
         view_resources = view_resources.aggregate(
             Avg('vector_tiles_progress')
         )
-        tiling_progress = view_resources['vector_tiles_progress__avg']
+        tiling_progress = (
+            view_resources['vector_tiles_progress__avg'] if
+            view_resources['vector_tiles_progress__avg'] else 0
+        )
         tiling_status = (
             'Done' if isclose(tiling_progress, 100, abs_tol=1e-4) else
             'Processing'

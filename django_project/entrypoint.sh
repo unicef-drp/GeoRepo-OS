@@ -21,10 +21,6 @@ echo 'Running initialize.py...'
 python -u initialize.py
 python manage.py migrate
 
-# Fix permission on media directory
-echo 'Fix permission on media directory...'
-chown 1000:1000 -R /home/web/media
-
 echo "-----------------------------------------------------"
 echo "FINISHED DJANGO ENTRYPOINT --------------------------"
 echo "-----------------------------------------------------"
