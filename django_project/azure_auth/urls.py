@@ -4,6 +4,7 @@ from azure_auth.views import (
     azure_auth_login,
     azure_auth_logout,
     azure_auth_redirect,
+    azure_auth_third_party
 )
 
 from django.urls import path
@@ -15,6 +16,7 @@ urlpatterns = [
     path("azure-auth/logout", azure_auth_logout, name="logout"),
     path("signin-oidc", azure_auth_callback, name="callback"),
     path("redirect", azure_auth_redirect, name="redirect"),
+    path("azure-auth/third-party", azure_auth_third_party, name="third-party"),
 ]
 
 

@@ -1,0 +1,95 @@
+<!-- templates/third_party.html -->
+{% load static %}
+{% load randombg %}
+{% randombg as random_bg_image %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GeoRepo | Sign In</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css?family=Rubik:300,300i,500,500i"/>
+    <link rel="stylesheet" href={% static 'base.css' %}>
+    <link rel="stylesheet" href={% static 'login.css' %}>
+    <link rel="stylesheet" href={% static 'navbar.css' %}>
+    <style>
+        .login-main .background {
+            background: url('{% static random_bg_image %}');
+            background-size: cover;
+        }
+
+        #loading {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        #loading > span {
+            margin-left: 10px;
+        }
+        
+        #loading-spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+            -webkit-animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { -webkit-transform: rotate(360deg); }
+        }
+        @-webkit-keyframes spin {
+            to { -webkit-transform: rotate(360deg); }
+        }
+
+    </style>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
+    <script>
+        $(function() {
+            if (window.opener == null) window.location = "/";
+            setTimeout(function() {
+                window.opener.postMessage("{{ access_token }}", "{{ requester }}");
+                $('#loading').hide();
+                // show success message
+                $('#success-message').show();
+            }, 1500);
+        });
+    </script>
+</head>
+<body>
+    <div class="login-app">
+        <div class="login-root">
+            <div class="login-header">
+                {% include "navbar.html" %}
+            </div>
+            <div class="login-main">
+                <div class="background">
+                </div>
+                <div class="login-container signup-form">
+                    <div class="login-form-header">
+                        GeoRepo Sign In
+                    </div>
+                    <div class="login-form">
+                        <div id="loading">
+                            <div id="loading-spinner"></div>
+                            <span>Logging in to GeoRepo...</span>
+                        </div>
+                        <p id="success-message" style="display: none;">You have successfully logged in. You may close this browser tab.</p>
+                        <p id="error-message" style="display: none;">There is an unexpected error during sign in process. Please try again or contact administrator!</p>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+</body>
+</html>

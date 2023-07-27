@@ -14,3 +14,14 @@ class RegisteredDomain(models.Model):
             'Autoassign user under the domain to the group.'
         )
     )
+
+
+class ThirdPartyApplication(models.Model):
+    """Registered third party application that can access GeoRepo Login."""
+
+    name = models.CharField(max_length=256, unique=True)
+    client_id = models.CharField(max_length=256, unique=True)
+    origin = models.CharField(
+        max_length=256,
+        help_text='Domain with protocol, e.g. https://domainA.com'
+    )

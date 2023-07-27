@@ -26,13 +26,14 @@ class CustomSchemaGenerator(OpenAPISchemaGenerator):
 
 
 class CustomLoginView(LoginView):
+    redirect_authenticated_user = True
 
     def get_context_data(self, **kwargs):
+        next = self.request.GET.get('next', '')
         context = super().get_context_data(**kwargs)
         context['logged_out'] = self.request.GET.get('logged_out', False)
         context['no_access'] = self.request.GET.get('no_access', False)
         context['use_azure_auth'] = settings.USE_AZURE
-        next = self.request.GET.get('next', '')
         context['redirect_next_uri'] = next
         return context
 
@@ -88,7 +89,7 @@ if settings.DEBUG:
 if settings.USE_AZURE:
     # azure auth
     urlpatterns += [
-        path("login/", CustomLoginView.as_view(), name="login"),
+        re_path(r"^login[/]?", CustomLoginView.as_view(), name="login"),
         path("", include("azure_auth.urls",
                          namespace="azure_auth"))
     ]

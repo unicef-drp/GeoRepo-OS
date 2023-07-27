@@ -138,5 +138,9 @@ if USE_AZURE:
     REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
         'azure_auth.backends.JWTAccessTokenAuthentication'
     ] + REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']
+    # add azure templates
+    TEMPLATES[0]['DIRS'] += [
+        absolute_path('azure_auth', 'templates')
+    ]
 
 CODE_RELEASE_VERSION = code_release_version()
