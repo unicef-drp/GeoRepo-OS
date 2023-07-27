@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<script>
+    // if (window.opener == null) window.location = "/";
+    window.opener.postMessage("{{ access_token }}", "{{ requester }}");
+
+    // window.close();
+</script>
+<body>
+</body>
+</html>
