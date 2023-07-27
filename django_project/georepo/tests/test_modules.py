@@ -29,7 +29,7 @@ class TestAPIModule(TestCase):
         request.user = self.superuser
         response = self.view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data['results']), 3)
+        self.assertEqual(len(response.data['results']), 4)
         moduleABC = (
             [x for x in response.data['results'] if x['name'] == 'ABC']
         )
@@ -45,7 +45,7 @@ class TestAPIModule(TestCase):
         self.module_2.save()
         response = self.view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(len(response.data['results']), 3)
         moduleA = (
             [x for x in response.data['results'] if x['name'] == 'Module A']
         )
