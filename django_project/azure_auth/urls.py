@@ -14,8 +14,7 @@ app_name = "azure_auth"
 urlpatterns = [
     path("azure-auth/login", azure_auth_login, name="login"),
     path("azure-auth/logout", azure_auth_logout, name="logout"),
-    # path("signin-oidc", azure_auth_callback, name="callback"),
-    path("auth/redirect", azure_auth_callback, name="callback"),
+    path("signin-oidc", azure_auth_callback, name="callback"),
     path("redirect", azure_auth_redirect, name="redirect"),
     path("azure-auth/third-party", azure_auth_third_party, name="third-party"),
 ]
