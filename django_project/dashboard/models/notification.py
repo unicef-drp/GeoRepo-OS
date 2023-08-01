@@ -40,7 +40,7 @@ class Notification(models.Model):
     )
 
     payload = models.JSONField(
-        default={},
+        default=dict,
         blank=True
     )
 

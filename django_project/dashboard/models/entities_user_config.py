@@ -35,7 +35,7 @@ class EntitiesUserConfig(models.Model):
     )
 
     filters = models.JSONField(
-        default={},
+        default=dict,
         blank=True
     )
 

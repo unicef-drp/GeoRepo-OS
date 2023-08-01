@@ -5,6 +5,34 @@ from django.utils.translation import gettext_lazy as _
 from core.models.singleton import SingletonModel
 
 
+def default_api_config():
+    return {'default_page_size': 50, 'max_page_size': 50}
+
+
+def default_metadata_xml_config():
+    return {
+        'ContactName': 'GeoRepo',
+        'ContactOrg': 'Unicef',
+        'ContactPosition': 'Administrator',
+        'License': (
+            'Not Specified: The original author '
+            'did not specify a license.'
+        )
+    }
+
+
+def default_public_groups():
+    return ['UNICEF']
+
+
+def default_geometry_checker_params():
+    return {
+        'tolerance': 1e-4,
+        'overlaps_threshold': 0.01,
+        'gaps_threshold': 0.01,
+    }
+
+
 class SitePreferences(SingletonModel):
     """Preference settings specifically for website.
 
@@ -123,7 +151,7 @@ class SitePreferences(SingletonModel):
     # JSON template for vector tiling config
     # -----------------------------------------------
     tile_configs_template = models.JSONField(
-        default=[],
+        default=list,
         blank=True
     )
     # -----------------------------------------------
@@ -141,14 +169,14 @@ class SitePreferences(SingletonModel):
     # JSON template for admin level names
     # -----------------------------------------------
     level_names_template = models.JSONField(
-        default=[],
+        default=list,
         blank=True
     )
     # -----------------------------------------------
     # API pagination setting
     # -----------------------------------------------
     api_config = models.JSONField(
-        default={'default_page_size': 50, 'max_page_size': 50},
+        default=default_api_config,
         blank=True
     )
     # -----------------------------------------------
@@ -166,15 +194,7 @@ class SitePreferences(SingletonModel):
     # METADATA XML Config
     # -----------------------------------------------
     metadata_xml_config = models.JSONField(
-        default={
-            'ContactName': 'GeoRepo',
-            'ContactOrg': 'Unicef',
-            'ContactPosition': 'Administrator',
-            'License': (
-                'Not Specified: The original author '
-                'did not specify a license.'
-            )
-        },
+        default=default_metadata_xml_config,
         blank=True
     )
     # -----------------------------------------------
@@ -182,7 +202,7 @@ class SitePreferences(SingletonModel):
     # new user will be added to this groups
     # -----------------------------------------------
     default_public_groups = models.JSONField(
-        default=['UNICEF'],
+        default=default_public_groups,
         blank=True
     )
     # -----------------------------------------------
@@ -199,11 +219,7 @@ class SitePreferences(SingletonModel):
     # Default Geometry Checker Parameters
     # -----------------------------------------------
     default_geometry_checker_params = models.JSONField(
-        default={
-            'tolerance': 1e-4,
-            'overlaps_threshold': 0.01,
-            'gaps_threshold': 0.01,
-        },
+        default=default_geometry_checker_params,
         blank=True
     )
     # -----------------------------------------------
@@ -211,7 +227,7 @@ class SitePreferences(SingletonModel):
     # send email notification from SignUp and Access Request
     # -----------------------------------------------
     default_admin_emails = models.JSONField(
-        default=[],
+        default=list,
         blank=True
     )
     # -----------------------------------------------

@@ -50,14 +50,14 @@ class BatchReview(models.Model):
 
     upload_ids = models.JSONField(
         help_text='List of entity uploads',
-        default=[],
+        default=list,
         null=True,
         blank=True
     )
 
     processed_ids = models.JSONField(
         help_text='List of entity uploads that has been processed',
-        default=[],
+        default=list,
         null=True,
         blank=True
     )
