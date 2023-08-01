@@ -50,7 +50,7 @@ from georepo.models import (
     DatasetAdminLevelName, BoundaryType
 )
 from dashboard.api_views.views import (
-    CreateNewView, ViewList, DeleteView, UpdateView, ViewDetail,
+    CreateNewView, DeleteView, UpdateView, ViewDetail,
     DownloadView
 )
 from dashboard.models import (

@@ -256,7 +256,8 @@ class ViewList(AzureAuthRequiredMixin, APIView):
             return queryset
         char_fields = [
             field.name for field in DatasetView.get_fields() if
-            field.get_internal_type() in ['UUIDField', 'CharField', 'TextField']
+            field.get_internal_type() in
+            ['UUIDField', 'CharField', 'TextField']
         ]
         q_args = [
             Q(**{f"{field}__icontains": search_text}) for field in char_fields
@@ -279,7 +280,10 @@ class ViewList(AzureAuthRequiredMixin, APIView):
         return queryset
 
     def post(self, *args, **kwargs):
-        user_privacy_levels, views_querysets = get_views_for_user(self.request.user)
+        (
+            user_privacy_levels,
+            views_querysets
+        ) = get_views_for_user(self.request.user)
         # It seems we cannot use values_list on views_queryset
         views_querysets = DatasetView.objects.\
             filter(id__in=[v.id for v in views_querysets])

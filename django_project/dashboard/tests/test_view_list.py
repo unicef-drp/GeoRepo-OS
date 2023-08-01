@@ -48,7 +48,10 @@ class TestViewList(TestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['page'], 1)
         self.assertEqual(response.data['total_page'], 1)
-        self.assertEqual(response.data['results'][0].get('id'), self.dataset_view_1.id)
+        self.assertEqual(
+            response.data['results'][0].get('id'),
+            self.dataset_view_1.id
+        )
 
         request = self.factory.post(
             reverse('view-list')
@@ -61,7 +64,10 @@ class TestViewList(TestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['page'], 1)
         self.assertEqual(response.data['total_page'], 1)
-        self.assertEqual(response.data['results'][0].get('id'), self.dataset_view_1.id)
+        self.assertEqual(
+            response.data['results'][0].get('id'),
+            self.dataset_view_1.id
+        )
 
     def test_sort(self):
         dataset_view_2 = DatasetViewF.create(
@@ -81,8 +87,14 @@ class TestViewList(TestCase):
         self.assertEqual(response.data['count'], 2)
         self.assertEqual(response.data['page'], 1)
         self.assertEqual(response.data['total_page'], 1)
-        self.assertEqual(response.data['results'][0].get('id'), dataset_view_2.id)
-        self.assertEqual(response.data['results'][1].get('id'), self.dataset_view_1.id)
+        self.assertEqual(
+            response.data['results'][0].get('id'),
+            dataset_view_2.id
+        )
+        self.assertEqual(
+            response.data['results'][1].get('id'),
+            self.dataset_view_1.id
+        )
 
     def test_pagination(self):
         dataset_view_2 = DatasetViewF.create(
@@ -102,7 +114,10 @@ class TestViewList(TestCase):
         self.assertEqual(response.data['page'], 2)
         self.assertEqual(response.data['total_page'], 2)
         self.assertEqual(len(response.data['results']), 1)
-        self.assertEqual(response.data['results'][0].get('id'), dataset_view_2.id)
+        self.assertEqual(
+            response.data['results'][0].get('id'),
+            dataset_view_2.id
+        )
 
     def test_search(self):
         dataset_view_2 = DatasetViewF.create(
@@ -121,7 +136,10 @@ class TestViewList(TestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['page'], 1)
         self.assertEqual(response.data['total_page'], 1)
-        self.assertEqual(response.data['results'][0].get('id'), dataset_view_2.id)
+        self.assertEqual(
+            response.data['results'][0].get('id'),
+            dataset_view_2.id
+        )
 
     def test_filter(self):
         dataset_view_2 = DatasetViewF.create(
@@ -141,4 +159,7 @@ class TestViewList(TestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['page'], 1)
         self.assertEqual(response.data['total_page'], 1)
-        self.assertEqual(response.data['results'][0].get('id'), dataset_view_2.id)
+        self.assertEqual(
+            response.data['results'][0].get('id'),
+            dataset_view_2.id
+        )

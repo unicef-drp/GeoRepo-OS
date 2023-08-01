@@ -270,6 +270,7 @@ export default function Views() {
                   disabled={false}
                   color='primary'
                   onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                    event.stopPropagation();
                     let obj: any = {}
                     USER_COLUMNS.forEach((element, index) => {
                       obj[element] = rowData[index];
