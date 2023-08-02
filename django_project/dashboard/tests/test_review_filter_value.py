@@ -2,7 +2,6 @@ __author__ = 'zakki@kartoza.com'
 __date__ = '02/08/23'
 __copyright__ = ('Copyright 2023, Unicef')
 
-import urllib.parse
 import json
 
 from django.test import TestCase
@@ -79,7 +78,10 @@ class TestReviewFilterValue(TestCase):
 
     def test_list_level_0_entity(self):
         request = self.factory.get(
-            reverse('review-filter-value', kwargs={'criteria': 'level_0_entity'})
+            reverse(
+                'review-filter-value',
+                kwargs={'criteria': 'level_0_entity'}
+            )
         )
         request.user = self.superuser
         list_view = ReviewFilterValue.as_view()
@@ -132,4 +134,7 @@ class TestReviewFilterValue(TestCase):
         request.user = self.superuser
         list_view = ReviewFilterValue.as_view()
         response = list_view(request, 'status')
-        self.assertEquals(response.data, [APPROVED, REJECTED, 'Pending'])
+        self.assertEquals(
+            response.data,
+            [APPROVED, REJECTED, 'Pending']
+        )

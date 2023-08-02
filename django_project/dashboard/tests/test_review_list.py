@@ -159,7 +159,9 @@ class TestReviewList(TestCase):
         request = self.factory.post(
             reverse('review-list'),
             {
-                'dataset': [self.entity_upload_status_3.upload_session.dataset.label]
+                'dataset': [
+                    self.entity_upload_status_3.upload_session.dataset.label
+                ]
             }
         )
         request.user = self.superuser

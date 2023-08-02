@@ -157,7 +157,8 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
 
         if 'status' in dict(request.data):
             filter_values = sorted(dict(request.data).get('status', []))
-            if not filter_values or filter_values == [APPROVED, 'Pending', REJECTED]:
+            if not filter_values or \
+                filter_values == [APPROVED, 'Pending', REJECTED]:
                 return queryset.filter(**filter_kwargs)
 
             non_pending_filter_combinations = [
@@ -173,9 +174,21 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
                 filter_kwargs.update({'status__in': filter_values})
             elif 'Pending' in filter_values:
                 if APPROVED in filter_values:
-                    filter_kwargs.update({'status__in': [*pending_status, APPROVED]})
+                    filter_kwargs.update(
+                        {
+                            'status__in': [
+                                *pending_status, APPROVED
+                            ]
+                        }
+                    )
                 elif REJECTED in filter_values:
-                    filter_kwargs.update({'status__in': [*pending_status, REJECTED]})
+                    filter_kwargs.update(
+                        {
+                            'status__in': [
+                                *pending_status, REJECTED
+                            ]
+                        }
+                    )
                 else:
                     filter_kwargs.update({'status__in': [pending_status]})
 
@@ -211,9 +224,15 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
         return queryset
 
     def post(self, request, *args, **kwargs):
-        review_querysets = EntityUploadStatus.get_user_entity_upload_status(request.user)
-        review_querysets = self._search_queryset(review_querysets, self.request)
-        review_querysets = self._filter_queryset(review_querysets, self.request)
+        review_querysets = EntityUploadStatus.get_user_entity_upload_status(
+            request.user
+        )
+        review_querysets = self._search_queryset(
+            review_querysets, self.request
+        )
+        review_querysets = self._filter_queryset(
+            review_querysets, self.request
+        )
         page = int(self.request.GET.get('page', '1'))
         page_size = int(self.request.query_params.get('page_size', '10'))
         review_querysets = self._sort_queryset(review_querysets, self.request)
@@ -269,7 +288,9 @@ class ReviewFilterValue(
             upload_session__dataset__label__isnull=False
         ).exclude(
             upload_session__dataset__label__exact=''
-        ).order_by().values_list('upload_session__dataset__label', flat=True).distinct())
+        ).order_by().values_list(
+            'upload_session__dataset__label', flat=True
+        ).distinct())
 
     def fetch_status(self):
         return [
@@ -279,7 +300,8 @@ class ReviewFilterValue(
         ]
 
     def get(self, request, criteria, *args, **kwargs):
-        self.reviews_querysets = EntityUploadStatus.get_user_entity_upload_status(request.user)
+        self.reviews_querysets = \
+            EntityUploadStatus.get_user_entity_upload_status(request.user)
         try:
             data = self.fetch_criteria_values(criteria)
         except AttributeError:
