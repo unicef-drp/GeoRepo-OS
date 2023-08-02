@@ -2,7 +2,7 @@ django-nose
 coverage
 pep8
 pylint
-flake8
+flake8==6.0.0
 factory_boy
 
 django-devserver

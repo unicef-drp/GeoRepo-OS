@@ -84,12 +84,12 @@ class LayerFile(models.Model):
     )
 
     id_fields = models.JSONField(
-        default=[],
+        default=list,
         blank=True
     )
 
     name_fields = models.JSONField(
-        default=[],
+        default=list,
         blank=True
     )
 
