@@ -63,6 +63,7 @@ export default function ReviewList() {
   const [data, setData] = useState<any[]>([])
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
+  const isBatchReview = useAppSelector((state: RootState) => state.reviewAction.isBatchReview)
   const isBatchReviewAvailable = useAppSelector((state: RootState) => state.reviewAction.isBatchReviewAvailable)
   const pendingReviews = useAppSelector((state: RootState) => state.reviewAction.pendingReviews)
   const reviewUpdatedAt = useAppSelector((state: RootState) => state.reviewAction.updatedAt)
@@ -79,6 +80,8 @@ export default function ReviewList() {
   }, [])
   const ref = useRef(null)
   const [tableHeight, setTableHeight] = useState(0)
+
+  let selectableRowsMode: any = isBatchReview ? 'multiple' : 'none'
 
   const fetchFilterValues = async () => {
     let filters = []
@@ -324,7 +327,7 @@ export default function ReviewList() {
                   },
                   onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
                   customSearchRender: debounceSearchRender(500),
-                  selectableRows: 'multiple',
+                  selectableRows: selectableRowsMode,
                   selectToolbarPlacement: 'none',
                   textLabels: {
                     body: {
