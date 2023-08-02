@@ -119,7 +119,7 @@ class EntityUploadStatus(models.Model):
 
     admin_level_names = models.JSONField(
         help_text='Name of admin levels',
-        default={},
+        default=dict,
         null=True,
         blank=True
     )

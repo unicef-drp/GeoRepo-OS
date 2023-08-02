@@ -115,29 +115,21 @@ class DasboardDatasetEntityList(AzureAuthRequiredMixin,
             return None, None
         if sort_direction not in ['asc', 'desc']:
             return None, None
-        match sort_by:
-            case 'id':
-                return 'gg.id', sort_direction
-            case 'country':
-                return 'parent_0.label', sort_direction
-            case 'level':
-                return 'gg.level', sort_direction
-            case 'type':
-                return 'ge.label', sort_direction
-            case 'name':
-                return 'gg.label', sort_direction
-            case 'default_code':
-                return 'gg.internal_code', sort_direction
-            case 'code':
-                return 'gg.unique_code', sort_direction
-            case 'cucode':
-                return 'gg.concept_ucode', sort_direction
-            case 'updated':
-                return 'gg.start_date', sort_direction
-            case 'rev':
-                return 'gg.revision_number', sort_direction
-            case 'status':
-                return 'gg.is_approved', sort_direction
+
+        field_mapping = {
+            'id': 'gg.id',
+            'country': 'parent_0.label',
+            'level': 'gg.level',
+            'type': 'gg.type',
+            'name': 'gg.label',
+            'default_code': 'gg.internal_code',
+            'code': 'gg.unique_code',
+            'cucode': 'gg.concept_code',
+            'updated': 'gg.start_date',
+            'rev': 'gg.revision_number',
+            'status': 'gg.is_approved'
+        }
+        return field_mapping[sort_by], sort_direction
 
     def do_run_query(
             self,
