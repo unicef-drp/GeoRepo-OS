@@ -258,36 +258,18 @@ class ReviewFilterValue(
             if criteria == 'dataset':
                 return self.fetch_dataset()
             return self.fetch_status()
-        # breakpoint()
+
         filter_values = self.reviews_querysets.\
             filter(**{f"{field}__isnull": False}).order_by().\
             values_list(field, flat=True).distinct()
         return [val for val in filter_values]
 
-    def fetch_level_0_entity(self):
-        filter_values = self.reviews_querysets.\
-            filter(revised_geographical_entity__label__isnull=False).order_by().\
-            values_list('revised_geographical_entity__label', flat=True).distinct()
-        return [val for val in filter_values]
-
-    def fetch_upload(self):
-        filter_values = self.reviews_querysets. \
-            filter(upload_session__source__isnull=False).order_by(). \
-            values_list('upload_session__source', flat=True).distinct()
-        return [val for val in filter_values]
-
     def fetch_dataset(self):
-        return self.reviews_querysets.filter(
+        return list(self.reviews_querysets.filter(
             upload_session__dataset__label__isnull=False
         ).exclude(
             upload_session__dataset__label__exact=''
-        ).order_by().values_list('upload_session__dataset__label', flat=True).distinct()
-
-    def fetch_revision(self):
-        filter_values = self.reviews_querysets. \
-            filter(revised_geographical_entity__revision_number__isnull=False).order_by(). \
-            values_list('revised_geographical_entity__revision_number', flat=True).distinct()
-        return [val for val in filter_values]
+        ).order_by().values_list('upload_session__dataset__label', flat=True).distinct())
 
     def fetch_status(self):
         return [
