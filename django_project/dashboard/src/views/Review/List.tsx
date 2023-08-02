@@ -1,20 +1,22 @@
 import React, {Fragment, useCallback, useEffect, useRef, useState} from "react";
 import {useNavigate, useSearchParams} from "react-router-dom";
-import axios from "axios";
-import toLower from "lodash/toLower";
-import {RootState} from "../../app/store";
-import {useAppDispatch, useAppSelector} from '../../app/hooks';
-import {setModule} from "../../reducers/module";
-import {modules} from "../../modules";
-import {TABLE_OFFSET_HEIGHT} from "../../components/List";
-import ResizeTableEvent from "../../components/ResizeTableEvent";
-import Loading from "../../components/Loading";
-import {setSelectedReviews} from "../../reducers/reviewAction";
-import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
-import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
-import {getDefaultFilter, ReviewFilterInterface} from "./Filter"
+
 import {Button} from '@mui/material';
 import FilterAlt from "@mui/icons-material/FilterAlt";
+import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
+import axios from "axios";
+import toLower from "lodash/toLower";
+
+import Loading from "../../components/Loading";
+import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
+import ResizeTableEvent from "../../components/ResizeTableEvent";
+import {RootState} from "../../app/store";
+import {TABLE_OFFSET_HEIGHT} from "../../components/List";
+import {getDefaultFilter, ReviewFilterInterface} from "./Filter"
+import {modules} from "../../modules";
+import {setModule} from "../../reducers/module";
+import {setSelectedReviews} from "../../reducers/reviewAction";
+import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {
   setAvailableFilters,
   setCurrentColumns as setInitialColumns,
@@ -47,12 +49,6 @@ interface reviewTableRowInterface {
   is_comparison_ready: string
 }
 
-export interface ReviewData {
-  id: number,
-  revision: number,
-  module: string
-}
-
 const FILTER_VALUES_API_URL = '/api/review-filter/values/'
 const VIEW_LIST_URL = '/api/review-list/'
 const FilterIcon: any = FilterAlt
@@ -65,11 +61,9 @@ export default function ReviewList() {
   const [loading, setLoading] = useState<boolean>(true)
   const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState<any[]>([])
-  const [customOptions, setCustomOptions] = useState<any>({})
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const isBatchReviewAvailable = useAppSelector((state: RootState) => state.reviewAction.isBatchReviewAvailable)
-  const isBatchReview = useAppSelector((state: RootState) => state.reviewAction.isBatchReview)
   const pendingReviews = useAppSelector((state: RootState) => state.reviewAction.pendingReviews)
   const reviewUpdatedAt = useAppSelector((state: RootState) => state.reviewAction.updatedAt)
 
@@ -123,7 +117,7 @@ export default function ReviewList() {
       }
     ).then((response) => {
       setLoading(false)
-      setData(response.data.results as ReviewFilterInterface[])
+      setData(response.data.results as reviewTableRowInterface[])
       setTotalCount(response.data.count)
     }).catch(error => {
       if (!axios.isCancel(error)) {
@@ -300,20 +294,6 @@ export default function ReviewList() {
     loading ?
       <div className={"loading-container"}><Loading/></div> :
       <div className="AdminContentMain review-list main-data-list">
-        {/*<List pageName={"Review"}*/}
-        {/*  listUrl={""}*/}
-        {/*  initData={data}*/}
-        {/*  selectionChanged={selectionChanged}*/}
-        {/*  onRowClick={handleRowClick}*/}
-        {/*  actionData={[]}*/}
-        {/*  excludedColumns={['module', 'is_comparison_ready']}*/}
-        {/*  isRowSelectable={isBatchReview}*/}
-        {/*  canRowBeSelected={canRowBeSelected}*/}
-        {/*  customOptions={customOptions}*/}
-        {/*  options={{*/}
-        {/*    'selectToolbarPlacement': 'none'*/}
-        {/*  }}*/}
-        {/*/>*/}
         <Fragment>
           <div className='AdminList' ref={ref}>
             <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
@@ -332,11 +312,11 @@ export default function ReviewList() {
                   sortOrder: pagination.sortOrder as MUISortOptions,
                   jumpToPage: true,
                   isRowSelectable: (dataIndex: number, selectedRows: any) => {
-                    return canRowBeSelected(dataIndex, selectedRows)
+                    return canRowBeSelected(dataIndex, data[dataIndex])
                   },
                   onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
                     // @ts-ignore
-                    const rowDataSelected = rowsSelected.map((index) => rows[index]['id'])
+                    const rowDataSelected = rowsSelected.map((index) => data[index]['id'])
                     selectionChanged(rowDataSelected)
                   },
                   onRowClick: (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
@@ -345,6 +325,7 @@ export default function ReviewList() {
                   onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
                   customSearchRender: debounceSearchRender(500),
                   selectableRows: 'multiple',
+                  selectToolbarPlacement: 'none',
                   textLabels: {
                     body: {
                       noMatch: loading ?
