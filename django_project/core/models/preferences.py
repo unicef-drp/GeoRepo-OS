@@ -6,10 +6,16 @@ from core.models.singleton import SingletonModel
 
 
 def default_api_config():
+    """
+    Default value for Preference's api_config.
+    """
     return {'default_page_size': 50, 'max_page_size': 50}
 
 
 def default_metadata_xml_config():
+    """
+    Default value for Preference's metadata_xml_config.
+    """
     return {
         'ContactName': 'GeoRepo',
         'ContactOrg': 'Unicef',
@@ -22,10 +28,16 @@ def default_metadata_xml_config():
 
 
 def default_public_groups():
+    """
+    Default value for Preference's public_group.
+    """
     return ['UNICEF']
 
 
 def default_geometry_checker_params():
+    """
+    Default value for Preference's geometry_checker_params.
+    """
     return {
         'tolerance': 1e-4,
         'overlaps_threshold': 0.01,
