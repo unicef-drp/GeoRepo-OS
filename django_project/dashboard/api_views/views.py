@@ -358,12 +358,16 @@ class ViewFilterValue(
         ]
 
     def fetch_min_privacy(self):
-        return list(self.views_querysets.order_by().\
-            values_list('min_privacy_level', flat=True).distinct())
+        return list(
+            self.views_querysets.order_by().
+            values_list('min_privacy_level', flat=True).distinct()
+        )
 
     def fetch_max_privacy(self):
-        return list(self.views_querysets.order_by().\
-            values_list('max_privacy_level', flat=True).distinct())
+        return list(
+            self.views_querysets.order_by().
+            values_list('max_privacy_level', flat=True).distinct()
+        )
 
     def get(self, request, criteria, *args, **kwargs):
         self.views_querysets = self.get_user_views()

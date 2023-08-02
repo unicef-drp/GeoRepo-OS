@@ -69,7 +69,10 @@ class TestViewFilterValue(TestCase):
         request.user = self.superuser
         list_view = ViewFilterValue.as_view()
         response = list_view(request, 'max_privacy')
-        self.assertEquals(response.data, [self.dataset_view_1.max_privacy_level])
+        self.assertEquals(
+            response.data,
+            [self.dataset_view_1.max_privacy_level]
+        )
 
     def test_list_min_privacy(self):
         request = self.factory.get(
@@ -78,4 +81,7 @@ class TestViewFilterValue(TestCase):
         request.user = self.superuser
         list_view = ViewFilterValue.as_view()
         response = list_view(request, 'min_privacy')
-        self.assertEquals(response.data, [self.dataset_view_1.max_privacy_level])
+        self.assertEquals(
+            response.data,
+            [self.dataset_view_1.max_privacy_level]
+        )
