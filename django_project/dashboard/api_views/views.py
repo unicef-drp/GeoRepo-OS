@@ -339,31 +339,31 @@ class ViewFilterValue(
         return [tag for tag in tags if tag]
 
     def fetch_mode(self):
-        return (
+        return [
             'Static',
             'Dynamic'
-        )
+        ]
 
     def fetch_dataset(self):
-        return self.views_querysets.exclude(
+        return list(self.views_querysets.exclude(
             dataset__label__isnull=True
         ).exclude(
             dataset__label__exact=''
-        ).order_by().values_list('dataset__label', flat=True).distinct()
+        ).order_by().values_list('dataset__label', flat=True).distinct())
 
     def fetch_is_default(self):
-        return (
+        return [
             'No',
             'Yes'
-        )
+        ]
 
     def fetch_min_privacy(self):
-        return self.views_querysets.order_by().\
-            values_list('min_privacy_level', flat=True).distinct()
+        return list(self.views_querysets.order_by().\
+            values_list('min_privacy_level', flat=True).distinct())
 
     def fetch_max_privacy(self):
-        return self.views_querysets.order_by().\
-            values_list('max_privacy_level', flat=True).distinct()
+        return list(self.views_querysets.order_by().\
+            values_list('max_privacy_level', flat=True).distinct())
 
     def get(self, request, criteria, *args, **kwargs):
         self.views_querysets = self.get_user_views()

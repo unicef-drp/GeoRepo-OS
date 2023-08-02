@@ -42,7 +42,7 @@ class TestViewFilterValue(TestCase):
         request.user = self.superuser
         list_view = ViewFilterValue.as_view()
         response = list_view(request, 'dataset')
-        self.assertTrue(response.data, [self.dataset_view_1.dataset])
+        self.assertEquals(response.data, [self.dataset_view_1.dataset.label])
 
     def test_list_mode(self):
         request = self.factory.get(
@@ -51,7 +51,7 @@ class TestViewFilterValue(TestCase):
         request.user = self.superuser
         list_view = ViewFilterValue.as_view()
         response = list_view(request, 'mode')
-        self.assertTrue(response.data, ['Static', 'Dynamic'])
+        self.assertEquals(response.data, ['Static', 'Dynamic'])
 
     def test_list_is_default(self):
         request = self.factory.get(
@@ -60,7 +60,7 @@ class TestViewFilterValue(TestCase):
         request.user = self.superuser
         list_view = ViewFilterValue.as_view()
         response = list_view(request, 'is_default')
-        self.assertTrue(response.data, ['Yes', 'No'])
+        self.assertEquals(response.data, ['No', 'Yes'])
 
     def test_list_max_privacy(self):
         request = self.factory.get(
@@ -69,7 +69,7 @@ class TestViewFilterValue(TestCase):
         request.user = self.superuser
         list_view = ViewFilterValue.as_view()
         response = list_view(request, 'max_privacy')
-        self.assertTrue(response.data, [self.dataset_view_1.max_privacy_level])
+        self.assertEquals(response.data, [self.dataset_view_1.max_privacy_level])
 
     def test_list_min_privacy(self):
         request = self.factory.get(
@@ -78,4 +78,4 @@ class TestViewFilterValue(TestCase):
         request.user = self.superuser
         list_view = ViewFilterValue.as_view()
         response = list_view(request, 'min_privacy')
-        self.assertTrue(response.data, [self.dataset_view_1.max_privacy_level])
+        self.assertEquals(response.data, [self.dataset_view_1.max_privacy_level])
