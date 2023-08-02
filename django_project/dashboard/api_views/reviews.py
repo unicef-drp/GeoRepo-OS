@@ -140,7 +140,7 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
     """Api to list all ready to review uploads"""
     permission_classes = [IsAuthenticated]
 
-    def _filter_queryset(self, request, queryset):
+    def _filter_queryset(self, queryset, request):
         criteria_field_mapping = {
             'level_0_entity': 'revised_geographical_entity__label',
             'upload': 'upload_session__source',
@@ -158,7 +158,7 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
         if 'status' in dict(request.data):
             filter_values = sorted(dict(request.data).get('status', []))
             if not filter_values or filter_values == [APPROVED, 'Pending', REJECTED]:
-                return {}
+                return queryset.filter(**filter_kwargs)
 
             non_pending_filter_combinations = [
                 [APPROVED],
@@ -186,7 +186,7 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
         if not search_text:
             return queryset
         char_fields = [
-            field.name for field in EntityUploadStatus.get_fields() if
+            field.name for field in EntityUploadStatus._meta.get_fields() if
             field.get_internal_type() in
             ['UUIDField', 'CharField', 'TextField']
         ]
@@ -200,17 +200,17 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
         return queryset
 
     def _sort_queryset(self, queryset, request):
-        sort_by = request.query_params.get('sort_by', 'name')
+        sort_by = request.query_params.get('sort_by', 'id')
         sort_direction = request.query_params.get('sort_direction', 'asc')
         if not sort_by:
-            sort_by = 'name'
+            sort_by = 'id'
         if not sort_direction:
             sort_direction = 'asc'
         ordering = sort_by if sort_direction == 'asc' else f"-{sort_by}"
         queryset = queryset.order_by(ordering)
         return queryset
 
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         review_querysets = EntityUploadStatus.get_user_entity_upload_status(request.user)
         review_querysets = self._search_queryset(review_querysets, self.request)
         review_querysets = self._filter_queryset(review_querysets, self.request)
@@ -258,7 +258,7 @@ class ReviewFilterValue(
             if criteria == 'dataset':
                 return self.fetch_dataset()
             return self.fetch_status()
-
+        # breakpoint()
         filter_values = self.reviews_querysets.\
             filter(**{f"{field}__isnull": False}).order_by().\
             values_list(field, flat=True).distinct()

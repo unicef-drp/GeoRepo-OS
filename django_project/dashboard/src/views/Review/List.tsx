@@ -1,24 +1,25 @@
-import React, {useEffect, useState} from "react";
+import React, {Fragment, useCallback, useEffect, useRef, useState} from "react";
 import {useNavigate, useSearchParams} from "react-router-dom";
 import axios from "axios";
 import toLower from "lodash/toLower";
 import {RootState} from "../../app/store";
-import { useAppSelector, useAppDispatch } from '../../app/hooks';
+import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {setModule} from "../../reducers/module";
 import {modules} from "../../modules";
-import List from "../../components/List";
+import {TABLE_OFFSET_HEIGHT} from "../../components/List";
+import ResizeTableEvent from "../../components/ResizeTableEvent";
 import Loading from "../../components/Loading";
 import {setSelectedReviews} from "../../reducers/reviewAction";
 import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
 import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
 import {getDefaultFilter, ReviewFilterInterface} from "./Filter"
+import {Button} from '@mui/material';
+import FilterAlt from "@mui/icons-material/FilterAlt";
 import {
   setAvailableFilters,
   setCurrentColumns as setInitialColumns,
   setCurrentFilters as setInitialFilters
 } from "../../reducers/reviewTable";
-import {RootState} from "../../app/store";
-
 
 const USER_COLUMNS = [
   'id',
@@ -46,7 +47,6 @@ interface reviewTableRowInterface {
   is_comparison_ready: string
 }
 
-
 export interface ReviewData {
   id: number,
   revision: number,
@@ -54,9 +54,11 @@ export interface ReviewData {
 }
 
 const FILTER_VALUES_API_URL = '/api/review-filter/values/'
+const VIEW_LIST_URL = '/api/review-list/'
+const FilterIcon: any = FilterAlt
 
 
-export default function ReviewList () {
+export default function ReviewList() {
   const initialColumns = useAppSelector((state: RootState) => state.reviewTable.currentColumns)
   const initialFilters = useAppSelector((state: RootState) => state.reviewTable.currentFilters)
   const availableFilters = useAppSelector((state: RootState) => state.reviewTable.availableFilters)
@@ -76,6 +78,13 @@ export default function ReviewList () {
   const [pagination, setPagination] = useState<PaginationInterface>(getDefaultPagination())
   const [filterValues, setFilterValues] = useState<ReviewFilterInterface>(availableFilters)
   const [currentFilters, setCurrentFilters] = useState<ReviewFilterInterface>(initialFilters)
+  const axiosSource = useRef(null)
+  const newCancelToken = useCallback(() => {
+    axiosSource.current = axios.CancelToken.source();
+    return axiosSource.current.token;
+  }, [])
+  const ref = useRef(null)
+  const [tableHeight, setTableHeight] = useState(0)
 
   const fetchFilterValues = async () => {
     let filters = []
@@ -114,17 +123,19 @@ export default function ReviewList () {
       }
     ).then((response) => {
       setLoading(false)
-        // update filter values if searchParams has upload filter
-        // let _upload = searchParams.get('upload')
-        // if (_upload) {
-        //   setCustomOptions({
-        //     'upload': {
-        //       'filterList': [_upload]
-        //     }
-        //   })
-          setLoading(false)
-          setData(response.data.results as ReviewFilterInterface[])
-          setTotalCount(response.data.count)
+      setData(response.data.results as ReviewFilterInterface[])
+      setTotalCount(response.data.count)
+    }).catch(error => {
+      if (!axios.isCancel(error)) {
+        console.log(error)
+        setLoading(false)
+        if (error.response) {
+          if (error.response.status == 403) {
+            // TODO: use better way to handle 403
+            navigate('/invalid_permission')
+          }
+        }
+      }
     })
   }
 
@@ -152,11 +163,10 @@ export default function ReviewList () {
     return values
   }
 
-    useEffect(() => {
+  useEffect(() => {
     const fetchFilterValuesData = async () => {
-
       let filterVals: any = {}
-      if (filterValues.mode.length > 0  ) {
+      if (filterValues.status.length > 0) {
         filterVals = filterValues
       } else {
         filterVals = await fetchFilterValues()
@@ -168,81 +178,25 @@ export default function ReviewList () {
           label: columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' '),
           options: {
             display: initialColumns.includes(columnName),
-            sort: !['tags', 'permissions', 'status', 'mode'].includes(columnName)
+            sort: true
           }
         }
-        if (columnName == 'tags') {
-          _options['options']['filterType'] = 'multiselect'
-          _options['options']['filter'] = true
-          _options['options']['customBodyRender'] = (value: any, tableMeta: any) => {
-            return <div>
-              {value.map((tag: any, index: number) => <Chip key={index} label={tag}/>)}
-            </div>
-          }
-        }
-        if (['tags', 'mode', 'dataset', 'is_default', 'min_privacy', 'max_privacy'].includes(columnName)) {
+        if (['level_0_entity', 'upload', 'revision', 'dataset', 'status'].includes(columnName)) {
           // set filter values in dropdown
           _options.options.filterOptions = {
             names: filterVals[columnName]
           }
+          _options.options.filterList = getExistingFilterValue(columnName)
           _options.options.filter = true
         } else {
           _options.options.filter = false
         }
-        if (['tags', 'mode', 'dataset', 'is_default', 'min_privacy', 'max_privacy'].includes(columnName)) {
-          // set existing filter values
-          _options.options.filterList = getExistingFilterValue(columnName)
+        if (columnName == 'start_date') {
+          _options.options.customBodyRender = (value: string) => {
+              return new Date(value).toDateString()
+          }
         }
         return _options
-      })
-      _columns.push({
-        name: '',
-        options: {
-          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-            let rowData = tableMeta.rowData
-            return (
-              <div className="TableActionContent">
-                <IconButton
-                  aria-label='More Info'
-                  title='More Info'
-                  key={0}
-                  disabled={false}
-                  color='primary'
-                  onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
-                    event.stopPropagation();
-                    let obj: any = {}
-                    USER_COLUMNS.forEach((element, index) => {
-                      obj[element] = rowData[index];
-                    });
-                    setSelectedView(obj)
-                    setAnchorEl(event.currentTarget);
-                  }}
-                  className=''
-                >
-                  <MoreVertIcon/>
-                </IconButton>
-
-                <IconButton
-                  aria-label='Delete'
-                  title='Delete'
-                  key={2}
-                  disabled={!rowData[12].includes('Own') || rowData[6] === 'Yes'}
-                  color='error'
-                  onClick={() => {
-                    setSelectedView(rowData)
-                    setConfirmationText(
-                      `Are you sure you want to delete ${rowData[1]}?`)
-                    setConfirmationOpen(true)
-                  }}
-                  className=''
-                >
-                  <DeleteIcon/>
-                </IconButton>
-              </div>
-            )
-          },
-          filter: false
-        }
       })
       setColumns(_columns)
       dispatch(setInitialColumns(JSON.stringify(_columns.map)))
@@ -346,20 +300,88 @@ export default function ReviewList () {
     loading ?
       <div className={"loading-container"}><Loading/></div> :
       <div className="AdminContentMain review-list main-data-list">
-        <List pageName={"Review"}
-          listUrl={""}
-          initData={data}
-          selectionChanged={selectionChanged}
-          onRowClick={handleRowClick}
-          actionData={[]}
-          excludedColumns={['module', 'is_comparison_ready']}
-          isRowSelectable={isBatchReview}
-          canRowBeSelected={canRowBeSelected}
-          customOptions={customOptions}
-          options={{
-            'selectToolbarPlacement': 'none'
-          }}
-        />
+        {/*<List pageName={"Review"}*/}
+        {/*  listUrl={""}*/}
+        {/*  initData={data}*/}
+        {/*  selectionChanged={selectionChanged}*/}
+        {/*  onRowClick={handleRowClick}*/}
+        {/*  actionData={[]}*/}
+        {/*  excludedColumns={['module', 'is_comparison_ready']}*/}
+        {/*  isRowSelectable={isBatchReview}*/}
+        {/*  canRowBeSelected={canRowBeSelected}*/}
+        {/*  customOptions={customOptions}*/}
+        {/*  options={{*/}
+        {/*    'selectToolbarPlacement': 'none'*/}
+        {/*  }}*/}
+        {/*/>*/}
+        <Fragment>
+          <div className='AdminList' ref={ref}>
+            <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
+                                onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
+            <div className='AdminTable'>
+              <MUIDataTable
+                title=''
+                data={data}
+                columns={columns}
+                options={{
+                  serverSide: true,
+                  page: pagination.page,
+                  count: totalCount,
+                  rowsPerPage: pagination.rowsPerPage,
+                  rowsPerPageOptions: rowsPerPageOptions,
+                  sortOrder: pagination.sortOrder as MUISortOptions,
+                  jumpToPage: true,
+                  isRowSelectable: (dataIndex: number, selectedRows: any) => {
+                    return canRowBeSelected(dataIndex, selectedRows)
+                  },
+                  onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
+                    // @ts-ignore
+                    const rowDataSelected = rowsSelected.map((index) => rows[index]['id'])
+                    selectionChanged(rowDataSelected)
+                  },
+                  onRowClick: (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
+                    handleRowClick(rowData, rowMeta)
+                  },
+                  onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
+                  customSearchRender: debounceSearchRender(500),
+                  selectableRows: 'multiple',
+                  textLabels: {
+                    body: {
+                      noMatch: loading ?
+                        <Loading/> :
+                        'Sorry, there is no matching data to display',
+                    },
+                  },
+                  onSearchChange: (searchText: string) => {
+                    handleSearchOnChange(searchText)
+                  },
+                  customFilterDialogFooter: (currentFilterList, applyNewFilters) => {
+                    return (
+                      <div style={{marginTop: '40px'}}>
+                        <Button variant="contained" onClick={() => handleFilterSubmit(applyNewFilters)}>Apply
+                          Filters</Button>
+                      </div>
+                    );
+                  },
+                  onFilterChange: (column, filterList, type) => {
+                    var newFilters = () => (filterList)
+                    handleFilterSubmit(newFilters)
+                  },
+                  searchText: currentFilters.search_text,
+                  searchOpen: (currentFilters.search_text != null && currentFilters.search_text.length > 0),
+                  filter: true,
+                  filterType: 'multiselect',
+                  confirmFilters: true
+                }}
+                components={{
+                  icons: {
+                    FilterIcon
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </Fragment>
       </div>
   )
 }
