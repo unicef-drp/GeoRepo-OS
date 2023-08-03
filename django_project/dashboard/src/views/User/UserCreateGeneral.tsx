@@ -34,25 +34,37 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [role, setRole] = useState('')
+    const [role, setRole] = useState('Viewer')
+    const [userId, setUserId] = useState<number>(0)
     const [alertMessage, setAlertMessage] = useState<string>('')
     const [alertOpen, setAlertOpen] = useState<boolean>(false)
     const [alertLoading, setAlertLoading] = useState<boolean>(false)
     const [alertDialogTitle, setAlertDialogTitle] = useState<string>('')
     const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
     const navigate = useNavigate()
-    //
-    // useEffect(() => {
-    //     if (props.user) {
-    //         setRole(props.user.role)
-    //     }
-    // }, [props.user])
 
     const createUser = (role: string) => {
+        if (email == '') {
+            alert('Email is required!')
+            return
+        } else {
+            let regex = new RegExp(
+              "([!#-'*+/-9=?A-Z^-~-]+(\.[!#-'*+/-9=?A-Z^-~-]+)*|\"\(\[\]!#-[^-~ \t]|(\\[\t -~]))+\")@" +
+              "([!#-'*+/-9=?A-Z^-~-]+(\.[!#-'*+/-9=?A-Z^-~-]+)*|\[[\t -Z^-~]*])"
+            )
+            if (!regex.test(email)) {
+                alert('Email has wrong format!')
+                return
+            }
+        }
+        if (!(window as any).use_azure && password == '') {
+            alert('Password is required!')
+            return
+        }
         setLoading(true)
         setAlertLoading(true)
         postData(
-            `${ADD_USER_API}/`,
+            ADD_USER_API,
             {
                 'first_name': firstName,
                 'last_name': lastName,
@@ -63,6 +75,7 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
             }
         ).then(
             response => {
+                setUserId(response.data.id)
                 setLoading(false)
                 setAlertOpen(false)
                 setAlertLoading(false)
@@ -77,9 +90,9 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                 if (error.response.status == 403) {
                   // TODO: use better way to handle 403
                   navigate('/invalid_permission')
+                } else {
+                    alert(`Error creating user! ${error.response.data}`)
                 }
-            } else {
-                alert('Error updating user!')
             }
         })
     }
@@ -100,7 +113,7 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 <AlertMessage message={alertMessage} onClose={() => {
-                    props.onUserCreated( 2)
+                    props.onUserCreated( userId)
                     setAlertMessage('')
                 }} />
                 <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
@@ -140,20 +153,6 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                                 />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Username</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    id="input_username"
-                                    hiddenLabel={true}
-                                    type={"text"}
-                                    sx={{ width: '100%' }}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                      setUsername(e.target.value)
-                                    }}
-                                />
-                            </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
                                 <Typography variant={'subtitle1'}>Email</Typography>
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
@@ -163,24 +162,41 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                                     type={"email"}
                                     sx={{ width: '100%' }}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                      setEmail(e.target.value)
+                                        if ((window as any).use_azure) {
+                                            setUsername(e.target.value)
+                                        }
+                                        setEmail(e.target.value)
                                     }}
                                 />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Password</Typography>
+                                <Typography variant={'subtitle1'}>Username</Typography>
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                 <TextField
-                                    id="input_password"
+                                    id="input_username"
+                                    disabled={(window as any).use_azure}
                                     hiddenLabel={true}
-                                    type={"password"}
+                                    type={"text"}
+                                    value={username}
                                     sx={{ width: '100%' }}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                      setPassword(e.target.value)
+                                      setUsername(e.target.value)
                                     }}
                                 />
                             </Grid>
+                            {!(window as any).use_azure ? <><Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                <Typography variant={'subtitle1'}>Password</Typography>
+                            </Grid><Grid item md={8} xs={12} sx={{display: 'flex'}}>
+                                <TextField
+                                  id="input_password"
+                                  hiddenLabel={true}
+                                  type={"password"}
+                                  sx={{width: '100%'}}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      setPassword(e.target.value);
+                                  }}/>
+                            </Grid></> : ''}
                         </Grid>
                         <Divider variant="middle" />
                         <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}}>
@@ -191,7 +207,7 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                                 <Select
                                     labelId="roles-select-label"
                                     id="roles-select"
-                                    value={'Viewer'}
+                                    value={role}
                                     onChange={(event: SelectChangeEvent) => {
                                         setRole(event.target.value as string)
                                     }}

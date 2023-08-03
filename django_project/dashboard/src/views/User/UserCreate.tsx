@@ -27,50 +27,8 @@ export default function UserCreate(props: any) {
     const [tabSelected, setTabSelected] = useState(0)
     const [user, setUser] = useState<UserInterface>(null)
 
-
-    // const fetchUserDetail = () => {
-    //     setLoading(true)
-    //     axios.get(`${FETCH_USER_DETAIL_URL}${searchParams.get("id")}/`).then(
-    //         response => {
-    //           setLoading(false)
-    //           let _user: UserInterface = response.data as UserInterface
-    //           Object.keys(_user).forEach(function(key, index) {
-    //             if (key === 'joined_date' && _user[key]) {
-    //                 _user[key] = moment(_user[key]).local().format('YYYY-MM-DD')
-    //             } else if (key === 'last_login' && _user[key]) {
-    //                 _user[key] = moment(_user[key]).local().format('YYYY-MM-DD HH:mm:ss')
-    //             }
-    //           });
-    //           setUser(_user)
-    //           dispatch(updateMenu({
-    //             id: `user_detail`,
-    //             name: `${_user.username} (${_user.role})`
-    //           }))
-    //         }
-    //       ).catch((error) => {
-    //         if (error.response) {
-    //           if (error.response.status == 403) {
-    //             // TODO: use better way to handle 403
-    //             navigate('/invalid_permission')
-    //           }
-    //         }
-    //       })
-    // }
-
-    // useEffect(() => {
-    //     let tab = 0
-    //     if (searchParams.get('tab')) {
-    //         tab = parseInt(searchParams.get('tab'))
-    //         setTabSelected(tab)
-    //     }
-    //     let userId = searchParams.get('id')
-    //     if (userId && (user == null || (user && user.id != parseInt(userId)))) {
-    //         fetchUserDetail()
-    //     }
-    // }, [searchParams])
-
-    const handleCreate = (newValue: number) => {
-        navigate(`${UserDetailRoute.path}?id=1`)
+    const handleCreate = (userId: number) => {
+        navigate(`${UserDetailRoute.path}?id=${userId}`)
     }
 
     return (
