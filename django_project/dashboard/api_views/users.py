@@ -1,5 +1,3 @@
-import copy
-
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
@@ -9,6 +7,7 @@ from django.http import (
     HttpResponseBadRequest
 )
 from django.db.models import Q
+from django.db.utils import IntegrityError
 from django.conf import settings
 from guardian.core import ObjectPermissionChecker
 from guardian.shortcuts import get_objects_for_user
@@ -145,18 +144,38 @@ class UserDetail(APIView):
         return Response(status=201)
 
     def post(self, request, *args, **kwargs):
-        role = request.data.get('role')
-        user_kwargs = copy.deepcopy(request.data)
-        del user_kwargs['role']
+        user_kwargs = {
+            key: request.data.__getitem__(key) for key in request.data
+        }
+        role = user_kwargs.get('role')
+        if 'role' in user_kwargs:
+            del user_kwargs['role']
         if role not in AVAILABLE_ROLES:
             return HttpResponseBadRequest('Invalid role!')
 
         if settings.USE_AZURE:
             user_kwargs['username'] = user_kwargs['email']
+        try:
+            user = User.objects.create(**user_kwargs)
+            if role == 'Admin':
+                # set to super admin + creator
+                user.is_superuser = True
+                user.is_staff = True
+                user.georeporole.type = GeorepoRole.RoleType.CREATOR
+            else:
+                # remove super admin
+                user.is_superuser = False
+                user.is_staff = False
+                if role == GeorepoRole.RoleType.CREATOR.value:
+                    user.georeporole.type = GeorepoRole.RoleType.CREATOR
+                else:
+                    user.georeporole.type = GeorepoRole.RoleType.VIEWER
+            user.set_password(user_kwargs['password'])
+            user.save()
+        except IntegrityError:
+            return HttpResponseBadRequest('Username already exist!')
 
-        user = User.objects.create(**user_kwargs)
-
-        return Response(status=201)
+        return Response({'id': user.id}, status=201)
 
 
 class UserPermissionDetail(APIView):

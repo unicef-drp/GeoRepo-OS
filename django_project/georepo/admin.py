@@ -41,6 +41,7 @@ from georepo.models import (
     GeorepoRole,
     UserAccessRequest
 )
+from georepo.forms import AzureAdminUserCreationForm, AzureAdminUserChangeForm
 
 
 User = get_user_model()
@@ -743,28 +744,49 @@ class CustomUserCreationForm(forms.ModelForm):
         return user
 
 
-# class UserProfileAdmin(BaseUserAdmin):
-#     """User profile admin."""
+# USER ADMIN BASED ON USING AZURE OR NOT
+admin.site.unregister(User)
+if settings.USE_AZURE:
+    class UserProfileAdmin(BaseUserAdmin):
+        """User profile admin."""
 
-#     form = CustomUserChangeForm
-#     add_form = CustomUserCreationForm
-#     inlines = BaseUserAdmin.inlines + [RoleInline]
-#     add_fieldsets = (
-#         (
-#             None,
-#             {
-#                 "classes": ("wide",),
-#                 "fields": ("username",),
-#             },
-#         ),
-#     )
+        add_form_template = None
+        form = AzureAdminUserChangeForm
+        add_form = AzureAdminUserCreationForm
+        inlines = (RoleInline,)
+        list_display = (
+            'username', 'email', 'first_name', 'last_name', 'is_staff'
+        )
+        add_fieldsets = (
+            (None, {
+                'classes': ('wide',),
+                'fields': ('email',),
+            }),
+        )
+        fieldsets = (
+            (None, {'fields': ('email',)}),
+            (_('Personal info'),
+             {'fields': ('first_name', 'last_name')}),
+            (_('Permissions'), {
+                'fields': (
+                    'is_active', 'is_staff', 'is_superuser', 'groups',
+                    'user_permissions'
+                ),
+            }),
+            (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
+        )
 
-class UserProfileAdmin(BaseUserAdmin):
-    """User profile admin."""
 
-    inlines = (RoleInline,)
+    admin.site.register(User, UserProfileAdmin)
+else:
+    class UserProfileAdmin(BaseUserAdmin):
+        """User profile admin."""
+
+        inlines = (RoleInline,)
+
+
+    admin.site.register(User, UserProfileAdmin)
 
 
 # Re-register UserAdmin
-admin.site.unregister(User)
-admin.site.register(User, UserProfileAdmin)
+# admin.site.register(User, UserProfileAdmin)
