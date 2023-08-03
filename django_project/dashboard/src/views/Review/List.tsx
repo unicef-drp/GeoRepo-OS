@@ -355,7 +355,9 @@ export default function ReviewList() {
                   searchOpen: (currentFilters.search_text != null && currentFilters.search_text.length > 0),
                   filter: true,
                   filterType: 'multiselect',
-                  confirmFilters: true
+                  confirmFilters: true,
+                  tableBodyHeight: `${tableHeight}px`,
+                  tableBodyMaxHeight: `${tableHeight}px`,
                 }}
                 components={{
                   icons: {

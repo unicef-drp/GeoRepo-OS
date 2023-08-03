@@ -136,5 +136,5 @@ class TestReviewFilterValue(TestCase):
         response = list_view(request, 'status')
         self.assertEquals(
             response.data,
-            [APPROVED, REJECTED, 'Pending']
+            [APPROVED, 'Pending']
         )

@@ -215,7 +215,6 @@ export default function Views() {
 
   useEffect(() => {
     const fetchFilterValuesData = async () => {
-
       let filterVals: any = {}
       if (filterValues.mode.length > 0  ) {
         filterVals = filterValues
@@ -435,11 +434,6 @@ export default function Views() {
                     onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
                     customSearchRender: debounceSearchRender(500),
                     selectableRows: 'none',
-                    onRowSelectionChange: (currentRowsSelected: Array<any>, allRowsSelected: Array<any>, rowsSelected: Array<any>) => {
-                      console.log(currentRowsSelected)
-                      console.log(allRowsSelected)
-                      console.log(rowsSelected)
-                    },
                     tableBodyHeight: `${tableHeight}px`,
                     tableBodyMaxHeight: `${tableHeight}px`,
                     textLabels: {

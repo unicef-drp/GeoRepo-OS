@@ -275,6 +275,11 @@ class ViewList(AzureAuthRequiredMixin, APIView):
             sort_by = 'name'
         if not sort_direction:
             sort_direction = 'asc'
+
+        ordering_mapping = {
+            'dataset': 'dataset__label'
+        }
+        sort_by = ordering_mapping.get(sort_by, sort_by)
         ordering = sort_by if sort_direction == 'asc' else f"-{sort_by}"
         queryset = queryset.order_by(ordering)
         return queryset
