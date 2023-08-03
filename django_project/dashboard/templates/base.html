@@ -42,6 +42,7 @@
     window.user_id = "{{ user.id }}";
     window.is_staff = "{{ user.is_staff }}" === 'True'
     window.is_admin = "{{ user.is_superuser }}" === 'True'
+    window.use_azure = "{{ use_azure_auth }}" === 'True'
   {% else %}
   window.user = {};
   {% endif %}

@@ -29,6 +29,11 @@ const ROLE_TYPES = [
 
 export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
     const [loading, setLoading] = useState(false)
+    const [firstName, setFirstName] = useState('')
+    const [lastName, setLastName] = useState('')
+    const [username, setUsername] = useState('')
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
     const [role, setRole] = useState('')
     const [alertMessage, setAlertMessage] = useState<string>('')
     const [alertOpen, setAlertOpen] = useState<boolean>(false)
@@ -49,6 +54,11 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
         postData(
             `${ADD_USER_API}/`,
             {
+                'first_name': firstName,
+                'last_name': lastName,
+                'username': username,
+                'email': email,
+                'password': password,
                 'role': role,
             }
         ).then(
@@ -110,6 +120,9 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                                     hiddenLabel={true}
                                     type={"text"}
                                     sx={{ width: '100%' }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      setFirstName(e.target.value)
+                                    }}
                                 />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
@@ -121,6 +134,9 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                                     hiddenLabel={true}
                                     type={"text"}
                                     sx={{ width: '100%' }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      setLastName(e.target.value)
+                                    }}
                                 />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
@@ -132,6 +148,9 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                                     hiddenLabel={true}
                                     type={"text"}
                                     sx={{ width: '100%' }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      setUsername(e.target.value)
+                                    }}
                                 />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
@@ -141,8 +160,11 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                                 <TextField
                                     id="input_email"
                                     hiddenLabel={true}
-                                    type={"text"}
+                                    type={"email"}
                                     sx={{ width: '100%' }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      setEmail(e.target.value)
+                                    }}
                                 />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
@@ -154,6 +176,9 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                                     hiddenLabel={true}
                                     type={"password"}
                                     sx={{ width: '100%' }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      setPassword(e.target.value)
+                                    }}
                                 />
                             </Grid>
                         </Grid>

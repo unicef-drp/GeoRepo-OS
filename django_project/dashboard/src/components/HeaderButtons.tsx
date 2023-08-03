@@ -153,11 +153,11 @@ export const CreateDatasetButton = () => {
 }
 
 export const AddUserButton = () => {
-  const [canAddUser, setCanAddUser] = useState(false)
+  const [canAddUser, setCanAddUser] = useState((window as any).is_admin)
 
   return (
     <Link to={UserAddRoute.path} >
-      <AddButton disabled={canAddUser} text={'Add User'} variant={'secondary'}/>
+      <AddButton disabled={!canAddUser} text={'Add User'} variant={'secondary'}/>
     </Link>
   )
 }
