@@ -106,7 +106,6 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                 <TextField
-                                    disabled={true}
                                     id="input_first_name"
                                     hiddenLabel={true}
                                     type={"text"}
@@ -118,7 +117,6 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                 <TextField
-                                    disabled={true}
                                     id="input_last_name"
                                     hiddenLabel={true}
                                     type={"text"}
@@ -130,7 +128,6 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                 <TextField
-                                    disabled={true}
                                     id="input_username"
                                     hiddenLabel={true}
                                     type={"text"}
@@ -142,10 +139,20 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                 <TextField
-                                    disabled={true}
                                     id="input_email"
                                     hiddenLabel={true}
                                     type={"text"}
+                                    sx={{ width: '100%' }}
+                                />
+                            </Grid>
+                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                <Typography variant={'subtitle1'}>Password</Typography>
+                            </Grid>
+                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                                <TextField
+                                    id="input_password"
+                                    hiddenLabel={true}
+                                    type={"password"}
                                     sx={{ width: '100%' }}
                                 />
                             </Grid>
@@ -159,6 +166,7 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
                                 <Select
                                     labelId="roles-select-label"
                                     id="roles-select"
+                                    value={'Viewer'}
                                     onChange={(event: SelectChangeEvent) => {
                                         setRole(event.target.value as string)
                                     }}

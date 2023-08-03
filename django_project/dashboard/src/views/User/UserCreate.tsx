@@ -19,10 +19,10 @@ import UserPermission from './UserPermission';
 
 const FETCH_USER_DETAIL_URL = '/api/user/'
 
-export default function UserDetail(props: any) {
+export default function UserCreate(props: any) {
     const dispatch = useAppDispatch()
     const navigate = useNavigate()
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(false)
     const [searchParams, setSearchParams] = useSearchParams()
     const [tabSelected, setTabSelected] = useState(0)
     const [user, setUser] = useState<UserInterface>(null)

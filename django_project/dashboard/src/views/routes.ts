@@ -87,7 +87,7 @@ export const UserAddRoute: RouteInterface = {
   id: 'add_user',
   name: 'Add User',
   path: '/add_user',
-  element: lazy(() => import('./User/UserCreate' /* webpackChunkName: "dataset_create" */)),
+  element: lazy(() => import('./User/UserCreate' /* webpackChunkName: "user_create" */)),
   parent: UserListRoute
 }
 
@@ -196,6 +196,7 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   ReviewListRoute,
   UserListRoute,
   UserDetailRoute,
+  UserAddRoute,
   GroupListRoute,
   GroupDetailRoute,
   ViewCreateRoute,
