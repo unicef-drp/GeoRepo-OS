@@ -97,7 +97,7 @@ from dashboard.api_views.views import (
     CreateNewView, ViewList, DeleteView, ViewDetail,
     UpdateView, QueryViewCheck, SQLColumnsTablesList,
     QueryViewPreview, GetViewTags,
-    DownloadView
+    DownloadView, ViewFilterValue
 )
 from dashboard.api_views.tiling_config import (
     FetchDatasetTilingConfig, UpdateDatasetTilingConfig,
@@ -490,6 +490,10 @@ urlpatterns = [
     re_path(r'api/view-list/?$',
             ViewList.as_view(),
             name='view-list'),
+    re_path(r'^api/view-filter/values/'
+            r'(?P<criteria>\w+)/?$',
+            ViewFilterValue.as_view(),
+            name='view-filter-value'),
     re_path(r'api/tag-list/?$',
             GetViewTags.as_view(),
             name='get-tag-list'),

@@ -5,6 +5,7 @@ import moduleReducer from "../reducers/module"
 import pollIntervalReducer from "../reducers/notificationPoll"
 import maintenanceReducer from "../reducers/maintenanceItem"
 import reviewActionReducer from "../reducers/reviewAction"
+import viewTableReducer from "../reducers/viewTable"
 
 export const store = configureStore({
   reducer: {
@@ -13,7 +14,8 @@ export const store = configureStore({
     module: moduleReducer,
     pollInterval: pollIntervalReducer,
     maintenanceItem: maintenanceReducer,
-    reviewAction: reviewActionReducer
+    reviewAction: reviewActionReducer,
+    viewTable: viewTableReducer
   },
 });
 

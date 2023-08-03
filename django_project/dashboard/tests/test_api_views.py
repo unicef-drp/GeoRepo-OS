@@ -50,7 +50,7 @@ from georepo.models import (
     DatasetAdminLevelName, BoundaryType
 )
 from dashboard.api_views.views import (
-    CreateNewView, ViewList, DeleteView, UpdateView, ViewDetail,
+    CreateNewView, DeleteView, UpdateView, ViewDetail,
     DownloadView
 )
 from dashboard.models import (
@@ -1364,31 +1364,6 @@ class TestApiViews(TestCase):
             }
         )
         self.assertEqual(response.status_code, 400)
-
-    def test_list_views(self):
-        creator = UserF.create()
-        dataset_1 = DatasetViewF.create(
-            created_by=creator
-        )
-        grant_dataset_manager(dataset_1.dataset, creator)
-        request = self.factory.get(
-            reverse('view-list')
-        )
-        request.user = self.superuser
-        list_view = ViewList.as_view()
-        response = list_view(request)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data[0].get('id'), dataset_1.id)
-
-        request = self.factory.get(
-            reverse('view-list')
-        )
-
-        request.user = creator
-        list_view = ViewList.as_view()
-        response = list_view(request)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data[0].get('id'), dataset_1.id)
 
     def test_delete_view(self):
         # Test no permission

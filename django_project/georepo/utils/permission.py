@@ -314,6 +314,41 @@ def get_dataset_view_privacy_level_from_perms(permissions, dataset_perms):
     return 0
 
 
+def get_views_for_user(user):
+    datasets = Dataset.objects.all()
+    datasets = get_dataset_for_user(user, datasets)
+    views_querysets = DatasetView.objects.none()
+    user_privacy_levels = {}
+    for dataset in datasets:
+        views = DatasetView.objects.filter(
+            dataset=dataset
+        )
+        views, _ = get_dataset_views_for_user(
+            user,
+            dataset,
+            views
+        )
+        views_querysets = views_querysets.union(views)
+        privacy_level = get_view_permission_privacy_level(
+            user,
+            dataset
+        )
+        user_privacy_levels[dataset.id] = privacy_level
+    # include external user
+    external_views = DatasetView.objects.all()
+    external_views = get_objects_for_user(
+        user,
+        EXTERNAL_READ_VIEW_PERMISSION_LIST,
+        klass=external_views,
+        use_groups=True,
+        any_perm=True,
+        accept_global_perms=False
+    )
+    views_querysets = views_querysets.union(external_views)
+    views_querysets = views_querysets.order_by('created_at')
+    return user_privacy_levels, views_querysets
+
+
 def get_dataset_for_user(user, queryset, use_groups=True):
     """
     Return queryset for dataset with filter user can access

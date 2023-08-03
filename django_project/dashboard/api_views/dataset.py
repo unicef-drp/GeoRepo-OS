@@ -115,7 +115,6 @@ class DasboardDatasetEntityList(AzureAuthRequiredMixin,
             return None, None
         if sort_direction not in ['asc', 'desc']:
             return None, None
-
         field_mapping = {
             'id': 'gg.id',
             'country': 'parent_0.label',
