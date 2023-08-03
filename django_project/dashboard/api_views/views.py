@@ -1,17 +1,18 @@
 import re
 import uuid
 import os.path
-from django.db.models.expressions import RawSQL
+import math
+from django.db.models.expressions import RawSQL, Q
 from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import connection
 from django.http import Http404, HttpResponseForbidden, HttpResponse
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
-from guardian.shortcuts import get_objects_for_user
 from azure_auth.backends import AzureAuthRequiredMixin
 from celery.result import AsyncResult
 from core.celery import app
@@ -41,10 +42,8 @@ from georepo.utils.dataset_view import (
 from georepo.tasks.simplify_geometry import simplify_geometry_in_view
 from georepo.utils.permission import (
     check_user_has_view_permission,
-    get_dataset_for_user,
-    get_dataset_views_for_user,
-    get_view_permission_privacy_level,
-    EXTERNAL_READ_VIEW_PERMISSION_LIST
+    get_views_for_user,
+    get_view_permission_privacy_level
 )
 from georepo.utils.exporter_base import APIDownloaderBase
 
@@ -201,47 +200,182 @@ class ViewList(AzureAuthRequiredMixin, APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def get(self, *args, **kwargs):
-        datasets = Dataset.objects.all()
-        datasets = get_dataset_for_user(self.request.user, datasets)
-        views_querysets = DatasetView.objects.none()
-        user_privacy_levels = {}
-        for dataset in datasets:
-            views = DatasetView.objects.filter(
-                dataset=dataset
-            )
-            views, _ = get_dataset_views_for_user(
-                self.request.user,
-                dataset,
-                views
-            )
-            views_querysets = views_querysets.union(views)
-            privacy_level = get_view_permission_privacy_level(
-                self.request.user,
-                dataset
-            )
-            user_privacy_levels[dataset.id] = privacy_level
-        # include external user
-        external_views = DatasetView.objects.all()
-        external_views = get_objects_for_user(
-            self.request.user,
-            EXTERNAL_READ_VIEW_PERMISSION_LIST,
-            klass=external_views,
-            use_groups=True,
-            any_perm=True,
-            accept_global_perms=False
+    def _filter_tags(self, request):
+        tags = dict(request.data).get('tags', [])
+        if not tags:
+            return {}
+        return {'tags__name__in': tags}
+
+    def _filter_mode(self, request):
+        mode = dict(request.data).get('mode', [])
+        if not mode or sorted(mode) == ['Dynamic', 'Static']:
+            return {}
+
+        return {'is_static': True if mode[0] == 'Static' else False}
+
+    def _filter_dataset(self, request):
+        dataset = dict(request.data).get('dataset', [])
+        if not dataset:
+            return {}
+
+        return {'dataset__label__in': dataset}
+
+    def _filter_is_default(self, request):
+        is_default = dict(request.data).get('is_default', [])
+        if not is_default or sorted(is_default) == ['No', 'Yes']:
+            return {}
+
+        return {'default_type': True if is_default[0] == 'Yes' else False}
+
+    def _filter_min_privacy(self, request):
+        min_privacy = dict(request.data).get('min_privacy', [])
+        if not min_privacy:
+            return {}
+
+        return {'min_privacy_level__in': min_privacy}
+
+    def _filter_max_privacy(self, request):
+        max_privacy = dict(request.data).get('max_privacy', [])
+        if not max_privacy:
+            return {}
+
+        return {'max_privacy_level__in': max_privacy}
+
+    def _filter_queryset(self, queryset, request):
+        filter_kwargs = {}
+        filter_kwargs.update(self._filter_tags(request))
+        filter_kwargs.update(self._filter_mode(request))
+        filter_kwargs.update(self._filter_dataset(request))
+        filter_kwargs.update(self._filter_min_privacy(request))
+        filter_kwargs.update(self._filter_max_privacy(request))
+        return queryset.filter(**filter_kwargs)
+
+    def _search_queryset(self, queryset, request):
+        search_text = request.data.get('search_text', '')
+        if not search_text:
+            return queryset
+        char_fields = [
+            field.name for field in DatasetView.get_fields() if
+            field.get_internal_type() in
+            ['UUIDField', 'CharField', 'TextField']
+        ]
+        q_args = [
+            Q(**{f"{field}__icontains": search_text}) for field in char_fields
+        ]
+        args = Q()
+        for arg in q_args:
+            args |= arg
+        queryset = queryset.filter(*(args,))
+        return queryset
+
+    def _sort_queryset(self, queryset, request):
+        sort_by = request.query_params.get('sort_by', 'name')
+        sort_direction = request.query_params.get('sort_direction', 'asc')
+        if not sort_by:
+            sort_by = 'name'
+        if not sort_direction:
+            sort_direction = 'asc'
+        ordering = sort_by if sort_direction == 'asc' else f"-{sort_by}"
+        queryset = queryset.order_by(ordering)
+        return queryset
+
+    def post(self, *args, **kwargs):
+        (
+            user_privacy_levels,
+            views_querysets
+        ) = get_views_for_user(self.request.user)
+        # It seems we cannot use values_list on views_queryset
+        views_querysets = DatasetView.objects.\
+            filter(id__in=[v.id for v in views_querysets])
+        views_querysets = self._search_queryset(views_querysets, self.request)
+        views_querysets = self._filter_queryset(views_querysets, self.request)
+        page = int(self.request.GET.get('page', '1'))
+        page_size = int(self.request.query_params.get('page_size', '10'))
+        views_querysets = self._sort_queryset(views_querysets, self.request)
+        paginator = Paginator(views_querysets, page_size)
+        total_page = math.ceil(paginator.count / page_size)
+        if page > total_page:
+            output = []
+        else:
+            paginated_entities = paginator.get_page(page)
+            output = DatasetViewSerializer(
+                paginated_entities,
+                many=True,
+                context={
+                    'user': self.request.user,
+                    'user_privacy_levels': user_privacy_levels
+                }
+            ).data
+
+        return Response({
+            'count': paginator.count,
+            'page': page,
+            'total_page': total_page,
+            'page_size': page_size,
+            'results': output,
+        })
+
+
+class ViewFilterValue(
+    AzureAuthRequiredMixin,
+    APIView
+):
+    """
+    Get filter value for given View and criteria
+    """
+    permission_classes = [IsAuthenticated]
+    views_querysets = DatasetView.objects.none()
+
+    def get_user_views(self):
+        _, views_querysets = get_views_for_user(self.request.user)
+        views_querysets = DatasetView.objects.filter(
+            id__in=[v.id for v in views_querysets]
         )
-        views_querysets = views_querysets.union(external_views)
-        views_querysets = views_querysets.order_by('created_at')
-        views_serializer = DatasetViewSerializer(
-            views_querysets,
-            many=True,
-            context={
-                'user': self.request.user,
-                'user_privacy_levels': user_privacy_levels
-            }
-        ).data
-        return Response(views_serializer)
+        return views_querysets
+
+    def fetch_tags(self):
+        tags = self.views_querysets.order_by().\
+            values_list('tags__name', flat=True).distinct()
+        return [tag for tag in tags if tag]
+
+    def fetch_mode(self):
+        return [
+            'Static',
+            'Dynamic'
+        ]
+
+    def fetch_dataset(self):
+        return list(self.views_querysets.exclude(
+            dataset__label__isnull=True
+        ).exclude(
+            dataset__label__exact=''
+        ).order_by().values_list('dataset__label', flat=True).distinct())
+
+    def fetch_is_default(self):
+        return [
+            'No',
+            'Yes'
+        ]
+
+    def fetch_min_privacy(self):
+        return list(
+            self.views_querysets.order_by().
+            values_list('min_privacy_level', flat=True).distinct()
+        )
+
+    def fetch_max_privacy(self):
+        return list(
+            self.views_querysets.order_by().
+            values_list('max_privacy_level', flat=True).distinct()
+        )
+
+    def get(self, request, criteria, *args, **kwargs):
+        self.views_querysets = self.get_user_views()
+        try:
+            data = eval(f"self.fetch_{criteria}()")
+        except AttributeError:
+            data = []
+        return Response(status=200, data=data)
 
 
 class SQLColumnsTablesList(APIView):

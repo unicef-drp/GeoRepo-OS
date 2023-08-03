@@ -212,7 +212,7 @@ class DatasetViewList(ApiCache):
                                 type=openapi.TYPE_INTEGER
                             ),
                             'results': openapi.Schema(
-                                title='Dtaset view list',
+                                title='Dataset view list',
                                 type=openapi.TYPE_ARRAY,
                                 items=openapi.Items(
                                     type=openapi.TYPE_OBJECT,

@@ -209,6 +209,10 @@ class DatasetView(models.Model):
     def __str__(self):
         return self.name
 
+    @classmethod
+    def get_fields(cls):
+        return cls._meta.fields
+
 
 class DatasetViewUserObjectPermission(UserObjectPermissionBase):
     content_object = models.ForeignKey(DatasetView, on_delete=models.CASCADE)
