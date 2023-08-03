@@ -158,13 +158,12 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
         if 'status' in dict(request.data):
             filter_values = sorted(dict(request.data).get('status', []))
             if not filter_values or \
-                filter_values == [APPROVED, 'Pending', REJECTED]:
+                filter_values == [APPROVED, 'Pending']:
                 return queryset.filter(**filter_kwargs)
 
             non_pending_filter_combinations = [
                 [APPROVED],
-                [REJECTED],
-                [APPROVED, REJECTED]
+                [REJECTED]
             ]
             pending_status = [
                 choice[0] for choice in EntityUploadStatus.STATUS_CHOICES if
@@ -181,17 +180,8 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
                             ]
                         }
                     )
-                elif REJECTED in filter_values:
-                    filter_kwargs.update(
-                        {
-                            'status__in': [
-                                *pending_status, REJECTED
-                            ]
-                        }
-                    )
                 else:
-                    filter_kwargs.update({'status__in': [pending_status]})
-
+                    filter_kwargs.update({'status__in': pending_status})
         return queryset.filter(**filter_kwargs)
 
     def _search_queryset(self, queryset, request):
@@ -219,6 +209,18 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
             sort_by = 'id'
         if not sort_direction:
             sort_direction = 'asc'
+
+        ordering_mapping = {
+            'level_0_entity': 'revised_geographical_entity__label',
+            'upload': 'upload_session__source',
+            'revision': 'revised_geographical_entity__revision_number',
+            'dataset': 'upload_session__dataset__label',
+            'start_date': 'upload_session__started_at',
+            'submitted_by': 'upload_session__uploader__username',
+            'module': 'upload_session__dataset__module__name',
+            'is_comparison_ready': 'comparison_data_ready',
+        }
+        sort_by = ordering_mapping.get(sort_by, sort_by)
         ordering = sort_by if sort_direction == 'asc' else f"-{sort_by}"
         queryset = queryset.order_by(ordering)
         return queryset
@@ -246,6 +248,7 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
                 paginated_entities,
                 many=True
             ).data
+        output = output
         return Response({
             'count': paginator.count,
             'page': page,
@@ -295,7 +298,6 @@ class ReviewFilterValue(
     def fetch_status(self):
         return [
             APPROVED,
-            REJECTED,
             'Pending'
         ]
 
