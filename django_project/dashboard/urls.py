@@ -3,6 +3,7 @@ from django.urls import re_path, path, include
 from dashboard.api_views.reviews import (
     ReadyToReview,
     ReviewList,
+    ReviewFilterValue,
     ApproveRevision,
     RejectRevision,
     BatchReviewAPI,
@@ -341,6 +342,12 @@ urlpatterns = [
         r'api/review-list/?$',
         ReviewList.as_view(),
         name='review-list'
+    ),
+    re_path(
+        r'^api/review-filter/values/'
+        r'(?P<criteria>\w+)/?$',
+        ReviewFilterValue.as_view(),
+        name='review-filter-value'
     ),
     re_path(
         r'api/boundary-comparison-summary/(?P<entity_upload_id>\d+)/?$',

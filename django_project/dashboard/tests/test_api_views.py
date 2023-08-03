@@ -514,14 +514,14 @@ class TestApiViews(TestCase):
             upload_session=upload_session
         )
 
-        request = self.factory.get(
+        request = self.factory.post(
             reverse('review-list')
         )
         request.user = user
         view = ReviewList.as_view()
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(len(response.data['results']), 1)
 
     def test_update_layer_upload(self):
         updated_by = UserF.create(username='test_user')
@@ -612,15 +612,18 @@ class TestApiViews(TestCase):
             LayerUploadSession.objects.get(id=upload_session.id).status,
             'Reviewing'
         )
-        request = self.factory.get(
+        request = self.factory.post(
             reverse('review-list')
         )
         request.user = self.superuser
         view = ReviewList.as_view()
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 2)
-        self.assertEqual(response.data[0]['submitted_by'], user.username)
+        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(
+            response.data['results'][0]['submitted_by'],
+            user.username
+        )
         # simulate when there is other upload in review of same entity
         upload_session_2 = LayerUploadSessionF.create(
             dataset=upload_session.dataset

@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
+from georepo.models.dataset import Dataset
+from georepo.utils.permission import get_dataset_to_review
 
 PROCESSING = 'Processing'
 VALID = 'Valid'
@@ -162,6 +164,23 @@ class EntityUploadStatus(models.Model):
         ):
             adm_level_name = self.admin_level_names[level_str]
         return adm_level_name
+
+    @classmethod
+    def get_user_entity_upload_status(cls, user):
+        datasets = Dataset.objects.all().order_by('created_at')
+        datasets = get_dataset_to_review(
+            user,
+            datasets
+        )
+        entity_uploads = cls.objects.filter(
+            status__in=[REVIEWING, APPROVED],
+            upload_session__dataset__in=datasets
+        ).order_by('-started_at')
+        if not user.is_superuser:
+            entity_uploads = entity_uploads.exclude(
+                upload_session__uploader=user
+            )
+        return entity_uploads
 
 
 @receiver(pre_delete, sender=EntityUploadStatus)

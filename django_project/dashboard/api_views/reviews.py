@@ -1,12 +1,17 @@
+import math
 
-from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
 from azure_auth.backends import AzureAuthRequiredMixin
-from georepo.models.dataset import Dataset
-from georepo.utils.permission import get_dataset_to_review
+from dashboard.api_views.common import (
+    DatasetWritePermission
+)
 from dashboard.models import (
     EntityUploadStatus, LayerUploadSession,
     REVIEWING
@@ -17,18 +22,16 @@ from dashboard.models.batch_review import (
 from dashboard.models.entity_upload import (
     REVIEWING as UPLOAD_REVIEWING,
     PROCESSING_APPROVAL,
-    APPROVED
+    APPROVED,
+    REJECTED
 )
 from dashboard.serializers.entity_upload import EntityUploadSerializer
 from dashboard.tasks import run_comparison_boundary
-from georepo.utils.module_import import module_function
-from dashboard.api_views.common import (
-    DatasetWritePermission
-)
 from dashboard.tasks.review import (
     review_approval,
     process_batch_review
 )
+from georepo.utils.module_import import module_function
 
 
 class ReadyToReview(AzureAuthRequiredMixin, APIView):
@@ -137,23 +140,173 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
     """Api to list all ready to review uploads"""
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, *args, **kwargs):
-        datasets = Dataset.objects.all().order_by('created_at')
-        datasets = get_dataset_to_review(
-            self.request.user,
-            datasets
+    def _filter_queryset(self, queryset, request):
+        criteria_field_mapping = {
+            'level_0_entity': 'revised_geographical_entity__label',
+            'upload': 'upload_session__source',
+            'revision': 'revised_geographical_entity__revision_number',
+            'dataset': 'upload_session__dataset__label'
+        }
+
+        filter_kwargs = {}
+        for filter_field, model_field in criteria_field_mapping.items():
+            filter_values = dict(request.data).get(filter_field, [])
+            if not filter_values:
+                continue
+            filter_kwargs.update({f'{model_field}__in': filter_values})
+
+        if 'status' in dict(request.data):
+            filter_values = sorted(dict(request.data).get('status', []))
+            if not filter_values or \
+                filter_values == [APPROVED, 'Pending', REJECTED]:
+                return queryset.filter(**filter_kwargs)
+
+            non_pending_filter_combinations = [
+                [APPROVED],
+                [REJECTED],
+                [APPROVED, REJECTED]
+            ]
+            pending_status = [
+                choice[0] for choice in EntityUploadStatus.STATUS_CHOICES if
+                choice[0] not in [APPROVED, REJECTED]
+            ]
+            if filter_values in non_pending_filter_combinations:
+                filter_kwargs.update({'status__in': filter_values})
+            elif 'Pending' in filter_values:
+                if APPROVED in filter_values:
+                    filter_kwargs.update(
+                        {
+                            'status__in': [
+                                *pending_status, APPROVED
+                            ]
+                        }
+                    )
+                elif REJECTED in filter_values:
+                    filter_kwargs.update(
+                        {
+                            'status__in': [
+                                *pending_status, REJECTED
+                            ]
+                        }
+                    )
+                else:
+                    filter_kwargs.update({'status__in': [pending_status]})
+
+        return queryset.filter(**filter_kwargs)
+
+    def _search_queryset(self, queryset, request):
+        search_text = request.data.get('search_text', '')
+        if not search_text:
+            return queryset
+        char_fields = [
+            field.name for field in EntityUploadStatus._meta.get_fields() if
+            field.get_internal_type() in
+            ['UUIDField', 'CharField', 'TextField']
+        ]
+        q_args = [
+            Q(**{f"{field}__icontains": search_text}) for field in char_fields
+        ]
+        args = Q()
+        for arg in q_args:
+            args |= arg
+        queryset = queryset.filter(*(args,))
+        return queryset
+
+    def _sort_queryset(self, queryset, request):
+        sort_by = request.query_params.get('sort_by', 'id')
+        sort_direction = request.query_params.get('sort_direction', 'asc')
+        if not sort_by:
+            sort_by = 'id'
+        if not sort_direction:
+            sort_direction = 'asc'
+        ordering = sort_by if sort_direction == 'asc' else f"-{sort_by}"
+        queryset = queryset.order_by(ordering)
+        return queryset
+
+    def post(self, request, *args, **kwargs):
+        review_querysets = EntityUploadStatus.get_user_entity_upload_status(
+            request.user
         )
-        entity_uploads = EntityUploadStatus.objects.filter(
-            status__in=[REVIEWING, APPROVED],
-            upload_session__dataset__in=datasets
-        ).order_by('-started_at')
-        if not self.request.user.is_superuser:
-            entity_uploads = entity_uploads.exclude(
-                upload_session__uploader=self.request.user
-            )
-        return Response(
-            EntityUploadSerializer(entity_uploads, many=True).data
+        review_querysets = self._search_queryset(
+            review_querysets, self.request
         )
+        review_querysets = self._filter_queryset(
+            review_querysets, self.request
+        )
+        page = int(self.request.GET.get('page', '1'))
+        page_size = int(self.request.query_params.get('page_size', '10'))
+        review_querysets = self._sort_queryset(review_querysets, self.request)
+        paginator = Paginator(review_querysets, page_size)
+        total_page = math.ceil(paginator.count / page_size)
+        if page > total_page:
+            output = []
+        else:
+            paginated_entities = paginator.get_page(page)
+            output = EntityUploadSerializer(
+                paginated_entities,
+                many=True
+            ).data
+        return Response({
+            'count': paginator.count,
+            'page': page,
+            'total_page': total_page,
+            'page_size': page_size,
+            'results': output,
+        })
+
+
+class ReviewFilterValue(
+    AzureAuthRequiredMixin,
+    APIView
+):
+    """
+    Get filter value for given Review and criteria
+    """
+    permission_classes = [IsAuthenticated]
+    review_querysets = EntityUploadStatus.objects.none()
+
+    def fetch_criteria_values(self, criteria):
+        criteria_field_mapping = {
+            'level_0_entity': 'revised_geographical_entity__label',
+            'upload': 'upload_session__source',
+            'revision': 'revised_geographical_entity__revision_number',
+        }
+        field = criteria_field_mapping.get(criteria, None)
+
+        if not field:
+            if criteria == 'dataset':
+                return self.fetch_dataset()
+            return self.fetch_status()
+
+        filter_values = self.reviews_querysets.\
+            filter(**{f"{field}__isnull": False}).order_by().\
+            values_list(field, flat=True).distinct()
+        return [val for val in filter_values]
+
+    def fetch_dataset(self):
+        return list(self.reviews_querysets.filter(
+            upload_session__dataset__label__isnull=False
+        ).exclude(
+            upload_session__dataset__label__exact=''
+        ).order_by().values_list(
+            'upload_session__dataset__label', flat=True
+        ).distinct())
+
+    def fetch_status(self):
+        return [
+            APPROVED,
+            REJECTED,
+            'Pending'
+        ]
+
+    def get(self, request, criteria, *args, **kwargs):
+        self.reviews_querysets = \
+            EntityUploadStatus.get_user_entity_upload_status(request.user)
+        try:
+            data = self.fetch_criteria_values(criteria)
+        except AttributeError:
+            data = []
+        return Response(status=200, data=data)
 
 
 class ApproveRevision(AzureAuthRequiredMixin,
