@@ -134,7 +134,7 @@ export async function fetchJSON(
 }
 
 /**
- * Perform Pushing Data
+ * Perform Pushing Data Using POST method
  *
  * @param {string} url Url to query
  * @param {object} data Data to be pushed
@@ -143,6 +143,18 @@ export const postData = async function (
     url: string,
     data: any ) {
     return axios.post(url, data)
+};
+
+/**
+ * Perform Pushing Data Uing PUT method
+ *
+ * @param {string} url Url to query
+ * @param {object} data Data to be pushed
+ */
+export const putData = async function (
+    url: string,
+    data: any ) {
+    return axios.put(url, data)
 };
 
 /**

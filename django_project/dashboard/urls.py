@@ -296,6 +296,9 @@ urlpatterns = [
     re_path(r'api/user/(?P<id>\d+)/?$',
             UserDetail.as_view(),
             name='user-detail'),
+    re_path(r'api/user/?$',
+            UserDetail.as_view(),
+            name='user-create'),
     re_path(r'api/user/permission/'
             r'(?P<object_type>(module|dataset|datasetview))/'
             r'(?P<id>\d+)/?$',

@@ -12,15 +12,14 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 import UserInterface from '../../models/user';
 import Loading from "../../components/Loading";
 import AlertMessage from '../../components/AlertMessage';
-import {putData} from "../../utils/Requests";
+import {postData} from "../../utils/Requests";
 import AlertDialog from '../../components/AlertDialog';
 
-interface UserDetailGeneralInterface {
-    user: UserInterface,
-    onUserUpdated: () => void
+interface UserCreateGeneralInterface {
+    onUserCreated: (newValue: number) => void
 }
 
-const FETCH_USER_DETAIL_URL = '/api/user/'
+const ADD_USER_API = '/api/user/'
 
 const ROLE_TYPES = [
     'Viewer',
@@ -28,9 +27,15 @@ const ROLE_TYPES = [
     'Admin'
 ]
 
-export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
+export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
     const [loading, setLoading] = useState(false)
-    const [role, setRole] = useState('')
+    const [firstName, setFirstName] = useState('')
+    const [lastName, setLastName] = useState('')
+    const [username, setUsername] = useState('')
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [role, setRole] = useState('Viewer')
+    const [userId, setUserId] = useState<number>(0)
     const [alertMessage, setAlertMessage] = useState<string>('')
     const [alertOpen, setAlertOpen] = useState<boolean>(false)
     const [alertLoading, setAlertLoading] = useState<boolean>(false)
@@ -38,27 +43,43 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
     const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
     const navigate = useNavigate()
 
-    useEffect(() => {
-        if (props.user) {
-            setRole(props.user.role)
+    const createUser = (role: string) => {
+        if (email == '') {
+            alert('Email is required!')
+            return
+        } else {
+            let regex = new RegExp(
+              "([!#-'*+/-9=?A-Z^-~-]+(\.[!#-'*+/-9=?A-Z^-~-]+)*|\"\(\[\]!#-[^-~ \t]|(\\[\t -~]))+\")@" +
+              "([!#-'*+/-9=?A-Z^-~-]+(\.[!#-'*+/-9=?A-Z^-~-]+)*|\[[\t -Z^-~]*])"
+            )
+            if (!regex.test(email)) {
+                alert('Email has wrong format!')
+                return
+            }
         }
-    }, [props.user])
-
-    const updateUserDetail = (role: string, isActive: boolean) => {
+        if (!(window as any).use_azure && password == '') {
+            alert('Password is required!')
+            return
+        }
         setLoading(true)
         setAlertLoading(true)
-        putData(
-            `${FETCH_USER_DETAIL_URL}${props.user.id}/`,
+        postData(
+            ADD_USER_API,
             {
+                'first_name': firstName,
+                'last_name': lastName,
+                'username': username,
+                'email': email,
+                'password': password,
                 'role': role,
-                'is_active': isActive
             }
         ).then(
             response => {
+                setUserId(response.data.id)
                 setLoading(false)
                 setAlertOpen(false)
                 setAlertLoading(false)
-                setAlertMessage('Successfully updating user!')
+                setAlertMessage('Successfully creating user!')
             }
         ).catch(error => {
             setLoading(false)
@@ -69,23 +90,15 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                 if (error.response.status == 403) {
                   // TODO: use better way to handle 403
                   navigate('/invalid_permission')
+                } else {
+                    alert(`Error creating user! ${error.response.data}`)
                 }
-            } else {
-                alert('Error updating user!')
             }
         })
     }
 
-    const toggleUserStatus = () => {
-        let _title = props.user.is_active ? 'Deactivate this user?' : 'Activate this user?'
-        let _desc = props.user.is_active ? 'Are you sure you want to deactivate this user?' : 'Are you sure you want to activate this user?'
-        setAlertDialogTitle(_title)
-        setAlertDialogDescription(_desc)
-        setAlertOpen(true)
-    }
-
     const handleSaveClick = () => {
-        updateUserDetail(role, props.user.is_active)
+        createUser(role)
     }
 
     const handleAlertCancel = () => {
@@ -93,14 +106,14 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
     }
 
     const alertConfirmed = () => {
-        updateUserDetail(role, !props.user.is_active)
+        createUser(role)
     }
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 <AlertMessage message={alertMessage} onClose={() => {
-                    props.onUserUpdated()
+                    props.onUserCreated( userId)
                     setAlertMessage('')
                 }} />
                 <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
@@ -112,29 +125,17 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                     <FormControl className='FormContent'>
                         <Grid container columnSpacing={2} rowSpacing={2}>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Username</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    disabled={true}
-                                    id="input_username"
-                                    hiddenLabel={true}
-                                    type={"text"}
-                                    value={props.user.username}
-                                    sx={{ width: '100%' }}
-                                />
-                            </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
                                 <Typography variant={'subtitle1'}>First Name</Typography>
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                 <TextField
-                                    disabled={true}
                                     id="input_first_name"
                                     hiddenLabel={true}
                                     type={"text"}
-                                    value={props.user.first_name}
                                     sx={{ width: '100%' }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      setFirstName(e.target.value)
+                                    }}
                                 />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
@@ -142,12 +143,13 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                 <TextField
-                                    disabled={true}
                                     id="input_last_name"
                                     hiddenLabel={true}
                                     type={"text"}
-                                    value={props.user.last_name}
                                     sx={{ width: '100%' }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      setLastName(e.target.value)
+                                    }}
                                 />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
@@ -155,53 +157,46 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                 <TextField
-                                    disabled={true}
                                     id="input_email"
                                     hiddenLabel={true}
-                                    type={"text"}
-                                    value={props.user.email}
+                                    type={"email"}
                                     sx={{ width: '100%' }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                        if ((window as any).use_azure) {
+                                            setUsername(e.target.value)
+                                        }
+                                        setEmail(e.target.value)
+                                    }}
                                 />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Joined Date</Typography>
+                                <Typography variant={'subtitle1'}>Username</Typography>
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                 <TextField
-                                    disabled={true}
-                                    id="input_joined_date"
-                                    hiddenLabel={true}
-                                    type={"date"}
-                                    value={props.user.joined_date}
-                                    sx={{ width: '100%' }}
-                                />
-                            </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Status</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    disabled={true}
-                                    id="input_status"
+                                    id="input_username"
+                                    disabled={(window as any).use_azure}
                                     hiddenLabel={true}
                                     type={"text"}
-                                    value={props.user.is_active ? 'Active' : 'Inactive'}
+                                    value={username}
                                     sx={{ width: '100%' }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      setUsername(e.target.value)
+                                    }}
                                 />
                             </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Last Login</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                            {!(window as any).use_azure ? <><Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                <Typography variant={'subtitle1'}>Password</Typography>
+                            </Grid><Grid item md={8} xs={12} sx={{display: 'flex'}}>
                                 <TextField
-                                    disabled={true}
-                                    id="input_last_login"
-                                    hiddenLabel={true}
-                                    type={"datetime-local"}
-                                    value={props.user.last_login}
-                                    sx={{ width: '100%' }}
-                                />
-                            </Grid>
+                                  id="input_password"
+                                  hiddenLabel={true}
+                                  type={"password"}
+                                  sx={{width: '100%'}}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      setPassword(e.target.value);
+                                  }}/>
+                            </Grid></> : ''}
                         </Grid>
                         <Divider variant="middle" />
                         <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}}>
@@ -216,7 +211,6 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                                     onChange={(event: SelectChangeEvent) => {
                                         setRole(event.target.value as string)
                                     }}
-                                    disabled={props.user.id === (window as any).user_id}
                                 >
                                     { ROLE_TYPES.map((value, index) => {
                                         return <MenuItem key={index} value={value}>{value}</MenuItem>
@@ -225,18 +219,6 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                             </Grid>
                         </Grid>
                         <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}} flexDirection={'row'} justifyContent={'space-between'}>
-                            <Grid item>
-                                <div className='button-container'>
-                                    <Button
-                                        variant={"contained"}
-                                        color={ props.user.is_active ? 'error' : 'primary' }
-                                        disabled={loading}
-                                        onClick={toggleUserStatus}>
-                                        <span style={{ display: 'flex' }}>
-                                        { loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { props.user.is_active ? 'Deactivate' : 'Activate' }</span>
-                                    </Button>
-                                </div>
-                            </Grid>
                             <Grid item>
                                 <div className='button-container'>
                                     <Button
