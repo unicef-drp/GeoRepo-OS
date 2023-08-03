@@ -12,15 +12,14 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 import UserInterface from '../../models/user';
 import Loading from "../../components/Loading";
 import AlertMessage from '../../components/AlertMessage';
-import {putData} from "../../utils/Requests";
+import {postData} from "../../utils/Requests";
 import AlertDialog from '../../components/AlertDialog';
 
-interface UserDetailGeneralInterface {
-    user: UserInterface,
-    onUserUpdated: () => void
+interface UserCreateGeneralInterface {
+    onUserCreated: (newValue: number) => void
 }
 
-const FETCH_USER_DETAIL_URL = '/api/user/'
+const ADD_USER_API = '/api/user/'
 
 const ROLE_TYPES = [
     'Viewer',
@@ -28,7 +27,7 @@ const ROLE_TYPES = [
     'Admin'
 ]
 
-export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
+export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
     const [loading, setLoading] = useState(false)
     const [role, setRole] = useState('')
     const [alertMessage, setAlertMessage] = useState<string>('')
@@ -37,28 +36,27 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
     const [alertDialogTitle, setAlertDialogTitle] = useState<string>('')
     const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
     const navigate = useNavigate()
+    //
+    // useEffect(() => {
+    //     if (props.user) {
+    //         setRole(props.user.role)
+    //     }
+    // }, [props.user])
 
-    useEffect(() => {
-        if (props.user) {
-            setRole(props.user.role)
-        }
-    }, [props.user])
-
-    const updateUserDetail = (role: string, isActive: boolean) => {
+    const createUser = (role: string) => {
         setLoading(true)
         setAlertLoading(true)
-        putData(
-            `${FETCH_USER_DETAIL_URL}${props.user.id}/`,
+        postData(
+            `${ADD_USER_API}/`,
             {
                 'role': role,
-                'is_active': isActive
             }
         ).then(
             response => {
                 setLoading(false)
                 setAlertOpen(false)
                 setAlertLoading(false)
-                setAlertMessage('Successfully updating user!')
+                setAlertMessage('Successfully creating user!')
             }
         ).catch(error => {
             setLoading(false)
@@ -76,16 +74,8 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
         })
     }
 
-    const toggleUserStatus = () => {
-        let _title = props.user.is_active ? 'Deactivate this user?' : 'Activate this user?'
-        let _desc = props.user.is_active ? 'Are you sure you want to deactivate this user?' : 'Are you sure you want to activate this user?'
-        setAlertDialogTitle(_title)
-        setAlertDialogDescription(_desc)
-        setAlertOpen(true)
-    }
-
     const handleSaveClick = () => {
-        updateUserDetail(role, props.user.is_active)
+        createUser(role)
     }
 
     const handleAlertCancel = () => {
@@ -93,14 +83,14 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
     }
 
     const alertConfirmed = () => {
-        updateUserDetail(role, !props.user.is_active)
+        createUser(role)
     }
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 <AlertMessage message={alertMessage} onClose={() => {
-                    props.onUserUpdated()
+                    props.onUserCreated( 2)
                     setAlertMessage('')
                 }} />
                 <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
@@ -112,19 +102,6 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                     <FormControl className='FormContent'>
                         <Grid container columnSpacing={2} rowSpacing={2}>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Username</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    disabled={true}
-                                    id="input_username"
-                                    hiddenLabel={true}
-                                    type={"text"}
-                                    value={props.user.username}
-                                    sx={{ width: '100%' }}
-                                />
-                            </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
                                 <Typography variant={'subtitle1'}>First Name</Typography>
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
@@ -133,7 +110,6 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                                     id="input_first_name"
                                     hiddenLabel={true}
                                     type={"text"}
-                                    value={props.user.first_name}
                                     sx={{ width: '100%' }}
                                 />
                             </Grid>
@@ -146,7 +122,18 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                                     id="input_last_name"
                                     hiddenLabel={true}
                                     type={"text"}
-                                    value={props.user.last_name}
+                                    sx={{ width: '100%' }}
+                                />
+                            </Grid>
+                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                <Typography variant={'subtitle1'}>Username</Typography>
+                            </Grid>
+                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                                <TextField
+                                    disabled={true}
+                                    id="input_username"
+                                    hiddenLabel={true}
+                                    type={"text"}
                                     sx={{ width: '100%' }}
                                 />
                             </Grid>
@@ -159,46 +146,6 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                                     id="input_email"
                                     hiddenLabel={true}
                                     type={"text"}
-                                    value={props.user.email}
-                                    sx={{ width: '100%' }}
-                                />
-                            </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Joined Date</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    disabled={true}
-                                    id="input_joined_date"
-                                    hiddenLabel={true}
-                                    type={"date"}
-                                    value={props.user.joined_date}
-                                    sx={{ width: '100%' }}
-                                />
-                            </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Status</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    disabled={true}
-                                    id="input_status"
-                                    hiddenLabel={true}
-                                    type={"text"}
-                                    value={props.user.is_active ? 'Active' : 'Inactive'}
-                                    sx={{ width: '100%' }}
-                                />
-                            </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Last Login</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    disabled={true}
-                                    id="input_last_login"
-                                    hiddenLabel={true}
-                                    type={"datetime-local"}
-                                    value={props.user.last_login}
                                     sx={{ width: '100%' }}
                                 />
                             </Grid>
@@ -212,11 +159,9 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                                 <Select
                                     labelId="roles-select-label"
                                     id="roles-select"
-                                    value={role}
                                     onChange={(event: SelectChangeEvent) => {
                                         setRole(event.target.value as string)
                                     }}
-                                    disabled={props.user.id === (window as any).user_id}
                                 >
                                     { ROLE_TYPES.map((value, index) => {
                                         return <MenuItem key={index} value={value}>{value}</MenuItem>
@@ -225,18 +170,6 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                             </Grid>
                         </Grid>
                         <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}} flexDirection={'row'} justifyContent={'space-between'}>
-                            <Grid item>
-                                <div className='button-container'>
-                                    <Button
-                                        variant={"contained"}
-                                        color={ props.user.is_active ? 'error' : 'primary' }
-                                        disabled={loading}
-                                        onClick={toggleUserStatus}>
-                                        <span style={{ display: 'flex' }}>
-                                        { loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { props.user.is_active ? 'Deactivate' : 'Activate' }</span>
-                                    </Button>
-                                </div>
-                            </Grid>
                             <Grid item>
                                 <div className='button-container'>
                                     <Button

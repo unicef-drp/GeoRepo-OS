@@ -16,6 +16,7 @@ import AlertDialog from './AlertDialog';
 import AlertMessage from './AlertMessage';
 import CircularProgress from '@mui/material/CircularProgress';
 import {
+  UserAddRoute,
   DatasetCreateRoute,
   DatasetRoute,
   UserListRoute,
@@ -152,8 +153,12 @@ export const CreateDatasetButton = () => {
 }
 
 export const AddUserButton = () => {
+  const [canAddUser, setCanAddUser] = useState(false)
+
   return (
-    <div></div>
+    <Link to={UserAddRoute.path} >
+      <AddButton disabled={canAddUser} text={'Add User'} variant={'secondary'}/>
+    </Link>
   )
 }
 

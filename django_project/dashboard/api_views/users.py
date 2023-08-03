@@ -101,7 +101,7 @@ class UserDetail(APIView):
             'last_login': user.last_login
         })
 
-    def post(self, request, *args, **kwargs):
+    def put(self, request, *args, **kwargs):
         user_id = kwargs.get('id')
         user = get_object_or_404(
             User,
@@ -139,6 +139,13 @@ class UserDetail(APIView):
         user.save()
         if should_downgrade:
             downgrade_creator_to_viewer(user)
+        return Response(status=201)
+
+    def post(self, request, *args, **kwargs):
+        role = request.data.get('role')
+        if role not in AVAILABLE_ROLES:
+            return HttpResponseBadRequest('Invalid role!')
+
         return Response(status=201)
 
 
