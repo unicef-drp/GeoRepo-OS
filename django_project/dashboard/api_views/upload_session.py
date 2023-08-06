@@ -486,6 +486,11 @@ class ResetUploadSession(AzureAuthRequiredMixin,
         if upload_session.is_read_only():
             return Response(status=200)
         step = int(kwargs.get('step'))
+        reset_last_step = (
+            request.GET.get('cancel', 'false') == 'true'
+        )
+        if reset_last_step:
+            step = upload_session.last_step
         # check if it has passed qc_validation
         existing_uploads = upload_session.entityuploadstatus_set.exclude(
             status=''
@@ -497,4 +502,8 @@ class ResetUploadSession(AzureAuthRequiredMixin,
                 self.reset_preprocessing(upload_session)
         else:
             self.reset_preprocessing(upload_session)
+        if reset_last_step:
+            # set the status to cancel
+            upload_session.status = CANCELED
+            upload_session.save(update_fields=['status'])
         return Response(status=200)

@@ -110,6 +110,11 @@ export default function Step3(props: WizardStepInterface) {
           if (props.onCheckProgress) {
             props.onCheckProgress()
           }
+        } else if (response.data['status'] === 'Canceled') {
+          setIsFetchingData(false)
+          setDatasetData([])
+          setFetchTrigger(null)
+          setProgress('')
         } else {
           setProgress(response.data['progress'])
           // trigger to fetch notification frequently

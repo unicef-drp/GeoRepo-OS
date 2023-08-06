@@ -5,7 +5,7 @@ import fiona
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
 
-from dashboard.models import SHAPEFILE, LayerUploadSession
+from dashboard.models import SHAPEFILE, LayerUploadSession, CANCELED
 from dashboard.models.entity_upload import EntityUploadStatus
 from georepo.utils.module_import import module_function
 from georepo.utils.layers import get_feature_value
@@ -178,6 +178,8 @@ def retrieve_layer0_default_codes(
     layer0_default_codes = []
     layer_files = upload_session.layerfile_set.filter(level=0)
     if not layer_files.exists():
+        return layer0_default_codes
+    if upload_session.status == CANCELED:
         return layer0_default_codes
     layer_file = layer_files.first()
     id_field = (

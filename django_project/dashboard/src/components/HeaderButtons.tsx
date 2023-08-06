@@ -45,6 +45,8 @@ const ADD_UPLOAD_SESSION_URL = '/api/add-upload-session/'
 const FETCH_PENDING_REVIEWS_URL = '/api/review/batch/uploads/'
 const FETCH_CURRENT_REVIEW_URL = '/api/review/batch/identifier/'
 const SUBMIT_BATCH_REVIEW_URL = '/api/review/batch/'
+const CONFIRM_RESET_SESSION_URL = '/api/reset-upload-session/'
+const LOAD_UPLOAD_SESSION_DETAIL_URL = '/api/upload-session/'
 
 export const UploadDataButton = (props: UploadDataButtonInterface) => {
   const [canUpload, setCanUpload] = useState<boolean>(false)
@@ -336,6 +338,84 @@ export const ReviewActionButtons = () => {
   )
 }
 
+export const CancelActiveUploadButton = () => {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [isActiveUpload, setIsActiveUpload] = useState(false)
+  const [moduleName, setModuleName] = useState('')
+  const [alertOpen, setAlertOpen] = useState<boolean>(false)
+  const [alertDialogTitle, setAlertDialogTitle] = useState<string>('')
+  const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
+  const [alertLoading, setAlertLoading] = useState<boolean>(false)
+  const [confirmMessage, setConfirmMessage] = useState<string>('')
+
+  useEffect(() => {
+    fetchUploadSessionStatus()
+  }, [])
+
+  const fetchUploadSessionStatus = () => {
+    const uploadSession = searchParams.get('session')
+    if (uploadSession) {
+      // pull the source/description from saved session
+      axios.get(LOAD_UPLOAD_SESSION_DETAIL_URL + uploadSession).then(
+        response => {
+          setModuleName(toLower(response.data.module_name.replace(' ', '_')))
+          setIsActiveUpload(!response.data.is_read_only)
+        }, error => {
+          console.log(error)
+        })
+    }
+  }
+
+  const redirectAfterCancelled = () => {
+    setTimeout(() => {
+      const datasetId = searchParams.get('dataset')
+      navigate(`/${moduleName}/dataset_entities?id=${datasetId}`)
+  }, 3000)
+  }
+
+  const alertConfirmed = () => {
+    setAlertLoading(true)
+    postData(`${CONFIRM_RESET_SESSION_URL}${searchParams.get('session')}/${searchParams.get('step')}/?cancel=true`, {}).then(
+      response => {
+        setAlertLoading(false)
+        setAlertOpen(false)
+        setConfirmMessage('The upload has been cancelled, redirecting...')
+        redirectAfterCancelled()
+      }
+    ).catch(error => {
+      setAlertLoading(false)
+      setAlertOpen(false)
+      alert('There is something wrong, please try again later')
+    })
+  }
+
+  const handleAlertCancel = () => {
+    setAlertOpen(false)
+  }
+
+  const cancelActiveUpload = () => {
+    setAlertDialogTitle('Cancel Upload')
+    setAlertDialogDescription(`Are you sure you want to cancel current upload?`)
+    setAlertOpen(true)
+  }
+
+  return (
+    <div style={{display:'flex', flexDirection: 'row', alignItems: 'center'}}>
+      <AlertMessage message={confirmMessage} onClose={() => setConfirmMessage('')} />
+      <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
+                 alertConfirmed={alertConfirmed}
+                 alertLoading={alertLoading}
+                 alertDialogTitle={alertDialogTitle}
+                 alertDialogDescription={alertDialogDescription} />
+      { isActiveUpload &&
+        <CancelButton onClick={cancelActiveUpload} useIcon={false} text='Cancel Upload' />
+      }
+    </div>
+  )
+
+}
+
 export interface HeaderButtonsInterface {
   path: string,
   element: JSX.Element
@@ -365,5 +445,9 @@ export const headerButtons: HeaderButtonsInterface[] = [
   {
     path: ReviewListRoute.path,
     element: <ReviewActionButtons />
+  },
+  {
+    path: '/admin_boundaries/upload_wizard',
+    element: <CancelActiveUploadButton />
   }
 ]
