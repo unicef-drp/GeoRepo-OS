@@ -1114,17 +1114,27 @@ class CheckDatasetShortCode(AzureAuthRequiredMixin, APIView):
     @staticmethod
     def check_dataset_short_code(short_code, dataset=None):
         """Return True if short_code is available"""
-        if len(short_code) != DATASET_SHORT_CODE_MAX_LENGTH:
-            return False, (
-                'ShortCode must be '
-                f'{DATASET_SHORT_CODE_MAX_LENGTH} characters'
-            )
         check_dataset = Dataset.objects.filter(
             short_code=short_code
         )
         if dataset:
             check_dataset = check_dataset.exclude(
                 id=dataset.id
+            )
+        exclusion = SitePreferences.preferences().short_code_exclusion
+        if exclusion and short_code == exclusion:
+            if not check_dataset.exists():
+                return True, None
+            else:
+                return (
+                    False,
+                    f'Master dataset with short_code {short_code} '
+                    'has been created!'
+                )
+        elif len(short_code) != DATASET_SHORT_CODE_MAX_LENGTH:
+            return False, (
+                'ShortCode must be '
+                f'{DATASET_SHORT_CODE_MAX_LENGTH} characters'
             )
         is_available = not check_dataset.exists()
         error = None
