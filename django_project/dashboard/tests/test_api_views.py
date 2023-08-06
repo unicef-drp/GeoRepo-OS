@@ -104,6 +104,7 @@ from georepo.utils.dataset_view import (
 from georepo.utils.dataset_view import (
     init_view_privacy_level
 )
+from core.models.preferences import SitePreferences
 
 
 def mocked_cache_get(self, *args, **kwargs):
@@ -2157,6 +2158,18 @@ class TestApiViews(TestCase):
         response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data['is_available'])
+        # Check OAB for master dataset
+        post_data = {
+            'short_code': SitePreferences.preferences().short_code_exclusion
+        }
+        request = self.factory.post(
+            reverse('check-dataset-short-code'), post_data, format='json'
+        )
+        request.user = user
+        view = CheckDatasetShortCode.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['is_available'])
 
     @mock.patch(
         'modules.admin_boundaries.config.'
