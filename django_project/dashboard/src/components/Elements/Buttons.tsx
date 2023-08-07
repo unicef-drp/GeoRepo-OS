@@ -84,9 +84,9 @@ export function DeleteButton({ text, variant, useIcon = true } : ButtonInterface
  * @param {any} onClick button on click
  * @param {boolean} useIcon display icon
  */
-export function CancelButton({ onClick = null, useIcon = true } : ButtonInterface) {
+export function CancelButton({ onClick = null, useIcon = true, text = 'Cancel' } : ButtonInterface) {
   return (
-    <ThemeButton icon={useIcon?<CancelIcon/>:null} title={'Cancel'} variant={'error'} onClick={onClick} />
+    <ThemeButton icon={useIcon?<CancelIcon/>:null} title={text} variant={'error'} onClick={onClick} />
   )
 }
 

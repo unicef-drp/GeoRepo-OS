@@ -95,6 +95,13 @@ export default function UploadWizard (props: UploadWizardInterface) {
             link: `${props.datasetEntitiesPath}?id=${currentDatasetId}`
           }))
           dispatch(setModule(toLower(response.data.type.replace(' ', '_'))))
+          if (response.data.status === 'Canceled') {
+            // add Canceled status after upload
+            dispatch(updateMenu({
+              id: `${props.moduleName}_upload_wizard`,
+              name: 'Upload (Canceled)'
+            }))
+          }
           setTabSelected(step);
           if (step === 4) {
             setEditable(false)

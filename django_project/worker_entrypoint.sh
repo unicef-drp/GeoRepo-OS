@@ -21,10 +21,10 @@ sleep 2
 /etc/init.d/flower start
 
 # start tile and validate workers
-celery -A core multi start tile validate -c:tile 1 -c:validate 3 -Q:tile tegola -Q:validate validation -l INFO
+celery -A core multi start tile validate -c:tile 1 -c:validate 3 -Q:tile tegola -Q:validate validation -l INFO --logfile=/proc/1/fd/1
 
 # start default worker
-celery -A core worker -l INFO
+celery -A core worker -l INFO --logfile=/proc/1/fd/1
 
 echo "-----------------------------------------------------"
 echo "FINISHED WORKER COMMAND --------------------------"

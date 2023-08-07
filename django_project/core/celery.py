@@ -2,7 +2,6 @@ from __future__ import absolute_import, unicode_literals
 
 import os
 from celery import Celery
-from celery.signals import setup_logging
 
 # set the default Django settings module for the 'celery' program.
 # this is also used in manage.py
@@ -21,40 +20,6 @@ app = Celery('georepo')
 # - namespace='CELERY' means all celery-related configuration keys
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
-
-
-@setup_logging.connect
-def config_loggers(*args, **kwags):
-    from logging.config import dictConfig
-    dictConfig({
-        'version': 1,
-        'disable_existing_loggers': False,
-        'root': {
-            'level': 'INFO',
-            'handlers': ['console'],
-        },
-        'formatters': {
-            'verbose': {
-                'format': '%(levelname)s %(asctime)s %(module)s %(process)d '
-                          '%(thread)d %(message)s'
-            },
-        },
-        'handlers': {
-            'console': {
-                'level': 'DEBUG',
-                'class': 'logging.StreamHandler',
-                'formatter': 'verbose'
-            },
-        },
-        'loggers': {
-            'django.db.backends': {
-                'level': 'INFO',
-                'handlers': ['console'],
-                'propagate': False
-            },
-        }
-    })
-
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
