@@ -583,45 +583,31 @@ class AdminBoundaryMatching(object):
             original_geographical = (
                 self.entity_upload.revised_geographical_entity
             )
-        # find prev version
-        prev_unique_code_version = None
-        prev_entity = GeographicalEntity.objects.filter(
-            is_approved=True,
-            dataset=self.entity_upload.upload_session.dataset,
-            unique_code_version__lt=self.entity_upload.unique_code_version
-        ).last()
-        if prev_entity:
-            prev_unique_code_version = prev_entity.unique_code_version
         levels = self.new_entities.order_by(
             'level').distinct('level').values_list('level', flat=True)
         for level in levels:
             new_entities_by_level = self.new_entities.filter(
                 level=level
             )
-
             boundary_comparisons = BoundaryComparison.objects.filter(
                 main_boundary__in=new_entities_by_level,
             )
+            comparisons = boundary_comparisons.filter(
+                comparison_boundary__isnull=False
+            )
             old_total_area = 0
-            old_entity_count = 0
-            if prev_unique_code_version is not None:
-                prev_entities = GeographicalEntity.objects.filter(
-                    dataset=self.entity_upload.upload_session.dataset,
-                    level=level,
-                    is_approved=True,
-                    unique_code_version=prev_unique_code_version
-                )
-                old_entity_count = prev_entities.count()
-                for prev_entity in prev_entities.iterator(chunk_size=1):
-                    if prev_entity.area:
-                        old_total_area += prev_entity.area
-                    else:
-                        old_area = area(
-                            prev_entity.geometry.geojson
-                        ) / 1e+6 if prev_entity.geometry else 0
-                        prev_entity.area = old_area
-                        prev_entity.save()
-                        old_total_area += old_area
+            old_entity_count = comparisons.count()
+            for boundary in comparisons.iterator(chunk_size=1):
+                prev_entity = boundary.comparison_boundary
+                if prev_entity.area:
+                    old_total_area += prev_entity.area
+                else:
+                    old_area = area(
+                        prev_entity.geometry.geojson
+                    ) / 1e+6 if prev_entity.geometry else 0
+                    prev_entity.area = old_area
+                    prev_entity.save()
+                    old_total_area += old_area
 
             new_total_area = 0
             if new_entities_by_level:
@@ -737,11 +723,13 @@ def get_closest_entities(
             is_approved=True,
             dataset=entity_target.dataset,
             unique_code_version__lt=entity_target.unique_code_version
-        ).last()
+        ).order_by('unique_code_version').last()
         if prev_entity:
             old_entities = old_entities.filter(
                 unique_code_version=prev_entity.unique_code_version
             )
+        else:
+            return 0, GeographicalEntity.objects.none()
     # filter by same ancestor
     ancestor_unique_code = (
         entity_target.ancestor.unique_code if
