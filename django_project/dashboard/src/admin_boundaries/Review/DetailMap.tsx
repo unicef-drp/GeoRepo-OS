@@ -119,6 +119,8 @@ export default function ReviewMap(props: ReviewMapInterface) {
     }, [props.bbox])
 
     useEffect(() => {
+        console.log('mapLoaded ', mapLoaded)
+        console.log('mainBoundary ', props.mainBoundary)
         if (!mapLoaded) return;
         // Draw main boundary
         if (props.mainBoundary) {
@@ -157,7 +159,7 @@ export default function ReviewMap(props: ReviewMapInterface) {
                 });
             }
         }
-    }, [props.mainBoundary])
+    }, [props.mainBoundary, mapLoaded])
 
      useEffect(() => {
         if (!mapLoaded) return;
@@ -186,7 +188,7 @@ export default function ReviewMap(props: ReviewMapInterface) {
                 });
             }
         }
-    }, [props.mainBoundary])
+    }, [props.comparisonBoundary, mapLoaded])
 
     useEffect(() => {
         if (!legendControl.current) return;
@@ -204,7 +206,7 @@ export default function ReviewMap(props: ReviewMapInterface) {
         } else {
             legendControl.current.setComparisonBoundaryText(null, null)
         }
-    }, [props.mainBoundaryData, props.comparisonBoundaryData])
+    }, [props.mainBoundaryData, props.comparisonBoundaryData, mapLoaded])
 
     useEffect(() => {
         if (!loading) {
