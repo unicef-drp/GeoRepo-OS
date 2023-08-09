@@ -6,9 +6,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import resolve_url, render, get_object_or_404
 from django.urls import reverse
 from django.http import HttpResponseRedirect
-from django.contrib.sessions.models import Session
 
-from .handlers import AzureAuthHandler, AzureAuthTokenHandler
+from .handlers import AzureAuthHandler
 from .exceptions import InvalidUserError
 from .models import ThirdPartyApplication
 
@@ -91,24 +90,3 @@ def azure_auth_third_party(request):
         reverse('login') + '?next=' +
         request.path + '?' + request.GET.urlencode())
     return HttpResponseRedirect(url_redirect)
-
-
-def azure_auth_refresh_silent(session_key):
-    session = Session.objects.filter(session_key=session_key).first()
-    if session is None:
-        return None
-    session_data = session.get_decoded()
-    token_handler = AzureAuthTokenHandler(session_data)
-    access_token = token_handler.get_access_token_from_cache()
-    if access_token is None:
-        return None
-    # print('********ACCESS_TOKEN*********')
-    # print(access_token)
-    # print('********ACCESS_TOKEN*********')
-    # refresh_token = AzureAuthHandler.get_refresh_token(token_handler.config.CLIENT_ID, token_handler.cache)
-    # print('********REFRESH_TOKEN*********')
-    # print(refresh_token)
-    # print('********REFRESH_TOKEN*********')
-    session_data = token_handler.save_token_cache(session_data)
-    session.session_data = Session.objects.encode(session_data)
-    session.save()

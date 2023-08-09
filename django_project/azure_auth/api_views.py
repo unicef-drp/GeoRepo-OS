@@ -4,10 +4,8 @@ from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from django.contrib.sessions.models import Session
 from django.contrib.auth import get_user_model
-from django.conf import settings
 from .models import ThirdPartyApplication
 from .handlers import AzureAuthTokenHandler
-from .configuration import get_config_instance, AzureAuthConfig
 
 UserModel = get_user_model()
 

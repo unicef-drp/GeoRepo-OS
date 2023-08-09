@@ -207,12 +207,15 @@ class AzureAuthHandler:
         if token_cache:
             self._cache.deserialize(token_cache)
         return self._cache
-    
+
     @staticmethod
     def get_refresh_token(client_id, cache):
-        matches = cache.find(msal.TokenCache.CredentialType.REFRESH_TOKEN, query={
-            "client_id": client_id
-        })
+        matches = cache.find(
+            msal.TokenCache.CredentialType.REFRESH_TOKEN,
+            query={
+                "client_id": client_id
+            }
+        )
         # Since unfit RTs would not be aggressively removed,
         # we start from newer RTs which are more likely fit.
         entries = sorted(
@@ -331,7 +334,7 @@ class AzureAuthHandler:
         """Remove session variables."""
         self.request.session.pop(self.token_cache_session_key, '')
         self.request.session.pop(self.id_claims_session_key, '')
-    
+
     @property
     def config(self):
         return self._config
@@ -382,7 +385,7 @@ class AzureAuthTokenHandler:
     @property
     def cache(self):
         return self._cache
-    
+
     @property
     def msal_app(self, *args, **kwargs) -> None:
         """Get or initialize the msal instance."""

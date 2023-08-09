@@ -22,39 +22,45 @@ mocked_azure_settings = {
 mocked_azure_config = _AzureAuthConfig(
     config=mocked_azure_settings).parse_settings()
 
+
 def build_id_token(
         iss="issuer", sub="subject", aud="my_client_id", exp=None, iat=None,
         **claims):  # AAD issues "preferred_username", ADFS issues "upn"
-    return "header.%s.signature" % base64.b64encode(json.dumps(dict({
-        "iss": iss,
-        "sub": sub,
-        "aud": aud,
-        "exp": exp or (time.time() + 100),
-        "iat": iat or time.time(),
-        }, **claims)).encode()).decode('utf-8')
+    return "header.%s.signature" % base64.b64encode(
+        json.dumps(
+            dict({
+                "iss": iss,
+                "sub": sub,
+                "aud": aud,
+                "exp": exp or (time.time() + 100),
+                "iat": iat or time.time(),
+            }, **claims)
+        ).encode()).decode('utf-8')
 
 
 # kwargs: Pass-through: refresh_token, foci, id_token, error, refresh_in, ...
-def build_response(  # simulate a response from AAD
-            uid=None, utid=None,  # If present, they will form client_info
-            access_token=None, expires_in=3600, token_type="some type",
-            **kwargs 
-        ):
+# simulate a response from AAD
+def build_response(
+        uid=None, utid=None,  # If present, they will form client_info
+        access_token=None, expires_in=3600, token_type="some type",
+        **kwargs):
     response = {}
     if uid and utid:  # Mimic the AAD behavior for "client_info=1" request
-        response["client_info"] = base64.b64encode(json.dumps({
-            "uid": uid, "utid": utid,
-            }).encode()).decode('utf-8')
+        response["client_info"] = base64.b64encode(
+            json.dumps({
+                "uid": uid,
+                "utid": utid,
+            }).encode()
+        ).decode('utf-8')
     if access_token:
         response.update({
             "access_token": access_token,
             "expires_in": expires_in,
             "token_type": token_type,
-            })
+        })
     # Pass-through key-value pairs as top-level fields
     response.update(kwargs)
     return response
-
 
 
 @override_settings(AZURE_AUTH=mocked_azure_settings, USE_AZURE=True)
@@ -87,15 +93,18 @@ class TestAzureRefreshToken(TestCase):
         id_token = build_id_token(
             oid="object1234", preferred_username="John Doe", aud=client_id)
         token_cache = msal.SerializableTokenCache()
-        token_cache.add({
-            "client_id": client_id,
-            "scope": ["s2", "s1", "s3"],  # Not in particular order
-            "token_endpoint": "https://login.example.com/contoso/v2/token",
-            "response": build_response(
-                uid="uid", utid="utid",  # client_info
-                expires_in=3600, access_token="an access token",
-                id_token=id_token, refresh_token="a refresh token"),
-            }, now=1000)
+        token_cache.add(
+            {
+                "client_id": client_id,
+                "scope": ["s2", "s1", "s3"],  # Not in particular order
+                "token_endpoint": "https://login.example.com/contoso/v2/token",
+                "response": build_response(
+                    uid="uid", utid="utid",  # client_info
+                    expires_in=3600, access_token="an access token",
+                    id_token=id_token, refresh_token="a refresh token"),
+            },
+            now=1000
+        )
         session_1[f'token_cache_{client_id}'] = token_cache.serialize()
         session_1.create()
         self.session_key_1 = session_1.session_key
