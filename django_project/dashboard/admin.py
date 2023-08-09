@@ -14,9 +14,9 @@ from dashboard.models import (
     BatchReview,
     STARTED,
     REVIEWING,
-    EntitiesUserConfig,
-    PrivacyLevel
+    EntitiesUserConfig
 )
+from georepo.models import TemporaryTilingConfig
 
 
 class LayerFileAdmin(admin.ModelAdmin):
@@ -177,6 +177,11 @@ class PrivacyLevelAdmin(admin.ModelAdmin):
     list_display = ('privacy_level', 'label')
 
 
+class TemporaryTilingConfigAdmin(admin.ModelAdmin):
+    list_display = ('session', 'zoom_level', 'level',
+                    'simplify_tolerance', 'created_at')
+
+
 admin.site.register(LayerFile, LayerFileAdmin)
 admin.site.register(LayerUploadSession, LayerUploadSessionAdmin)
 admin.site.register(EntityUploadStatus, EntityUploadAdmin)
@@ -186,4 +191,4 @@ admin.site.register(Notification, NotificationAdmin)
 admin.site.register(Maintenance, MaintenanceAdmin)
 admin.site.register(BatchReview, BatchReviewAdmin)
 admin.site.register(EntitiesUserConfig, EntitiesUserConfigAdmin)
-admin.site.register(PrivacyLevel, PrivacyLevelAdmin)
+admin.site.register(TemporaryTilingConfig, TemporaryTilingConfigAdmin)

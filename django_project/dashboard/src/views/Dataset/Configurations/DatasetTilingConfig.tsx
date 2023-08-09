@@ -503,16 +503,21 @@ export default function DatasetTilingConfig(props: DatasetTilingConfigInterface)
                 if (props.dataset) {
                     _query_params = _query_params + `&dataset_uuid=${props.dataset.uuid}`
                 } else if (props.view) {
-                    _query_params = _query_params + `&view_uuid=${props.view.uuid}`
+                    _query_params = _query_params + `&view_uuid=${props.view.uuid}` + `&dataset_uuid=${props.view.dataset_uuid}`
                 }
-                let _moduleName = toLower(props.dataset.type.replace(' ', '_'))
-                navigate(`/${_moduleName}/tiling_config_wizard?${_query_params}`)
+                let _moduleName = ''
+                if (props.dataset) {
+                    _moduleName = toLower(props.dataset.type.replace(' ', '_'))
+                    navigate(`/${_moduleName}/tiling_config_wizard?${_query_params}`)
+                } else if (props.view) {
+                    navigate(`/view_edit_tiling_config_wizard?${_query_params}`)
+                }
             }
           ).catch(error => {
             setLoading(false)
             console.log('error ', error)
-            alert('Error: unable to update tiling config matrix!')
-          })        
+            alert('Error: Unable to update tiling config matrix! ' + error)
+          })
     }
 
     useEffect(() => {
