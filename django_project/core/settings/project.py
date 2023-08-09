@@ -142,5 +142,14 @@ if USE_AZURE:
     TEMPLATES[0]['DIRS'] += [
         absolute_path('azure_auth', 'templates')
     ]
-
+    # override logout url in swagger ui
+    SWAGGER_SETTINGS['LOGIN_URL'] = '/azure-auth/login'
+    SWAGGER_SETTINGS['LOGOUT_URL'] = '/azure-auth/logout'
+    SWAGGER_SETTINGS['SECURITY_DEFINITIONS'].update({
+        'B2C JWT Token Auth': {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'Authorization'
+        }
+    })
 CODE_RELEASE_VERSION = code_release_version()
