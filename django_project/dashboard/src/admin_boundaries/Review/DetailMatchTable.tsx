@@ -93,7 +93,7 @@ const BOOLEAN_COLUMN_FILTER_VALUES = [
     'Yes'
 ]
 
-const rowsPerPageOptions = [20, 50, 100]
+const rowsPerPageOptions = [5, 20, 50, 100]
 
 const getDefaultPagination = ():PaginationInterface => {
     return {
@@ -569,9 +569,6 @@ export default function DetailMatchTable(props: ReviewTabInterface) {
 
     useEffect(() => {
         fetchingComparisonData()
-        // set initial bbox
-        if (props.uploadSession.bbox)
-            setBoundaryBbox(props.uploadSession.bbox)
     }, [selectedLevel])
 
     useEffect(() => {
@@ -587,6 +584,7 @@ export default function DetailMatchTable(props: ReviewTabInterface) {
 
     useEffect(() => {
         if (selectedRowData && selectedRowData.id) {
+            setBoundaryBbox(null)
             fetchSummary(selectedRowData.id)
         }
     }, [selectedRowData])
