@@ -41,7 +41,12 @@ from georepo.models import (
     GeorepoRole,
     UserAccessRequest
 )
-from georepo.forms import AzureAdminUserCreationForm, AzureAdminUserChangeForm
+from georepo.forms import (
+    AzureAdminUserCreationForm,
+    AzureAdminUserChangeForm,
+    DatasetAdminCreationForm,
+    DatasetAdminChangeForm
+)
 
 
 User = get_user_model()
@@ -246,6 +251,16 @@ def patch_entity_names(modeladmin, request, queryset):
 
 
 class DatasetAdmin(GuardedModelAdmin):
+    add_form_template = None
+    form = DatasetAdminChangeForm
+    add_form = DatasetAdminCreationForm
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('label', 'description', 'module', 'short_code',
+                       'max_privacy_level', 'min_privacy_level',),
+        }),
+    )
     list_display = (
         'label', 'short_code', 'size', 'task_tiling_status',
         'geojson', 'layer_preview', 'arcgis_config')
@@ -257,6 +272,18 @@ class DatasetAdmin(GuardedModelAdmin):
         clear_cache, generate_jmeter_script,
         generate_default_views, add_to_public_groups,
         generate_dataset_concept_ucode, patch_entity_names]
+
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        Use creation form during Dataset creation
+        """
+        defaults = {}
+        if obj is None:
+            defaults['form'] = self.add_form
+        defaults.update(kwargs)
+        form = super().get_form(request, obj, **defaults)
+        form.user = request.user
+        return form
 
     def arcgis_config(self, obj: Dataset):
         from georepo.utils.arcgis import (
