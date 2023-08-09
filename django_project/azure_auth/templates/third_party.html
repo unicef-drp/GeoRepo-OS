@@ -56,7 +56,11 @@
         $(function() {
             if (window.opener == null) window.location = "/";
             setTimeout(function() {
-                window.opener.postMessage("{{ access_token }}", "{{ requester }}");
+                var _eventData = {
+                    'access_token': "{{ access_token }}",
+                    'session': "{{ session }}"
+                }
+                window.opener.postMessage(_eventData, "{{ requester }}");
                 $('#loading').hide();
                 // show success message
                 $('#success-message').show();

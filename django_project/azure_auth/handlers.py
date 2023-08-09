@@ -207,6 +207,19 @@ class AzureAuthHandler:
         if token_cache:
             self._cache.deserialize(token_cache)
         return self._cache
+    
+    @staticmethod
+    def get_refresh_token(client_id, cache):
+        matches = cache.find(msal.TokenCache.CredentialType.REFRESH_TOKEN, query={
+            "client_id": client_id
+        })
+        # Since unfit RTs would not be aggressively removed,
+        # we start from newer RTs which are more likely fit.
+        entries = sorted(
+            matches, key=lambda e: int(e.get("last_modification_time", "0")),
+            reverse=True
+        )
+        return entries[0]['secret'] if entries else None
 
     def _save_cache(self):
         if self._cache and self._cache.has_state_changed:
@@ -318,3 +331,77 @@ class AzureAuthHandler:
         """Remove session variables."""
         self.request.session.pop(self.token_cache_session_key, '')
         self.request.session.pop(self.id_claims_session_key, '')
+    
+    @property
+    def config(self):
+        return self._config
+
+
+class AzureAuthTokenHandler:
+    """Class to interface msal token data."""
+
+    def __init__(self, session_dict, config=None):
+        if config and config.CLIENT_ID == "''":
+            config = None
+        self._config = config if config else AzureAuthConfig
+        self.token_cache_session_key = "token_cache_{client_id}".format(
+            client_id=self._config.CLIENT_ID
+        )
+        self._cache = msal.SerializableTokenCache()
+        token_cache = session_dict.get(self.token_cache_session_key)
+        if not token_cache:
+            raise ValueError('Invalid token cache!')
+        self._cache.deserialize(token_cache)
+        self._msal_app = None
+
+    def get_access_token_from_cache(self, force_refresh=False):
+        """Retrieve the token from cache, otherwise fetch new token."""
+        if not self.msal_app:
+            return None
+        accounts = self.msal_app.get_accounts()
+        if accounts:  # pragma: no branch
+            # Will return `None` if CCA cannot retrieve or generate new token
+            token_result = self.msal_app.acquire_token_silent(
+                scopes=self._config.SCOPES, account=accounts[0],
+                force_refresh=force_refresh
+            )
+            if token_result and 'access_token' in token_result:
+                return token_result['access_token']
+
+    def save_token_cache(self, session_dict):
+        """Save serialized token cached to session dict."""
+        session_dict[self.token_cache_session_key] = (
+            self._cache.serialize()
+        )
+        return session_dict
+
+    @property
+    def config(self):
+        return self._config
+
+    @property
+    def cache(self):
+        return self._cache
+    
+    @property
+    def msal_app(self, *args, **kwargs) -> None:
+        """Get or initialize the msal instance."""
+        output = None
+        try:
+            if not self._msal_app:
+                # validate_authority="https://login.microsoftonline.com/"
+                # in AzureAuthConfig.AUTHORITY,
+                self._msal_app = msal.ConfidentialClientApplication(
+                    client_id=self._config.CLIENT_ID,
+                    client_credential=self._config.CLIENT_SECRET,
+                    authority=self._config.AUTHORITY,
+                    token_cache=self.cache,
+                    validate_authority=self._config.AUTHORITY.startswith(
+                        "https://login.microsoftonline.com/"
+                    ),
+                )
+            output = self._msal_app
+        except Exception as e:
+            logger.exception(e)
+        logger.debug("msal_app: %s", output)
+        return output

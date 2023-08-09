@@ -62,6 +62,7 @@ class _AzureAuthConfig:
                 'azure_auth:logout',
                 'azure_auth:callback',
                 'login',  # django login page
+                'azure_auth:token'
             ] + output.pop('PUBLIC_URLS', [])
             output['PUBLIC_URLS'] = list(set(output['PUBLIC_URLS']))
             output['REDIRECT_URI'] = output.pop('REDIRECT_URI',

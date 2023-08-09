@@ -6,8 +6,9 @@ from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import resolve_url, render, get_object_or_404
 from django.urls import reverse
 from django.http import HttpResponseRedirect
+from django.contrib.sessions.models import Session
 
-from .handlers import AzureAuthHandler
+from .handlers import AzureAuthHandler, AzureAuthTokenHandler
 from .exceptions import InvalidUserError
 from .models import ThirdPartyApplication
 
@@ -75,11 +76,39 @@ def azure_auth_third_party(request):
     # fetch access token and refresh token from session
     token = AzureAuthHandler(request).get_token_from_cache()
     if token and 'access_token' in token:
+        # store client_id to current user session
+        third_party_client_key = 'third_party_granted_access'
+        granted_client_ids = request.session.get(third_party_client_key, [])
+        if client_id not in granted_client_ids:
+            granted_client_ids.append(client_id)
+        request.session[third_party_client_key] = granted_client_ids
         return render(request, 'third_party.html', context={
             'access_token': token['access_token'],
-            'requester': app.origin
+            'requester': app.origin,
+            'session': request.session.session_key
         })
     url_redirect = (
         reverse('login') + '?next=' +
         request.path + '?' + request.GET.urlencode())
     return HttpResponseRedirect(url_redirect)
+
+
+def azure_auth_refresh_silent(session_key):
+    session = Session.objects.filter(session_key=session_key).first()
+    if session is None:
+        return None
+    session_data = session.get_decoded()
+    token_handler = AzureAuthTokenHandler(session_data)
+    access_token = token_handler.get_access_token_from_cache()
+    if access_token is None:
+        return None
+    # print('********ACCESS_TOKEN*********')
+    # print(access_token)
+    # print('********ACCESS_TOKEN*********')
+    # refresh_token = AzureAuthHandler.get_refresh_token(token_handler.config.CLIENT_ID, token_handler.cache)
+    # print('********REFRESH_TOKEN*********')
+    # print(refresh_token)
+    # print('********REFRESH_TOKEN*********')
+    session_data = token_handler.save_token_cache(session_data)
+    session.session_data = Session.objects.encode(session_data)
+    session.save()
