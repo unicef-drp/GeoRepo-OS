@@ -165,6 +165,7 @@ class AzureAuthBackend(ModelBackend):
 
             output = user
         except InvalidUserError as e:
+            request.session['b2c_user'] = user_
             raise e
         except Exception as e:
             logger.exception(e)

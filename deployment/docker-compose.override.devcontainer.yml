@@ -43,6 +43,7 @@ services:
       target: dev
     volumes:
       - ../:/home/web/project
+      - ../django_project:/home/web/django_project
       - ./volumes/static:/home/web/static
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
