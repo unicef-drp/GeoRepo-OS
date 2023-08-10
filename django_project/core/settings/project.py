@@ -135,9 +135,10 @@ if USE_AZURE:
     AUTHENTICATION_BACKENDS = [
         'azure_auth.backends.AzureAuthBackend'
     ] + AUTHENTICATION_BACKENDS
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
-        'azure_auth.backends.JWTAccessTokenAuthentication'
-    ] + REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
+        REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] +
+        ['azure_auth.backends.JWTAccessTokenAuthentication']
+    )
     # add azure templates
     TEMPLATES[0]['DIRS'] += [
         absolute_path('azure_auth', 'templates')
