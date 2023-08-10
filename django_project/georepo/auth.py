@@ -29,7 +29,7 @@ class CustomTokenAuthentication(authentication.TokenAuthentication):
         return super(CustomTokenAuthentication, self).authenticate(request)
 
 
-class BearerAuthentication(authentication.TokenAuthentication):
+class BearerAuthentication(CustomTokenAuthentication):
     """
     Simple token based authentication using utvsapitoken.
     Clients should authenticate by passing the token key in the 'Authorization'
@@ -51,6 +51,9 @@ class BearerAuthentication(authentication.TokenAuthentication):
             msg = _('Invalid token header. '
                     'Token string should not contain spaces.')
             raise authentication.exceptions.AuthenticationFailed(msg)
+        # skip this authentication if this is a jwt token
+        if self.test_jwt_token(auth[1].decode()):
+            return None
         try:
             token = auth[1].decode()
         except UnicodeError:
