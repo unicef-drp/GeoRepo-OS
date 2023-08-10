@@ -101,6 +101,24 @@ class SignUpView(FormView):
         return super(SignUpView, self).get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
+        """Get context data."""
         context = super().get_context_data(**kwargs)
         context['sign_up_success'] = self.request.GET.get('success', False)
         return context
+
+    def get_initial(self):
+        """Update the initial data to use for forms on this view."""
+        default_user = {
+            'first_name': '',
+            'last_name': '',
+            'email': '',
+        }
+        try:
+            default_user.update(self.request.session['b2c_user'])
+        except (TypeError, KeyError):
+            pass
+        initial = super().get_initial()
+        initial['first_name'] = default_user['first_name']
+        initial['last_name'] = default_user['last_name']
+        initial['email'] = default_user['email']
+        return initial
