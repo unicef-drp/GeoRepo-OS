@@ -124,6 +124,7 @@ class DatasetViewDetailSerializer(TaggitSerializer,
     dataset_style_source_name = serializers.SerializerMethodField()
     query_string = serializers.SerializerMethodField()
     dataset_name = serializers.SerializerMethodField()
+    module_name = serializers.SerializerMethodField()
 
     def get_mode(self, obj: DatasetView):
         if obj.is_static is None:
@@ -191,6 +192,9 @@ class DatasetViewDetailSerializer(TaggitSerializer,
     def get_dataset_name(self, obj: DatasetView):
         return obj.dataset.label
 
+    def get_module_name(self, obj: DatasetView):
+        return obj.dataset.module.name
+
     class Meta:
         model = DatasetView
         fields = [
@@ -210,5 +214,6 @@ class DatasetViewDetailSerializer(TaggitSerializer,
             'is_read_only',
             'dataset_uuid',
             'dataset_style_source_name',
-            'dataset_name'
+            'dataset_name',
+            'module_name'
         ]

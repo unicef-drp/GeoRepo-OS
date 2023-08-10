@@ -155,6 +155,15 @@ export const ViewEditRoute: RouteInterface = {
   parent: ViewListRoute
 }
 
+export const ViewEditTilingConfigRoute: RouteInterface = {
+  id: 'view_tiling_config_wizard',
+  name: 'Update Tiling Config',
+  path: '/view_edit_tiling_config_wizard',
+  element: lazy(() => import('./Dataset/Configurations/TilingConfigWizard' /* webpackChunkName: "view_edit_tiling_config_wizard" */)),
+  parent: ViewEditRoute
+}
+
+
 export const EntityConceptUCodeRoute: RouteInterface = {
   id: 'entity_by_concept_ucode',
   name: 'Entity Detail By Concept UCode',
@@ -201,6 +210,7 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   GroupDetailRoute,
   ViewCreateRoute,
   ViewEditRoute,
+  ViewEditTilingConfigRoute,
   EntityConceptUCodeRoute,
   ModuleListRoute,
   ModuleDetailRoute,
@@ -217,6 +227,7 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   ReviewListRoute,
   ViewCreateRoute,
   ViewEditRoute,
+  ViewEditTilingConfigRoute,
   EntityConceptUCodeRoute,
   InvalidPermissionRoute,
   AccessRequestSubmitRoute

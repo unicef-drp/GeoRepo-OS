@@ -120,15 +120,30 @@ class QueryStringCheck(object):
         return True
 
 
-class DatasetViewReadPermission(UserPassesTestMixin):
+class DatasetViewBasePermission(UserPassesTestMixin):
+
     def handle_no_permission(self):
         return HttpResponseForbidden('No permission')
 
+    def get_dataset_view(self):
+        id = self.kwargs.get('id')
+        if id.isnumeric():
+            dataset_view = get_object_or_404(
+                DatasetView,
+                id=id
+            )
+        else:
+            dataset_view = get_object_or_404(
+                DatasetView,
+                uuid=id
+            )
+        return dataset_view
+
+
+class DatasetViewReadPermission(DatasetViewBasePermission):
+
     def test_func(self):
-        dataset_view = get_object_or_404(
-            DatasetView,
-            id=self.kwargs.get('id')
-        )
+        dataset_view = self.get_dataset_view()
         privacy_level = get_view_permission_privacy_level(
             self.request.user, dataset_view.dataset,
             dataset_view=dataset_view)
@@ -141,28 +156,18 @@ class DatasetViewReadPermission(UserPassesTestMixin):
         )
 
 
-class DatasetViewManagePermission(UserPassesTestMixin):
-    def handle_no_permission(self):
-        return HttpResponseForbidden('No permission')
+class DatasetViewManagePermission(DatasetViewBasePermission):
 
     def test_func(self):
-        dataset_view = get_object_or_404(
-            DatasetView,
-            id=self.kwargs.get('id')
-        )
+        dataset_view = self.get_dataset_view()
         return self.request.user.has_perm('edit_metadata_dataset_view',
                                           dataset_view)
 
 
-class DatasetViewOwnPermission(UserPassesTestMixin):
-    def handle_no_permission(self):
-        return HttpResponseForbidden('No permission')
+class DatasetViewOwnPermission(DatasetViewBasePermission):
 
     def test_func(self):
-        dataset_view = get_object_or_404(
-            DatasetView,
-            id=self.kwargs.get('id')
-        )
+        dataset_view = self.get_dataset_view()
         return (
             self.request.user.has_perm(
                 'edit_query_dataset_view',
@@ -181,8 +186,7 @@ class ViewDetail(AzureAuthRequiredMixin,
     permission_classes = [IsAuthenticated]
 
     def get(self, *args, **kwargs):
-        dataset_view = DatasetView.objects.get(
-            id=self.kwargs.get('id'))
+        dataset_view = self.get_dataset_view()
         return Response(
             DatasetViewDetailSerializer(
                 dataset_view,

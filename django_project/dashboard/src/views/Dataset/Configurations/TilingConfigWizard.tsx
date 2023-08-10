@@ -31,6 +31,7 @@ interface TabInterface {
 }
 
 const FETCH_DATASET_DETAIL_URL = '/api/dataset-detail/'
+const FETCH_VIEW_DETAIL_URL = '/api/view-detail/'
 const TILING_CONFIGS_TEMP_DETAIL_URL = '/api/tiling-configs/temporary/detail/'
 const TILING_CONFIGS_TEMP_CONFIRM_URL = '/api/tiling-configs/temporary/apply/'
 const TILING_CONFIGS_STATUS_URL = '/api/tiling-configs/status/'
@@ -131,10 +132,10 @@ function TilingConfigPreview(props: any) {
 
     const addMapLayers = () => {
         let _url = window.location.origin
-        if (props.datasetUUID) {
-            _url = _url + `/api/dashboard-tiles/maps/tile-preview/dataset/${props.datasetUUID}/${props.session}/{z}/{x}/{y}/`
-        } else if (props.viewUUID) {
+        if (props.viewUUID) {
             _url = _url + `/api/dashboard-tiles/maps/tile-preview/view/${props.viewUUID}/${props.session}/{z}/{x}/{y}/`
+        } else if (props.datasetUUID) {
+            _url = _url + `/api/dashboard-tiles/maps/tile-preview/dataset/${props.datasetUUID}/${props.session}/{z}/{x}/{y}/`
         }
         if (_url === '') return;
         map.current.addSource('tiling_preview', {
@@ -242,8 +243,8 @@ function TilingConfigConfirm(props: any) {
     const confirmTilingConfig = () => {
         setLoading(true)
         let _data = {
-            'object_uuid': props.datasetUUID ? props.datasetUUID : props.viewUUID,
-            'object_type': props.datasetUUID ? 'dataset' : 'datasetview',
+            'object_uuid': props.viewUUID ? props.viewUUID : props.datasetUUID,
+            'object_type': props.viewUUID ? 'datasetview' : 'dataset',
             'session': props.session
         }
         postData(TILING_CONFIGS_TEMP_CONFIRM_URL, _data).then(
@@ -298,24 +299,35 @@ export default function TilingConfigWizard(props: any) {
     const dispatch = useAppDispatch();
 
     useEffect(() => {
+        let _view_uuid = searchParams.get('view_uuid')
         let _dataset_uuid = searchParams.get('dataset_uuid')
-        axios.get(`${FETCH_DATASET_DETAIL_URL}${_dataset_uuid}/`).then((response) => {
-            // append dataset name to Dataset Breadcrumbs
-            let _name = response.data.dataset
-            if (response.data.type) {
-                _name = _name + ` (${response.data.type})`
-            }
-            let moduleName = toLower(response.data.type.replace(' ', '_'))
-            dispatch(updateMenu({
-                id: `${moduleName}_dataset_entities`,
-                name: _name,
-                link: `/${moduleName}/dataset_entities?id=${response.data.id}`
-            }))
+        let _url = _view_uuid ? `${FETCH_VIEW_DETAIL_URL}${_view_uuid}` : `${FETCH_DATASET_DETAIL_URL}${_dataset_uuid}/`
+        axios.get(`${_url}`).then((response) => {
             let _session = searchParams.get('session')
             setSession(_session)
-            let _view_uuid = searchParams.get('view_uuid')
             setViewUUID(_view_uuid)
             setDatasetUUID(_dataset_uuid)
+            if (_view_uuid) {
+                // append view name to View Breadcrumbs
+                let _name = response.data.name
+                dispatch(updateMenu({
+                    id: `view_edit`,
+                    name: _name,
+                    link: `/view_edit?id=${response.data.id}`
+                }))
+            } else {
+                // append dataset name to Dataset Breadcrumbs
+                let _name = response.data.dataset
+                if (response.data.type) {
+                    _name = _name + ` (${response.data.type})`
+                }
+                let moduleName = toLower(response.data.type.replace(' ', '_'))
+                dispatch(updateMenu({
+                    id: `${moduleName}_dataset_entities`,
+                    name: _name,
+                    link: `/${moduleName}/dataset_entities?id=${response.data.id}`
+                }))
+            }
         }).catch((error) => {
             console.log('Error fetching dataset detail ', error)
         })
@@ -343,8 +355,8 @@ export default function TilingConfigWizard(props: any) {
     }
 
     const onRedirectToTilingConfig = () => {
-        let _object_type = datasetUUID ? 'dataset' : 'datasetview'
-        let _object_uuid = datasetUUID ? datasetUUID : viewUUID
+        let _object_type = viewUUID ? 'datasetview' : 'dataset'
+        let _object_uuid = viewUUID ? viewUUID : datasetUUID 
         let _fetch_url = `${TILING_CONFIGS_STATUS_URL}${_object_type}/${_object_uuid}/`
         axios.get(_fetch_url).then(
             response => {
@@ -352,10 +364,10 @@ export default function TilingConfigWizard(props: any) {
                 let moduleName = toLower(response.data['module']).replace(' ', '_')
                 let _path = ''
                 let _object_id = response.data['object_id']
-                if (datasetUUID) {
-                    _path = `/${moduleName}/dataset_entities?id=${_object_id}&tab=5`
-                } else {
+                if (viewUUID) {
                     _path = `/view_edit?id=${_object_id}&tab=3`
+                } else {
+                    _path = `/${moduleName}/dataset_entities?id=${_object_id}&tab=5`
                 }
                 navigate(_path)
             }
