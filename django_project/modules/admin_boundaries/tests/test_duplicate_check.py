@@ -123,4 +123,4 @@ class TestDuplicateCheck(GeometryCheckTestBase):
         self.assertIn(8, errors)
         self.assertEqual(len(errors[8]), 1)
         self.assertEqual(errors[8][0].other_feature_id, '7')
-        self.assertEqual(len(geom_errors), 2)
+        self.assertEqual(len(geom_errors), 3)

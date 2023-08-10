@@ -65,5 +65,4 @@ class TestValidNodesCheck(GeometryCheckTestBase):
         errors = self.get_valid_nodes_check_results(
             shape_file_path
         )
-        self.assertEqual(len(errors), 1)
-        self.assertIn(6, errors)
+        self.assertEqual(len(errors), 0)

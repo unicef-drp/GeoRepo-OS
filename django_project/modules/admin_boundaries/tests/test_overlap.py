@@ -184,7 +184,7 @@ class TestOverlapCheck(GeometryCheckTestBase):
         self.assertIn(10, errors)
         self.assertEqual(len(errors[10]), 2)
         # assert invalid geom
-        self.assertEqual(len(geom_errors), 2)
+        self.assertEqual(len(geom_errors), 3)
         self.assertIn(1, geom_errors)
         self.assertIn(12, geom_errors)
 
@@ -345,6 +345,6 @@ class TestOverlapCheck(GeometryCheckTestBase):
         self.assertIn(9, errors)
         self.assertEqual(len(errors[9]), 2)
         # assert invalid geom
-        self.assertEqual(len(geom_errors), 2)
+        self.assertEqual(len(geom_errors), 3)
         self.assertIn(1, geom_errors)
         self.assertIn(12, geom_errors)

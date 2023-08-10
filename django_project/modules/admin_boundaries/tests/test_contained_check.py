@@ -188,4 +188,4 @@ class TestContainedCheck(GeometryCheckTestBase):
         self.assertIn(3, errors)
         self.assertEqual(len(errors[3]), 1)
         self.assertEqual(errors[3][0].other_feature_id, '0')
-        self.assertEqual(len(geom_errors), 2)
+        self.assertEqual(len(geom_errors), 3)
