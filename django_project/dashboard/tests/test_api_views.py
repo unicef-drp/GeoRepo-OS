@@ -1375,14 +1375,14 @@ class TestApiViews(TestCase):
         view = DatasetViewF.create()
         request = self.factory.post(
             reverse('delete-view', kwargs={
-                'id': view.id
+                'id': str(view.id)
             }), {},
             format='json'
         )
         request.user = user
         delete_dataset_view = DeleteView.as_view()
         response = delete_dataset_view(request, **{
-            'id': view.id
+            'id': str(view.id)
         })
         self.assertEqual(response.status_code, 403)
 
@@ -1392,14 +1392,14 @@ class TestApiViews(TestCase):
         grant_datasetview_owner(view_1, user)
         request = self.factory.post(
             reverse('delete-view', kwargs={
-                'id': view_1.id
+                'id': str(view_1.id)
             }), {},
             format='json'
         )
         request.user = user
         delete_dataset_view = DeleteView.as_view()
         response = delete_dataset_view(request, **{
-            'id': view_1.id
+            'id': str(view_1.id)
         })
         self.assertEqual(response.status_code, 200)
 
@@ -1408,14 +1408,14 @@ class TestApiViews(TestCase):
         view_2 = DatasetViewF.create(created_by=superuser)
         request = self.factory.post(
             reverse('delete-view', kwargs={
-                'id': view_2.id
+                'id': str(view_2.id)
             }), {},
             format='json'
         )
         request.user = superuser
         delete_dataset_view = DeleteView.as_view()
         response = delete_dataset_view(request, **{
-            'id': view_2.id
+            'id': str(view_2.id)
         })
         self.assertEqual(response.status_code, 200)
 
@@ -1434,7 +1434,7 @@ class TestApiViews(TestCase):
         query_string = 'SELECT * from geographicalentity;'
         request = self.factory.post(
             reverse('update-view', kwargs={
-                'id': view_1.id
+                'id': str(view_1.id)
             }), {
                 'name': 'update',
                 'dataset_id': dataset.id,
@@ -1446,7 +1446,7 @@ class TestApiViews(TestCase):
         request.user = user
         update_dataset_view = UpdateView.as_view()
         response = update_dataset_view(request, **{
-            'id': view_1.id
+            'id': str(view_1.id)
         })
         self.assertEqual(response.status_code, 200)
         dataset_view = DatasetView.objects.get(id=view_1.id)
@@ -1455,18 +1455,18 @@ class TestApiViews(TestCase):
 
     def test_detail_view(self):
         user = UserF.create(is_superuser=True)
-        dataset = DatasetViewF.create(
+        dataset_view = DatasetViewF.create(
             is_static=False,
         )
         request = self.factory.get(
             reverse('view-detail', kwargs={
-                'id': dataset.id
+                'id': str(dataset_view.id)
             })
         )
         request.user = user
         detail_view = ViewDetail.as_view()
         response = detail_view(request, **{
-            'id': dataset.id
+            'id': str(dataset_view.id)
         })
         self.assertEqual(response.status_code, 200)
 
