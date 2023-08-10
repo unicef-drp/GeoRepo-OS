@@ -119,8 +119,6 @@ export default function ReviewMap(props: ReviewMapInterface) {
     }, [props.bbox])
 
     useEffect(() => {
-        console.log('mapLoaded ', mapLoaded)
-        console.log('mainBoundary ', props.mainBoundary)
         if (!mapLoaded) return;
         // Draw main boundary
         if (props.mainBoundary) {
