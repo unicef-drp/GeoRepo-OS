@@ -4,14 +4,12 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from drf_yasg.generators import OpenAPISchemaGenerator
-from django.contrib.sites.models import Site
 
 from django.conf import settings
 from django.urls import re_path, include, path
 from django.contrib.auth.views import LoginView
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.conf.urls import handler404  # noqa
 from django.http import HttpResponseNotFound
 import json
 
@@ -38,27 +36,10 @@ class CustomLoginView(LoginView):
         return context
 
 
-def get_api_description():
-    schema = 'https://'
-    if settings.DEBUG:
-        schema = 'http://'
-    # set default unicef domain
-    domain = 'georepo.unicef.org'
-    try:
-        domain = Site.objects.get_current().domain
-    except:  # noqa
-        pass
-    return (
-        'Entity detail by concept ucode: '
-        f'{schema}{domain}/entity/?concept_ucode='
-    )
-
-
 schema_view_v1 = get_schema_view(
     openapi.Info(
         title="GeoRepo API",
         default_version='v1.0.0',
-        description=get_api_description(),
     ),
     public=True,
     permission_classes=[permissions.AllowAny],
