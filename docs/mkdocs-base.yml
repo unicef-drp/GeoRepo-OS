@@ -1,0 +1,93 @@
+site_name: GeoRepo-OS
+site_description: "Project technical and user documentation."
+site_author: "Kartoza"
+docs_dir: ./src
+site_dir: ./site
+repo_name: "GeoRepo-OS"
+repo_url: "https://github.com/unicef-drp/GeoRepo-OS"
+edit_uri: "https://github.com/unicef-drp/GeoRepo-OS/blob/main/docs/"
+
+copyright: Kartoza and Contributors
+
+markdown_extensions:
+        - pymdownx.highlight:
+                  anchor_linenums: true
+        - pymdownx.inlinehilite
+        #- mdx_truly_sane_lists
+        - toc:
+                  permalink: true
+                   #slugify: !!python/name:pymdownx.slugs.slugify
+        - pymdownx.snippets:
+                  base_path: .
+        - admonition
+        - tables
+        - pymdownx.details
+        - pymdownx.caret
+        - pymdownx.keys
+        - pymdownx.mark
+        - pymdownx.tilde
+        - pymdownx.superfences:
+                  custom_fences:
+                          - name: mermaid
+                            class: mermaid
+                            format: !!python/name:pymdownx.superfences.fence_code_format
+        - pymdownx.emoji:
+                  emoji_generator: !!python/name:materialx.emoji.to_svg
+                  emoji_index: !!python/name:materialx.emoji.twemoji
+
+nav:
+        - Home:
+                - index.md
+                - About: about/index.md
+                - Contributing: about/contributing.md
+                - Code of Conduct: about/code-of-conduct.md
+                - Running Instances: about/running-instances.md
+        - Users:
+                - Overview: 
+                        - user/index.md
+                        - Quickstart: 
+                                - user/quickstart/index.md
+                        - Guide:
+                                - user/guide/index.md
+                                - Disclaimer: about/disclaimer.md
+                                - License: about/license.md
+                        - Manual: 
+                                - user/manual/index.md
+                                - Home Page: user/manual/home.md
+        - Administrators:
+                - Overview:
+                        - administrator/index.md
+                        - Guide:
+                                - administrator/guide/index.md
+                        - Manual:
+                                - administrator/manual/index.md
+        - Developers:
+                - Overview:
+                        - developer/index.md
+                        - API:
+                                - developer/api/index.md
+                                - Guide: developer/api/guide/index.md
+                                - Reference: developer/api/manual/index.md
+                        - Guide:
+                                - Overview: developer/guide/index.md
+                                - Architecture: developer/guide/architecture.md
+                                - Design: developer/guide/design.md
+                                - Prerequisites: developer/guide/project-prerequisites.md
+                                - IDE Setup: developer/guide/ide-setup.md
+                                - Cloning: developer/guide/checking-out-the-code.md
+                                - Configuration: developer/guide/configuration.md
+                                - Building: developer/guide/building.md
+                                - Workflows: developer/guide/developer-workflows.md
+                                - Road Map: developer/guide/roadmap.md
+                                # Pages to render but exclude from Nav
+                                - "": developer/guide/templates/commit-message-convention.md
+                                - "": developer/guide/templates/pull-request-template.md 
+                        - Documentation: developer/documentation/index.md
+                        - Manual:
+                                - developer/manual/index.md
+                        - License: about/license.md
+        - DevOps: 
+                - devops/index.md
+                - Guide: devops/guide/index.md
+                - Manual: devops/manual/index.md
+
