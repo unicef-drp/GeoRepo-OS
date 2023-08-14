@@ -54,12 +54,7 @@ def get_summary(layer_file: LayerFile):
         'file_name': (
             layer_file.layer_file.name.split('/')
         )[-1],
-        'field_mapping': [
-            f'parent_id_field = {layer_file.parent_id_field}',
-            f'source_id_field = {layer_file.source_field}',
-            f'{privacy_level_field}',
-            f'{location_type_field}',
-        ]
+        'field_mapping': []
     }
     for name_field in layer_file.name_fields:
         _language = ''
@@ -91,6 +86,12 @@ def get_summary(layer_file: LayerFile):
             f'id_field ({id_field["idType"]["name"]}) = '
             f'{id_field_value}'
         )
+    summary_data['field_mapping'].extend([
+        f'parent_id_field = {layer_file.parent_id_field}',
+        f'{location_type_field}',
+        f'{privacy_level_field}',
+        f'source_id_field = {layer_file.source_field}'
+    ])
 
     error_messages, feature_count = check_properties(layer_file)
     summary_data['feature_count'] = feature_count

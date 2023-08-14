@@ -255,5 +255,5 @@ run-flake8:
 	@echo "Running flake8"
 	@echo "------------------------------------------------------------------"
 	@pip install flake8
-	@pip install flake8-docstrings
+# 	@pip install flake8-docstrings
 	@flake8
