@@ -24,7 +24,7 @@ For deployment, we use docker so you need to have docker running on the host.
 
 ```
 git clone git@github.com:unicef-drp/GeoRepo-OS.git
-cd gis-geo-repository/deployment
+cd GeoRepo-OS/deployment
 cp .env.example .env
 cp docker-compose.override.template.yml docker-compose.override.yml
 cd ../
