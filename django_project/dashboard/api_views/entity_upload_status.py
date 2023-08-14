@@ -109,7 +109,7 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
                     else entity_upload.revised_entity_name
                 ),
                 'started at': entity_upload.upload_session.started_at.strftime(
-                    "%d %B %Y"),
+                    "%d %B %Y %H:%M:%S"),
                 'status': entity_upload.status,
                 'error_summaries': self.sort_error_summaries(
                     entity_upload.summaries),
