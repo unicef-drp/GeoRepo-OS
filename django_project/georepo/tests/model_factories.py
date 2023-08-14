@@ -1,6 +1,6 @@
+import factory
 from datetime import datetime
 from typing import Generic, TypeVar
-import factory
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 

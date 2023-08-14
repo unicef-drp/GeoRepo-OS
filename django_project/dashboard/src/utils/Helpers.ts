@@ -39,3 +39,20 @@ export function limitInput(limit: number, evt: React.FormEvent<HTMLDivElement>):
   let inputElement = (evt.target as HTMLInputElement)
   inputElement.value = Math.max(0, parseInt(inputElement.value) ).toString().slice(0, 1)
 }
+
+/**
+ * Get month name of a date object
+ * @param date
+ */
+export function getMonthName(date: Date): string {
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  return  months[date.getMonth()];
+}
+
+export function utcToLocalDateTimeString(date: Date): string {
+  return `${date.getDate()} ${getMonthName(date)} ${date.getFullYear()} 
+  ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
+}

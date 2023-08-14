@@ -65,6 +65,8 @@ class TestEntityUploadStatusApiViews(TestCase):
         entity_upload = EntityUploadF.create(
             upload_session=upload_session
         )
+        entity_upload.started_at = datetime.datetime(2023, 8, 14, 10, 10, 10)
+        entity_upload.save()
         user = UserF.create()
         request = self.factory.get(
             reverse('entity-upload-status-list') + f'/?id={upload_session.id}'
@@ -78,8 +80,8 @@ class TestEntityUploadStatusApiViews(TestCase):
             [
                 {
                     'id': entity_upload.id,
-                    'Adm0': 'entity 0',
-                    'started at': '14 August 2023 08:08:08',
+                    'Adm0': entity_upload.original_geographical_entity.label,
+                    'started at': '14 August 2023 10:10:10 UTC',
                     'status': 'Started',
                     'error_summaries': None,
                     'error_report': '',
