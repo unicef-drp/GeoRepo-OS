@@ -484,8 +484,8 @@ class DatasetBoundaryTypeSerializer(serializers.ModelSerializer):
         label = validated_data['type']['label']
         value = validated_data['value']
         # create new entity type
-        entity_type = EntityType.objects.create(
-            label=label
+        entity_type = EntityType.objects.get_by_label(
+            label
         )
         obj = BoundaryType.objects.create(
             type=entity_type,
