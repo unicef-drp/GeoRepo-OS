@@ -379,11 +379,6 @@ def run_validation(entity_upload: EntityUploadStatus) -> bool:
         if level > 0 and not ancestor:
             continue
 
-        if layer_file.entity_type:
-            EntityType.objects.get_or_create(
-                label=layer_file.entity_type
-            )
-
         level_error_report = create_level_error_report(
             level,
             'Entity',
@@ -804,16 +799,15 @@ def run_validation(entity_upload: EntityUploadStatus) -> bool:
                 # at boundary matching, it will be matched with previous rev
                 uuid_str = str(uuid.uuid4())
 
-                geo_entity_type = None
+                geo_entity_type_label = None
                 if layer_file.entity_type:
-                    geo_entity_type, _ = EntityType.objects.get_or_create(
-                        label=layer_file.entity_type
-                    )
+                    geo_entity_type_label = layer_file.entity_type
                 elif layer_file.location_type_field:
-                    geo_entity_type, _ = EntityType.objects.get_or_create(
-                        label=feature_properties[
-                            layer_file.location_type_field]
-                    )
+                    geo_entity_type_label = feature_properties[
+                        layer_file.location_type_field]
+                geo_entity_type = EntityType.objects.get_by_label(
+                    geo_entity_type_label
+                )
 
                 if error_found:
                     validation_summaries.append(layer_error)

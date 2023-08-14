@@ -4,12 +4,12 @@ import mock
 
 from django.contrib.gis.geos import GEOSGeometry
 from django.test import TestCase, override_settings, TransactionTestCase
-from django.db import transaction
+from django.db import transaction, IntegrityError
 
-from georepo.models import GeographicalEntity, IdType
+from georepo.models import GeographicalEntity, IdType, EntityType
 from georepo.tests.model_factories import (
     DatasetF, LanguageF, GeographicalEntityF,
-    UserF, ModuleF
+    UserF, ModuleF, EntityTypeF
 )
 from georepo.utils import absolute_path
 from dashboard.models.entity_upload import (
@@ -322,6 +322,26 @@ class TestValidation(TestCase):
                 admin_level_name='ProvinceF'
             ).exists()
         )
+
+    def test_multiple_entity_types_unique_constraint(self):
+        # create multiple EntityTypes of Country, it will raise Exception
+        type1 = EntityTypeF.create(
+            label='Country'
+        )
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                EntityTypeF.create(
+                    label='Country'
+                )
+        # test get_by_label
+        type2 = EntityType.objects.get_by_label('Country')
+        self.assertEqual(type1.id, type2.id)
+        # test the integrityError in get_by_label
+        with mock.patch(
+                'georepo.models.EntityType.objects.filter') as mocked_filter:
+            mocked_filter.return_value = EntityType.objects.none()
+            type2 = EntityType.objects.get_by_label('Country')
+            self.assertEqual(type1.id, type2.id)
 
     @override_settings(MEDIA_ROOT='/home/web/django_project/georepo')
     def test_get_hierarchical_from_layer_file(self):

@@ -2,6 +2,7 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.gis.db import models
+from django.db import IntegrityError, transaction
 
 # revision uuid
 UUID_ENTITY_ID = 'uuid'
@@ -383,7 +384,27 @@ class EntityName(models.Model):
         indexes = [models.Index(fields=['name'])]
 
 
+class EntityTypeManager(models.Manager):
+    def get_by_label(self, label: str):
+        """Get or create with unique_constraint check."""
+        entity_type = self.filter(
+            label=label
+        ).first()
+        if entity_type is None:
+            try:
+                with transaction.atomic():
+                    entity_type = self.create(
+                        label=label
+                    )
+            except IntegrityError:
+                entity_type = self.get(
+                    label=label
+                )
+        return entity_type
+
+
 class EntityType(models.Model):
+    objects = EntityTypeManager()
     id = models.AutoField(primary_key=True)
 
     label = models.CharField(
@@ -402,6 +423,14 @@ class EntityType(models.Model):
 
     def __str__(self):
         return self.label
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                name='unique_entity_type_label',
+                fields=['label']
+            )
+        ]
 
 
 class EntityId(models.Model):
