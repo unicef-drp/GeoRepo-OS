@@ -10,7 +10,7 @@ from rest_framework.test import APIRequestFactory
 from rest_framework import versioning
 
 from georepo.utils import absolute_path
-from georepo.models import IdType, GeographicalEntity
+from georepo.models import IdType, GeographicalEntity, EntityType
 from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, EntityIdF,
     EntityNameF, LanguageF, UserF
@@ -113,8 +113,8 @@ class TestApiEntity(EntityResponseChecker, TestCase):
 
     def test_get_entity_list(self):
         dataset = DatasetF.create()
-        entity_type0 = EntityTypeF.create(label='Country')
-        entity_type1 = EntityTypeF.create(label='Region')
+        entity_type0 = EntityType.objects.get_by_label('Country')
+        entity_type1 = EntityType.objects.get_by_label('Region')
         parent = GeographicalEntityF.create(
             uuid=str(uuid.uuid4()),
             type=entity_type0,
@@ -220,8 +220,8 @@ class TestApiEntity(EntityResponseChecker, TestCase):
 
     def test_get_entity_list_by_admin_level(self):
         dataset = DatasetF.create()
-        entity_type0 = EntityTypeF.create(label='Country')
-        entity_type1 = EntityTypeF.create(label='Region')
+        entity_type0 = EntityType.objects.get_by_label('Country')
+        entity_type1 = EntityType.objects.get_by_label('Region')
         parent = GeographicalEntityF.create(
             uuid=str(uuid.uuid4()),
             type=entity_type0,
@@ -791,8 +791,8 @@ class TestApiEntity(EntityResponseChecker, TestCase):
 
     def test_search_entity_by_id(self):
         dataset = DatasetF.create()
-        entity_type0 = EntityTypeF.create(label='Country')
-        entity_type1 = EntityTypeF.create(label='Region')
+        entity_type0 = EntityType.objects.get_by_label('Country')
+        entity_type1 = EntityType.objects.get_by_label('Region')
         parent = GeographicalEntityF.create(
             uuid=uuid.uuid4(),
             type=entity_type0,
@@ -889,8 +889,8 @@ class TestApiEntity(EntityResponseChecker, TestCase):
 
     def test_search_entity_by_concept_uuid(self):
         dataset = DatasetF.create()
-        entity_type0 = EntityTypeF.create(label='Country')
-        entity_type1 = EntityTypeF.create(label='Region')
+        entity_type0 = EntityType.objects.get_by_label('Country')
+        entity_type1 = EntityType.objects.get_by_label('Region')
         parent = GeographicalEntityF.create(
             uuid=uuid.uuid4(),
             type=entity_type0,

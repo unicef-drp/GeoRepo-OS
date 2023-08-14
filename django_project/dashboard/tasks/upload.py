@@ -19,8 +19,8 @@ def process_layer_upload_session(layer_upload_session_id: str):
     )
     for layer_file in layer_upload_session.layerfile_set.all().order_by(
             'level'):
-        entity_type, _ = EntityType.objects.get_or_create(
-            label=layer_file.entity_type
+        entity_type = EntityType.objects.get_by_label(
+            layer_file.entity_type
         )
         name_format = ''
         id_format = ''

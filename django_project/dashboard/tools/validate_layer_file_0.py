@@ -114,8 +114,8 @@ def create_temp_admin_level_0(upload_session: LayerUploadSession):
     """
     entity_type = EntityType.objects.all().first()
     if not entity_type:
-        entity_type = EntityType.objects.create(
-            label='Country'
+        entity_type = EntityType.objects.get_by_label(
+            'Country'
         )
     # find layer file level 0 from the session
     layer_files = upload_session.layerfile_set.filter(level=0)
