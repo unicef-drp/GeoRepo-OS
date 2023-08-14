@@ -1,3 +1,4 @@
+import datetime
 import json
 from django.contrib.gis.geos import GEOSGeometry
 from django.test import TestCase, override_settings
@@ -59,7 +60,9 @@ class TestEntityUploadStatusApiViews(TestCase):
         upload_session = LayerUploadSessionF.create(
             dataset=self.dataset
         )
-        EntityUploadF.create(
+        upload_session.started_at = datetime.datetime(2023, 8, 14, 8, 8, 8)
+        upload_session.save()
+        entity_upload = EntityUploadF.create(
             upload_session=upload_session
         )
         user = UserF.create()
@@ -70,7 +73,22 @@ class TestEntityUploadStatusApiViews(TestCase):
         view = EntityUploadStatusList.as_view()
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(
+            response.data['results'],
+            [
+                {
+                    'id': entity_upload.id,
+                    'Adm0': 'entity 0',
+                    'started at': '14 August 2023 08:08:08',
+                    'status': 'Started',
+                    'error_summaries': None,
+                    'error_report': '',
+                    'is_importable': False,
+                    'is_warning': False,
+                    'progress': None
+                }
+            ]
+        )
 
     def test_entity_upload_level1_list(self):
         upload_session = LayerUploadSessionF.create()
