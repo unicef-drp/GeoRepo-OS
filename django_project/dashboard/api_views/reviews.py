@@ -132,7 +132,7 @@ class ReadyToReview(AzureAuthRequiredMixin, APIView):
                 if revised:
                     revised.delete()
         return Response(status=200, data={
-            'session_source': upload_session_obj.source
+            'session_id': upload_session_obj.id
         })
 
 
@@ -143,7 +143,7 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
     def _filter_queryset(self, queryset, request):
         criteria_field_mapping = {
             'level_0_entity': 'revised_geographical_entity__label',
-            'upload': 'upload_session__source',
+            'upload': 'upload_session_id',
             'revision': 'revised_geographical_entity__revision_number',
             'dataset': 'upload_session__dataset__label'
         }
@@ -212,7 +212,7 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
 
         ordering_mapping = {
             'level_0_entity': 'revised_geographical_entity__label',
-            'upload': 'upload_session__source',
+            'upload': 'upload_session_id',
             'revision': 'revised_geographical_entity__revision_number',
             'dataset': 'upload_session__dataset__label',
             'start_date': 'upload_session__started_at',
@@ -271,7 +271,7 @@ class ReviewFilterValue(
     def fetch_criteria_values(self, criteria):
         criteria_field_mapping = {
             'level_0_entity': 'revised_geographical_entity__label',
-            'upload': 'upload_session__source',
+            'upload': 'upload_session_id',
             'revision': 'revised_geographical_entity__revision_number',
         }
         field = criteria_field_mapping.get(criteria, None)

@@ -39,7 +39,7 @@ class UploadSessionSerializer(serializers.ModelSerializer):
             f'dataset={obj.dataset.id}'
 
     def get_upload(self, obj: LayerUploadSession):
-        return obj.source
+        return obj.id
 
     def get_upload_date(self, obj: LayerUploadSession):
         return obj.started_at

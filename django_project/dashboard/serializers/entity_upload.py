@@ -26,7 +26,7 @@ class EntityUploadSerializer(serializers.ModelSerializer):
         return dataset.module.name
 
     def get_upload(self, obj: EntityUploadStatus):
-        return obj.upload_session.source
+        return obj.upload_session_id
 
     def get_dataset(self, obj: EntityUploadStatus):
         return obj.upload_session.dataset.label

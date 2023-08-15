@@ -22,6 +22,7 @@ import {
   setCurrentColumns as setInitialColumns,
   setCurrentFilters as setInitialFilters
 } from "../../reducers/reviewTable";
+import {parseInt} from "lodash";
 
 const USER_COLUMNS = [
   'id',
@@ -60,6 +61,7 @@ export default function ReviewList() {
   const availableFilters = useAppSelector((state: RootState) => state.reviewTable.availableFilters)
   const [loading, setLoading] = useState<boolean>(true)
   const [searchParams, setSearchParams] = useSearchParams()
+  console.log(searchParams)
   const [data, setData] = useState<any[]>([])
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
@@ -196,7 +198,6 @@ export default function ReviewList() {
         return _options
       })
       setColumns(_columns)
-      dispatch(setInitialColumns(JSON.stringify(_columns.map)))
     }
     fetchFilterValuesData()
   }, [pagination, currentFilters])
@@ -263,7 +264,14 @@ export default function ReviewList() {
   }
 
   useEffect(() => {
-    fetchReviewList()
+    let upload
+    try {
+      upload = searchParams.get('upload') ? [searchParams.get('upload')] : []
+    } catch (error: any) {
+      upload = currentFilters['upload']
+    }
+    setCurrentFilters({...currentFilters, 'upload': upload})
+    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'upload': upload})))
   }, [searchParams])
 
   useEffect(() => {
