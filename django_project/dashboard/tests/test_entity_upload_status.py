@@ -78,7 +78,7 @@ class TestEntityUploadStatusApiViews(TestCase):
             [
                 {
                     'id': entity_upload.id,
-                    'Adm0': 'entity 0',
+                    'Adm0': entity_upload.original_geographical_entity.label,
                     'started at': '14 August 2023 08:08:08',
                     'status': 'Started',
                     'error_summaries': None,
