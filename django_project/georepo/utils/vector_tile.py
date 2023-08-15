@@ -43,7 +43,10 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
             )
         )
     else:
-        select_sql = 'SELECT ST_AsMVTGeom(ST_Transform(gg.geometry, 3857), !BBOX!) AS geometry, '
+        select_sql = (
+            'SELECT ST_AsMVTGeom('
+            'ST_Transform(gg.geometry, 3857), !BBOX!) AS geometry, '
+        )
     # raw_sql to view to select id
     raw_sql = (
         'SELECT id from "{}"'
@@ -130,7 +133,8 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         'LEFT JOIN georepo_geographicalentity pg on pg.id = gg.parent_id ' +
         (' '.join(id_field_left_joins)) + ' ' +
         (' '.join(name_field_left_joins)) + ' '
-        'WHERE gg.geometry && ST_Transform(!BBOX!, 4326) and gg.level = {level} '
+        'WHERE gg.geometry && ST_Transform(!BBOX!, 4326) '
+        'AND gg.level = {level} '
         'AND gg.dataset_id = {dataset_id} '
         'AND gg.is_approved=True '
         'AND gg.privacy_level <= {privacy_level} '
