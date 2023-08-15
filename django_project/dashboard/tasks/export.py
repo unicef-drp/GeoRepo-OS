@@ -6,21 +6,6 @@ from georepo.utils import generate_view_vector_tiles
 logger = get_task_logger(__name__)
 
 
-@shared_task(name="generate_vector_tiles")
-def generate_vector_tiles_task(dataset_id: str, overwrite: bool):
-    from georepo.models.dataset import Dataset
-    from georepo.utils.vector_tile import generate_vector_tiles
-
-    try:
-        dataset = Dataset.objects.get(id=dataset_id)
-        generate_vector_tiles(dataset, overwrite)
-    except Dataset.DoesNotExist:
-        logger.error(f'Dataset {dataset_id} does not exist')
-    except Exception:
-        dataset.tiling_status = Dataset.DatasetTilingStatus.ERROR
-        dataset.save(update_fields=['tiling_status'])
-
-
 @shared_task(name="generate_view_vector_tiles")
 def generate_view_vector_tiles_task(view_resource_id: str,
                                     export_data: bool = True,
