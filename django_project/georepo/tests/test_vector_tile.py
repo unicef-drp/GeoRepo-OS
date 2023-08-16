@@ -16,7 +16,8 @@ from georepo.tests.model_factories import (
     EntityTypeF,
     DatasetF,
     GeographicalEntityF,
-    EntityIdF
+    EntityIdF,
+    ModuleF
 )
 from georepo.utils.vector_tile import (
     create_view_configuration_files,
@@ -64,7 +65,10 @@ class TestVectorTile(TestCase):
         self.pCode, _ = IdType.objects.get_or_create(name='PCode')
         self.gid, _ = IdType.objects.get_or_create(name='GID')
         self.entity_type = EntityTypeF.create(label='Country')
-        self.dataset = DatasetF.create()
+        self.module = ModuleF.create(
+            name='Admin Boundaries'
+        )
+        self.dataset = DatasetF.create(module=self.module)
         self.view_latest = generate_default_view_dataset_latest(
             self.dataset)[0]
         init_view_privacy_level(self.view_latest)
