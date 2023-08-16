@@ -17,6 +17,11 @@ from dashboard.models.entity_upload import (
 )
 
 
+def vector_tile_geometry_type():
+    """Return geometry type in this module."""
+    return 'MultiPolygon'
+
+
 def generate_adm0_default_views(dataset: Dataset):
     views = generate_default_view_adm0_latest(dataset)
     for view in views:

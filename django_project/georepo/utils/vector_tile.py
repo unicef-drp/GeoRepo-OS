@@ -20,6 +20,7 @@ from georepo.models import Dataset, DatasetView, \
     DatasetViewResource
 from georepo.utils.dataset_view import create_sql_view, \
     check_view_exists
+from georepo.utils.module_import import module_function
 
 logger = logging.getLogger(__name__)
 
@@ -241,6 +242,17 @@ def create_view_configuration_files(
         # means no data for this privacy level
         return []
 
+    # get geometry type from module config
+    geometry_type = None
+    module = view_resource.dataset_view.dataset.module
+    if module:
+        get_geom_type = module_function(
+            module.code_name,
+            'config',
+            'vector_tile_geometry_type'
+        )
+        geometry_type = get_geom_type()
+
     for dataset_conf in tiling_configs:
         toml_data = toml.load(template_config_file)
         toml_dataset_filepath = os.path.join(
@@ -275,6 +287,8 @@ def create_view_configuration_files(
                 'sql': sql,
                 'srid': 3857
             }
+            if geometry_type:
+                provider_layer['geometry_type'] = geometry_type
             if 'layers' not in toml_data['providers'][0]:
                 toml_data['providers'][0]['layers'] = []
             toml_data['providers'][0]['layers'].append(
