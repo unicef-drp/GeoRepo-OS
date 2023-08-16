@@ -218,7 +218,7 @@ urlpatterns = [
         name='upload-session-update-step'
     ),
     re_path(
-        r'api/upload-session-summary/(?P<id>\d+)/?$',
+        r'api/upload-session-summary/(?P<pk>\d+)/?$',
         UploadSessionSummary.as_view(),
         name='upload-session-summary'
     ),
