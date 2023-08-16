@@ -35,15 +35,16 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
                            privacy_level, tolerance=None):
     if tolerance:
         select_sql = (
-            'SELECT ST_AsMVTGeom(ST_Transform(simplifygeometry(gg.geometry, '
-            '{tolerance}), 3857), !BBOX!) AS geometry, '.format(
+            'SELECT ST_AsMVTGeom(GeomTransformMercator('
+            'simplifygeometry(gg.geometry, {tolerance})), !BBOX!) '
+            'AS geometry, '.format(
                 tolerance=tolerance
             )
         )
     else:
         select_sql = (
             'SELECT ST_AsMVTGeom('
-            'ST_Transform(gg.geometry, 3857), !BBOX!) AS geometry, '
+            'GeomTransformMercator(gg.geometry), !BBOX!) AS geometry, '
         )
     # raw_sql to view to select id
     raw_sql = (
@@ -399,6 +400,10 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         )
         if result.returncode != 0:
             logger.error(result.stderr)
+            view_resource.status = DatasetView.DatasetViewStatus.ERROR
+            view_resource.vector_tiles_log = result.stderr.decode()
+            view_resource.save()
+            raise RuntimeError(view_resource.vector_tiles_log)
         processed_count += 1
         view_resource.vector_tiles_progress = (
             (100 * processed_count) / len(toml_config_files)
