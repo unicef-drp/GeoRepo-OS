@@ -18,6 +18,7 @@ import Scrollable from "../../components/Scrollable";
 import Step4OverlapsError from './Step4OverlapsError'
 import ColumnHeaderIcon from '../../components/ColumnHeaderIcon'
 import { WizardStepInterface } from "../../models/upload";
+import {utcToLocalDateTimeString} from '../../utils/Helpers';
 
 const URL = '/api/entity-upload-status-list/'
 const READY_TO_REVIEW_URL = '/api/ready-to-review/'
@@ -214,6 +215,7 @@ export default function Step4(props: WizardStepInterface) {
             for (let key of Object.keys(responseData)) {
                 uploadRow[key] = responseData[key]
             }
+            uploadRow['started at'] = utcToLocalDateTimeString(new Date(uploadRow['started at']))
             return uploadRow
           }))
         } else if (response.data && response.data['results']) {
@@ -238,6 +240,7 @@ export default function Step4(props: WizardStepInterface) {
             for (let key of Object.keys(responseData)) {
                 uploadRow[key] = responseData[key]
             }
+            uploadRow['started at'] = utcToLocalDateTimeString(new Date(uploadRow['started at']))
             return uploadRow
           }))
         }
