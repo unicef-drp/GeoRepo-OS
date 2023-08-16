@@ -12,7 +12,7 @@ import Tabs from '@mui/material/Tabs';
 import TabPanel, {a11yProps} from '../../components/TabPanel';
 import Skeleton from '@mui/material/Skeleton';
 import Dataset from '../../models/dataset';
-import { DatasetDetailItemInterface, DatasetTabElementInterface } from '../../models/dataset' 
+import { DatasetDetailItemInterface, DatasetTabElementInterface } from '../../models/dataset';
 
 interface DatasetDetailInterface {
   tabs: DatasetTabElementInterface[],

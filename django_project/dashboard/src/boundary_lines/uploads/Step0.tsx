@@ -19,6 +19,7 @@ import {postData} from "../../utils/Requests";
 import axios from "axios";
 import Loading from "../../components/Loading";
 import { WizardStepInterface } from "../../models/upload";
+import Scrollable from '../../components/Scrollable';
 
 export const LOAD_UPLOAD_SESSION_DETAIL_URL = '/api/upload-session/'
 
@@ -67,7 +68,9 @@ export default function (props: WizardStepInterface) {
     })
   }
 
-  return (<div className='FormContainer'>
+  return (
+    <Scrollable>
+      <div className='FormContainer'>
     <FormControl className='FormContent' disabled={props.isReadOnly}>
       <Grid container columnSpacing={2} rowSpacing={2}>
         <Grid className={'form-label'} item md={2} xl={2} xs={12}>
@@ -147,5 +150,6 @@ export default function (props: WizardStepInterface) {
         </div>
       </Box>
     </FormControl>
-  </div>)
+      </div>
+    </Scrollable>)
 }
