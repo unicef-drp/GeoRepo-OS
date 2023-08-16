@@ -2,6 +2,7 @@ from celery import shared_task
 import logging
 from django.db import transaction, OperationalError, DatabaseError
 from django.db.models import Q
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ def validate_ready_uploads(entity_upload_id):
         print('Validating {}'.format(
             entity_upload.original_geographical_entity))
     entity_upload.status = PROCESSING
+    entity_upload.started_at = timezone.now()
     entity_upload.save(update_fields=['status'])
     validate_layer_file(entity_upload)
     # send notifications only when all upload have finished

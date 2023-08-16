@@ -76,6 +76,7 @@ class EntityUploadAdmin(admin.ModelAdmin):
         'original_geographical_entity',
         'revised_geographical_entity'
     )
+    readonly_fields = ['started_at']
 
     def get_dataset(self, obj):
         return obj.upload_session.dataset
