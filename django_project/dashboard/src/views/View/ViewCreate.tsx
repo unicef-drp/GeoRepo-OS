@@ -35,6 +35,7 @@ import {
 } from 'sql-autocomplete';
 import '../../styles/ViewCreate.scss';
 import ListItemButton from "@mui/material/ListItemButton";
+import Scrollable from "../../components/Scrollable";
 
 const TReactQuill = React.lazy(() => import("../../components/ReactQuill"));
 
@@ -382,6 +383,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
   }
 
   return (
+    <Scrollable>
     <div className="FormContainer">
       <Popover
           id="size-popover"
@@ -592,5 +594,6 @@ export default function ViewCreate(props: ViewCreateInterface) {
         </Box>
       </FormControl>
     </div>
+    </Scrollable>
   )
 }
