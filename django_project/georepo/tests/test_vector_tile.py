@@ -111,7 +111,7 @@ class TestVectorTile(TestCase):
             4
         )
         self.assertIn(
-            'ST_AsMVTGeom(ST_Transform(gg.geometry, 3857), !BBOX!)', sql)
+            'ST_AsMVTGeom(GeomTransformMercator(gg.geometry), !BBOX!)', sql)
         self.assertIn(f'AND gg.dataset_id = {self.dataset.id}', sql)
         sql = dataset_view_sql_query(
             self.view_latest,
@@ -120,8 +120,8 @@ class TestVectorTile(TestCase):
             0.5
         )
         self.assertIn(
-            'SELECT ST_AsMVTGeom(ST_Transform('
-            'simplifygeometry(gg.geometry, 0.5), 3857), !BBOX!)',
+            'SELECT ST_AsMVTGeom(GeomTransformMercator('
+            'simplifygeometry(gg.geometry, 0.5)), !BBOX!)',
             sql
         )
         self.assertIn(f'AND gg.dataset_id = {self.dataset.id}', sql)
