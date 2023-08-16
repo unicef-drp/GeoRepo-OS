@@ -1,5 +1,5 @@
 from celery import shared_task
-from celery.utils.log import get_task_logger
+import logging
 
 from dashboard.models import (
     LayerUploadSession, ERROR, DONE
@@ -8,7 +8,7 @@ from georepo.models import EntityType
 from georepo.utils import load_layer_file
 from georepo.utils.module_import import module_function
 
-logger = get_task_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @shared_task(name="process_layer_upload_session")

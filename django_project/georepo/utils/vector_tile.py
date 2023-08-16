@@ -2,7 +2,6 @@ import re
 import shutil
 import subprocess
 import logging
-from celery.utils.log import get_task_logger
 import toml
 import os
 import time
@@ -23,7 +22,6 @@ from georepo.utils.dataset_view import create_sql_view, \
     check_view_exists
 
 logger = logging.getLogger(__name__)
-celery_logger = get_task_logger(__name__)
 
 TEGOLA_BASE_CONFIG_PATH = os.path.join(
     '/', 'opt', 'tegola_config'
@@ -319,7 +317,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         dataset_view_name
     )
     toml_config_files = create_view_configuration_files(view_resource)
-    celery_logger.info(
+    logger.info(
         f'Config files {view_resource.id} - {view_resource.uuid} '
         f'- {len(toml_config_files)}'
     )
@@ -349,7 +347,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 pass
 
     processed_count = 0
-    celery_logger.info(
+    logger.info(
         'Starting vector tile generation for '
         f'view_resource {view_resource.id} - {view_resource.uuid} '
         f'- {view_resource.privacy_level} - overwrite '
@@ -393,25 +391,25 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 '8'
             ])
         result = subprocess.run(command_list, capture_output=True)
-        celery_logger.info(
+        logger.info(
             'Vector tile generation for '
             f'view_resource {view_resource.id} '
             f'- {processed_count} '
             f'finished with exit_code {result.returncode}'
         )
         if result.returncode != 0:
-            celery_logger.error(result.stderr)
+            logger.error(result.stderr)
         processed_count += 1
         view_resource.vector_tiles_progress = (
             (100 * processed_count) / len(toml_config_files)
         )
-        celery_logger.info(
+        logger.info(
             'Processing vector tile generation for '
             f'view_resource {view_resource.id} '
             f'- {view_resource.vector_tiles_progress}'
         )
         view_resource.save()
-    celery_logger.info(
+    logger.info(
         'Finished vector tile generation for '
         f'view_resource {view_resource.id} '
         f'- {view_resource.vector_tiles_progress}'
@@ -429,7 +427,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         )
     except FileNotFoundError:
         view_resource.status = DatasetView.DatasetViewStatus.ERROR
-    celery_logger.info(
+    logger.info(
         'Finished moving temp vector tiles for '
         f'view_resource {view_resource.id} - {view_resource.uuid}'
     )

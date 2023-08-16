@@ -1,9 +1,9 @@
 from celery import shared_task
-from celery.utils.log import get_task_logger
+import logging
 
 from georepo.utils import generate_view_vector_tiles
 
-logger = get_task_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @shared_task(name="generate_view_vector_tiles")
