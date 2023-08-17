@@ -47,7 +47,7 @@ To set up different environment, for example the Default credential, or the port
 You can check the description below for each of variable.
 
 ```
-COMPOSE_PROJECT_NAME=geosight
+COMPOSE_PROJECT_NAME=georepo
 NGINX_TAG=0.0.1  -> Change this for different nginx image
 DJANGO_TAG=0.0.1 -> Change this for different django image
 DJANGO_DEV_TAG=0.0.1 -> Change this for different django dev image
