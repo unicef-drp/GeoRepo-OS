@@ -16,6 +16,7 @@ context_id: V4cVEFd2TmwYJVb5HvWRwa
 
 GeoRepo is a UNICEF’s geospatial web-based data storage and administrative boundary harmonization platform. This data is uploaded to GeoRepo and managed as Reference Datasets. In turn, these datasets are utilized and displayed on the GeoSight data analysis/visualization platform.
 
+![Screenshot](img/screenshot.png)
 
 ## Key Concepts
 
