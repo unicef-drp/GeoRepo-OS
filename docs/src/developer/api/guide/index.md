@@ -115,7 +115,7 @@ available in GeoRepo:
 ```
 Example of response:
 
-```
+```json
 {
   "results": [
     {
@@ -142,7 +142,7 @@ the datasets available in this module.
 
 Example of response:
 
-```
+```json
 {
   "page": 1,
   "total_page": 1,
@@ -177,7 +177,7 @@ dataset:
 
 Example of response:
 
-```
+```json
 {
   "name": "World",
   "uuid": "2d8e9345-2ff8-41d3-9d16-65bd08ad5f3c",
@@ -233,7 +233,7 @@ parameter to access the entire list of views.
 
 Example of response:
 
-```
+```json
 {
   "page": 1,
   "total_page": 12,
@@ -309,7 +309,7 @@ entities at level 0 using the UUID of the view:
 
 Example of response:
 
-```
+```json
 {
   "page": 1,
   "total_page": 6,
