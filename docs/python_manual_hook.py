@@ -1,14 +1,12 @@
 import logging
 import mkdocs.plugins
 import os
-
 log = logging.getLogger('mkdocs')
 
 @mkdocs.plugins.event_priority(-50)
 
 
 def on_startup(command, dirty):
-
 
     template = """
 ---
@@ -23,21 +21,25 @@ date: 2023-08-03
     	"__init__",
     	"migrations",
         "tests"]
-
     for root, dirs, files in os.walk("../django_project"):
         for file in files:
-            file = os.path.join(root, file)
-            if file.endswith(".py"):
-                ignored = False;
-                for item in ignore_list:
-                    if item in file:
-                        ignored = True;
-                    #print (item, file, ignored)
-                if not ignored:
-                    file = file.replace("../django_project/", "::: ")
-                    file = file.replace("/", ".")
-                    file = file.replace(".py", "")
-                    template = template + file + "\n"
-    file = open("src/developer/manual/index.md","wt")
+             file = os.path.join(root, file)
+             ignored = False;
+             if file.endswith(".py"):
+                 for item in ignore_list:
+                     if item in file:
+                         ignored = True;
+                     #print (item, file, ignored)
+                 if not ignored:
+                     file = file.replace("../django_project/", "::: ")
+                     file = file.replace("/", ".")
+                     file = file.replace(".py", "")
+                     template = template + file + "\n"
+    output_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "src/developer/manual/index.md")
+    log.info("Manual will be written to: " + output_path)
+    file = open(output_path,"wt+")
     file.write(template)
     file.close()
+    log.info("Manual written to:         " + os.path.realpath(file.name)) 
