@@ -1,6 +1,6 @@
 ---
 title: GeoRepo-OS Documentation Home 
-summary: GeoRepo is a UNICEF’s geospatial web-based data storage and administrative boundary harmonization platform.
+summary: GeoRepo is a UNICEF's geospatial web-based data storage and administrative boundary harmonization platform.
     - Tim Sutton
     - Dimas Tri Ciputra
     - Danang Tri Massandy
@@ -9,7 +9,7 @@ some_url: https://github.com/unicef-drp/GeoRepo-OS
 copyright: Copyright 2023, Unicef
 contact: georepo-no-reply@unicef.org
 license: This program is free software; you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
-#context_id: 
+#context_id: 1234
 ---
 
 # Documentation
@@ -188,17 +188,16 @@ Whenever you create a new file, you should add the standard header to the top of
 
 ```
 ---
-title: GeoRepo-OS Documentation Home 
-summary: GeoRepo is a UNICEF’s geospatial web-based data storage and administrative boundary harmonization platform.
+title: GeoRepo-OS Documentation 
+summary: GeoRepo is a UNICEF's geospatial web-based data storage and administrative boundary harmonization platform.
     - Tim Sutton
     - Dimas Tri Ciputra
     - Danang Tri Massandy
 date: 2023-08-03
-some_url: https://github.com/unicef-drp/GeoRepo-OS
 copyright: Copyright 2023, Unicef
 contact: georepo-no-reply@unicef.org
 license: This program is free software; you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
-#context_id: 
+#context_id: 1234
 ---
 ```
 
@@ -261,9 +260,9 @@ Whenever the user visits the page using the UUID URL, they will be redirected to
 
 ### Generating PDFS
 
-To generate PDFS, `cd` into `GeoRepo-OS/docs` and then run the `build-docs-pdf` in a local terminal
+To generate PDFS, `cd` into `GEOREPO-OS/docs` and then run the `build-docs-pdf` in a local terminal
 
 ### Generating Static Site
 
-To generate HTML, `cd` into `GeoRepo-OS/docs` and then run the `build-docs-html` in a local terminal.
+To generate HTML, `cd` into `GEOREPO-OS/docs` and then run the `build-docs-html` in a local terminal.
 You can then run `mkdocs serve` to generate the static site on your local host, if there is a port conflict you can specify the port using the `-a` flag e.g `mkdocs serve -a 127.0.0.1:8001`.
