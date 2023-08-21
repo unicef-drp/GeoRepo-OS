@@ -101,7 +101,7 @@ class PermissionTestCase(TestCase):
         downgrade_creator_to_viewer(self.user1)
         self.assertFalse(self.user1.has_perm('delete_dataset', dataset))
         self.assertFalse(self.user1.has_perm('module_add_dataset',
-                                            dataset.module))
+                                             dataset.module))
         self.assert_dataset_view_privacy_level(
             dataset, self.user1, 1)
 
@@ -135,7 +135,7 @@ class PermissionTestCase(TestCase):
                                             dataset.module))
         revoke_module_writer(dataset.module, self.user1)
         self.assertFalse(self.user1.has_perm('module_add_dataset',
-                                            dataset.module))
+                                             dataset.module))
 
     def test_dataset_permissions(self):
         dataset = DatasetF.create()

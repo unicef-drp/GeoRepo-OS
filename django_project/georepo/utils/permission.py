@@ -702,13 +702,13 @@ def check_user_type_for_view(user: User, view: DatasetView):
 
 def grant_dataset_to_application_keys(dataset: Dataset):
     """Grant dataset to registered application API keys.
-    
+
     API keys for registered application will have following rules:
     - First Name = API_KEY
     - Last Name = {AppName}_lv_{privacyLevel}
     - Username = {AppName}_api_key_level_{privacyLevel}
     We can parse the privacy level from Username.
-    
+
     :param dataset: Dataset object
     """
     # fetch Users with first_name = 'API_KEY'
