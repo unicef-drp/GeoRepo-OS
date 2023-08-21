@@ -7,6 +7,8 @@ def create_geosight_api_keys_users(apps, schema_editor):
     User = apps.get_model('auth', 'User')
     GeorepoRole = apps.get_model('georepo', 'GeorepoRole')
     user, _ = User.objects.get_or_create(
+        first_name='API_KEY',
+        last_name='GeoSight_lv_1',
         username='geosight_api_key_level_1',
         is_active=True
     )
@@ -15,6 +17,8 @@ def create_geosight_api_keys_users(apps, schema_editor):
         type='Viewer'
     )
     user, _ = User.objects.get_or_create(
+        first_name='API_KEY',
+        last_name='GeoSight_lv_4',
         username='geosight_api_key_level_4',
         is_active=True
     )

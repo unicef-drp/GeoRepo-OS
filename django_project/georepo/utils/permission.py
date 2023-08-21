@@ -1,3 +1,4 @@
+import re
 from enum import Enum
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -697,3 +698,29 @@ def check_user_type_for_view(user: User, view: DatasetView):
     if perms_queryset.exists():
         return 'Inherited'
     return 'External'
+
+
+def grant_dataset_to_application_keys(dataset: Dataset):
+    """Grant dataset to registered application API keys.
+    
+    API keys for registered application will have following rules:
+    - First Name = API_KEY
+    - Last Name = {AppName}_lv_{privacyLevel}
+    - Username = {AppName}_api_key_level_{privacyLevel}
+    We can parse the privacy level from Username.
+    
+    :param dataset: Dataset object
+    """
+    # fetch Users with first_name = 'API_KEY'
+    api_key_users = User.objects.filter(
+        first_name='API_KEY',
+        is_active=True
+    )
+    for api_key_user in api_key_users:
+        # parse privacyLevel from username
+        result = re.search(r'^(.+)_api_key_level_(\d+)$',
+                           api_key_user.username)
+        if not result:
+            continue
+        privacy_level = int(result.group(2))
+        grant_dataset_viewer(dataset, api_key_user, privacy_level)
