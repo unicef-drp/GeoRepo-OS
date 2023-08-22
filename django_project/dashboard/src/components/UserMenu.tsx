@@ -41,6 +41,7 @@ export default function UserMenu() {
   const adminUrl = '/admin/'; // eslint-disable-line no-undef
   // API Doc URLS
   const apiDocUrl = '/api/v1/docs/'; // eslint-disable-line no-undef
+  const profileUrl = '/profile'
 
   if (username) {
     return (
@@ -61,6 +62,9 @@ export default function UserMenu() {
         >
           <MenuItem className='MenuItem-Header'>
             <span>v{(window as any).georepoCodeVersion}</span>
+          </MenuItem>
+          <MenuItem className='MenuItem-Header'>
+            <a href={profileUrl}>Profile</a>
           </MenuItem>
           <MenuItem className='MenuItem-Header'>
             <a href={apiDocUrl}>API Docs</a>

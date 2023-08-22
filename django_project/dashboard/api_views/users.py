@@ -1,5 +1,6 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
@@ -74,7 +75,7 @@ class UserList(APIView):
 
 
 class UserDetail(APIView):
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated]
 
     def get_current_role(self, user):
         role = (
@@ -114,9 +115,15 @@ class UserDetail(APIView):
                 'You are not allowed to change yourself!'
             )
         role = request.data.get('role')
+        first_name = request.data.get('first_name', None)
+        last_name = request.data.get('last_name', None)
         is_active = request.data.get('is_active')
         if role not in AVAILABLE_ROLES:
             return HttpResponseBadRequest('Invalid role!')
+        if first_name is not None:
+            user.first_name = first_name
+        if last_name is not None:
+            user.last_name = last_name
         # if downgrade from CREATOR -> VIEWER,
         # then need to handle existing permissions
         prev_role = self.get_current_role(user)
@@ -179,7 +186,7 @@ class UserDetail(APIView):
 
 
 class UserPermissionDetail(APIView):
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated]
 
     def get_modules(self, user):
         modules = Module.objects.all()

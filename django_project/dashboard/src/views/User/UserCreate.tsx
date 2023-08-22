@@ -8,7 +8,6 @@ import Skeleton from '@mui/material/Skeleton';
 import {UserDetailRoute} from '../routes';
 import UserInterface from '../../models/user';
 import UserCreateGeneral from './UserCreateGeneral';
-import UserPermission from './UserPermission';
 
 
 export default function UserCreate(props: any) {
@@ -32,9 +31,6 @@ export default function UserCreate(props: any) {
                     <UserCreateGeneral
                       onUserCreated={handleCreate}
                     />
-                </TabPanel>
-                <TabPanel key={1} value={tabSelected} index={1} padding={1}>
-                    <UserPermission user={user} />
                 </TabPanel>
               </Grid>
             )}

@@ -18,6 +18,7 @@ import Scrollable from "../../components/Scrollable";
 
 interface UserDetailGeneralInterface {
     user: UserInterface,
+    isUserProfile: boolean,
     onUserUpdated: () => void
 }
 
@@ -32,6 +33,8 @@ const ROLE_TYPES = [
 export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
     const [loading, setLoading] = useState(false)
     const [role, setRole] = useState('')
+    const [firstName, setFirstName] = useState(props.user?.first_name)
+    const [lastName, setLastName] = useState(props.user?.last_name)
     const [alertMessage, setAlertMessage] = useState<string>('')
     const [alertOpen, setAlertOpen] = useState<boolean>(false)
     const [alertLoading, setAlertLoading] = useState<boolean>(false)
@@ -42,6 +45,8 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
     useEffect(() => {
         if (props.user) {
             setRole(props.user.role)
+            setFirstName(props.user.first_name)
+            setLastName(props.user.last_name)
         }
     }, [props.user])
 
@@ -51,6 +56,8 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
         putData(
             `${FETCH_USER_DETAIL_URL}${props.user.id}/`,
             {
+                'first_name': firstName,
+                'last_name': lastName,
                 'role': role,
                 'is_active': isActive
             }
@@ -131,11 +138,11 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                                 </Grid>
                                 <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                     <TextField
-                                        disabled={true}
                                         id="input_first_name"
                                         hiddenLabel={true}
                                         type={"text"}
-                                        value={props.user.first_name}
+                                        value={firstName}
+                                        onChange={(e) => setFirstName(e.target.value)}
                                         sx={{ width: '100%' }}
                                     />
                                 </Grid>
@@ -144,11 +151,11 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                                 </Grid>
                                 <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                                     <TextField
-                                        disabled={true}
                                         id="input_last_name"
                                         hiddenLabel={true}
                                         type={"text"}
-                                        value={props.user.last_name}
+                                        value={lastName}
+                                        onChange={(e) => setLastName(e.target.value)}
                                         sx={{ width: '100%' }}
                                     />
                                 </Grid>
@@ -218,7 +225,7 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                                         onChange={(event: SelectChangeEvent) => {
                                             setRole(event.target.value as string)
                                         }}
-                                        disabled={props.user.id === (window as any).user_id}
+                                        disabled={props.user.id === (window as any).user_id || props.isUserProfile}
                                     >
                                         { ROLE_TYPES.map((value, index) => {
                                             return <MenuItem key={index} value={value}>{value}</MenuItem>
@@ -228,16 +235,18 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                             </Grid>
                             <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}} flexDirection={'row'} justifyContent={'space-between'}>
                                 <Grid item>
-                                    <div className='button-container'>
-                                        <Button
-                                            variant={"contained"}
-                                            color={ props.user.is_active ? 'error' : 'primary' }
-                                            disabled={loading}
-                                            onClick={toggleUserStatus}>
-                                            <span style={{ display: 'flex' }}>
-                                            { loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { props.user.is_active ? 'Deactivate' : 'Activate' }</span>
-                                        </Button>
-                                    </div>
+                                    { !props.isUserProfile && 
+                                        <div className='button-container'>
+                                            <Button
+                                                variant={"contained"}
+                                                color={ props.user.is_active ? 'error' : 'primary' }
+                                                disabled={loading}
+                                                onClick={toggleUserStatus}>
+                                                <span style={{ display: 'flex' }}>
+                                                { loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { props.user.is_active ? 'Deactivate' : 'Activate' }</span>
+                                            </Button>
+                                        </div>
+                                    }
                                 </Grid>
                                 <Grid item>
                                     <div className='button-container'>

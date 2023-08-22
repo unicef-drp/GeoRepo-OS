@@ -45,12 +45,14 @@ interface ObjectItemInterface {
 }
 
 interface UserPermissionInterface {
-    user: UserInterface
+    user: UserInterface,
+    isUserProfile: boolean,
 }
 
 interface PermissionListInterface {
     object_type: string,
-    user: UserInterface
+    user: UserInterface,
+    isReadOnly: boolean
 }
 
 interface PermissionItemModalInterface {
@@ -443,6 +445,7 @@ function PermissionList(props: PermissionListInterface) {
         },
         icon: <EditIcon />,
         isDisabled: (data: any) => {
+            if (props.isReadOnly) return true
             if (props.object_type === 'datasetview' && data.type === 'Inherited') {
                 return true
             }
@@ -466,6 +469,7 @@ function PermissionList(props: PermissionListInterface) {
         color: 'error',
         icon: <DeleteIcon />,
         isDisabled: (data: any) => {
+            if (props.isReadOnly) return true
             if (props.object_type === 'datasetview' && data.type === 'Inherited') {
                 return true
             }
@@ -516,7 +520,7 @@ function PermissionList(props: PermissionListInterface) {
             loading ? <Loading label={'Fetching data'}/> :
             <Grid container flexDirection={'column'} alignItems={'flex-start'} sx={{width: '100%', height: '100%', marginTop: '10px'}}>
                 <Grid item>
-                    { !(props.object_type === 'module' && props.user.role === 'Viewer') &&
+                    { !(props.object_type === 'module' && props.user.role === 'Viewer') && !props.isReadOnly &&
                         <AddButton disabled={loading} text={'Add'} variant={'secondary'}
                             onClick={addButtonClick}/>
                     }
@@ -564,15 +568,15 @@ export default function UserPermission(props: UserPermissionInterface) {
             <Grid container sx={{ flexGrow: 1, flexDirection: 'column' }}>
                 <TabPanel key={0} value={tabSelected} index={0} noPadding>
                     { props.user.role === 'Creator' ?           
-                        <PermissionList object_type={'module'} user={props.user} /> :
+                        <PermissionList object_type={'module'} user={props.user} isReadOnly={props.isUserProfile} /> :
                         <EmptyTabPanel text='Only creator users can manage modules' />
                     }
                 </TabPanel>
                 <TabPanel key={1} value={tabSelected} index={1} noPadding>
-                    <PermissionList object_type={'dataset'} user={props.user} />
+                    <PermissionList object_type={'dataset'} user={props.user} isReadOnly={props.isUserProfile} />
                 </TabPanel>
                 <TabPanel key={2} value={tabSelected} index={2} noPadding>
-                    <PermissionList object_type={'datasetview'} user={props.user} />
+                    <PermissionList object_type={'datasetview'} user={props.user} isReadOnly={props.isUserProfile} />
                 </TabPanel>
             </Grid>
         </Box>
