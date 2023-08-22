@@ -77,7 +77,7 @@ identifiers:
     range of validity, so given the C-Ucode of a concept, we can always
     access the version of boundaries that was valid at a specific date.
 
-![](./img/concepts.png)
+![](./img/concepts.jpg)
 
 📔 Note that other identifiers (like PCodes, WFP codes, ISO3CD, GID, etc.)
 can be available within the data if they have been uploaded together
@@ -90,8 +90,6 @@ to the discovery of geographical entities.
 ## How to authenticate to the API
 
 -  🔐 API_KEY: access public data
-
--  👮 B2C with a registered user: access protected data
 
 ### Generating an API KEY
 
