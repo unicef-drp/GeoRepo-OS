@@ -47,6 +47,9 @@ from georepo.forms import (
     DatasetAdminCreationForm,
     DatasetAdminChangeForm
 )
+from georepo.utils.dataset_view import (
+    get_view_tiling_status
+)
 
 
 User = get_user_model()
@@ -262,8 +265,8 @@ class DatasetAdmin(GuardedModelAdmin):
         }),
     )
     list_display = (
-        'label', 'short_code', 'size', 'task_tiling_status',
-        'geojson', 'layer_preview', 'arcgis_config')
+        'label', 'short_code', 'max_privacy_level', 'min_privacy_level',
+        'arcgis_config')
     actions = [
         populate_default_tile_config, generate_simplified_geometry,
         do_dataset_patch, refresh_dynamic_views,
@@ -305,56 +308,6 @@ class DatasetAdmin(GuardedModelAdmin):
             )
         else:
             return '-'
-
-    def geojson(self, obj: Dataset):
-        geojson_file_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(obj.uuid)
-        ) + '.geojson'
-        if os.path.exists(geojson_file_path):
-            return format_html(
-                '<a href="{}">GeoJSON File</a>'.format(
-                    geojson_file_path.replace(
-                        settings.MEDIA_ROOT,
-                        settings.MEDIA_URL
-                    )))
-        return '-'
-
-    def layer_preview(self, obj: Dataset):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
-        )
-        if os.path.exists(tile_path):
-            return format_html(
-                '<a href="/layer-test/?dataset={}">Layer Preview</a>'.format(
-                    obj.label))
-        return '-'
-
-    def task_tiling_status(self, obj: Dataset):
-        tiling_status = (
-            Dataset.DatasetTilingStatus(obj.tiling_status).label
-        )
-        if obj.tiling_status == Dataset.DatasetTilingStatus.PROCESSING:
-            tiling_status = f'{tiling_status} ({obj.tiling_progress:.0f}%)'
-        return tiling_status
-
-    def size(self, obj: Dataset):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
-        )
-        if os.path.exists(tile_path):
-            folder_size = 0
-            # get size
-            for path, dirs, files in os.walk(tile_path):
-                for f in files:
-                    fp = os.path.join(path, f)
-                    folder_size += os.stat(fp).st_size
-
-            return convert_size(folder_size)
-
-        return '0'
 
 
 class LayerStyleAdmin(admin.ModelAdmin):
@@ -543,42 +496,21 @@ def view_generate_simplified_geometry(modeladmin, request, queryset):
 
 class DatasetViewAdmin(GuardedModelAdmin):
     list_display = (
-        'name', 'dataset', 'is_static',
-        'size', 'status', 'uuid', 'layer_preview')
+        'name', 'dataset', 'is_static', 'min_privacy_level',
+        'max_privacy_level', 'tiling_status', 'uuid')
     search_fields = ['name', 'dataset__label', 'uuid']
     actions = [generate_view_vector_tiles, create_sql_view_action,
                generate_view_exported_data,
                download_view_size_action, fix_view_privacy_level,
                move_resource_view_level4, view_generate_simplified_geometry]
 
-    def layer_preview(self, obj: DatasetView):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
+    def tiling_status(self, obj: DatasetView):
+        status, _ = get_view_tiling_status(
+            DatasetViewResource.objects.filter(
+                dataset_view=obj
+            )
         )
-        if os.path.exists(tile_path):
-            return format_html(
-                '<a href="/layer-test/?dataset_view={}">Layer Preview</a>'
-                ''.format(
-                    obj.id))
-        return '-'
-
-    def size(self, obj: DatasetView):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
-        )
-        if os.path.exists(tile_path):
-            folder_size = 0
-            # get size
-            for path, dirs, files in os.walk(tile_path):
-                for f in files:
-                    fp = os.path.join(path, f)
-                    folder_size += os.stat(fp).st_size
-
-            return convert_size(folder_size)
-
-        return '0'
+        return status
 
 
 class LanguageAdmin(admin.ModelAdmin):
