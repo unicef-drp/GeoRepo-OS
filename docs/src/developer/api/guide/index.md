@@ -93,6 +93,22 @@ to the discovery of geographical entities.
 
 -  👮 B2C with a registered user: access protected data
 
+### Generating API KEY
+
+Go to Django Admin Page > Core > API Keys. Click Add API Key button.
+
+![](./img/api_keys_step1.png)
+
+Select the User and fill in the other details (Platform, Owner, and Contact). 
+Click save button to create the API Key.
+
+![](./img/api_keys_step2.png)
+
+Copy the generated key to be used in your application codes.
+
+![](./img/api_keys_step3.png)
+
+
 ## Examples of usage of the API
 
 Please, note that the data in **the examples provided DO NOT reflect the
@@ -359,6 +375,31 @@ listing the children or the parent with the endpoints:
 
 ```
 /search/view/{uuid}/entity/{ucode}/parent/
+```
+
+## Example of Python Code to access the API
+
+```
+import requests
+
+url = "https://staging-georepo.unitst.org/api/v1/search/module/list/?page=1&page_size=50"
+
+payload = {}
+headers = {
+  'Accept': 'application/json',
+  'Authorization': 'Token {{YOUR_API_KEY}}'
+}
+
+response = requests.request("GET", url, headers=headers, data=payload)
+
+print(response.status_code)
+print(response.json())
+```
+
+Output:
+```
+200
+{'page': 1, 'total_page': 1, 'page_size': 50, 'results': [{'name': 'Boundary Lines', 'uuid': 'bc68f410-ce2e-466a-b64e-72974b2f228f'}, {'name': 'Admin Boundaries', 'uuid': '5118766f-83d6-4688-b79d-cb4c9110de68'}]}
 ```
 
 ## TO ADD
