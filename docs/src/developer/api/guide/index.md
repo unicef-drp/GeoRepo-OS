@@ -95,18 +95,18 @@ to the discovery of geographical entities.
 
 ### Generating an API KEY
 
-Go to the Django Administration Page > Core > API Keys. Click the `Add API Key` button.
+Go to the Django Administration Page > Core > API Keys. Click on the `Add API Key` button.
 
-![](./img/api_keys_step1.png)
+![](./img/gen-api-key-1.png)
 
-Select a User and fill in the other details (Platform, Owner, and Contact). 
+Select a **User** and fill in the other details (Platform, Owner, and Contact). 
 Click the `Save` button to create the API Key.
 
-![](./img/api_keys_step2.png)
+![](./img/gen-api-key-2.png)
 
 Copy the generated key to be used in your application codes.
 
-![](./img/api_keys_step3.png)
+![](./img/gen-api-key-3.png)
 
 
 ## Examples of usage of the API
