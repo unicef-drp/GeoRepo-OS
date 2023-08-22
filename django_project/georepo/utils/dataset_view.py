@@ -1,6 +1,8 @@
 import re
+from math import isclose
 from typing import List
 from django.db import connection
+from django.db.models import Avg
 from celery.result import AsyncResult
 from core.celery import app
 from django.db.models.expressions import RawSQL
@@ -458,3 +460,26 @@ def generate_view_resource_bbox(view_resource: DatasetViewResource):
         view_resource.bbox = ','.join(_bbox)
         view_resource.save()
     return view_resource.bbox
+
+
+def get_view_tiling_status(view_resource_queryset):
+    """Get tiling status of dataset view."""
+    # check for error
+    error_queryset = view_resource_queryset.filter(
+        status=DatasetView.DatasetViewStatus.ERROR
+    )
+    view_resources = view_resource_queryset.aggregate(
+        Avg('vector_tiles_progress')
+    )
+    tiling_progress = (
+        view_resources['vector_tiles_progress__avg'] if
+        view_resources['vector_tiles_progress__avg'] else 0
+    )
+    if error_queryset.exists():
+        return 'Error', tiling_progress
+    tiling_status = 'Pending'
+    if isclose(tiling_progress, 100, abs_tol=1e-4):
+        tiling_status = 'Done'
+    elif tiling_progress > 0:
+        tiling_status = 'Processing'
+    return tiling_status, tiling_progress

@@ -1,8 +1,6 @@
 from django.conf import settings
 import uuid
-from math import isclose
 from django.shortcuts import get_object_or_404
-from django.db.models import Avg
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -25,7 +23,8 @@ from dashboard.serializers.tiling_config import (
     ViewTilingConfigSerializer
 )
 from georepo.utils.dataset_view import (
-    trigger_generate_vector_tile_for_view
+    trigger_generate_vector_tile_for_view,
+    get_view_tiling_status
 )
 from georepo.tasks.simplify_geometry import (
     simplify_geometry_in_dataset,
@@ -374,7 +373,7 @@ class TilingConfigCheckStatus(AzureAuthRequiredMixin, APIView):
         simplification_status = None
         simplification_progress = ''
         tiling_status = None
-        tiling_progress = ''
+        tiling_progress = 0
         module = ''
 
         if object_type == 'dataset':
@@ -413,16 +412,8 @@ class TilingConfigCheckStatus(AzureAuthRequiredMixin, APIView):
             )
         else:
             raise ValidationError(f'Invalid object type: {object_type}')
-        view_resources = view_resources.aggregate(
-            Avg('vector_tiles_progress')
-        )
-        tiling_progress = (
-            view_resources['vector_tiles_progress__avg'] if
-            view_resources['vector_tiles_progress__avg'] else 100
-        )
-        tiling_status = (
-            'Done' if isclose(tiling_progress, 100, abs_tol=1e-4) else
-            'Processing'
+        tiling_status, tiling_progress = (
+            get_view_tiling_status(view_resources)
         )
         return Response(
             status=200,
