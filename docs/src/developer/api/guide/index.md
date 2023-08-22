@@ -93,14 +93,14 @@ to the discovery of geographical entities.
 
 -  👮 B2C with a registered user: access protected data
 
-### Generating API KEY
+### Generating an API KEY
 
-Go to Django Admin Page > Core > API Keys. Click Add API Key button.
+Go to the Django Administration Page > Core > API Keys. Click the `Add API Key` button.
 
 ![](./img/api_keys_step1.png)
 
-Select the User and fill in the other details (Platform, Owner, and Contact). 
-Click save button to create the API Key.
+Select a User and fill in the other details (Platform, Owner, and Contact). 
+Click the `Save` button to create the API Key.
 
 ![](./img/api_keys_step2.png)
 
@@ -377,7 +377,7 @@ listing the children or the parent with the endpoints:
 /search/view/{uuid}/entity/{ucode}/parent/
 ```
 
-## Example of Python Code to access the API
+## Example of Python Code To Access the API
 
 ```
 import requests
