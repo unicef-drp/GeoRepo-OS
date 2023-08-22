@@ -73,9 +73,9 @@ class PermissionTestCase(TestCase):
     def test_grant_dataset_to_application_keys(self):
         dataset = DatasetF.create()
         self.assert_dataset_view_privacy_level(
-            dataset, self.api_key1, 1)
+            dataset, self.api_key1, 0)
         self.assert_dataset_view_privacy_level(
-            dataset, self.api_key2, 4)
+            dataset, self.api_key2, 0)
         self.assert_dataset_view_privacy_level(
             dataset, self.api_key3, 0)
 

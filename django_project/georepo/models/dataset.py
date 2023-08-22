@@ -243,12 +243,10 @@ class DatasetGroupObjectPermission(GroupObjectPermissionBase):
 @receiver(post_save, sender=Dataset)
 def dataset_post_create(sender, instance: Dataset, created, *args, **kwargs):
     from georepo.utils.permission import (
-        grant_dataset_owner,
-        grant_dataset_to_application_keys
+        grant_dataset_owner
     )
     if created:
         grant_dataset_owner(instance)
-        grant_dataset_to_application_keys(instance)
 
 
 @receiver(post_delete, sender=Dataset)
