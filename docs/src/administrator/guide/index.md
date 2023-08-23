@@ -15,21 +15,21 @@ license: This program is free software; you can redistribute it and/or modify it
 <!-- Narrative Instructions on how admin users will use the product/platform -->
 <!-- Replace all of the titles with relevant titles -->
 
-## How to Add GeoSight API Keys to Dataset Permission 
+## How to Add GeoSight API Keys to Dataset Permissions 
 
-Go to the dataset listing page and click on one of the dataset.
+Go to the dataset listing page and click on one of the datasets.
 
 ![](./img/gs-api-key-1.png)
 
-Go to the Permission > User tab and click on the `Add User` button.
+Go to the Permission Tab then to the User tab and click on the `Add User` button.
 
 ![](./img/gs-api-key-2.png)
 
-For API Key Level 4, select a **API_KEY GeoSight_lv_4 (Viewer)** as the User, **Read** permission, and privacy level **4 - Highly confidential**. Click on the `Save` button to add the permission.
+For a Level 4 API Key, select **API_KEY GeoSight_lv_4 (Viewer)** as the User, **Read** as the Permission, and a Privacy Level of **4 - Highly confidential**. Click on the `Save` button to add the permission.
 
 ![](./img/gs-api-key-3.png)
 
-For API Key Level 1, select a **API_KEY GeoSight_lv_1 (Viewer)** as the User, **Read** permission, and privacy level **1 - Publicly shareable**. Click on the `Save` button to add the permission.
+For a Level 1 API Key, select **API_KEY GeoSight_lv_1 (Viewer)** as the User, **Read** as the Permission, and a Privacy Level of **1 - Publicly shareable**. Click on the `Save` button to add the permission.
 
 ![](./img/gs-api-key-4.png)
 
