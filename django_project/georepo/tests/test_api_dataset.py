@@ -142,7 +142,7 @@ class TestApiDataset(TestCase):
             dataset_view=dataset_view,
             privacy_level=3
         ).first()
-        # without CustomAPIKey, should be 403
+        # without CustomAPIKey, should be 401
         request = self.factory.post(
             reverse('dataset-allowed-api') +
             f'?token={str(user.auth_token)}' +
@@ -150,7 +150,7 @@ class TestApiDataset(TestCase):
         )
         view = IsDatasetAllowedAPI.as_view()
         response = view(request)
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
         key = CustomApiKey(
             token_ptr=token,
             user=user,

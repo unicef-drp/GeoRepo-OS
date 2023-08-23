@@ -32,7 +32,7 @@ class CustomTokenAuthentication(authentication.TokenAuthentication):
                     AuthenticationFailed(_('Invalid token.'))
         except CustomApiKey.DoesNotExist:
             raise authentication.exceptions.\
-                PermissionDenied(_('Invalid API Key.'))
+                AuthenticationFailed(_('Invalid token.'))
         return (user, token)
 
     def authenticate(self, request):

@@ -334,7 +334,7 @@ class TokenDetail(UserPassesTestMixin, APIView):
                     'Please remove the existing one!'
                 )
             })
-        token = Token.objects.create(
+        token, _ = Token.objects.get_or_create(
             user=user
         )
         key = CustomApiKey(
