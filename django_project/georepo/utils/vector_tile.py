@@ -362,6 +362,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 pass
 
     processed_count = 0
+    tegola_concurrency = int(os.getenv('TEGOLA_CONCURRENCY', '2'))
     logger.info(
         'Starting vector tile generation for '
         f'view_resource {view_resource.id} - {view_resource.uuid} '
@@ -377,10 +378,13 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 '--config',
                 toml_config_file['config_file'],
                 '--overwrite' if overwrite else '',
-                '--concurrency',
-                '2',
             ]
         )
+        if tegola_concurrency > 0:
+            command_list.extend([
+                '--concurrency',
+                f'{tegola_concurrency}',
+            ])
         if bbox:
             _bbox = []
             for coord in bbox:
@@ -405,6 +409,8 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 '--max-zoom',
                 '8'
             ])
+        logger.info('Tegola commands:')
+        logger.info(command_list)
         result = subprocess.run(command_list, capture_output=True)
         logger.info(
             'Vector tile generation for '
