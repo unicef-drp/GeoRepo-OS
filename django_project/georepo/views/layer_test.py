@@ -9,7 +9,6 @@ from django.views.generic import TemplateView
 from django.conf import settings
 from rest_framework.authtoken.models import Token
 from core.models.preferences import SitePreferences
-from django.conf import settings
 from azure_auth.handlers import AzureAuthHandler
 
 from georepo.models import Dataset, DatasetView, GeographicalEntity,\

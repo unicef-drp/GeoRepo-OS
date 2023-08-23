@@ -10,7 +10,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from rest_framework.test import APIRequestFactory
 from rest_framework import versioning
 from rest_framework.authtoken.models import Token
-
+from core.models.token_detail import CustomApiKey
 from georepo.utils import absolute_path
 from georepo.api_views.dataset import (
     DatasetDetail,
@@ -133,11 +133,29 @@ class TestApiDataset(TestCase):
                 mock.Mock(side_effect=mocked_set_cache))
     def test_is_dataset_allowed_api(self):
         user = UserF.create(username='test')
-        Token.objects.create(user=user)
+        token = Token.objects.create(user=user)
         dataset_view = self.latest_views[0]
         # grant viewer access with level 2
         grant_dataset_viewer(self.dataset, user, 2)
         grant_datasetview_viewer(dataset_view, user)
+        resource3 = DatasetViewResource.objects.filter(
+            dataset_view=dataset_view,
+            privacy_level=3
+        ).first()
+        # without CustomAPIKey, should be 403
+        request = self.factory.post(
+            reverse('dataset-allowed-api') +
+            f'?token={str(user.auth_token)}' +
+            f'&request_url=/t/{str(resource3.uuid)}/'
+        )
+        view = IsDatasetAllowedAPI.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 403)
+        key = CustomApiKey(
+            token_ptr=token,
+            user=user,
+        )
+        key.save_base(raw=True)
         # Without request url
         request = self.factory.post(
             reverse('dataset-allowed-api') +
@@ -147,10 +165,6 @@ class TestApiDataset(TestCase):
         response = view(request)
         self.assertEqual(response.status_code, 403)
         # should not allow to access level 3
-        resource3 = DatasetViewResource.objects.filter(
-            dataset_view=dataset_view,
-            privacy_level=3
-        ).first()
         request = self.factory.post(
             reverse('dataset-allowed-api') +
             f'?token={str(user.auth_token)}' +

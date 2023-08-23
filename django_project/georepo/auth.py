@@ -1,6 +1,7 @@
 import jwt
 from rest_framework import authentication
 from django.utils.translation import gettext_lazy as _
+from core.models.token_detail import CustomApiKey
 
 
 class CustomTokenAuthentication(authentication.TokenAuthentication):
@@ -18,6 +19,21 @@ class CustomTokenAuthentication(authentication.TokenAuthentication):
         except Exception:
             pass
         return False
+
+    def authenticate_credentials(self, key):
+        user, token = (
+            super(CustomTokenAuthentication, self).
+            authenticate_credentials(key)
+        )
+        # check flag in TokenDetail
+        try:
+            if not token.customapikey.is_active:
+                raise authentication.exceptions.\
+                    AuthenticationFailed(_('Invalid token.'))
+        except CustomApiKey.DoesNotExist:
+            raise authentication.exceptions.\
+                PermissionDenied(_('Invalid API Key.'))
+        return (user, token)
 
     def authenticate(self, request):
         token = request.GET.get('token', '')

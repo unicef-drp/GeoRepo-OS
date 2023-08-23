@@ -575,7 +575,7 @@ def resume_vector_tiles_generation(modeladmin, request, queryset):
 class DatasetViewResourceAdmin(admin.ModelAdmin):
     search_fields = ['dataset_view__name', 'uuid']
     actions = [resume_vector_tiles_generation]
-    
+
     def get_list_display(self, request):
         def layer_preview(obj: DatasetViewResource):
             # check if user has API key

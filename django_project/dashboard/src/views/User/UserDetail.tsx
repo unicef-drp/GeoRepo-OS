@@ -16,6 +16,7 @@ import {UserDetailRoute, UserProfileRoute} from '../routes';
 import UserInterface from '../../models/user';
 import UserDetailGeneral from './UserDetailGeneral';
 import UserPermission from './UserPermission';
+import UserAPIKeys from './UserAPIKeys';
 
 const FETCH_USER_DETAIL_URL = '/api/user/'
 
@@ -114,6 +115,7 @@ export default function UserDetail(props: any) {
                         <Tooltip title="Admin role has all permissions">
                             <span>PERMISSION</span>
                         </Tooltip> : 'PERMISSION'}  />
+                      <Tab key={'tab-2'} label={'API Key Enrolment'} {...a11yProps(0)} />
                 </Tabs>
             </Box>
             { loading && <Skeleton variant="rectangular" height={'100%'} width={'100%'}/> }
@@ -124,6 +126,9 @@ export default function UserDetail(props: any) {
                 </TabPanel>
                 <TabPanel key={1} value={tabSelected} index={1} padding={1}>
                     <UserPermission isUserProfile={isUserProfile} user={user} />
+                </TabPanel>
+                <TabPanel key={2} value={tabSelected} index={2} padding={1}>
+                    <UserAPIKeys user={user} />
                 </TabPanel>
               </Grid>
             )}
