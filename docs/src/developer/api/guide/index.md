@@ -102,7 +102,7 @@ Click on the `Confirm` button in the confirmation dialog.
 
 ![](./img/enrol-api-key-2.png)
 
-Click on the `icon #1` to see the generated API key or click on the `icon #2` to copy the API key to the clipboard. The `Revoke` button can deactivate the API key so the API key cannot be used without removing it from the system. The `Delete API Key` button will remove the API key from the system.
+Click on `icon 1️⃣` to see the generated API key or click on `icon 2️⃣` to copy the API key to the clipboard. The `Revoke` button can deactivate the API key so that the API key cannot be used without needing to remove it from the system. The `Delete API Key` button will remove the API key from the system.
 
 ![](./img/enrol-api-key-3.png)
 
