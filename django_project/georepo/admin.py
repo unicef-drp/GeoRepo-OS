@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.contrib import admin, messages
 from django.conf import settings
 from django.http import HttpResponse
+from rest_framework.authtoken.models import Token
 from django.utils.html import format_html
 from core.settings.utils import absolute_path
 from guardian.admin import GuardedModelAdmin
@@ -192,6 +193,14 @@ def refresh_dynamic_views(modeladmin, request, queryset):
 @admin.action(description='Generate arcgis config')
 def generate_arcgis_config_action(modeladmin, request, queryset):
     from georepo.utils.arcgis import generate_arcgis_config
+    # check if user has API key
+    if not Token.objects.filter(user=request.user).exists():
+        modeladmin.message_user(
+            request,
+            'Please generate API Key for your user account!',
+            messages.ERROR
+        )
+        return
     for dataset in queryset:
         generate_arcgis_config(request.user, dataset, None)
 
@@ -564,41 +573,44 @@ def resume_vector_tiles_generation(modeladmin, request, queryset):
 
 
 class DatasetViewResourceAdmin(admin.ModelAdmin):
-    list_display = ('dataset_view', 'privacy_level', 'uuid',
-                    'status', 'vector_tiles_progress', 'size',
-                    'layer_preview')
     search_fields = ['dataset_view__name', 'uuid']
     actions = [resume_vector_tiles_generation]
 
-    def layer_preview(self, obj: DatasetViewResource):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
-        )
-        if os.path.exists(tile_path):
-            return format_html(
-                '<a href="/layer-test/'
-                '?dataset_view_resource={}">Layer Preview</a>'
-                ''.format(
-                    obj.id))
-        return '-'
+    def get_list_display(self, request):
+        def layer_preview(obj: DatasetViewResource):
+            # check if user has API key
+            if not settings.USE_AZURE:
+                if not Token.objects.filter(user=request.user).exists():
+                    return 'Require User API Key!'
+            tile_path = os.path.join(
+                settings.LAYER_TILES_PATH,
+                str(obj.uuid)
+            )
+            if os.path.exists(tile_path):
+                return format_html(
+                    '<a href="/layer-test/'
+                    '?dataset_view_resource={}">Layer Preview</a>'
+                    ''.format(
+                        obj.id))
+            return '-'
 
-    def size(self, obj: DatasetViewResource):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
-        )
-        if os.path.exists(tile_path):
-            folder_size = 0
-            # get size
-            for path, dirs, files in os.walk(tile_path):
-                for f in files:
-                    fp = os.path.join(path, f)
-                    folder_size += os.stat(fp).st_size
-
-            return convert_size(folder_size)
-
-        return '0'
+        def size(obj: DatasetViewResource):
+            tile_path = os.path.join(
+                settings.LAYER_TILES_PATH,
+                str(obj.uuid)
+            )
+            if os.path.exists(tile_path):
+                folder_size = 0
+                # get size
+                for path, dirs, files in os.walk(tile_path):
+                    for f in files:
+                        fp = os.path.join(path, f)
+                        folder_size += os.stat(fp).st_size
+                return convert_size(folder_size)
+            return '0'
+        return ('dataset_view', 'privacy_level', 'uuid',
+                'status', 'vector_tiles_progress', size,
+                layer_preview)
 
 
 class ModuleAdmin(GuardedModelAdmin):

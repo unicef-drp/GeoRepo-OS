@@ -7,7 +7,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from core.settings.utils import absolute_path
-from rest_framework.authtoken.models import Token
 from georepo.models import (
     Dataset,
     DatasetView, AdminLevelTilingConfig
@@ -63,8 +62,6 @@ def generate_arcgis_config(
     layer_tiles_base_url = settings.LAYER_TILES_BASE_URL
     if layer_tiles_base_url[-1] == '/':
         layer_tiles_base_url = layer_tiles_base_url[:-1]
-    if not Token.objects.filter(user=requester).exists():
-        Token.objects.create(user=requester)
     ctx['sources'] = {
         ctx['name']: {
             'type': 'vector',

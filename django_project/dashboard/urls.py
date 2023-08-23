@@ -45,7 +45,8 @@ from dashboard.api_views.validate import ValidateUploadSession, \
 from dashboard.api_views.users import (
     UserList,
     UserDetail,
-    UserPermissionDetail
+    UserPermissionDetail,
+    TokenDetail
 )
 from dashboard.api_views.groups import (
     GroupList,
@@ -296,6 +297,9 @@ urlpatterns = [
     re_path(r'api/user/(?P<id>\d+)/?$',
             UserDetail.as_view(),
             name='user-detail'),
+    re_path(r'api/token/(?P<id>\d+)/?$',
+            TokenDetail.as_view(),
+            name='token-detail'),
     re_path(r'api/user/?$',
             UserDetail.as_view(),
             name='user-create'),

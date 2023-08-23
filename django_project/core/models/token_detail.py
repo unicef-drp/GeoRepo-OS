@@ -33,6 +33,10 @@ class CustomApiKey(Token):
         max_length=255
     )
 
+    is_active = models.BooleanField(
+        default=True,
+    )
+
     class Meta:
         verbose_name = _("API Key")
         verbose_name_plural = _("API Keys")

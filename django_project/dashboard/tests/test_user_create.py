@@ -46,7 +46,8 @@ class TestUserCreate(TestCase):
         request.user = self.creator
         view = UserDetail.as_view()
         response = view(request)
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content, b'Invalid role!')
 
     def test_create_role_not_exist(self):
         request = self.factory.post(

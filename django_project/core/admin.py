@@ -90,8 +90,9 @@ class SitePreferencesAdmin(admin.ModelAdmin):
 
 
 class TokenDetailAdmin(TokenAdmin):
-    list_display = ('key', 'user', 'platform', 'owner', 'contact', 'created')
-    fields = ('user', 'platform', 'owner', 'contact')
+    list_display = ('key', 'user', 'platform', 'owner',
+                    'contact', 'created', 'is_active')
+    fields = ('user', 'platform', 'owner', 'contact', 'is_active')
 
 
 admin.site.register(SitePreferences, SitePreferencesAdmin)

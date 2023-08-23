@@ -9,3 +9,13 @@ export default interface UserInterface {
     joined_date: string,
     last_login: string
 }
+
+export interface APIKeyInterface {
+    user_id: number,
+    key: string,
+    created: string,
+    platform?: string,
+    owner?: string,
+    contact?: string,
+    is_active: boolean
+}

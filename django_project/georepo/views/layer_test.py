@@ -2,12 +2,14 @@ import json
 import random
 import time
 
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models.expressions import RawSQL
+from django.core.exceptions import PermissionDenied
 from django.views.generic import TemplateView
 from django.conf import settings
 from rest_framework.authtoken.models import Token
 from core.models.preferences import SitePreferences
+from azure_auth.handlers import AzureAuthHandler
 
 from georepo.models import Dataset, DatasetView, GeographicalEntity,\
     DatasetViewResource
@@ -40,13 +42,23 @@ def get_view_zoom_level(level: int, dataset_view: DatasetView):
     }
 
 
-class LayerTestView(LoginRequiredMixin, TemplateView):
+class LayerTestView(UserPassesTestMixin, TemplateView):
     template_name = 'test_layer.html'
+
+    def test_func(self):
+        if not self.request.user.is_authenticated:
+            return False
+        if settings.USE_AZURE:
+            token = AzureAuthHandler(self.request).get_token_from_cache()
+            if token is None:
+                return False
+        else:
+            if not Token.objects.filter(user=self.request.user).exists():
+                return False
+        return True
 
     def get_context_data(self, **kwargs):
         ctx = super(LayerTestView, self).get_context_data(**kwargs)
-        if not Token.objects.filter(user=self.request.user).exists():
-            Token.objects.create(user=self.request.user)
         dataset_string = self.request.GET.get('dataset')
         dataset_view = self.request.GET.get('dataset_view')
         dataset_view_resource = self.request.GET.get('dataset_view_resource')
@@ -160,4 +172,13 @@ class LayerTestView(LoginRequiredMixin, TemplateView):
         ctx['maptiler_api_key'] = (
             SitePreferences.preferences().maptiler_api_key
         )
+        # add auth_token
+        if settings.USE_AZURE:
+            token = AzureAuthHandler(self.request).get_token_from_cache()
+            if token and 'access_token' in token:
+                ctx['auth_token'] = token['access_token']
+            else:
+                raise PermissionDenied()
+        else:
+            ctx['auth_token'] = self.request.user.auth_token
         return ctx
