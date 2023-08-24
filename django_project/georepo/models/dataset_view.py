@@ -413,9 +413,17 @@ class DatasetViewResource(models.Model):
         default=0
     )
 
+    entity_count = models.IntegerField(
+        default=0
+    )
+
     @property
     def resource_id(self):
         return str(self.uuid)
+
+    @property
+    def vector_tiles_exist(self):
+        return self.vector_tiles_size > 0
 
     class Meta:
         constraints = [

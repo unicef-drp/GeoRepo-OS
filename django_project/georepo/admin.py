@@ -577,11 +577,7 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
             if not settings.USE_AZURE:
                 if not Token.objects.filter(user=request.user).exists():
                     return 'Require User API Key!'
-            tile_path = os.path.join(
-                settings.LAYER_TILES_PATH,
-                str(obj.uuid)
-            )
-            if os.path.exists(tile_path):
+            if obj.vector_tiles_exist:
                 return format_html(
                     '<a href="/layer-test/'
                     '?dataset_view_resource={}">Layer Preview</a>'

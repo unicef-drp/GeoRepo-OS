@@ -19,7 +19,7 @@ from georepo.models import Dataset, DatasetView, \
     EntityId, EntityName, GeographicalEntity, \
     DatasetViewResource
 from georepo.utils.dataset_view import create_sql_view, \
-    check_view_exists
+    check_view_exists, get_entities_count_in_view
 from georepo.utils.module_import import module_function
 from georepo.utils.azure_blob_storage import (
     DirectoryClient,
@@ -331,7 +331,10 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                                overwrite: bool = False):
     """
     Generate vector tiles for view
-    :param view: DatasetView object
+    :param view_resource: DatasetViewResource object
+    :param overwrite: True to overwrite existing tiles
+
+    :return boolean: True if vector tiles are generated
     """
     view_resource.status = DatasetView.DatasetViewStatus.PROCESSING
     view_resource.vector_tiles_progress = 0
@@ -340,6 +343,21 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
     sql_view = str(view_resource.dataset_view.uuid)
     if not check_view_exists(sql_view):
         create_sql_view(view_resource.dataset_view)
+    # check the number of entity in view_resource
+    entity_count = get_entities_count_in_view(
+        view_resource.dataset_view,
+        view_resource.privacy_level
+    )
+    if entity_count == 0:
+        logger.info(
+            'Skipping vector tiles generation for '
+            f'{view_resource.id} - {view_resource.uuid} - '
+            f'{view_resource.privacy_level} - Empty Entities'
+        )
+        remove_empty_vector_tiles(view_resource)
+        save_view_resource_on_success(view_resource, entity_count)
+        calculate_vector_tiles_size(view_resource)
+        return False
 
     toml_config_files = create_view_configuration_files(view_resource)
     logger.info(
@@ -349,10 +367,9 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
     if len(toml_config_files) == 0:
         # no need to generate the view tiles
         remove_empty_vector_tiles(view_resource)
-        view_resource.status = DatasetView.DatasetViewStatus.DONE
-        view_resource.vector_tiles_progress = 100
-        view_resource.save()
-        return
+        save_view_resource_on_success(view_resource, entity_count)
+        calculate_vector_tiles_size(view_resource)
+        return False
     geom_col = 'geometry'
 
     # Get bbox from sql view
@@ -455,9 +472,15 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         'Finished moving temp vector tiles for '
         f'view_resource {view_resource.id} - {view_resource.uuid}'
     )
+    save_view_resource_on_success(view_resource, entity_count)
+    return True
+
+
+def save_view_resource_on_success(view_resource, entity_count):
     view_resource.status = DatasetView.DatasetViewStatus.DONE
     view_resource.vector_tiles_updated_at = datetime.now()
     view_resource.vector_tiles_progress = 100
+    view_resource.entity_count = entity_count
     view_resource.save()
 
 
