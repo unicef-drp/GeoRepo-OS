@@ -130,10 +130,28 @@ class DirectoryClient:
 
     if not path == '' and not path.endswith('/'):
       path += '/'
-    for blob in blobs:
-      blob = path + blob
-      self.client.delete_blob(blob)
-  
+    # if client is using azurite, cannot delete using batch
+    # https://github.com/Azure/Azurite/issues/1809
+    if 'azurite' in self.client.url:
+      for blob in blobs:
+        blob = path + blob
+        self.client.delete_blob(blob)
+    else:
+      blobs_length = len(blobs)
+      blobs = [path + blob for blob in blobs]
+      if blobs_length <= 256:
+        self.client.delete_blobs(*blobs) 
+      else:
+        start=0
+        end=256
+        while end <= blobs_length:
+          #each time, delete 256 blobs at most
+          self.client.delete_blobs(*blobs[start:end])
+          start = start + 256
+          end = end + 256
+          if start < blobs_length and end > blobs_length:
+            self.client.delete_blobs(*blobs[start:blobs_length])
+
   def movedir(self, source_path, dest_path):
     blobs = self.ls_files(source_path, recursive=True)
     if not blobs:
@@ -181,20 +199,3 @@ def get_tegola_cache_config(connection_string, container_name):
     'az_account_name': client.credential.account_name,
     'az_shared_key': client.credential.account_key
   }
-  # keys = connection_string.split(';')
-  # accountNames = [x for x in keys if x.startswith('AccountName=')]
-  # if len(accountNames) == 0:
-  #   raise ValueError('Unable to find AccountName!')
-  # accountName = accountNames[0]
-  # accountKeys = [x for x in keys if x.startswith('AccountKey=')]
-  # if len(accountKeys) == 0:
-  #   raise ValueError('Unable to find AccountKey!')
-  # accountKey = accountKeys[0]
-  # container_url = f'https://{accountName}.blob.core.windows.net/{container_name}'
-  # if is_debug:
-  #   container_url = f'http://azurite:10000/{accountName}/{container_name}'
-  # return {
-  #     'container_url': container_url,
-  #     'az_account_name': accountName,
-  #     'az_shared_key': accountKey
-  # }

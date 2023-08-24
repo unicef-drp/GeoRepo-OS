@@ -35,7 +35,7 @@ DEFAULT_FROM_EMAIL = os.environ.get(
 
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': True,
+    'disable_existing_loggers': False,
     'root': {
         'level': 'WARNING',
         'handlers': ['console'],
@@ -56,6 +56,11 @@ LOGGING = {
     'loggers': {
         'django.db.backends': {
             'level': 'ERROR',
+            'handlers': ['console'],
+            'propagate': False
+        },
+        'azure': {
+            'level': 'WARNING',
             'handlers': ['console'],
             'propagate': False
         },

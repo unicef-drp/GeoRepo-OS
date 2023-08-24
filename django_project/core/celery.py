@@ -1,7 +1,9 @@
 from __future__ import absolute_import, unicode_literals
 
 import os
-from celery import Celery
+import logging
+from celery import Celery, signals
+
 
 # set the default Django settings module for the 'celery' program.
 # this is also used in manage.py
@@ -20,6 +22,23 @@ app = Celery('georepo')
 # - namespace='CELERY' means all celery-related configuration keys
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
+
+def create_celery_logger_handler(logger, propagate):
+    # set azure sdk log to warning level
+    az_logger = logging.getLogger('azure')
+    az_logger.setLevel(logging.WARNING)
+
+
+@signals.after_setup_task_logger.connect
+def after_setup_celery_task_logger(logger, **kwargs):
+    """ This function sets the 'celery.task' logger handler and formatter """
+    create_celery_logger_handler(logger, True)
+
+
+@signals.after_setup_logger.connect
+def after_setup_celery_logger(logger, **kwargs):
+    """ This function sets the 'celery' logger handler and formatter """
+    create_celery_logger_handler(logger, False)
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
