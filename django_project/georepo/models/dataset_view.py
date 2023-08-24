@@ -434,3 +434,24 @@ def view_res_post_delete(sender, instance: DatasetViewResource,
             signal='SIGKILL'
         )
     remove_view_resource_data.delay(str(instance.uuid))
+
+
+@receiver(post_save, sender=DatasetViewResource)
+def view_res_post_save(sender, instance: DatasetViewResource,
+                       *args, **kwargs):
+    from georepo.utils.dataset_view import get_view_tiling_status
+    # update dataset view status
+    view = instance.dataset_view
+    view_res_qs = DatasetViewResource.objects.filter(
+        dataset_view=view
+    )
+    tiling_status, _ = get_view_tiling_status(view_res_qs)
+    if tiling_status == 'Pending':
+        view.status = DatasetView.DatasetViewStatus.PENDING
+    elif tiling_status == 'Error':
+        view.status = DatasetView.DatasetViewStatus.ERROR
+    elif tiling_status == 'Processing':
+        view.status = DatasetView.DatasetViewStatus.PROCESSING
+    elif tiling_status == 'Done':
+        view.status = DatasetView.DatasetViewStatus.DONE
+    view.save(update_fields=['status'])

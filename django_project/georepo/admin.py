@@ -275,7 +275,7 @@ class DatasetAdmin(GuardedModelAdmin):
     )
     list_display = (
         'label', 'short_code', 'max_privacy_level', 'min_privacy_level',
-        'arcgis_config')
+        'uuid', 'arcgis_config')
     actions = [
         populate_default_tile_config, generate_simplified_geometry,
         do_dataset_patch, refresh_dynamic_views,
@@ -457,6 +457,22 @@ def view_generate_simplified_geometry(modeladmin, request, queryset):
     )
 
 
+@admin.action(description='Fix Entity Count in View')
+def fix_view_entity_count(modeladmin, request, queryset):
+    from georepo.utils.dataset_view import get_entities_count_in_view
+    for dataset_view in queryset:
+        view_resources = DatasetViewResource.objects.filter(
+            dataset_view=dataset_view
+        )
+        for view_resource in view_resources:
+            view_resource.entity_count = (
+                get_entities_count_in_view(
+                    dataset_view, view_resource.privacy_level
+                )
+            )
+            view_resource.save(update_fields=['entity_count'])
+
+
 class DatasetViewAdmin(GuardedModelAdmin):
     list_display = (
         'name', 'dataset', 'is_static', 'min_privacy_level',
@@ -465,6 +481,7 @@ class DatasetViewAdmin(GuardedModelAdmin):
     actions = [generate_view_vector_tiles, create_sql_view_action,
                generate_view_exported_data,
                fix_view_privacy_level,
+               fix_view_entity_count,
                view_generate_simplified_geometry]
 
     def tiling_status(self, obj: DatasetView):
@@ -518,12 +535,15 @@ def regenerate_resource_vector_tiles(modeladmin, request, queryset):
                 # find if there is running task and stop it
                 app.control.revoke(view_resource.vector_tiles_task_id,
                                    terminate=True)
+        view_resource.status = DatasetView.DatasetViewStatus.PENDING
+        view_resource.vector_tiles_progress = 0
+        view_resource.save()
         task = generate_view_vector_tiles_task.apply_async(
             (view_resource.id, True, True),
             queue='tegola'
         )
         view_resource.vector_tiles_task_id = task.id
-        view_resource.save()
+        view_resource.save(update_fields=['vector_tiles_task_id'])
 
 
 @admin.action(description='Resume Vector Tiles Generation')
@@ -540,12 +560,15 @@ def resume_vector_tiles_generation(modeladmin, request, queryset):
                 # find if there is running task and stop it
                 app.control.revoke(view_resource.vector_tiles_task_id,
                                    terminate=True)
+        view_resource.status = DatasetView.DatasetViewStatus.PENDING
+        view_resource.vector_tiles_progress = 0
+        view_resource.save()
         task = generate_view_vector_tiles_task.apply_async(
             (view_resource.id, True, False),
             queue='tegola'
         )
         view_resource.vector_tiles_task_id = task.id
-        view_resource.save()
+        view_resource.save(update_fields=['vector_tiles_task_id'])
 
 
 @admin.action(description='Calculate Vector Tiles Size')
@@ -562,13 +585,27 @@ def cleanup_tegola_configs(modeladmin, request, queryset):
         clean_tegola_config_files(view_resource)
 
 
+@admin.action(description='Fix Entity Count in Resource')
+def fix_entity_count_in_resource(modeladmin, request, queryset):
+    from georepo.utils.dataset_view import get_entities_count_in_view
+    for view_resource in queryset:
+        view_resource.entity_count = (
+            get_entities_count_in_view(
+                view_resource.dataset_view,
+                view_resource.privacy_level
+            )
+        )
+        view_resource.save(update_fields=['entity_count'])
+
+
 class DatasetViewResourceAdmin(admin.ModelAdmin):
     search_fields = ['dataset_view__name', 'uuid']
     actions = [
         calculate_vector_tile_size,
         regenerate_resource_vector_tiles,
         resume_vector_tiles_generation,
-        cleanup_tegola_configs
+        cleanup_tegola_configs,
+        fix_entity_count_in_resource
     ]
 
     def get_list_display(self, request):
@@ -587,7 +624,7 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
 
         def size(obj: DatasetViewResource):
             return convert_size(obj.vector_tiles_size)
-        return ('dataset_view', 'privacy_level', 'uuid',
+        return ('dataset_view', 'privacy_level', 'entity_count', 'uuid',
                 'status', 'vector_tiles_progress', size,
                 layer_preview)
 
