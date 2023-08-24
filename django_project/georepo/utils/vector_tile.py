@@ -354,7 +354,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
             f'{view_resource.id} - {view_resource.uuid} - '
             f'{view_resource.privacy_level} - Empty Entities'
         )
-        remove_empty_vector_tiles(view_resource)
+        remove_vector_tiles_dir(view_resource.resource_id)
         save_view_resource_on_success(view_resource, entity_count)
         calculate_vector_tiles_size(view_resource)
         return False
@@ -366,7 +366,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
     )
     if len(toml_config_files) == 0:
         # no need to generate the view tiles
-        remove_empty_vector_tiles(view_resource)
+        remove_vector_tiles_dir(view_resource.resource_id)
         save_view_resource_on_success(view_resource, entity_count)
         calculate_vector_tiles_size(view_resource)
         return False
@@ -559,18 +559,25 @@ def patch_vector_tile_path():
                 logger.error('Error renaming geojson file ', ex)
 
 
-def remove_empty_vector_tiles(view_resource: DatasetViewResource):
+def remove_vector_tiles_dir(resource_id: str, is_temp = False):
     if settings.USE_AZURE:
         client = DirectoryClient(settings.AZURE_STORAGE,
                                  settings.AZURE_STORAGE_CONTAINER)
-        layer_tiles_dest = f'layer_tiles/{view_resource.resource_id}'
+        layer_tiles_dest = f'layer_tiles/{resource_id}'
+        if is_temp:
+            layer_tiles_dest = f'layer_tiles/temp_{resource_id}'
         # clear existing directory
         client.rmdir(layer_tiles_dest)
     else:
         original_vector_tile_path = os.path.join(
             settings.LAYER_TILES_PATH,
-            view_resource.resource_id
+            resource_id
         )
+        if is_temp:
+            original_vector_tile_path = os.path.join(
+                settings.LAYER_TILES_PATH,
+                f'temp_{resource_id}'
+            )
         if os.path.exists(original_vector_tile_path):
             shutil.rmtree(original_vector_tile_path)
 

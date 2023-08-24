@@ -48,6 +48,6 @@ class ViewAdminLevelTilingConfig(models.Model):
 
     def __str__(self):
         return '{0} - Admin Level {1}'.format(
-            self.dataset_tiling_config,
+            self.view_tiling_config,
             self.level
         )
