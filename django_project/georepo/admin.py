@@ -388,7 +388,6 @@ def generate_view_vector_tiles(modeladmin, request, queryset):
                                               export_data=False)
 
 
-@admin.action(description='Download Storage Usage')
 def download_view_size_action(modeladmin, request, queryset):
     import csv
     # Create the HttpResponse object with the appropriate CSV header.
@@ -432,51 +431,6 @@ def fix_view_privacy_level(modeladmin, request, queryset):
     for dataset_view in queryset:
         init_view_privacy_level(dataset_view)
 
-
-@admin.action(description='Move to View Resource')
-def move_resource_view_level4(modeladmin, request, queryset):
-    # move vector tiles + exported data to resource Level 4
-    # this is to patch existing views to view resources
-    for dataset_view in queryset:
-        # retrieve resource level 4
-        resource = DatasetViewResource.objects.get(
-            dataset_view=dataset_view,
-            privacy_level=4
-        )
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(dataset_view.uuid)
-        )
-        new_tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(resource.uuid)
-        )
-        move_directory(tile_path, new_tile_path)
-        if os.path.exists(new_tile_path):
-            resource.status = DatasetView.DatasetViewStatus.DONE
-            resource.vector_tiles_updated_at = dataset_view.tiles_updated_at
-            resource.bbox = dataset_view.bbox
-            resource.save()
-        geojson_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(dataset_view.uuid)
-        )
-        new_geojson_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(resource.uuid)
-        )
-        move_directory(geojson_path, new_geojson_path)
-        shapefile_path = os.path.join(
-            settings.SHAPEFILE_FOLDER_OUTPUT,
-            str(dataset_view.uuid)
-        )
-        new_shapefile_path = os.path.join(
-            settings.SHAPEFILE_FOLDER_OUTPUT,
-            str(resource.uuid)
-        )
-        move_directory(shapefile_path, new_shapefile_path)
-
-
 def view_generate_simplified_geometry(modeladmin, request, queryset):
     from georepo.tasks.simplify_geometry import simplify_geometry_in_view
     from celery.result import AsyncResult
@@ -510,8 +464,8 @@ class DatasetViewAdmin(GuardedModelAdmin):
     search_fields = ['name', 'dataset__label', 'uuid']
     actions = [generate_view_vector_tiles, create_sql_view_action,
                generate_view_exported_data,
-               download_view_size_action, fix_view_privacy_level,
-               move_resource_view_level4, view_generate_simplified_geometry]
+               fix_view_privacy_level,
+               view_generate_simplified_geometry]
 
     def tiling_status(self, obj: DatasetView):
         status, _ = get_view_tiling_status(
@@ -550,6 +504,28 @@ class TagAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ["name"]}
 
 
+@admin.action(description='Regenerate Vector Tiles')
+def regenerate_resource_vector_tiles(modeladmin, request, queryset):
+    from celery.result import AsyncResult
+    from core.celery import app
+    from dashboard.tasks import (
+        generate_view_vector_tiles_task
+    )
+    for view_resource in queryset:
+        if view_resource.vector_tiles_task_id:
+            res = AsyncResult(view_resource.vector_tiles_task_id)
+            if not res.ready():
+                # find if there is running task and stop it
+                app.control.revoke(view_resource.vector_tiles_task_id,
+                                   terminate=True)
+        task = generate_view_vector_tiles_task.apply_async(
+            (view_resource.id, True, True),
+            queue='tegola'
+        )
+        view_resource.vector_tiles_task_id = task.id
+        view_resource.save()
+
+
 @admin.action(description='Resume Vector Tiles Generation')
 def resume_vector_tiles_generation(modeladmin, request, queryset):
     from celery.result import AsyncResult
@@ -572,9 +548,28 @@ def resume_vector_tiles_generation(modeladmin, request, queryset):
         view_resource.save()
 
 
+@admin.action(description='Calculate Vector Tiles Size')
+def calculate_vector_tile_size(modeladmin, request, queryset):
+    from georepo.utils.vector_tile import calculate_vector_tiles_size
+    for view_resource in queryset:
+        calculate_vector_tiles_size(view_resource)
+
+
+@admin.action(description='Cleanup tegola config files')
+def cleanup_tegola_configs(modeladmin, request, queryset):
+    from georepo.utils.vector_tile import clean_tegola_config_files
+    for view_resource in queryset:
+        clean_tegola_config_files(view_resource)
+
+
 class DatasetViewResourceAdmin(admin.ModelAdmin):
     search_fields = ['dataset_view__name', 'uuid']
-    actions = [resume_vector_tiles_generation]
+    actions = [
+        calculate_vector_tile_size,
+        regenerate_resource_vector_tiles,
+        resume_vector_tiles_generation,
+        cleanup_tegola_configs
+    ]
 
     def get_list_display(self, request):
         def layer_preview(obj: DatasetViewResource):
@@ -595,19 +590,7 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
             return '-'
 
         def size(obj: DatasetViewResource):
-            tile_path = os.path.join(
-                settings.LAYER_TILES_PATH,
-                str(obj.uuid)
-            )
-            if os.path.exists(tile_path):
-                folder_size = 0
-                # get size
-                for path, dirs, files in os.walk(tile_path):
-                    for f in files:
-                        fp = os.path.join(path, f)
-                        folder_size += os.stat(fp).st_size
-                return convert_size(folder_size)
-            return '0'
+            return convert_size(obj.vector_tiles_size)
         return ('dataset_view', 'privacy_level', 'uuid',
                 'status', 'vector_tiles_progress', size,
                 layer_preview)

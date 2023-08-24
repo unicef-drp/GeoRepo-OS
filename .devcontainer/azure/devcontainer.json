@@ -1,17 +1,13 @@
 {
-    "name": "Django Docker Environment",
+    "name": "Azure Env",
     "remoteUser": "root",
     "dockerComposeFile": [
-      "../deployment/docker-compose.yml",
-      "../deployment/docker-compose.override.devcontainer.yml"
+      "../../deployment/docker-compose.yml",
+      "../../deployment/docker-compose.azure.override.devcontainer.yml"
     ],
     "service": "dev",
-    "runServices": ["db", "redis", "celery_beat", "worker","dev"],
+    "runServices": ["db", "redis", "celery_beat", "worker", "dev", "azurite"],
     "workspaceFolder": "/home/web/project",
-    "runArgs": [
-      "--env-file",
-      "../deployment/.env"
-    ],
     "portsAttributes": {
       "9000": {
         "label": "Frontend",

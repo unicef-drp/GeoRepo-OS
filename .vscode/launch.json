@@ -36,7 +36,7 @@
                 "runsslserver",
                 "localhost:51102"
             ],
-            "envFile": "/home/web/project/deployment/.env",
+            "envFile": "/home/web/project/deployment/.azure.env",
             "django": true,
             "justMyCode": true
         },

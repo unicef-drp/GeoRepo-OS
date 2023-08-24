@@ -409,6 +409,14 @@ class DatasetViewResource(models.Model):
         blank=True
     )
 
+    vector_tiles_size = models.FloatField(
+        default=0
+    )
+
+    @property
+    def resource_id(self):
+        return str(self.uuid)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
