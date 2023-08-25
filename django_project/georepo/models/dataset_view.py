@@ -1,4 +1,3 @@
-import shutil
 from uuid import uuid4
 from django.core.cache import cache
 
@@ -291,17 +290,21 @@ def view_post_create(sender, instance: DatasetView, created, *args, **kwargs):
 
 @receiver(post_delete, sender=DatasetView)
 def view_post_delete(sender, instance: DatasetView, *args, **kwargs):
-    import os
-    from georepo.utils import TEGOLA_BASE_CONFIG_PATH
     from core.celery import app
 
+    if instance.task_id:
+        app.control.revoke(
+            instance.task_id,
+            terminate=True,
+            signal='SIGKILL'
+        )
+    if instance.simplification_task_id:
+        app.control.revoke(
+            instance.simplification_task_id,
+            terminate=True,
+            signal='SIGKILL'
+        )
     view_name = instance.uuid
-    view_tiles = os.path.join(
-        settings.LAYER_TILES_PATH,
-        str(instance.uuid)
-    )
-    if os.path.exists(view_tiles):
-        shutil.rmtree(view_tiles)
     if instance.is_static:
         sql = (
             'DROP MATERIALIZED VIEW IF EXISTS "{view_name}"'.format(
@@ -316,42 +319,6 @@ def view_post_delete(sender, instance: DatasetView, *args, **kwargs):
         )
     cursor = connection.cursor()
     cursor.execute('''%s''' % sql)
-
-    if instance.task_id:
-        app.control.revoke(instance.task_id, terminate=True, signal='SIGKILL')
-
-    for i in range(9):
-        toml_file = os.path.join(
-            TEGOLA_BASE_CONFIG_PATH,
-            f'view-{instance.id}-{i}.toml'
-        )
-        if os.path.exists(toml_file):
-            os.remove(toml_file)
-
-    # check for temp folders
-    temp_view_tiles = os.path.join(
-        settings.LAYER_TILES_PATH,
-        f'temp_{str(instance.uuid)}'
-    )
-    if os.path.exists(temp_view_tiles):
-        shutil.rmtree(temp_view_tiles)
-    export_data_list = [
-        settings.GEOJSON_FOLDER_OUTPUT,
-        settings.SHAPEFILE_FOLDER_OUTPUT
-    ]
-    for export_dir in export_data_list:
-        export_data = os.path.join(
-            export_dir,
-            str(instance.uuid)
-        )
-        if os.path.exists(export_data):
-            shutil.rmtree(export_data)
-        temp_export_data = os.path.join(
-            export_dir,
-            f'temp_{str(instance.uuid)}'
-        )
-        if os.path.exists(temp_export_data):
-            shutil.rmtree(temp_export_data)
 
 
 class DatasetViewResource(models.Model):
@@ -409,6 +376,22 @@ class DatasetViewResource(models.Model):
         blank=True
     )
 
+    vector_tiles_size = models.FloatField(
+        default=0
+    )
+
+    entity_count = models.IntegerField(
+        default=0
+    )
+
+    @property
+    def resource_id(self):
+        return str(self.uuid)
+
+    @property
+    def vector_tiles_exist(self):
+        return self.vector_tiles_size > 0
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -440,8 +423,7 @@ class DatasetViewResource(models.Model):
 @receiver(post_delete, sender=DatasetViewResource)
 def view_res_post_delete(sender, instance: DatasetViewResource,
                          *args, **kwargs):
-    import os
-    from georepo.utils import TEGOLA_BASE_CONFIG_PATH
+    from dashboard.tasks.export import remove_view_resource_data
     from core.celery import app
 
     if instance.vector_tiles_task_id:
@@ -450,41 +432,25 @@ def view_res_post_delete(sender, instance: DatasetViewResource,
             terminate=True,
             signal='SIGKILL'
         )
+    remove_view_resource_data.delay(str(instance.uuid))
 
-    view_tiles = os.path.join(
-        settings.LAYER_TILES_PATH,
-        str(instance.uuid)
+
+@receiver(post_save, sender=DatasetViewResource)
+def view_res_post_save(sender, instance: DatasetViewResource,
+                       *args, **kwargs):
+    from georepo.utils.dataset_view import get_view_tiling_status
+    # update dataset view status
+    view = instance.dataset_view
+    view_res_qs = DatasetViewResource.objects.filter(
+        dataset_view=view
     )
-    if os.path.exists(view_tiles):
-        shutil.rmtree(view_tiles)
-    for i in range(9):
-        toml_file = os.path.join(
-            TEGOLA_BASE_CONFIG_PATH,
-            f'view-resource-{instance.id}-{i}.toml'
-        )
-        if os.path.exists(toml_file):
-            os.remove(toml_file)
-    # check for temp folders
-    temp_view_tiles = os.path.join(
-        settings.LAYER_TILES_PATH,
-        f'temp_{str(instance.uuid)}'
-    )
-    if os.path.exists(temp_view_tiles):
-        shutil.rmtree(temp_view_tiles)
-    export_data_list = [
-        settings.GEOJSON_FOLDER_OUTPUT,
-        settings.SHAPEFILE_FOLDER_OUTPUT
-    ]
-    for export_dir in export_data_list:
-        export_data = os.path.join(
-            export_dir,
-            str(instance.uuid)
-        )
-        if os.path.exists(export_data):
-            shutil.rmtree(export_data)
-        temp_export_data = os.path.join(
-            export_dir,
-            f'temp_{str(instance.uuid)}'
-        )
-        if os.path.exists(temp_export_data):
-            shutil.rmtree(temp_export_data)
+    tiling_status, _ = get_view_tiling_status(view_res_qs)
+    if tiling_status == 'Pending':
+        view.status = DatasetView.DatasetViewStatus.PENDING
+    elif tiling_status == 'Error':
+        view.status = DatasetView.DatasetViewStatus.ERROR
+    elif tiling_status == 'Processing':
+        view.status = DatasetView.DatasetViewStatus.PROCESSING
+    elif tiling_status == 'Done':
+        view.status = DatasetView.DatasetViewStatus.DONE
+    view.save(update_fields=['status'])

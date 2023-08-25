@@ -19,8 +19,12 @@ from georepo.models import Dataset, DatasetView, \
     EntityId, EntityName, GeographicalEntity, \
     DatasetViewResource
 from georepo.utils.dataset_view import create_sql_view, \
-    check_view_exists
+    check_view_exists, get_entities_count_in_view
 from georepo.utils.module_import import module_function
+from georepo.utils.azure_blob_storage import (
+    DirectoryClient,
+    get_tegola_cache_config
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +34,8 @@ TEGOLA_BASE_CONFIG_PATH = os.path.join(
 TEGOLA_TEMPLATE_CONFIG_PATH = absolute_path(
     'georepo', 'utils', 'config.toml'
 )
+
+TEGOLA_AZURE_BASE_PATH = 'layer_tiles'
 
 
 def dataset_view_sql_query(dataset_view: DatasetView, level,
@@ -261,6 +267,15 @@ def create_view_configuration_files(
             'tegola_config',
             f'view-resource-{view_resource.id}-{dataset_conf.zoom_level}.toml'
         )
+        if settings.USE_AZURE:
+            # set the cache to azblobstorage
+            toml_data['cache'] = {
+                'type': 'azblob',
+                'basepath': TEGOLA_AZURE_BASE_PATH
+            }
+            cache_config = get_tegola_cache_config(
+                settings.AZURE_STORAGE, settings.AZURE_STORAGE_CONTAINER)
+            toml_data['cache'].update(cache_config)
         toml_data['maps'] = [{
             'name': f'temp_{str(view_resource.uuid)}',
             'layers': []
@@ -316,21 +331,34 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                                overwrite: bool = False):
     """
     Generate vector tiles for view
-    :param view: DatasetView object
+    :param view_resource: DatasetViewResource object
+    :param overwrite: True to overwrite existing tiles
+
+    :return boolean: True if vector tiles are generated
     """
     view_resource.status = DatasetView.DatasetViewStatus.PROCESSING
     view_resource.vector_tiles_progress = 0
     view_resource.save()
-    dataset_view_name = str(view_resource.uuid)
     # Create a sql view
     sql_view = str(view_resource.dataset_view.uuid)
     if not check_view_exists(sql_view):
         create_sql_view(view_resource.dataset_view)
-
-    original_vector_tile_path = os.path.join(
-        settings.LAYER_TILES_PATH,
-        dataset_view_name
+    # check the number of entity in view_resource
+    entity_count = get_entities_count_in_view(
+        view_resource.dataset_view,
+        view_resource.privacy_level
     )
+    if entity_count == 0:
+        logger.info(
+            'Skipping vector tiles generation for '
+            f'{view_resource.id} - {view_resource.uuid} - '
+            f'{view_resource.privacy_level} - Empty Entities'
+        )
+        remove_vector_tiles_dir(view_resource.resource_id)
+        save_view_resource_on_success(view_resource, entity_count)
+        calculate_vector_tiles_size(view_resource)
+        return False
+
     toml_config_files = create_view_configuration_files(view_resource)
     logger.info(
         f'Config files {view_resource.id} - {view_resource.uuid} '
@@ -338,12 +366,10 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
     )
     if len(toml_config_files) == 0:
         # no need to generate the view tiles
-        if os.path.exists(original_vector_tile_path):
-            shutil.rmtree(original_vector_tile_path)
-        view_resource.status = DatasetView.DatasetViewStatus.DONE
-        view_resource.vector_tiles_progress = 100
-        view_resource.save()
-        return
+        remove_vector_tiles_dir(view_resource.resource_id)
+        save_view_resource_on_success(view_resource, entity_count)
+        calculate_vector_tiles_size(view_resource)
+        return False
     geom_col = 'geometry'
 
     # Get bbox from sql view
@@ -439,26 +465,22 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         f'view_resource {view_resource.id} '
         f'- {view_resource.vector_tiles_progress}'
     )
-    if os.path.exists(original_vector_tile_path):
-        shutil.rmtree(original_vector_tile_path)
 
-    try:
-        shutil.move(
-            os.path.join(
-                settings.LAYER_TILES_PATH,
-                f'temp_{dataset_view_name}'
-            ),
-            original_vector_tile_path
-        )
-    except FileNotFoundError:
-        view_resource.status = DatasetView.DatasetViewStatus.ERROR
+    post_process_vector_tiles(view_resource, toml_config_files)
+
     logger.info(
         'Finished moving temp vector tiles for '
         f'view_resource {view_resource.id} - {view_resource.uuid}'
     )
+    save_view_resource_on_success(view_resource, entity_count)
+    return True
+
+
+def save_view_resource_on_success(view_resource, entity_count):
     view_resource.status = DatasetView.DatasetViewStatus.DONE
     view_resource.vector_tiles_updated_at = datetime.now()
     view_resource.vector_tiles_progress = 100
+    view_resource.entity_count = entity_count
     view_resource.save()
 
 
@@ -535,3 +557,112 @@ def patch_vector_tile_path():
                 )
             except FileNotFoundError as ex:
                 logger.error('Error renaming geojson file ', ex)
+
+
+def remove_vector_tiles_dir(resource_id: str, is_temp = False):
+    if settings.USE_AZURE:
+        client = DirectoryClient(settings.AZURE_STORAGE,
+                                 settings.AZURE_STORAGE_CONTAINER)
+        layer_tiles_dest = f'layer_tiles/{resource_id}'
+        if is_temp:
+            layer_tiles_dest = f'layer_tiles/temp_{resource_id}'
+        # clear existing directory
+        client.rmdir(layer_tiles_dest)
+    else:
+        original_vector_tile_path = os.path.join(
+            settings.LAYER_TILES_PATH,
+            resource_id
+        )
+        if is_temp:
+            original_vector_tile_path = os.path.join(
+                settings.LAYER_TILES_PATH,
+                f'temp_{resource_id}'
+            )
+        if os.path.exists(original_vector_tile_path):
+            shutil.rmtree(original_vector_tile_path)
+
+
+def post_process_vector_tiles(view_resource: DatasetViewResource,
+                              toml_config_files):
+    # remove tegola config files
+    if not settings.DEBUG:
+        for toml_config_file in toml_config_files:
+            if not os.path.exists(toml_config_file['config_file']):
+                continue
+            try:
+                os.remove(toml_config_file['config_file'])
+            except Exception as ex:
+                logger.error('Unable to remove config file ', ex)
+    if settings.USE_AZURE:
+        client = DirectoryClient(settings.AZURE_STORAGE,
+                                 settings.AZURE_STORAGE_CONTAINER)
+        layer_tiles_source = f'layer_tiles/temp_{view_resource.resource_id}'
+        layer_tiles_dest = f'layer_tiles/{view_resource.resource_id}'
+        try:
+            # clear existing directory
+            client.rmdir(layer_tiles_dest)
+            # move directory
+            client.movedir(layer_tiles_source, layer_tiles_dest)
+        except Exception as ex:
+            logger.error('Unable to remove config file ', ex)
+            view_resource.status = DatasetView.DatasetViewStatus.ERROR
+            view_resource.save(update_fields=['status'])
+            raise ex
+    else:
+        original_vector_tile_path = os.path.join(
+            settings.LAYER_TILES_PATH,
+            view_resource.resource_id
+        )
+        if os.path.exists(original_vector_tile_path):
+            shutil.rmtree(original_vector_tile_path)
+        try:
+            shutil.move(
+                os.path.join(
+                    settings.LAYER_TILES_PATH,
+                    f'temp_{view_resource.resource_id}'
+                ),
+                original_vector_tile_path
+            )
+        except FileNotFoundError as ex:
+            logger.error('Unable to move temporary vector tiles!')
+            view_resource.status = DatasetView.DatasetViewStatus.ERROR
+            view_resource.save(update_fields=['status'])
+            raise ex
+    calculate_vector_tiles_size(view_resource)
+
+
+def calculate_vector_tiles_size(view_resource: DatasetViewResource):
+    total_size = 0
+    if settings.USE_AZURE:
+        client = DirectoryClient(settings.AZURE_STORAGE,
+                                 settings.AZURE_STORAGE_CONTAINER)
+        layer_tiles_dest = f'layer_tiles/{view_resource.resource_id}'
+        total_size = client.dir_size(layer_tiles_dest)
+    else:
+        original_vector_tile_path = os.path.join(
+            settings.LAYER_TILES_PATH,
+            view_resource.resource_id
+        )
+        if os.path.exists(original_vector_tile_path):
+            for path, dirs, files in os.walk(original_vector_tile_path):
+                for f in files:
+                    fp = os.path.join(path, f)
+                    total_size += os.stat(fp).st_size
+    view_resource.vector_tiles_size = total_size
+    view_resource.save(update_fields=['vector_tiles_size'])
+
+
+def clean_tegola_config_files(view_resource: DatasetViewResource):
+    for zoom in range(21):
+        toml_config_file = os.path.join(
+            '/',
+            'opt',
+            'tegola_config',
+            f'view-resource-{view_resource.id}-{zoom}.toml'
+        )
+        if not os.path.exists(toml_config_file):
+            continue
+        try:
+            os.remove(toml_config_file)
+        except Exception as ex:
+            logger.error('Unable to remove config file ', ex)

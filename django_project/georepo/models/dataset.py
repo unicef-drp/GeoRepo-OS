@@ -251,16 +251,7 @@ def dataset_post_create(sender, instance: Dataset, created, *args, **kwargs):
 
 @receiver(post_delete, sender=Dataset)
 def dataset_post_delete(sender, instance: Dataset, *args, **kwargs):
-    import os
-    import shutil
     from core.celery import app
-
-    tiles = os.path.join(
-        settings.LAYER_TILES_PATH,
-        str(instance.uuid)
-    )
-    if os.path.exists(tiles):
-        shutil.rmtree(tiles)
 
     if instance.task_id:
         app.control.revoke(instance.task_id, terminate=True, signal='SIGKILL')
@@ -268,30 +259,6 @@ def dataset_post_delete(sender, instance: Dataset, *args, **kwargs):
     if instance.simplification_task_id:
         app.control.revoke(instance.simplification_task_id, terminate=True,
                            signal='SIGKILL')
-    # tmp files
-    tiles = os.path.join(
-        settings.LAYER_TILES_PATH,
-        f'temp_{str(instance.uuid)}'
-    )
-    if os.path.exists(tiles):
-        shutil.rmtree(tiles)
-    export_data_list = [
-        settings.GEOJSON_FOLDER_OUTPUT,
-        settings.SHAPEFILE_FOLDER_OUTPUT
-    ]
-    for export_dir in export_data_list:
-        export_data = os.path.join(
-            export_dir,
-            str(instance.uuid)
-        )
-        if os.path.exists(export_data):
-            shutil.rmtree(export_data)
-        temp_export_data = os.path.join(
-            export_dir,
-            f'temp_{str(instance.uuid)}'
-        )
-        if os.path.exists(temp_export_data):
-            shutil.rmtree(temp_export_data)
 
 
 class DatasetAdminLevelName(models.Model):

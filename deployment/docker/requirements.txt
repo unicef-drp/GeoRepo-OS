@@ -29,3 +29,5 @@ flower==1.2.0
 # django captcha
 pillow==9.5.0
 django-simple-captcha==0.5.17
+#azure storage blob
+azure-storage-blob==12.17.0

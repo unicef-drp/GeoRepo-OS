@@ -78,12 +78,15 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
                 # find if there is running task and stop it
                 app.control.revoke(view_resource.vector_tiles_task_id,
                                    terminate=True)
+        view_resource.status = DatasetView.DatasetViewStatus.PENDING
+        view_resource.vector_tiles_progress = 0
+        view_resource.save()
         task = generate_view_vector_tiles_task.apply_async(
             (view_resource.id, export_data),
             queue='tegola'
         )
         view_resource.vector_tiles_task_id = task.id
-        view_resource.save()
+        view_resource.save(update_fields=['vector_tiles_task_id'])
 
 
 def generate_default_view_dataset_latest(
@@ -483,3 +486,34 @@ def get_view_tiling_status(view_resource_queryset):
     elif tiling_progress > 0:
         tiling_status = 'Processing'
     return tiling_status, tiling_progress
+
+
+def get_entities_count_in_view(view: DatasetView, privacy_level: int):
+    entities = GeographicalEntity.objects.filter(
+        dataset=view.dataset,
+        is_approved=True
+    )
+    # raw_sql to view to select id
+    raw_sql = (
+        'SELECT id from "{}"'
+    ).format(str(view.uuid))
+    # Query existing entities with uuids found in views
+    entities = entities.filter(
+        id__in=RawSQL(raw_sql, []),
+        privacy_level=privacy_level
+    )
+    return entities.count()
+
+
+def get_view_resource_from_view(
+        view: DatasetView,
+        user_privacy_level: int) -> DatasetViewResource:
+    """Return view resource with vector tiles that user can access."""
+    resource_level_for_user = view.get_resource_level_for_user(
+        user_privacy_level
+    )
+    resource = view.datasetviewresource_set.filter(
+        privacy_level__lte=resource_level_for_user,
+        entity_count__gt=0
+    ).order_by('-privacy_level').first()
+    return resource

@@ -53,6 +53,8 @@ x-common-django:
     - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
     - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-noreply@kartoza.com}
     - TEGOLA_CONCURRENCY=${TEGOLA_CONCURRENCY:-0}
+    - AZURE_STORAGE=${AZURE_STORAGE}
+    - AZURE_STORAGE_CONTAINER=${AZURE_STORAGE_CONTAINER}
   volumes:
     - static-data:/home/web/static
     - media-data:/home/web/media
