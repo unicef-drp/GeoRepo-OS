@@ -308,6 +308,8 @@ class TokenDetail(UserPassesTestMixin, APIView):
 
     def put(self, request, *args, **kwargs):
         # activate/deactivate token
+        if not self.request.user.is_superuser:
+            return HttpResponseForbidden('No permission')
         user_id = kwargs.get('id')
         api_key = CustomApiKey.objects.filter(
             user_id=user_id
@@ -350,6 +352,15 @@ class TokenDetail(UserPassesTestMixin, APIView):
     def delete(self, request, *args, **kwargs):
         # delete token API Key
         user_id = kwargs.get('id')
+        api_key = CustomApiKey.objects.filter(
+            user_id=user_id
+        ).first()
+        if not api_key:
+            return Response(status=404, data={
+                'detail': 'not found'
+            })
+        if not api_key.is_active and not request.user.is_superuser:
+            return HttpResponseForbidden('No permission')
         Token.objects.filter(
             user_id=user_id
         ).delete()
