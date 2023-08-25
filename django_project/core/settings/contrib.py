@@ -1,6 +1,7 @@
 # coding=utf-8
 """Settings for 3rd party."""
 from .base import *  # noqa
+from corsheaders.defaults import default_headers
 
 # Extra installed apps
 INSTALLED_APPS = INSTALLED_APPS + (
@@ -43,7 +44,10 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'georepo.utils.custom_exception_handler'
 }
 CORS_ORIGIN_ALLOW_ALL = True
-
+CORS_ALLOW_HEADERS = (
+    *default_headers,
+    "GeoRepo-User-Key",
+)
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # default
     'guardian.backends.ObjectPermissionBackend'

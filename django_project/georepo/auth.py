@@ -20,6 +20,19 @@ class CustomTokenAuthentication(authentication.TokenAuthentication):
             pass
         return False
 
+    def test_user_key(self, user, user_key):
+        if user.email != user_key:
+            msg = _('Invalid token! No matching user!.')
+            raise authentication.exceptions.AuthenticationFailed(msg)
+
+    def get_user_key_param(self, request):
+        url_string = request.META['QUERY_STRING']
+        if url_string:
+            params = url_string.split('&')
+            user_keys = [x for x in params if x.startswith('georepo_user_key=')]
+            return user_keys[0].replace('georepo_user_key=', '') if user_keys else '' 
+        return ''
+
     def authenticate_credentials(self, key):
         user, token = (
             super(CustomTokenAuthentication, self).
@@ -42,7 +55,12 @@ class CustomTokenAuthentication(authentication.TokenAuthentication):
             if self.test_jwt_token(token):
                 keyword = 'Bearer'
             request.META['HTTP_AUTHORIZATION'] = f'{keyword} {token}'
-        return super(CustomTokenAuthentication, self).authenticate(request)
+        user_key = self.get_user_key_param(request)
+        user, token = (
+            super(CustomTokenAuthentication, self).authenticate(request)
+        )
+        self.test_user_key(user, user_key)
+        return (user, token)
 
 
 class BearerAuthentication(CustomTokenAuthentication):
@@ -77,7 +95,12 @@ class BearerAuthentication(CustomTokenAuthentication):
                     'Token string should not contain invalid characters.')
             raise authentication.TokenAuthentication.\
                 exceptions.AuthenticationFailed(msg)
-        return self.authenticate_credentials(token)
+
+        user, token = self.authenticate_credentials(token)
+        # validate if GeoRepo-User-Key match with username
+        user_key = request.META.get('HTTP_GEOREPO_USER_KEY', b'')
+        self.test_user_key(user, user_key)
+        return (user, token)
 
     def authenticate_header(self, request):
         return self.keyword[0]

@@ -159,7 +159,8 @@ class TestApiDataset(TestCase):
         # Without request url
         request = self.factory.post(
             reverse('dataset-allowed-api') +
-            f'?token={str(user.auth_token)}'
+            f'?token={str(user.auth_token)}' +
+            f'&georepo_user_key={user.email}'
         )
         view = IsDatasetAllowedAPI.as_view()
         response = view(request)
@@ -168,19 +169,7 @@ class TestApiDataset(TestCase):
         request = self.factory.post(
             reverse('dataset-allowed-api') +
             f'?token={str(user.auth_token)}' +
-            f'&request_url=/t/{str(resource3.uuid)}/'
-        )
-        view = IsDatasetAllowedAPI.as_view()
-        response = view(request)
-        self.assertEqual(response.status_code, 403)
-        # should not allow to access level 3
-        resource3 = DatasetViewResource.objects.filter(
-            dataset_view=dataset_view,
-            privacy_level=3
-        ).first()
-        request = self.factory.post(
-            reverse('dataset-allowed-api') +
-            f'?token={str(user.auth_token)}' +
+            f'&georepo_user_key={user.email}' +
             f'&request_url=/t/{str(resource3.uuid)}/'
         )
         view = IsDatasetAllowedAPI.as_view()
@@ -194,12 +183,24 @@ class TestApiDataset(TestCase):
         request = self.factory.post(
             reverse('dataset-allowed-api') +
             f'?token={str(user.auth_token)}' +
+            f'&georepo_user_key={user.email}' +
             f'&request_url=/t/{str(resource2.uuid)}/'
         )
         view = IsDatasetAllowedAPI.as_view()
         response = view(request)
         self.assertEqual(response.status_code, 200)
         self.check_disabled_module(view, request)
+        # 401 with invalid user_key
+        request = self.factory.post(
+            reverse('dataset-allowed-api') +
+            f'?token={str(user.auth_token)}' +
+            f'&georepo_user_key=aaa.{user.email}' +
+            f'&request_url=/t/{str(resource2.uuid)}/'
+        )
+        view = IsDatasetAllowedAPI.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 401)
+
 
     def test_get_dataset_detail(self):
         entity_type = EntityTypeF.create(label='Sub district')
