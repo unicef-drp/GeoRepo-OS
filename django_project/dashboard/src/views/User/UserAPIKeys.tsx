@@ -2,6 +2,8 @@ import React, {useEffect, useState} from 'react';
 import axios from "axios";
 import {useNavigate} from "react-router-dom";
 import Skeleton from '@mui/material/Skeleton';
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
 import Grid from '@mui/material/Grid';
@@ -23,7 +25,8 @@ import Scrollable from "../../components/Scrollable";
 
 
 interface UserAPIKeysInterface {
-    user: UserInterface
+    user: UserInterface,
+    isUserProfile: boolean
 }
 
 interface UserAPIKeyCreateFormInterface {
@@ -34,6 +37,7 @@ interface UserAPIKeyCreateFormInterface {
 interface UserAPIKeyItemInterface {
     loading: boolean,
     apiKey: APIKeyInterface,
+    isUserProfile: boolean,
     handleChangeStatus: (isActive: boolean) => void,
     handleDeleteKey: () => void,
     handleAPIKeyCopied: () => void
@@ -118,6 +122,20 @@ function UserAPIKeyCreateForm(props: UserAPIKeyCreateFormInterface) {
 
 function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
     const [showAPIKey, setShowAPIKey] = useState(false)
+    const [alertMessage, setAlertMessage] = useState('')
+    const isSuperUser = (window as any).is_admin
+
+    useEffect(() => {
+        if (!props.isUserProfile) {
+            setAlertMessage('')
+        } else {
+            if (props.apiKey.is_active) {
+                setAlertMessage('This API Key is personal and please do not share it with other people. If we notice suspect behavior, your API Key can be deleted and your account suspended.')
+            } else {
+                setAlertMessage('In order to obtain more information or to reactivate your API KEY, please contact an administrator.')
+            }
+        }
+    }, [props.apiKey, props.isUserProfile])
 
     const displayValue = (value: string) => {
         if (value) return value
@@ -137,18 +155,28 @@ function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
 
     return (
         <Grid container flexDirection={'column'} flexWrap={'nowrap'}>
+            <Grid item md={5} xl={5} xs={12} sx={{marginBottom: '10px'}}>
+                <Grid container flexDirection={'row'} justifyContent={'center'}>
+                    { props.isUserProfile && alertMessage ?
+                    <Alert style={{ width: '100%', textAlign: 'left' }} severity='warning'>
+                        <AlertTitle>{alertMessage}</AlertTitle>
+                    </Alert> : null }
+                </Grid>
+            </Grid>
             <Grid item md={5} xl={5} xs={12}>
                 <Grid container flexDirection={'row'} justifyContent={'flex-start'}>
                     <Grid item>
-                        <Button
-                            className='button-with-loading'
-                            variant={"contained"}
-                            color='error'
-                            disabled={props.loading}
-                            onClick={() => props.handleDeleteKey()}>
-                            <span style={{ display: 'flex' }}>
-                            { props.loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { "Delete API Key" }</span>
-                        </Button>
+                        { ((!props.apiKey.is_active && isSuperUser) || props.apiKey.is_active) && (
+                            <Button
+                                className='button-with-loading'
+                                variant={"contained"}
+                                color='error'
+                                disabled={props.loading}
+                                onClick={() => props.handleDeleteKey()}>
+                                <span style={{ display: 'flex' }}>
+                                { props.loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { "Delete API Key" }</span>
+                            </Button>
+                        )}
                     </Grid>
                 </Grid>
             </Grid>
@@ -218,18 +246,20 @@ function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
                         <Grid item>
                             <Grid container flexDirection={'row'} justifyContent={'space-between'}>
                                 <Grid item className={'form-label'}>
-                                    <Typography variant={'subtitle1'}>Status : <span style={{fontWeight: 'bold'}}>{ props.apiKey.is_active ? ' Active': ' Inactive'}</span></Typography>
+                                    <Typography variant={'subtitle1'}>Status : <span style={{fontWeight: 'bold'}}>{ props.apiKey.is_active ? ' Active': ' Revoked'}</span></Typography>
                                 </Grid>
                                 <Grid item>
                                     <div className='button-container'>
-                                        <Button
-                                            variant={"outlined"}
-                                            color={props.apiKey.is_active ? 'warning' : 'primary'}
-                                            disabled={props.loading}
-                                            onClick={() => props.handleChangeStatus(!props.apiKey.is_active)}>
-                                            <span style={{ display: 'flex' }}>
-                                            { props.loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { props.apiKey.is_active ? 'Revoke' : 'Activate' }</span>
-                                        </Button>
+                                        { !props.isUserProfile && (
+                                            <Button
+                                                variant={"outlined"}
+                                                color={props.apiKey.is_active ? 'warning' : 'primary'}
+                                                disabled={props.loading}
+                                                onClick={() => props.handleChangeStatus(!props.apiKey.is_active)}>
+                                                <span style={{ display: 'flex' }}>
+                                                { props.loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { props.apiKey.is_active ? 'Revoke' : 'Activate' }</span>
+                                            </Button>
+                                        )}
                                     </div>
                                 </Grid>
                             </Grid>
@@ -405,7 +435,7 @@ export default function UserAPIKeys(props: UserAPIKeysInterface) {
                             alertDialogDescription={alertDialogDescription} />
                     { loading && <Skeleton variant="rectangular" height={'100%'} width={'100%'}/> }
                     { !loading && apiKey !== null &&  (
-                        <UserAPIKeyItem loading={actionLoading} apiKey={apiKey} handleChangeStatus={updateAPIKey} handleDeleteKey={deleteAPIKey} handleAPIKeyCopied={() => setAlertMessage('API Key copied to clipboard')}  />
+                        <UserAPIKeyItem loading={actionLoading} apiKey={apiKey} isUserProfile={props.isUserProfile} handleChangeStatus={updateAPIKey} handleDeleteKey={deleteAPIKey} handleAPIKeyCopied={() => setAlertMessage('API Key copied to clipboard')}  />
                     )}
                     { !loading && apiKey === null &&  (
                         <UserAPIKeyCreateForm loading={actionLoading} handleSaveClick={createAPIKey} />

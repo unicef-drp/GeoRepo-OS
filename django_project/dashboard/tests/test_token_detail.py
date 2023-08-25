@@ -104,6 +104,17 @@ class TestTokenDetail(TestCase):
         request.user = self.user_1
         view = TokenDetail.as_view()
         response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 403)
+        # only superadmin is allowed to update
+        request = self.factory.put(
+            reverse('token-detail', kwargs=kwargs),
+            {
+                'is_active': False
+            }
+        )
+        request.user = self.superuser
+        view = TokenDetail.as_view()
+        response = view(request, **kwargs)
         self.assertEqual(response.status_code, 204)
         token = Token.objects.filter(user=self.user_1).first()
         self.assertTrue(token)
@@ -112,6 +123,27 @@ class TestTokenDetail(TestCase):
         ).first()
         self.assertTrue(key)
         self.assertFalse(key.is_active)
+        # normal user cannot delete revoked token
+        kwargs = {
+            'id': self.user_1.id
+        }
+        request = self.factory.delete(
+            reverse('token-detail', kwargs=kwargs)
+        )
+        request.user = self.user_1
+        view = TokenDetail.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 403)
+        # superadmin able to delete
+        request = self.factory.delete(
+            reverse('token-detail', kwargs=kwargs)
+        )
+        request.user = self.superuser
+        view = TokenDetail.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 204)
+        token = Token.objects.filter(user=self.user_1).first()
+        self.assertFalse(token)
 
     def test_token_delete(self):
         self.create_token(self.token_1)

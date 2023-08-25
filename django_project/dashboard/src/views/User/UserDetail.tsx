@@ -128,7 +128,7 @@ export default function UserDetail(props: any) {
                     <UserPermission isUserProfile={isUserProfile} user={user} />
                 </TabPanel>
                 <TabPanel key={2} value={tabSelected} index={2} padding={1}>
-                    <UserAPIKeys user={user} />
+                    <UserAPIKeys user={user} isUserProfile={isUserProfile} />
                 </TabPanel>
               </Grid>
             )}
