@@ -184,7 +184,7 @@ class DirectoryClient:
             if copy_properties.status != "success":
                 dest_blob.abort_copy(copy_properties.id)
                 raise Exception(
-                    f"Unable to copy blob %s with status %s"
+                    "Unable to copy blob %s with status %s"
                     % (source_path + blob, copy_properties.status)
                 )
             source_blob.delete_blob()
