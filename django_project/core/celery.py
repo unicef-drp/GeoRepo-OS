@@ -23,6 +23,7 @@ app = Celery('georepo')
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
+
 def create_celery_logger_handler(logger, propagate):
     # set azure sdk log to warning level
     az_logger = logging.getLogger('azure')
@@ -39,6 +40,7 @@ def after_setup_celery_task_logger(logger, **kwargs):
 def after_setup_celery_logger(logger, **kwargs):
     """ This function sets the 'celery' logger handler and formatter """
     create_celery_logger_handler(logger, False)
+
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()

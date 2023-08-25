@@ -1,7 +1,6 @@
 import os
 from django.conf import settings
 from django.http import HttpResponse
-from django.http.response import StreamingHttpResponse
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
@@ -36,7 +35,7 @@ class TileAPIView(APIView):
                 settings.AZURE_STORAGE_CONTAINER
             )
         return self._client
-    
+
     def build_response(self, file, y):
         response = HttpResponse(
             file,
@@ -68,9 +67,9 @@ class TileAPIView(APIView):
             file_path = os.path.join(
                 settings.LAYER_TILES_PATH,
                 resource_uuid,
-                z,
-                x,
-                y
+                str(z),
+                str(x),
+                str(y)
             )
             if os.path.exists(file_path):
                 with open(file_path, 'rb') as file:

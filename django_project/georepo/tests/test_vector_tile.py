@@ -71,7 +71,6 @@ class TestVectorTile(TestCase):
         self.dataset = DatasetF.create(module=self.module)
         self.view_latest = generate_default_view_dataset_latest(
             self.dataset)[0]
-        init_view_privacy_level(self.view_latest)
         geojson_0_path = absolute_path(
             'georepo', 'tests',
             'geojson_dataset', 'level_0.geojson')
@@ -85,7 +84,8 @@ class TestVectorTile(TestCase):
                 geometry=GEOSGeometry(geom_str),
                 internal_code='PAK',
                 is_approved=True,
-                is_latest=True
+                is_latest=True,
+                privacy_level=2
             )
             EntityIdF.create(
                 code=self.pCode,
@@ -99,6 +99,7 @@ class TestVectorTile(TestCase):
                 default=False,
                 value=self.entity_1.id
             )
+        init_view_privacy_level(self.view_latest)
         self.dataset_tconfig_1 = DatasetTilingConfig.objects.create(
             dataset=self.dataset,
             zoom_level=4
@@ -161,9 +162,34 @@ class TestVectorTile(TestCase):
         'shutil.move',
         mock.Mock(side_effect=mock_shutil_move))
     def test_generate_vector_tiles(self):
+        # only privacy level 2 will be generated
         view_resource = DatasetViewResource.objects.get(
             dataset_view=self.view_latest,
             privacy_level=4
+        )
+        with mock.patch('subprocess.run') as mo_subprocess, \
+            mock.patch(
+                'georepo.utils.vector_tile.open',
+                mock.mock_open()) as mocked_file:
+            mo_subprocess.side_effect = mock_subprocess_run
+            generate_view_vector_tiles(view_resource)
+            mocked_file.assert_not_called()
+            mo_subprocess.assert_not_called()
+        view_resource = DatasetViewResource.objects.get(
+            dataset_view=self.view_latest,
+            privacy_level=3
+        )
+        with mock.patch('subprocess.run') as mo_subprocess, \
+            mock.patch(
+                'georepo.utils.vector_tile.open',
+                mock.mock_open()) as mocked_file:
+            mo_subprocess.side_effect = mock_subprocess_run
+            generate_view_vector_tiles(view_resource)
+            mocked_file.assert_not_called()
+            mo_subprocess.assert_not_called()
+        view_resource = DatasetViewResource.objects.get(
+            dataset_view=self.view_latest,
+            privacy_level=2
         )
         out_file_path = os.path.join(
             '/',
@@ -184,3 +210,15 @@ class TestVectorTile(TestCase):
         self.assertEqual(updated_res.status,
                          DatasetView.DatasetViewStatus.DONE)
         self.assertEqual(updated_res.vector_tiles_progress, 100)
+        view_resource = DatasetViewResource.objects.get(
+            dataset_view=self.view_latest,
+            privacy_level=1
+        )
+        with mock.patch('subprocess.run') as mo_subprocess, \
+            mock.patch(
+                'georepo.utils.vector_tile.open',
+                mock.mock_open()) as mocked_file:
+            mo_subprocess.side_effect = mock_subprocess_run
+            generate_view_vector_tiles(view_resource)
+            mocked_file.assert_not_called()
+            mo_subprocess.assert_not_called()

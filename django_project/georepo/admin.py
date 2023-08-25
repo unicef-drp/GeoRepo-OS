@@ -431,6 +431,7 @@ def fix_view_privacy_level(modeladmin, request, queryset):
     for dataset_view in queryset:
         init_view_privacy_level(dataset_view)
 
+
 def view_generate_simplified_geometry(modeladmin, request, queryset):
     from georepo.tasks.simplify_geometry import simplify_geometry_in_view
     from celery.result import AsyncResult
