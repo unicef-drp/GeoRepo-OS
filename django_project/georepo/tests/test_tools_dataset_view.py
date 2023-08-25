@@ -103,6 +103,10 @@ class TestToolsDatasetView(TestCase):
             view.tags.values_list('name', flat=True)
         )
 
+    @mock.patch(
+        'dashboard.tasks.remove_view_resource_data.delay',
+        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
+    )
     def test_generate_default_view_adm0_latest(self):
         dataset = DatasetF.create(
             label='World',
@@ -192,6 +196,10 @@ class TestToolsDatasetView(TestCase):
             view.tags.values_list('name', flat=True)
         )
 
+    @mock.patch(
+        'dashboard.tasks.remove_view_resource_data.delay',
+        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
+    )
     def test_generate_default_view_adm0_all_versions(self):
         dataset = DatasetF.create(
             label='World',
