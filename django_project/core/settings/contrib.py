@@ -6,6 +6,7 @@ from corsheaders.defaults import default_headers
 # Extra installed apps
 INSTALLED_APPS = INSTALLED_APPS + (
     'rest_framework',
+    'knox',
     'rest_framework_gis',
     'rest_framework.authtoken',
     'drf_yasg',
@@ -57,3 +58,12 @@ CELERY_RESULT_BACKEND = 'django-db'
 CELERY_RESULT_EXTENDED = True
 # set to 500mb
 CELERY_WORKER_MAX_MEMORY_PER_CHILD = 300000
+#knox setting
+REST_KNOX = {
+  'SECURE_HASH_ALGORITHM': 'cryptography.hazmat.primitives.hashes.SHA512',
+  'AUTH_TOKEN_CHARACTER_LENGTH': 64,
+  'TOKEN_TTL': None,
+  'USER_SERIALIZER': 'knox.serializers.UserSerializer',
+  'TOKEN_LIMIT_PER_USER': 1,
+  'AUTO_REFRESH': False,
+}

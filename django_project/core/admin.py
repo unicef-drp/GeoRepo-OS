@@ -1,9 +1,12 @@
 """Core admin."""
 from django.contrib import admin
 
-from rest_framework.authtoken.models import TokenProxy
-from rest_framework.authtoken.admin import TokenAdmin
-from core.models import SitePreferences, SitePreferencesImage, CustomApiKey
+from knox.models import AuthToken
+from core.models import (
+    SitePreferences,
+    SitePreferencesImage,
+    ApiKey
+)
 
 
 class SitePreferencesImageInline(admin.TabularInline):
@@ -89,12 +92,29 @@ class SitePreferencesAdmin(admin.ModelAdmin):
     inlines = (SitePreferencesImageInline,)
 
 
-class TokenDetailAdmin(TokenAdmin):
-    list_display = ('key', 'user', 'platform', 'owner',
-                    'contact', 'created', 'is_active')
-    fields = ('user', 'platform', 'owner', 'contact', 'is_active')
+class APIKeyInline(admin.StackedInline):
+    model = ApiKey
+
+
+class APIKeyAdmin(admin.ModelAdmin):
+    list_display = ('get_user', 'platform', 'owner', 'contact',
+                    'get_created', 'is_active')
+    fields = ('platform', 'owner', 'contact', 'is_active')
+
+    @admin.display(ordering='token__user__username', description='User')
+    def get_user(self, obj):
+        return obj.token.user
+
+    @admin.display(ordering='token__created', description='Created')
+    def get_created(self, obj):
+        return obj.token.created
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            pass
+        super().save_model(request, obj, form, change)
 
 
 admin.site.register(SitePreferences, SitePreferencesAdmin)
-admin.site.unregister(TokenProxy)
-admin.site.register(CustomApiKey, TokenDetailAdmin)
+admin.site.unregister(AuthToken)
+admin.site.register(ApiKey, APIKeyAdmin)

@@ -12,7 +12,7 @@ export default interface UserInterface {
 
 export interface APIKeyInterface {
     user_id: number,
-    key: string,
+    api_key?: string,
     created: string,
     platform?: string,
     owner?: string,

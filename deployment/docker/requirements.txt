@@ -31,3 +31,5 @@ pillow==9.5.0
 django-simple-captcha==0.5.17
 #azure storage blob
 azure-storage-blob==12.17.0
+# django auth knox
+django-rest-knox==4.2.0
