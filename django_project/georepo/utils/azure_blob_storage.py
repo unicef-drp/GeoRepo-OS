@@ -230,7 +230,10 @@ def get_tegola_cache_config(connection_string, container_name):
 
 StorageServiceClient = None
 StorageContainerClient = None
-if settings.USE_AZURE:
+if (
+    settings.USE_AZURE and settings.AZURE_STORAGE and
+    settings.AZURE_STORAGE_CONTAINER
+):
     StorageServiceClient = BlobServiceClient.from_connection_string(
         settings.AZURE_STORAGE
     )
