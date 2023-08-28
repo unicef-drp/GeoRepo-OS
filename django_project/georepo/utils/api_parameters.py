@@ -11,7 +11,10 @@ def get_api_pagination_parameters():
             'default': 50
         }
     from core.models.preferences import SitePreferences
-    preferences = SitePreferences.preferences()
+    try:
+        preferences = SitePreferences.preferences()
+    except Exception:
+        preferences = SitePreferences()
     return {
         'minimum': 1,
         'maximum': preferences.api_config['max_page_size'],
