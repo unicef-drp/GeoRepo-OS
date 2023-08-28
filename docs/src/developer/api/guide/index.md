@@ -77,7 +77,7 @@ identifiers:
     range of validity, so given the C-Ucode of a concept, we can always
     access the version of boundaries that was valid at a specific date.
 
-![](./img/concepts.png)
+![](./img/concepts.jpg)
 
 📔 Note that other identifiers (like PCodes, WFP codes, ISO3CD, GID, etc.)
 can be available within the data if they have been uploaded together
@@ -91,7 +91,21 @@ to the discovery of geographical entities.
 
 -  🔐 API_KEY: access public data
 
--  👮 B2C with a registered user: access protected data
+### Generating an API KEY
+
+Go to the Profile page and click on the `API KEY ENROLMENT` tab.
+
+![](./img/enrol-api-key-1.png)
+
+Fill in the details (Platform, Owner, and Contact) and click on the `Generate API Key` button.
+Click on the `Confirm` button in the confirmation dialog.
+
+![](./img/enrol-api-key-2.png)
+
+Click on `icon 1️⃣` to see the generated API key or click on `icon 2️⃣` to copy the API key to the clipboard. The `Revoke` button can deactivate the API key so that the API key cannot be used without needing to remove it from the system. The `Delete API Key` button will remove the API key from the system.
+
+![](./img/enrol-api-key-3.png)
+
 
 ## Examples of usage of the API
 
@@ -359,6 +373,31 @@ listing the children or the parent with the endpoints:
 
 ```
 /search/view/{uuid}/entity/{ucode}/parent/
+```
+
+## Example of Python Code To Access the API
+
+```
+import requests
+
+url = "https://staging-georepo.unitst.org/api/v1/search/module/list/?page=1&page_size=50"
+
+payload = {}
+headers = {
+  'Accept': 'application/json',
+  'Authorization': 'Token {{YOUR_API_KEY}}'
+}
+
+response = requests.request("GET", url, headers=headers, data=payload)
+
+print(response.status_code)
+print(response.json())
+```
+
+Output:
+```
+200
+{'page': 1, 'total_page': 1, 'page_size': 50, 'results': [{'name': 'Boundary Lines', 'uuid': 'bc68f410-ce2e-466a-b64e-72974b2f228f'}, {'name': 'Admin Boundaries', 'uuid': '5118766f-83d6-4688-b79d-cb4c9110de68'}]}
 ```
 
 ## TO ADD
