@@ -1,5 +1,11 @@
 import os
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import (
+    BlobServiceClient,
+    BlobSasPermissions,
+    generate_blob_sas
+)
+from django.conf import settings
+from datetime import datetime, timedelta
 
 
 class DirectoryClient:
@@ -174,11 +180,22 @@ class DirectoryClient:
                 self.container_name,
                 source_path + blob
             )
+            # Create sas token for blob
+            sas_token = generate_blob_sas(
+                blob_name=source_path + blob,
+                account_name=self.client.credential.account_name,
+                container_name=self.container_name,
+                account_key=self.client.credential.account_key,
+                permission=BlobSasPermissions(read=True),
+                start=datetime.now(),
+                expiry=datetime.utcnow() + timedelta(hours=1)
+            )
             dest_blob = self.service_client.get_blob_client(
                 self.container_name,
                 dest_path + blob
             )
-            dest_blob.start_copy_from_url(source_blob.url, requires_sync=True)
+            sas_url = f"{source_blob.url}?{sas_token}"
+            dest_blob.start_copy_from_url(sas_url, requires_sync=True)
             copy_properties = dest_blob.get_blob_properties().copy
 
             if copy_properties.status != "success":
@@ -209,3 +226,14 @@ def get_tegola_cache_config(connection_string, container_name):
         'az_account_name': client.credential.account_name,
         'az_shared_key': client.credential.account_key
     }
+
+
+StorageServiceClient = None
+StorageContainerClient = None
+if settings.USE_AZURE:
+    StorageServiceClient = BlobServiceClient.from_connection_string(
+        settings.AZURE_STORAGE
+    )
+    StorageContainerClient = StorageServiceClient.get_container_client(
+        settings.AZURE_STORAGE_CONTAINER
+    )

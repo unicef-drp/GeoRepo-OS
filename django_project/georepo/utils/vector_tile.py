@@ -604,7 +604,7 @@ def post_process_vector_tiles(view_resource: DatasetViewResource,
             # move directory
             client.movedir(layer_tiles_source, layer_tiles_dest)
         except Exception as ex:
-            logger.error('Unable to remove config file ', ex)
+            logger.error('Unable to move directories ', ex)
             view_resource.status = DatasetView.DatasetViewStatus.ERROR
             view_resource.save(update_fields=['status'])
             raise ex
