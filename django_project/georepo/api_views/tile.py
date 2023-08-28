@@ -28,7 +28,7 @@ class TileAPIView(APIView):
         z = kwargs.get('z')
         x = kwargs.get('x')
         y = kwargs.get('y')
-        if settings.USE_AZURE:
+        if settings.USE_AZURE and StorageContainerClient:
             source = f'layer_tiles/{resource_uuid}/{z}/{x}/{y}'
             try:
                 bc = StorageContainerClient.get_blob_client(blob=source)
