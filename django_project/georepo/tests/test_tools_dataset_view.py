@@ -5,7 +5,8 @@ from georepo.models.dataset_view import (
     DATASET_VIEW_LATEST_TAG,
     DATASET_VIEW_ALL_VERSIONS_TAG,
     DATASET_VIEW_DATASET_TAG,
-    DATASET_VIEW_SUBSET_TAG
+    DATASET_VIEW_SUBSET_TAG,
+    DatasetViewResource
 )
 from georepo.tests.model_factories import (
     DatasetF, GeographicalEntityF
@@ -16,7 +17,8 @@ from georepo.utils.dataset_view import (
     generate_default_view_adm0_latest,
     generate_default_view_adm0_all_versions,
     check_view_exists,
-    trigger_generate_dynamic_views
+    trigger_generate_dynamic_views,
+    get_view_resource_from_view
 )
 
 
@@ -101,6 +103,10 @@ class TestToolsDatasetView(TestCase):
             view.tags.values_list('name', flat=True)
         )
 
+    @mock.patch(
+        'dashboard.tasks.remove_view_resource_data.delay',
+        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
+    )
     def test_generate_default_view_adm0_latest(self):
         dataset = DatasetF.create(
             label='World',
@@ -190,6 +196,10 @@ class TestToolsDatasetView(TestCase):
             view.tags.values_list('name', flat=True)
         )
 
+    @mock.patch(
+        'dashboard.tasks.remove_view_resource_data.delay',
+        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
+    )
     def test_generate_default_view_adm0_all_versions(self):
         dataset = DatasetF.create(
             label='World',
@@ -330,3 +340,48 @@ class TestToolsDatasetView(TestCase):
         mocked_task.side_effect = mocked_run_generate_vector_tiles
         trigger_generate_dynamic_views(dataset, adm0, export_data=False)
         mocked_task.assert_called()
+
+
+    def test_get_view_resource_from_view(self):
+        dataset = DatasetF.create(
+            label='World',
+            description='Test'
+        )
+        generate_default_view_dataset_latest(dataset)
+        view = DatasetView.objects.filter(
+            dataset=dataset,
+            is_static=False
+        ).exclude(default_type__isnull=True).first()
+        view.max_privacy_level = 1
+        view.min_privacy_level = 1
+        view.save()
+        resource_1 = DatasetViewResource.objects.filter(
+            dataset_view=view,
+            privacy_level=1
+        ).first()
+        resource_1.entity_count = 10
+        resource_1.save()
+        # user with privacy level 1 and above can access resource_1
+        result = get_view_resource_from_view(view, 1)
+        self.assertTrue(result)
+        self.assertEqual(result.resource_id, resource_1.resource_id)
+        result = get_view_resource_from_view(view, 3)
+        self.assertTrue(result)
+        self.assertEqual(result.resource_id, resource_1.resource_id)
+        view.max_privacy_level = 3
+        view.min_privacy_level = 2
+        view.save()
+        resource_1.entity_count = 0
+        resource_1.save()
+        resource_2 = DatasetViewResource.objects.filter(
+            dataset_view=view,
+            privacy_level=2
+        ).first()
+        resource_2.entity_count = 10
+        resource_2.save()
+        # user with privacy level 2 and above can access resource_2
+        with self.assertRaises(ValueError):
+            result = get_view_resource_from_view(view, 1)
+        result = get_view_resource_from_view(view, 4)
+        self.assertTrue(result)
+        self.assertEqual(result.resource_id, resource_2.resource_id)

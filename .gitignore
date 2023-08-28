@@ -2,6 +2,7 @@
 .venv
 .iml
 deployment/.env
+.azure.env
 deployment/copy_backups.sh
 deployment/backups
 deployment/docker-compose.override.yml

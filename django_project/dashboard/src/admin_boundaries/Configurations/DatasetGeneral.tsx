@@ -16,6 +16,7 @@ import HtmlTooltip from "../../components/HtmlTooltip";
 import Loading from "../../components/Loading";
 import {limitInput} from "../../utils/Helpers";
 import {postData} from "../../utils/Requests";
+import Scrollable from '../../components/Scrollable';
 
 interface DatasetGeneralInterface {
     dataset: Dataset,
@@ -105,7 +106,8 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
     }
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Scrollable>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
             <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 <AlertMessage message={alertMessage} onClose={() => {
                     props.onDatasetUpdated()
@@ -299,5 +301,6 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
                 </div>
             </Box>
         </Box>
+        </Scrollable>
     )
 }

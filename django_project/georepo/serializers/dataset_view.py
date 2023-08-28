@@ -1,4 +1,3 @@
-import os
 from drf_yasg import openapi
 from rest_framework import serializers
 from rest_framework.reverse import reverse
@@ -13,7 +12,10 @@ from georepo.serializers.common import APIResponseModelSerializer
 from georepo.models.entity import GeographicalEntity, EntityId
 from georepo.models.dataset_view import DatasetView, DatasetViewResource
 from georepo.models.dataset import DatasetAdminLevelName
-from georepo.utils.dataset_view import generate_view_resource_bbox
+from georepo.utils.dataset_view import (
+    generate_view_resource_bbox,
+    get_view_resource_from_view
+)
 from georepo.utils.permission import (
     get_view_permission_privacy_level
 )
@@ -114,12 +116,10 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
 
     def vector_tile_url(self, resource: DatasetViewResource):
         url = None
-        vector_tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(resource.uuid)
-        )
+        if resource is None:
+            return url
         # check path to vector tiles exist
-        if os.path.exists(vector_tile_path) and 'request' in self.context:
+        if resource.vector_tiles_exist and 'request' in self.context:
             url = (
                 f'/layer_tiles/{str(resource.uuid)}/{{z}}/{{x}}/{{y}}'
                 f'?t={int(resource.vector_tiles_updated_at.timestamp())}'
@@ -165,18 +165,12 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
         return ''
 
     def get_vector_tiles(self, obj: DatasetView):
-        url = None
         # find the correct resource based on privacy level
         if 'user_privacy_level' not in self.context:
-            return url
+            return None
         user_privacy_level = self.context['user_privacy_level']
-        resource = obj.datasetviewresource_set.filter(
-            privacy_level=obj.get_resource_level_for_user(user_privacy_level)
-        ).first()
-        if resource is None:
-            return url
-        url = self.vector_tile_url(resource)
-        return url
+        resource = get_view_resource_from_view(obj, user_privacy_level)
+        return self.vector_tile_url(resource)
 
     def get_bbox(self, obj: DatasetView):
         bbox = []
@@ -196,20 +190,14 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
 class DatasetViewItemForUserSerializer(DatasetViewItemSerializer):
 
     def get_vector_tiles(self, obj: DatasetView):
-        url = None
         obj_checker = self.context['obj_checker']
         user_privacy_level = get_view_permission_privacy_level(
             obj_checker, obj.dataset, obj
         )
         if user_privacy_level < obj.min_privacy_level:
-            return url
-        resource = obj.datasetviewresource_set.filter(
-            privacy_level=obj.get_resource_level_for_user(user_privacy_level)
-        ).first()
-        if resource is None:
-            return url
-        url = self.vector_tile_url(resource)
-        return url
+            return None
+        resource = get_view_resource_from_view(obj, user_privacy_level)
+        return self.vector_tile_url(resource)
 
     def get_bbox(self, obj: DatasetView):
         bbox = []
@@ -338,17 +326,11 @@ class DatasetViewDetailSerializer(TaggitSerializer,
         if 'user_privacy_level' not in self.context:
             return url
         user_privacy_level = self.context['user_privacy_level']
-        resource = obj.datasetviewresource_set.filter(
-            privacy_level=obj.get_resource_level_for_user(user_privacy_level)
-        ).first()
+        resource = get_view_resource_from_view(obj, user_privacy_level)
         if resource is None:
             return url
-        vector_tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(resource.uuid)
-        )
         # check path to vector tiles exist
-        if os.path.exists(vector_tile_path) and 'request' in self.context:
+        if resource.vector_tiles_exist and 'request' in self.context:
             url = (
                 f'/layer_tiles/{str(resource.uuid)}/{{z}}/{{x}}/{{y}}'
                 f'?t={int(resource.vector_tiles_updated_at.timestamp())}'

@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models.signals import pre_delete
+from django.utils import timezone
 from django.dispatch import receiver
 from georepo.models.dataset import Dataset
 from georepo.utils.permission import get_dataset_to_review
@@ -86,9 +87,7 @@ class EntityUploadStatus(models.Model):
         null=True
     )
 
-    started_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    started_at = models.DateTimeField(default=timezone.now)
 
     comparison_data_ready = models.BooleanField(
         default=None,

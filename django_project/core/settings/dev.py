@@ -46,7 +46,12 @@ LOGGING = {
         'django.db.backends': {
             'handlers': ['console'],
             'level': 'INFO',  # switch to DEBUG to show actual SQL
-        }
+        },
+        'azure': {
+            'level': 'WARNING',
+            'handlers': ['console'],
+            'propagate': False
+        },
     },
     # root logger
     # non handled logs will propagate to the root logger

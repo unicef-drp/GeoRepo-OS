@@ -205,8 +205,8 @@ class UploadSessionSummary(AzureAuthRequiredMixin, APIView):
         permissions.IsAuthenticated,
     )
 
-    def get(self, request, *args, **kwargs):
-        upload_session_id = kwargs.get('id')
+    def get(self, request, pk, *args, **kwargs):
+        upload_session_id = pk
         upload_session = get_object_or_404(
             LayerUploadSession,
             id=upload_session_id

@@ -1369,6 +1369,10 @@ class TestApiViews(TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    @mock.patch(
+        'dashboard.tasks.remove_view_resource_data.delay',
+        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
+    )
     def test_delete_view(self):
         # Test no permission
         user = UserF.create()

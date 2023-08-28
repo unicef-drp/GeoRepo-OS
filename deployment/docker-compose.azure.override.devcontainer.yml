@@ -1,0 +1,79 @@
+version: '3.9'
+services:
+  db:
+    volumes:
+      - ./volumes/database:/var/lib/postgresql/14
+      - ./deployment/volumes/backups:/backups
+    ports:
+      - "5432:5432"
+
+  worker:
+    image: kartoza/georepo_dev
+    build:
+      context: ../
+      dockerfile: deployment/docker/Dockerfile
+      target: dev
+    env_file: .azure.env
+    volumes:
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+      - ./volumes/media:/home/web/media
+      - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/layer_tiles:/opt/layer_tiles
+      - ./volumes/django_cache:/home/web/django_cache
+    links:
+      - db
+      - azurite
+
+  celery_beat:
+    image: kartoza/georepo_dev
+    build:
+      context: ../
+      dockerfile: deployment/docker/Dockerfile
+      target: dev
+    volumes:
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+      - ./volumes/media:/home/web/media
+      - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/layer_tiles:/opt/layer_tiles
+      - ./volumes/django_cache:/home/web/django_cache
+
+  dev:
+    image: kartoza/georepo_dev
+    build:
+      context: ../
+      dockerfile: deployment/docker/Dockerfile
+      target: dev
+    env_file: .azure.env
+    volumes:
+      - ../:/home/web/project
+      - ../django_project:/home/web/django_project
+      - ./volumes/static:/home/web/static
+      - ./volumes/media:/home/web/media
+      - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/layer_tiles:/opt/layer_tiles
+      - ./volumes/django_cache:/home/web/django_cache
+    ports:
+      # for ssh
+      - "51103:22"
+      - "51105:8081"
+      # for pg_tileserv
+      - "51106:7800"
+      - "51107:7801"
+      # for debugpy
+      - "55678:5678"
+      # for tegola tile
+      - "51108:9090"
+    links:
+      - db
+      - worker
+      - azurite
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    entrypoint: ["azurite", "--blobHost", "0.0.0.0", "--blobPort", "10000","-l", "data"]
+    volumes:
+      - ./volumes/azurite:/opt/azurite/data
+    ports:
+      - 10000:10000

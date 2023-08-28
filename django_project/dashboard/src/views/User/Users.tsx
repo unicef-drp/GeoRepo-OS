@@ -19,6 +19,7 @@ export default function Users () {
         selectionChanged={null}
         onRowClick={handleRowClick}
         actionData={[]}
+        fetchUseCache={false}
       />
     </div>
   )

@@ -1,6 +1,8 @@
-from django.db import connection
 import json
+from pytz import timezone
 from collections import OrderedDict
+from django.conf import settings
+from django.db import connection
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.views import APIView
@@ -101,6 +103,7 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
                 entity_upload,
                 request.user
             )
+            tz = timezone(settings.TIME_ZONE)
             response_data.append({
                 'id': entity_upload.id,
                 level_name: (
@@ -108,8 +111,8 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
                     if entity
                     else entity_upload.revised_entity_name
                 ),
-                'started at': entity_upload.upload_session.started_at.strftime(
-                    "%d %B %Y %H:%M:%S"),
+                'started at': entity_upload.started_at.astimezone(tz)
+                .strftime(f"%d %B %Y %H:%M:%S {settings.TIME_ZONE}"),
                 'status': entity_upload.status,
                 'error_summaries': self.sort_error_summaries(
                     entity_upload.summaries),

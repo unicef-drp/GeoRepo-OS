@@ -1,24 +1,15 @@
+import os
 from celery import shared_task
-from celery.utils.log import get_task_logger
+import logging
+import shutil
+from django.conf import settings
 
-from georepo.utils import generate_view_vector_tiles
+from georepo.utils import (
+    generate_view_vector_tiles,
+    remove_vector_tiles_dir
+)
 
-logger = get_task_logger(__name__)
-
-
-@shared_task(name="generate_vector_tiles")
-def generate_vector_tiles_task(dataset_id: str, overwrite: bool):
-    from georepo.models.dataset import Dataset
-    from georepo.utils.vector_tile import generate_vector_tiles
-
-    try:
-        dataset = Dataset.objects.get(id=dataset_id)
-        generate_vector_tiles(dataset, overwrite)
-    except Dataset.DoesNotExist:
-        logger.error(f'Dataset {dataset_id} does not exist')
-    except Exception:
-        dataset.tiling_status = Dataset.DatasetTilingStatus.ERROR
-        dataset.save(update_fields=['tiling_status'])
+logger = logging.getLogger(__name__)
 
 
 @shared_task(name="generate_view_vector_tiles")
@@ -109,3 +100,29 @@ def generate_dataset_export_data(dataset_id: str):
         logger.info('Extract dataset data done')
     except Dataset.DoesNotExist:
         logger.error(f'Dataset {dataset_id} does not exist')
+
+
+@shared_task(name="remove_view_resource_data")
+def remove_view_resource_data(resource_id: str):
+    # remove vector tiles dir
+    remove_vector_tiles_dir(resource_id)
+    remove_vector_tiles_dir(resource_id, True)
+    export_data_list = [
+        settings.GEOJSON_FOLDER_OUTPUT,
+        settings.SHAPEFILE_FOLDER_OUTPUT,
+        settings.KML_FOLDER_OUTPUT,
+        settings.TOPOJSON_FOLDER_OUTPUT
+    ]
+    for export_dir in export_data_list:
+        export_data = os.path.join(
+            export_dir,
+            resource_id
+        )
+        if os.path.exists(export_data):
+            shutil.rmtree(export_data)
+        temp_export_data = os.path.join(
+            export_dir,
+            f'temp_{resource_id}'
+        )
+        if os.path.exists(temp_export_data):
+            shutil.rmtree(temp_export_data)

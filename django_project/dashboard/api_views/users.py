@@ -1,10 +1,14 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.http import (
-    HttpResponseBadRequest
+    HttpResponseBadRequest,
+    HttpResponseForbidden
 )
 from django.db.models import Q
 from django.db.utils import IntegrityError
@@ -30,6 +34,8 @@ from dashboard.serializers.permission import (
     DatasetViewPermissionSerializer,
     DatasetPermissionSerializer
 )
+from core.models.token_detail import CustomApiKey
+from dashboard.serializers.token import CustomApiKeySerializer
 
 
 User = get_user_model()
@@ -61,12 +67,19 @@ class UserList(APIView):
             )
             if user.is_superuser:
                 role = 'Admin'
+            api_key = CustomApiKey.objects.filter(
+                user=user
+            ).first()
+            has_api_key = '-'
+            if api_key:
+                has_api_key = 'Enabled' if api_key.is_active else 'Disabled'
             response_data.append({
                 'id': user.id,
                 'name': f'{user.first_name} {user.last_name}',
                 'username': user.username,
                 'email': user.email,
                 'is_active': 'Yes' if user.is_active else 'No',
+                'has_api_key': has_api_key,
                 'role': role,
                 'joined_date': user.date_joined
             })
@@ -74,7 +87,7 @@ class UserList(APIView):
 
 
 class UserDetail(APIView):
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated]
 
     def get_current_role(self, user):
         role = (
@@ -114,9 +127,15 @@ class UserDetail(APIView):
                 'You are not allowed to change yourself!'
             )
         role = request.data.get('role')
+        first_name = request.data.get('first_name', None)
+        last_name = request.data.get('last_name', None)
         is_active = request.data.get('is_active')
         if role not in AVAILABLE_ROLES:
             return HttpResponseBadRequest('Invalid role!')
+        if first_name is not None:
+            user.first_name = first_name
+        if last_name is not None:
+            user.last_name = last_name
         # if downgrade from CREATOR -> VIEWER,
         # then need to handle existing permissions
         prev_role = self.get_current_role(user)
@@ -179,7 +198,7 @@ class UserDetail(APIView):
 
 
 class UserPermissionDetail(APIView):
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated]
 
     def get_modules(self, user):
         modules = Module.objects.all()
@@ -262,3 +281,87 @@ class UserPermissionDetail(APIView):
         elif object_type == 'datasetview':
             results = self.get_dataset_views(user, privacy_labels)
         return Response(results)
+
+
+class TokenDetail(UserPassesTestMixin, APIView):
+    permission_classes = [IsAuthenticated]
+
+    def handle_no_permission(self):
+        return HttpResponseForbidden('No permission')
+
+    def test_func(self):
+        if not self.request.user.is_authenticated:
+            return False
+        if self.request.user.is_superuser:
+            return True
+        user_id = int(self.kwargs.get('id'))
+        return self.request.user.id == user_id
+
+    def get(self, request, *args, **kwargs):
+        user_id = kwargs.get('id')
+        api_key = CustomApiKey.objects.filter(
+            user_id=user_id
+        )
+        return Response(status=200, data=(
+            CustomApiKeySerializer(api_key, many=True).data
+        ))
+
+    def put(self, request, *args, **kwargs):
+        # activate/deactivate token
+        if not self.request.user.is_superuser:
+            return HttpResponseForbidden('No permission')
+        user_id = kwargs.get('id')
+        api_key = CustomApiKey.objects.filter(
+            user_id=user_id
+        )
+        api_key.update(
+            is_active=request.data.get('is_active')
+        )
+        return Response(status=204)
+
+    def post(self, request, *args, **kwargs):
+        # create new token
+        user_id = kwargs.get('id')
+        user = get_object_or_404(
+            User,
+            id=user_id
+        )
+        existing = CustomApiKey.objects.filter(
+            user_id=user_id
+        )
+        if existing.exists():
+            return Response(status=400, data={
+                'detail': (
+                    'You have existing API Key! '
+                    'Please remove the existing one!'
+                )
+            })
+        token, _ = Token.objects.get_or_create(
+            user=user
+        )
+        key = CustomApiKey(
+            token_ptr=token,
+            user=user,
+            platform=request.data.get('platform'),
+            owner=request.data.get('owner'),
+            contact=request.data.get('contact'),
+        )
+        key.save_base(raw=True)
+        return Response(status=201)
+
+    def delete(self, request, *args, **kwargs):
+        # delete token API Key
+        user_id = kwargs.get('id')
+        api_key = CustomApiKey.objects.filter(
+            user_id=user_id
+        ).first()
+        if not api_key:
+            return Response(status=404, data={
+                'detail': 'not found'
+            })
+        if not api_key.is_active and not request.user.is_superuser:
+            return HttpResponseForbidden('No permission')
+        Token.objects.filter(
+            user_id=user_id
+        ).delete()
+        return Response(status=204)

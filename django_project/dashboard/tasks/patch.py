@@ -1,5 +1,5 @@
 from celery import shared_task
-from celery.utils.log import get_task_logger
+import logging
 
 from django.db import IntegrityError
 from dashboard.models import (
@@ -7,7 +7,7 @@ from dashboard.models import (
     LayerFile, SHAPEFILE
 )
 
-logger = get_task_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @shared_task(name='fix_entity_name_encoding')

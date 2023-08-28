@@ -6,6 +6,13 @@
   display: flex;
 }
 
+.button-with-loading {
+  .loading-container {
+    height: unset;
+    width: unset;
+  }
+}
+
 .App {
   text-align: center;
   // use 100vh for lazy load fix
@@ -334,5 +341,12 @@ main {
     tr > td {
       padding: 16px !important;
     }
+  }
+}
+
+.api-key-input {
+  input:disabled {
+    color: black;
+    -webkit-text-fill-color: unset;
   }
 }

@@ -54,7 +54,7 @@
     map.on('load', function () {
         map.addSource('{{ label }}', {
           'type': 'vector',
-          "tiles": ["{{ layer_tiles_base_url }}{{ vector_tiles_path }}&token={{ user.auth_token }}"],
+          "tiles": ["{{ layer_tiles_base_url }}{{ vector_tiles_path }}&token={{ auth_token }}"],
           "tolerance": 0
         });
 
