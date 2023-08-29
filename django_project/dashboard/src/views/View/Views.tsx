@@ -22,7 +22,6 @@ import FilterAlt from "@mui/icons-material/FilterAlt";
 import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import {
   setAvailableFilters,
-  setCurrentColumns as setInitialColumns,
   setCurrentFilters as setInitialFilters
 } from "../../reducers/viewTable";
 import {RootState} from "../../app/store";
@@ -305,7 +304,6 @@ export default function Views() {
         }
       })
       setColumns(_columns)
-      dispatch(setInitialColumns(JSON.stringify(_columns.map)))
     }
     fetchFilterValuesData()
   }, [pagination, currentFilters])

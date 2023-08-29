@@ -26,7 +26,8 @@ from dashboard.api_views.layer_upload import (
 )
 from dashboard.api_views.upload_session import (
     AddUploadSession,
-    UploadSessions,
+    UploadSessionList,
+    UploadSessionFilterValue,
     UploadSessionDetail,
     UploadSessionSummary,
     UploadSessionUpdateStep, CanAddUpload, UpdateUploadSession,
@@ -205,8 +206,13 @@ urlpatterns = [
     ),
     re_path(
         r'api/upload-sessions/?$',
-        UploadSessions.as_view(),
-        name='upload-sessions'
+        UploadSessionList.as_view(),
+        name='upload-session-list'
+    ),
+    re_path(
+        r'api/upload-session-filter/values/(?P<criteria>\w+)/?$',
+        UploadSessionFilterValue.as_view(),
+        name='upload-session-filter-value'
     ),
     re_path(
         r'api/upload-session/(?P<id>\d+)/?$',

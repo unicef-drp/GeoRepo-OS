@@ -1,5 +1,6 @@
+
 __author__ = 'zakki@kartoza.com'
-__date__ = '02/08/23'
+__date__ = '29/08/23'
 __copyright__ = ('Copyright 2023, Unicef')
 
 import json
@@ -9,7 +10,7 @@ from django.urls import reverse
 from rest_framework.test import APIRequestFactory
 from django.contrib.gis.geos import GEOSGeometry
 
-from dashboard.api_views.reviews import ReviewFilterValue
+from dashboard.api_views.upload_session import UploadSessionFilterValue
 from dashboard.models.entity_upload import APPROVED, REVIEWING, REJECTED
 from dashboard.tests.model_factories import (
     EntityUploadF, LayerUploadSessionF
@@ -21,7 +22,7 @@ from georepo.tests.model_factories import (
 from georepo.utils import absolute_path
 
 
-class TestReviewFilterValue(TestCase):
+class TestUploadSessionFilterValue(TestCase):
 
     def setUp(self) -> None:
         self.factory = APIRequestFactory()
@@ -37,7 +38,8 @@ class TestReviewFilterValue(TestCase):
         self.upload_session = LayerUploadSessionF.create(
             dataset=dataset,
             uploader=self.creator,
-            source='TEST'
+            source='TEST',
+            status='Done'
         )
         geojson_0_path = absolute_path(
             'georepo', 'tests',
@@ -79,12 +81,12 @@ class TestReviewFilterValue(TestCase):
     def test_list_level_0_entity(self):
         request = self.factory.get(
             reverse(
-                'review-filter-value',
+                'upload-session-filter-value',
                 kwargs={'criteria': 'level_0_entity'}
             )
         )
         request.user = self.superuser
-        list_view = ReviewFilterValue.as_view()
+        list_view = UploadSessionFilterValue.as_view()
         response = list_view(request, 'level_0_entity')
         self.assertEquals(
             response.data,
@@ -94,47 +96,59 @@ class TestReviewFilterValue(TestCase):
             ]
         )
 
-    def test_list_upload(self):
+    def test_list_id(self):
         request = self.factory.get(
-            reverse('review-filter-value', kwargs={'criteria': 'upload'})
+            reverse('upload-session-filter-value', kwargs={'criteria': 'id'})
         )
         request.user = self.superuser
-        list_view = ReviewFilterValue.as_view()
-        response = list_view(request, 'upload')
-        self.assertEquals(response.data, [42])
-
-    def test_list_revision(self):
-        request = self.factory.get(
-            reverse('review-filter-value', kwargs={'criteria': 'revision'})
-        )
-        request.user = self.superuser
-        list_view = ReviewFilterValue.as_view()
-        response = list_view(request, 'revision')
-        self.assertEquals(
-            response.data,
-            [
-                self.entity_1.revision_number,
-                self.entity_2.revision_number
-            ]
-        )
+        list_view = UploadSessionFilterValue.as_view()
+        response = list_view(request, 'id')
+        self.assertEquals(response.data, [self.upload_session.id])
 
     def test_list_dataset(self):
         request = self.factory.get(
-            reverse('review-filter-value', kwargs={'criteria': 'dataset'})
+            reverse(
+                'upload-session-filter-value',
+                kwargs={'criteria': 'dataset'}
+            )
         )
         request.user = self.superuser
-        list_view = ReviewFilterValue.as_view()
+        list_view = UploadSessionFilterValue.as_view()
         response = list_view(request, 'dataset')
         self.assertEquals(response.data, [self.upload_session.dataset.label])
 
-    def test_list_status(self):
+    def test_list_type(self):
         request = self.factory.get(
-            reverse('review-filter-value', kwargs={'criteria': 'status'})
+            reverse('upload-session-filter-value', kwargs={'criteria': 'type'})
         )
         request.user = self.superuser
-        list_view = ReviewFilterValue.as_view()
+        list_view = UploadSessionFilterValue.as_view()
+        response = list_view(request, 'type')
+        self.assertEquals(response.data, ['Admin Boundaries'])
+
+    def test_list_uploaded_by(self):
+        request = self.factory.get(
+            reverse(
+                'upload-session-filter-value',
+                kwargs={'criteria': 'uploaded_by'}
+            )
+        )
+        request.user = self.superuser
+        list_view = UploadSessionFilterValue.as_view()
+        response = list_view(request, 'uploaded_by')
+        self.assertEquals(response.data, [self.creator.username])
+
+    def test_list_status(self):
+        request = self.factory.get(
+            reverse(
+                'upload-session-filter-value',
+                kwargs={'criteria': 'status'}
+            )
+        )
+        request.user = self.superuser
+        list_view = UploadSessionFilterValue.as_view()
         response = list_view(request, 'status')
         self.assertEquals(
             response.data,
-            [APPROVED, 'Pending']
+            ['Done']
         )

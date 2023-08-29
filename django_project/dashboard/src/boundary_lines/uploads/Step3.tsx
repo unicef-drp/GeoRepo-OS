@@ -9,7 +9,7 @@ import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import CircularProgress from '@mui/material/CircularProgress';
-import { DataGrid, GridColDef, GridColumnGroupingModel, GridColumnHeaderParams, GridCellParams } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridColumnHeaderParams, GridCellParams } from '@mui/x-data-grid';
 import {postData} from "../../utils/Requests";
 import {useAppDispatch} from "../../app/hooks";
 import {setPollInterval, FETCH_INTERVAL_JOB} from "../../reducers/notificationPoll";

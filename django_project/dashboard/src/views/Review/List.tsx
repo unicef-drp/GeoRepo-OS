@@ -19,7 +19,6 @@ import {setSelectedReviews} from "../../reducers/reviewAction";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {
   setAvailableFilters,
-  setCurrentColumns as setInitialColumns,
   setCurrentFilters as setInitialFilters
 } from "../../reducers/reviewTable";
 
@@ -168,11 +167,18 @@ export default function ReviewList() {
       } else {
         filterVals = await fetchFilterValues()
       }
+      const getLabel = (columnName: string) : string => {
+        if (columnName === 'upload') {
+          return 'Upload ID'
+        }
+        return columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' ')
+      }
+
       let _init_columns = USER_COLUMNS
       let _columns = _init_columns.map((columnName) => {
         let _options: any = {
           name: columnName,
-          label: columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' '),
+          label: getLabel(columnName),
           options: {
             display: initialColumns.includes(columnName),
             sort: true
@@ -196,7 +202,6 @@ export default function ReviewList() {
         return _options
       })
       setColumns(_columns)
-      dispatch(setInitialColumns(JSON.stringify(_columns.map)))
     }
     fetchFilterValuesData()
   }, [pagination, currentFilters])
@@ -263,7 +268,14 @@ export default function ReviewList() {
   }
 
   useEffect(() => {
-    fetchReviewList()
+    let upload
+    try {
+      upload = searchParams.get('upload') ? [searchParams.get('upload')] : []
+    } catch (error: any) {
+      upload = currentFilters['upload']
+    }
+    setCurrentFilters({...currentFilters, 'upload': upload})
+    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'upload': upload})))
   }, [searchParams])
 
   useEffect(() => {
