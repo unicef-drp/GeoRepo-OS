@@ -158,7 +158,7 @@ function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
             <Grid item md={5} xl={5} xs={12} sx={{marginBottom: '10px'}}>
                 <Grid container flexDirection={'row'} justifyContent={'center'}>
                     <Alert style={{ width: '100%', textAlign: 'left' }} severity='warning'>
-                        <AlertTitle>{'If you forgot your API KEY, you must delete the existing one and regenerate a new API KEY. The GeoReepo team is not able to retrieve your API KEY. After generating a new API KEY, please make sure you update your applications with the newly generated API KEY'}</AlertTitle>
+                        <AlertTitle>{'If you forgot your API KEY, you must delete the existing one and regenerate a new API KEY. The GeoRepo team is not able to retrieve your API KEY. After generating a new API KEY, please make sure you update your applications with the newly generated API KEY!'}</AlertTitle>
                     </Alert>
                 </Grid>
             </Grid>
