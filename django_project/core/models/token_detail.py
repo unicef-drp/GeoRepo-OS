@@ -1,19 +1,17 @@
 """Custom token for API Key"""
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
-from rest_framework.authtoken.models import Token
+from knox.models import AuthToken
 
 
-class CustomApiKey(Token):
-    """
-    Additional detail to the token.
-
-    Includes Proxy mapping pk to user pk for use in admin.
-    """
-
-    @property
-    def pk(self):
-        return self.user_id
+class ApiKey(models.Model):
+    token = models.OneToOneField(
+        AuthToken,
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
 
     platform = models.CharField(
         null=True,
@@ -40,3 +38,11 @@ class CustomApiKey(Token):
     class Meta:
         verbose_name = _("API Key")
         verbose_name_plural = _("API Keys")
+
+    def __str__(self):
+        return f'API Key for {self.token.user.email}'
+
+
+@receiver(post_delete, sender=ApiKey)
+def api_key_on_delete(sender, instance, using, **kwargs):
+    instance.token.delete()

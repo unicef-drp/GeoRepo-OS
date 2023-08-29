@@ -13,8 +13,6 @@ import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import InputAdornment from '@mui/material/InputAdornment';
 import OutlinedInput from '@mui/material/OutlinedInput';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Button from '@mui/material/Button';
 import UserInterface, {APIKeyInterface} from '../../models/user';
@@ -22,6 +20,7 @@ import Loading from "../../components/Loading";
 import AlertMessage from '../../components/AlertMessage';
 import AlertDialog from '../../components/AlertDialog';
 import Scrollable from "../../components/Scrollable";
+import { utcToLocalDateTimeString } from '../../utils/Helpers';
 
 
 interface UserAPIKeysInterface {
@@ -121,7 +120,6 @@ function UserAPIKeyCreateForm(props: UserAPIKeyCreateFormInterface) {
 }
 
 function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
-    const [showAPIKey, setShowAPIKey] = useState(false)
     const [alertMessage, setAlertMessage] = useState('')
     const isSuperUser = (window as any).is_admin
 
@@ -142,14 +140,8 @@ function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
         return '-'
     }
 
-    const handleClickShowAPIKey = () => setShowAPIKey((show) => !show)
-
-    const handleMouseDownAPIKey = (event: React.MouseEvent<HTMLButtonElement>) => {
-        event.preventDefault();
-    }
-
     const handleCopyAPIKey = () => {
-        navigator.clipboard.writeText(props.apiKey.key)
+        navigator.clipboard.writeText(props.apiKey.api_key)
         props.handleAPIKeyCopied()
     }
 
@@ -161,6 +153,13 @@ function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
                     <Alert style={{ width: '100%', textAlign: 'left' }} severity='warning'>
                         <AlertTitle>{alertMessage}</AlertTitle>
                     </Alert> : null }
+                </Grid>
+            </Grid>
+            <Grid item md={5} xl={5} xs={12} sx={{marginBottom: '10px'}}>
+                <Grid container flexDirection={'row'} justifyContent={'center'}>
+                    <Alert style={{ width: '100%', textAlign: 'left' }} severity='warning'>
+                        <AlertTitle>{'If you forgot your API KEY, you must delete the existing one and regenerate a new API KEY. The GeoReepo team is not able to retrieve your API KEY. After generating a new API KEY, please make sure you update your applications with the newly generated API KEY'}</AlertTitle>
+                    </Alert>
                 </Grid>
             </Grid>
             <Grid item md={5} xl={5} xs={12}>
@@ -185,42 +184,42 @@ function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
                     <Grid container flexDirection={'column'} >
                         <Grid item>
                             <Grid container flexDirection={'column'} className='api-key-container'>
-                                <Grid item>
-                                    <FormControl sx={{width: '100%' }} variant="outlined">
-                                        <InputLabel htmlFor="outlined-adornment-password">API Key</InputLabel>
-                                        <OutlinedInput
-                                            id="outlined-adornment-password"
-                                            className='api-key-input'
-                                            type={showAPIKey ? 'text' : 'password'}
-                                            defaultValue={props.apiKey.key}
-                                            disabled
-                                            endAdornment={
-                                            <InputAdornment position="end">
-                                                <IconButton
-                                                    aria-label="toggle API Key"
-                                                    onClick={handleClickShowAPIKey}
-                                                    onMouseDown={handleMouseDownAPIKey}
-                                                    edge="end"
-                                                    title={showAPIKey ? 'Hide API Key' : 'Show API Key'}
-                                                    >
-                                                    {showAPIKey ? <VisibilityOff /> : <Visibility />}
-                                                </IconButton>
-                                                <IconButton
-                                                    aria-label="Copy API Key"
-                                                    onClick={handleCopyAPIKey}
-                                                    edge="end"
-                                                    title='Copy API Key'
-                                                    sx={{marginLeft: '10px'}}
-                                                    >
-                                                    <ContentCopyIcon />
-                                                </IconButton>
-                                            </InputAdornment>
-                                            }
-                                            label="API Key"
-                                        />
-                                        </FormControl>
-                                </Grid>
+                                { props.apiKey.api_key && (
+                                    <Grid item>
+                                        <FormControl sx={{width: '100%' }} variant="outlined">
+                                            <InputLabel htmlFor="outlined-adornment-password">API Key</InputLabel>
+                                            <OutlinedInput
+                                                id="outlined-adornment-password"
+                                                className='api-key-input'
+                                                type={'text'}
+                                                defaultValue={props.apiKey.api_key}
+                                                disabled
+                                                endAdornment={
+                                                    <InputAdornment position="end">
+                                                        <IconButton
+                                                            aria-label="Copy API Key"
+                                                            onClick={handleCopyAPIKey}
+                                                            edge="end"
+                                                            title='Copy API Key'
+                                                            sx={{marginLeft: '10px'}}
+                                                            >
+                                                            <ContentCopyIcon />
+                                                        </IconButton>
+                                                    </InputAdornment>
+                                                }
+                                                label="API Key"
+                                            />
+                                            </FormControl>
+                                    </Grid>
+                                )}
                                 <Grid item sx={{marginTop: '10px'}}>
+                                    <Grid container flexDirection={'row'}>
+                                        <Grid item>
+                                            <Typography variant={'subtitle1'}>Created At : {utcToLocalDateTimeString(new Date(props.apiKey.created))}</Typography>
+                                        </Grid>
+                                    </Grid>
+                                </Grid>
+                                <Grid item>
                                     <Grid container flexDirection={'row'}>
                                         <Grid item>
                                             <Typography variant={'subtitle1'}>Platform : {displayValue(props.apiKey.platform)}</Typography>
@@ -348,7 +347,15 @@ export default function UserAPIKeys(props: UserAPIKeysInterface) {
                 setConfirmMode(0)
                 setTempCreateAPIKeyData({})
                 setAlertMessage('The API Key has been successfully created!')
-                doFetchAPIKeys()
+                setAPIKey({
+                    'user_id': response.data['user_id'],
+                    'api_key': response.data['api_key'],
+                    'created': response.data['created'],
+                    'platform': platform,
+                    'owner': owner,
+                    'contact': contact,
+                    'is_active': true
+                })
             }
         ).catch((error) => {
             if (error.response) {

@@ -2,8 +2,8 @@ from rest_framework.test import APIRequestFactory
 from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase
 from django.urls import reverse
-from rest_framework.authtoken.models import Token
-from core.models.token_detail import CustomApiKey
+from knox.models import AuthToken
+from core.models.token_detail import ApiKey
 from dashboard.api_views.users import TokenDetail
 from georepo.tests.model_factories import (
     UserF
@@ -20,19 +20,17 @@ class TestTokenDetail(TestCase):
             'owner': 'Test'
         }
         self.user_1 = UserF.create()
-        self.token_1 = Token.objects.create(user=self.user_1)
         self.user_2 = UserF.create()
 
-    def create_token(self, token_ptr):
-        key = CustomApiKey(
-            token_ptr=token_ptr,
-            user=token_ptr.user,
+    def create_token(self, user):
+        auth_token, _ = AuthToken.objects.create(user=user)
+        ApiKey.objects.create(
+            token=auth_token,
             **self.token_payload
         )
-        key.save_base(raw=True)
 
     def test_token_access(self):
-        self.create_token(self.token_1)
+        self.create_token(self.user_1)
         # forbidden without user
         kwargs = {
             'id': self.user_1.id
@@ -54,7 +52,7 @@ class TestTokenDetail(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_token_get_list(self):
-        self.create_token(self.token_1)
+        self.create_token(self.user_1)
         kwargs = {
             'id': self.user_1.id
         }
@@ -79,10 +77,10 @@ class TestTokenDetail(TestCase):
         view = TokenDetail.as_view()
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 201)
-        token = Token.objects.filter(user=self.user_2).first()
+        token = AuthToken.objects.filter(user=self.user_2).first()
         self.assertTrue(token)
-        key = CustomApiKey.objects.filter(
-            token_ptr=token
+        key = ApiKey.objects.filter(
+            token=token
         ).first()
         self.assertTrue(key)
         self.assertEqual(key.platform, self.token_payload['platform'])
@@ -91,7 +89,7 @@ class TestTokenDetail(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_token_update(self):
-        self.create_token(self.token_1)
+        self.create_token(self.user_1)
         kwargs = {
             'id': self.user_1.id
         }
@@ -116,10 +114,10 @@ class TestTokenDetail(TestCase):
         view = TokenDetail.as_view()
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 204)
-        token = Token.objects.filter(user=self.user_1).first()
+        token = AuthToken.objects.filter(user=self.user_1).first()
         self.assertTrue(token)
-        key = CustomApiKey.objects.filter(
-            token_ptr=token
+        key = ApiKey.objects.filter(
+            token=token
         ).first()
         self.assertTrue(key)
         self.assertFalse(key.is_active)
@@ -142,11 +140,11 @@ class TestTokenDetail(TestCase):
         view = TokenDetail.as_view()
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 204)
-        token = Token.objects.filter(user=self.user_1).first()
+        token = AuthToken.objects.filter(user=self.user_1).first()
         self.assertFalse(token)
 
     def test_token_delete(self):
-        self.create_token(self.token_1)
+        self.create_token(self.user_1)
         kwargs = {
             'id': self.user_1.id
         }
@@ -157,6 +155,6 @@ class TestTokenDetail(TestCase):
         view = TokenDetail.as_view()
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 204)
-        self.assertFalse(CustomApiKey.objects.filter(
-            user=self.user_1
+        self.assertFalse(ApiKey.objects.filter(
+            token__user=self.user_1
         ).exists())

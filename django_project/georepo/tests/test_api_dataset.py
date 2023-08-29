@@ -9,8 +9,8 @@ from django.contrib.gis.geos import GEOSGeometry
 
 from rest_framework.test import APIRequestFactory
 from rest_framework import versioning
-from rest_framework.authtoken.models import Token
-from core.models.token_detail import CustomApiKey
+from knox.models import AuthToken
+from core.models.token_detail import ApiKey
 from georepo.utils import absolute_path
 from georepo.api_views.dataset import (
     DatasetDetail,
@@ -133,7 +133,7 @@ class TestApiDataset(TestCase):
                 mock.Mock(side_effect=mocked_set_cache))
     def test_is_dataset_allowed_api(self):
         user = UserF.create(username='test')
-        token = Token.objects.create(user=user)
+        auth_token, key = AuthToken.objects.create(user=user)
         dataset_view = self.latest_views[0]
         # grant viewer access with level 2
         grant_dataset_viewer(self.dataset, user, 2)
@@ -142,24 +142,23 @@ class TestApiDataset(TestCase):
             dataset_view=dataset_view,
             privacy_level=3
         ).first()
-        # without CustomAPIKey, should be 401
+        # without APIKey, should be 401
         request = self.factory.post(
             reverse('dataset-allowed-api') +
-            f'?token={str(user.auth_token)}' +
+            f'?token={str(key)}' +
             f'&request_url=/t/{str(resource3.uuid)}/'
         )
         view = IsDatasetAllowedAPI.as_view()
         response = view(request)
         self.assertEqual(response.status_code, 401)
-        key = CustomApiKey(
-            token_ptr=token,
-            user=user,
+        ApiKey.objects.create(
+            token=auth_token
         )
-        key.save_base(raw=True)
         # Without request url
         request = self.factory.post(
             reverse('dataset-allowed-api') +
-            f'?token={str(user.auth_token)}'
+            f'?token={str(key)}' +
+            f'&georepo_user_key={user.email}'
         )
         view = IsDatasetAllowedAPI.as_view()
         response = view(request)
@@ -167,20 +166,8 @@ class TestApiDataset(TestCase):
         # should not allow to access level 3
         request = self.factory.post(
             reverse('dataset-allowed-api') +
-            f'?token={str(user.auth_token)}' +
-            f'&request_url=/t/{str(resource3.uuid)}/'
-        )
-        view = IsDatasetAllowedAPI.as_view()
-        response = view(request)
-        self.assertEqual(response.status_code, 403)
-        # should not allow to access level 3
-        resource3 = DatasetViewResource.objects.filter(
-            dataset_view=dataset_view,
-            privacy_level=3
-        ).first()
-        request = self.factory.post(
-            reverse('dataset-allowed-api') +
-            f'?token={str(user.auth_token)}' +
+            f'?token={str(key)}' +
+            f'&georepo_user_key={user.email}' +
             f'&request_url=/t/{str(resource3.uuid)}/'
         )
         view = IsDatasetAllowedAPI.as_view()
@@ -193,13 +180,25 @@ class TestApiDataset(TestCase):
         ).first()
         request = self.factory.post(
             reverse('dataset-allowed-api') +
-            f'?token={str(user.auth_token)}' +
+            f'?token={str(key)}' +
+            f'&georepo_user_key={user.email}' +
             f'&request_url=/t/{str(resource2.uuid)}/'
         )
         view = IsDatasetAllowedAPI.as_view()
         response = view(request)
         self.assertEqual(response.status_code, 200)
         self.check_disabled_module(view, request)
+        # 401 with invalid user_key
+        request = self.factory.post(
+            reverse('dataset-allowed-api') +
+            f'?token={str(key)}' +
+            f'&georepo_user_key=aaa.{user.email}' +
+            f'&request_url=/t/{str(resource2.uuid)}/'
+        )
+        view = IsDatasetAllowedAPI.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 401)
+
 
     def test_get_dataset_detail(self):
         entity_type = EntityTypeF.create(label='Sub district')

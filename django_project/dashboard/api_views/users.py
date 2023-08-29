@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
-from rest_framework.authtoken.models import Token
+from knox.models import AuthToken
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
@@ -34,8 +34,8 @@ from dashboard.serializers.permission import (
     DatasetViewPermissionSerializer,
     DatasetPermissionSerializer
 )
-from core.models.token_detail import CustomApiKey
-from dashboard.serializers.token import CustomApiKeySerializer
+from core.models.token_detail import ApiKey
+from dashboard.serializers.token import ApiKeySerializer
 
 
 User = get_user_model()
@@ -67,8 +67,8 @@ class UserList(APIView):
             )
             if user.is_superuser:
                 role = 'Admin'
-            api_key = CustomApiKey.objects.filter(
-                user=user
+            api_key = ApiKey.objects.filter(
+                token__user=user
             ).first()
             has_api_key = '-'
             if api_key:
@@ -299,11 +299,11 @@ class TokenDetail(UserPassesTestMixin, APIView):
 
     def get(self, request, *args, **kwargs):
         user_id = kwargs.get('id')
-        api_key = CustomApiKey.objects.filter(
-            user_id=user_id
+        api_key = ApiKey.objects.filter(
+            token__user_id=user_id
         )
         return Response(status=200, data=(
-            CustomApiKeySerializer(api_key, many=True).data
+            ApiKeySerializer(api_key, many=True).data
         ))
 
     def put(self, request, *args, **kwargs):
@@ -311,8 +311,8 @@ class TokenDetail(UserPassesTestMixin, APIView):
         if not self.request.user.is_superuser:
             return HttpResponseForbidden('No permission')
         user_id = kwargs.get('id')
-        api_key = CustomApiKey.objects.filter(
-            user_id=user_id
+        api_key = ApiKey.objects.filter(
+            token__user_id=user_id
         )
         api_key.update(
             is_active=request.data.get('is_active')
@@ -326,8 +326,8 @@ class TokenDetail(UserPassesTestMixin, APIView):
             User,
             id=user_id
         )
-        existing = CustomApiKey.objects.filter(
-            user_id=user_id
+        existing = ApiKey.objects.filter(
+            token__user_id=user_id
         )
         if existing.exists():
             return Response(status=400, data={
@@ -336,24 +336,27 @@ class TokenDetail(UserPassesTestMixin, APIView):
                     'Please remove the existing one!'
                 )
             })
-        token, _ = Token.objects.get_or_create(
+        # create token
+        auth_token, token = AuthToken.objects.create(
             user=user
         )
-        key = CustomApiKey(
-            token_ptr=token,
-            user=user,
+        ApiKey.objects.create(
+            token=auth_token,
             platform=request.data.get('platform'),
             owner=request.data.get('owner'),
             contact=request.data.get('contact'),
         )
-        key.save_base(raw=True)
-        return Response(status=201)
+        return Response(status=201, data={
+            'user_id': user_id,
+            'api_key': token,
+            'created': auth_token.created
+        })
 
     def delete(self, request, *args, **kwargs):
         # delete token API Key
         user_id = kwargs.get('id')
-        api_key = CustomApiKey.objects.filter(
-            user_id=user_id
+        api_key = ApiKey.objects.filter(
+            token__user_id=user_id
         ).first()
         if not api_key:
             return Response(status=404, data={
@@ -361,7 +364,7 @@ class TokenDetail(UserPassesTestMixin, APIView):
             })
         if not api_key.is_active and not request.user.is_superuser:
             return HttpResponseForbidden('No permission')
-        Token.objects.filter(
+        AuthToken.objects.filter(
             user_id=user_id
         ).delete()
         return Response(status=204)

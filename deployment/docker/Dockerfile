@@ -17,7 +17,7 @@ RUN apt -y download libcrypt1
 RUN dpkg-deb -x libcrypt1_*.deb .
 RUN cp -av lib/x86_64-linux-gnu/* /lib/x86_64-linux-gnu/
 RUN apt -y --fix-broken install
-RUN apt-get update -y --allow-releaseinfo-change
+RUN apt-get update -y --allow-releaseinfo-change --fix-missing
 
 WORKDIR /home/web/
 
@@ -27,7 +27,8 @@ RUN apt-get install -y --no-install-recommends \
     spatialite-bin libsqlite3-mod-spatialite \
     python3-dev python3-gdal python3-psycopg2 python3-ldap \
     python3-pip python3-pil python3-lxml python3-pylibmc \
-    uwsgi uwsgi-plugin-python3 libz-dev libjpeg-dev libfreetype6-dev python-dev
+    uwsgi uwsgi-plugin-python3 libz-dev libjpeg-dev libfreetype6-dev python-dev \
+    libssl-dev libffi-dev
 
 # Install pip packages
 ADD deployment/docker/requirements.txt /requirements.txt

@@ -7,6 +7,7 @@ from drf_yasg.generators import OpenAPISchemaGenerator
 
 from django.conf import settings
 from django.urls import re_path, include, path
+from django.views.generic.base import RedirectView
 from django.contrib.auth.views import LoginView
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -58,6 +59,14 @@ urlpatterns = [
     re_path(r'^api/v1/docs/$', schema_view_v1.with_ui(
                 'swagger', cache_timeout=0),
             name='schema-swagger-ui'),
+    re_path(
+        r'^admin/core/sitepreferences/$',
+        RedirectView.as_view(
+            url='/admin/core/sitepreferences/1/change/',
+            permanent=False
+        ),
+        name='site-preferences'
+    ),
     re_path(r'^admin/', admin.site.urls)
 ]
 
