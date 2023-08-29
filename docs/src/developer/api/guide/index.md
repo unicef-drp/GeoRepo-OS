@@ -102,10 +102,11 @@ Click on the `Confirm` button in the confirmation dialog.
 
 ![](./img/enrol-api-key-2.png)
 
-Click on `icon 1️⃣` to see the generated API key or click on `icon 2️⃣` to copy the API key to the clipboard. The `Revoke` button can deactivate the API key so that the API key cannot be used without needing to remove it from the system. The `Delete API Key` button will remove the API key from the system.
+Click on `icon 1️⃣` to copy the API key to the clipboard. Make sure to copy the API Key because you can only see it once. The `Delete API Key` button will remove the API key from the system.
 
 ![](./img/enrol-api-key-3.png)
 
+You need to use both the `API Key` and your `email address` to call GeoRepo API. Please refer to [this example](#example-of-python-code-to-access-the-api).
 
 ## Examples of usage of the API
 
@@ -385,7 +386,8 @@ url = "https://staging-georepo.unitst.org/api/v1/search/module/list/?page=1&page
 payload = {}
 headers = {
   'Accept': 'application/json',
-  'Authorization': 'Token {{YOUR_API_KEY}}'
+  'Authorization': 'Token {{YOUR_API_KEY}}',
+  'GeoRepo-User-Key': '{{YOUR_EMAIL}}'
 }
 
 response = requests.request("GET", url, headers=headers, data=payload)
