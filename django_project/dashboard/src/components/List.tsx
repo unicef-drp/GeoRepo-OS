@@ -20,7 +20,7 @@ import {MUIDataTableColumnDef} from "mui-datatables";
 import ResizeTableEvent from "./ResizeTableEvent"
 
 // 145 = filter + filter chips + col headers
-export const TABLE_OFFSET_HEIGHT = 130
+export const TABLE_OFFSET_HEIGHT = 160
 
 axios.defaults.headers.common = {
     'X-CSRFToken' : (window as any).csrfToken

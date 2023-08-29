@@ -361,7 +361,7 @@ export default function UploadSessionList() {
   }
 
   return (
-    <div className="AdminContentMain main-data-list">
+    <div className="AdminContentMain">
       <AlertDialog open={confirmationOpen} alertClosed={handleClose}
           alertConfirmed={handleDeleteClick}
           alertLoading={deleteButtonDisabled}
@@ -373,8 +373,13 @@ export default function UploadSessionList() {
     {loading ? <Loading/> :
        <Fragment>
           <div className='AdminList' ref={ref}>
-            <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
-                              onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
+            <ResizeTableEvent
+              containerRef={ref}
+              onBeforeResize={() => setTableHeight(0)}
+              onResize={(clientHeight: number) => {
+                setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}
+              }
+            />
             <div className='AdminTable'>
               <MUIDataTable
                 title=''
