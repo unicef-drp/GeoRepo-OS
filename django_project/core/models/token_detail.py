@@ -1,5 +1,7 @@
 """Custom token for API Key"""
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from knox.models import AuthToken
 
@@ -39,3 +41,8 @@ class ApiKey(models.Model):
 
     def __str__(self):
         return f'API Key for {self.token.user.email}'
+
+
+@receiver(post_delete, sender=ApiKey)
+def api_key_on_delete(sender, instance, using, **kwargs):
+    instance.token.delete()

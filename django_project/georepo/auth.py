@@ -30,8 +30,14 @@ class CustomTokenAuthentication(TokenAuthentication):
         url_string = request.META['QUERY_STRING']
         if url_string:
             params = url_string.split('&')
-            user_keys = [x for x in params if x.startswith('georepo_user_key=')]
-            return user_keys[0].replace('georepo_user_key=', '') if user_keys else '' 
+            user_keys = [
+                x for x in params if
+                x.startswith('georepo_user_key=')
+            ]
+            return (
+                user_keys[0].replace('georepo_user_key=', '') if
+                user_keys else ''
+            )
         return ''
 
     def authenticate_credentials(self, key):

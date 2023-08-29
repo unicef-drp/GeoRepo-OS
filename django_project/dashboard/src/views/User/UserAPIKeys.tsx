@@ -155,15 +155,13 @@ function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
                     </Alert> : null }
                 </Grid>
             </Grid>
-            { props.apiKey.api_key ?
-                <Grid item md={5} xl={5} xs={12} sx={{marginBottom: '10px'}}>
-                    <Grid container flexDirection={'row'} justifyContent={'center'}>
-                        <Alert style={{ width: '100%', textAlign: 'left' }} severity='warning'>
-                            <AlertTitle>{'Make sure to copy your API Key now. You will not be able to see it again!'}</AlertTitle>
-                        </Alert>
-                    </Grid>
+            <Grid item md={5} xl={5} xs={12} sx={{marginBottom: '10px'}}>
+                <Grid container flexDirection={'row'} justifyContent={'center'}>
+                    <Alert style={{ width: '100%', textAlign: 'left' }} severity='warning'>
+                        <AlertTitle>{'If you forgot your API KEY, you must delete the existing one and regenerate a new API KEY. The GeoReepo team is not able to retrieve your API KEY. After generating a new API KEY, please make sure you update your applications with the newly generated API KEY'}</AlertTitle>
+                    </Alert>
                 </Grid>
-             : null }
+            </Grid>
             <Grid item md={5} xl={5} xs={12}>
                 <Grid container flexDirection={'row'} justifyContent={'flex-start'}>
                     <Grid item>
@@ -221,7 +219,7 @@ function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
                                         </Grid>
                                     </Grid>
                                 </Grid>
-                                <Grid item sx={{marginTop: '10px'}}>
+                                <Grid item>
                                     <Grid container flexDirection={'row'}>
                                         <Grid item>
                                             <Typography variant={'subtitle1'}>Platform : {displayValue(props.apiKey.platform)}</Typography>

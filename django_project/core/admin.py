@@ -1,6 +1,6 @@
 """Core admin."""
 from django.contrib import admin
-
+from rest_framework.authtoken.models import TokenProxy
 from knox.models import AuthToken
 from core.models import (
     SitePreferences,
@@ -91,6 +91,10 @@ class SitePreferencesAdmin(admin.ModelAdmin):
     )
     inlines = (SitePreferencesImageInline,)
 
+    def has_add_permission(self, request, obj=None):
+        # creation of API key is from FrontEnd
+        return False
+
 
 class APIKeyInline(admin.StackedInline):
     model = ApiKey
@@ -109,12 +113,12 @@ class APIKeyAdmin(admin.ModelAdmin):
     def get_created(self, obj):
         return obj.token.created
 
-    def save_model(self, request, obj, form, change):
-        if not change:
-            pass
-        super().save_model(request, obj, form, change)
+    def has_add_permission(self, request, obj=None):
+        # creation of API key is from FrontEnd
+        return False
 
 
 admin.site.register(SitePreferences, SitePreferencesAdmin)
+admin.site.unregister(TokenProxy)
 admin.site.unregister(AuthToken)
 admin.site.register(ApiKey, APIKeyAdmin)
