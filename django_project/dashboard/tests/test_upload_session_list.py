@@ -15,7 +15,7 @@ from dashboard.tests.model_factories import (
 )
 from georepo.tests.model_factories import (
     UserF, DatasetF,
-    ModuleF
+    ModuleF, GeographicalEntityF
 )
 
 
@@ -47,16 +47,22 @@ class TestUploadSessionList(TestCase):
             uploader=self.creator,
             status='Pending'
         )
+
+        geo_entity_1 = GeographicalEntityF(label='some-random-entity-1')
+        geo_entity_2 = GeographicalEntityF(label='some-random-entity-2')
+
         for upload_session in [
             self.upload_session, self.upload_session_2, self.upload_session_3
         ]:
             EntityUploadF.create(
                 upload_session=upload_session,
-                status=REVIEWING
+                status=REVIEWING,
+                revised_geographical_entity=geo_entity_1
             )
             EntityUploadF.create(
                 upload_session=upload_session,
-                status=REJECTED
+                status=REJECTED,
+                revised_geographical_entity=geo_entity_2
             )
             EntityUploadF.create(
                 upload_session=upload_session,
@@ -96,7 +102,8 @@ class TestUploadSessionList(TestCase):
             'sort_direction': 'desc'
         }
         request = self.factory.post(
-            f"{reverse('upload-session-list')}?{urllib.parse.urlencode(query_params)}"
+            f"{reverse('upload-session-list')}?"
+            f"{urllib.parse.urlencode(query_params)}"
         )
         request.user = self.superuser
         list_view = UploadSessionList.as_view()
@@ -123,7 +130,8 @@ class TestUploadSessionList(TestCase):
             'page_size': 1
         }
         request = self.factory.post(
-            f"{reverse('upload-session-list')}?{urllib.parse.urlencode(query_params)}"
+            f"{reverse('upload-session-list')}?"
+            f"{urllib.parse.urlencode(query_params)}"
         )
         request.user = self.superuser
         list_view = UploadSessionList.as_view()
@@ -181,5 +189,5 @@ class TestUploadSessionList(TestCase):
         )
         self.assertEqual(
             response.data['results'][0].get('level_0_entity'),
-            'Admin Bounda...'
+            'some-random-entity-1...'
         )

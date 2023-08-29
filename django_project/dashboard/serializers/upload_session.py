@@ -51,10 +51,12 @@ class UploadSessionSerializer(serializers.ModelSerializer):
             ).values_list('revised_geographical_entity__label', flat=True)
         )
         entity_uploads_str = ', '.join(level_0_entities)
-        entity_uploads_str = entity_uploads_str[:20] if len(entity_uploads_str) > 12 else entity_uploads_str
+        entity_uploads_str = entity_uploads_str[:20] if \
+            len(entity_uploads_str) > 12 else entity_uploads_str
         if len(level_0_entities) > 1:
             entity_uploads_str += '...'
-        elif len(level_0_entities) == 1 and entity_uploads_str != level_0_entities[0]:
+        elif len(level_0_entities) == 1 and \
+            entity_uploads_str != level_0_entities[0]:
             entity_uploads_str += '...'
         return entity_uploads_str
 

@@ -134,19 +134,19 @@ class UploadSessionList(AzureAuthRequiredMixin, APIView):
             filter_kwargs.update({f'{model_field}__in': filter_values})
 
         if 'level_0_entity' in dict(request.data):
-            filter_values = sorted(dict(request.data).get('level_0_entity', []))
+            filter_values = sorted(
+                dict(request.data).get('level_0_entity', [])
+            )
             if filter_values:
                 entity_uploads = EntityUploadStatus.objects.filter(
                     revised_geographical_entity__label__in=filter_values
                 ).values_list('upload_session')
-                print(entity_uploads)
                 upload_sessions = LayerUploadSession.objects.filter(
                     Q(dataset__module__name__in=filter_values) |
                     Q(id__in=entity_uploads)
                 )
-                print(upload_sessions)
 
-                filter_kwargs.update({f'id__in': upload_sessions})
+                filter_kwargs.update({'id__in': upload_sessions})
 
         return queryset.filter(**filter_kwargs)
 
@@ -190,7 +190,8 @@ class UploadSessionList(AzureAuthRequiredMixin, APIView):
 
     def post(self, request):
         status = request.GET.get('status', '')
-        layer_sessions = LayerUploadSession.get_upload_session_for_user(request.user)
+        layer_sessions = LayerUploadSession.\
+            get_upload_session_for_user(request.user)
         if status:
             layer_sessions = layer_sessions.filter(
                 status__iexact=status
@@ -255,13 +256,16 @@ class UploadSessionFilterValue(
 
     def fetch_level_0_entity(self):
         return list(EntityUploadStatus.objects.
-            filter(revised_geographical_entity__label__isnull=False).
-            order_by('revised_geographical_entity__label').
-            values_list('revised_geographical_entity__label', flat=True).
-            distinct())
+                    filter(revised_geographical_entity__label__isnull=False).
+                    order_by('revised_geographical_entity__label').
+                    values_list(
+                        'revised_geographical_entity__label', flat=True
+                    ).
+                    distinct())
 
     def get(self, request, criteria, *args, **kwargs):
-        self.querysets = LayerUploadSession.get_upload_session_for_user(request.user)
+        self.querysets = LayerUploadSession.\
+            get_upload_session_for_user(request.user)
         try:
             data = self.fetch_criteria_values(criteria)
         except AttributeError:

@@ -107,7 +107,10 @@ class TestUploadSessionFilterValue(TestCase):
 
     def test_list_dataset(self):
         request = self.factory.get(
-            reverse('upload-session-filter-value', kwargs={'criteria': 'dataset'})
+            reverse(
+                'upload-session-filter-value',
+                kwargs={'criteria': 'dataset'}
+            )
         )
         request.user = self.superuser
         list_view = UploadSessionFilterValue.as_view()
@@ -125,7 +128,10 @@ class TestUploadSessionFilterValue(TestCase):
 
     def test_list_uploaded_by(self):
         request = self.factory.get(
-            reverse('upload-session-filter-value', kwargs={'criteria': 'uploaded_by'})
+            reverse(
+                'upload-session-filter-value',
+                kwargs={'criteria': 'uploaded_by'}
+            )
         )
         request.user = self.superuser
         list_view = UploadSessionFilterValue.as_view()
@@ -134,7 +140,10 @@ class TestUploadSessionFilterValue(TestCase):
 
     def test_list_status(self):
         request = self.factory.get(
-            reverse('upload-session-filter-value', kwargs={'criteria': 'status'})
+            reverse(
+                'upload-session-filter-value',
+                kwargs={'criteria': 'status'}
+            )
         )
         request.user = self.superuser
         list_view = UploadSessionFilterValue.as_view()
