@@ -7,6 +7,7 @@ import maintenanceReducer from "../reducers/maintenanceItem"
 import reviewActionReducer from "../reducers/reviewAction"
 import reviewTableReducer from "../reducers/reviewTable"
 import viewTableReducer from "../reducers/viewTable"
+import uploadTableReducer from "../reducers/uploadTable"
 
 export const store = configureStore({
   reducer: {
@@ -17,7 +18,8 @@ export const store = configureStore({
     maintenanceItem: maintenanceReducer,
     reviewAction: reviewActionReducer,
     reviewTable: reviewTableReducer,
-    viewTable: viewTableReducer
+    viewTable: viewTableReducer,
+    uploadTable: uploadTableReducer
   },
 });
 

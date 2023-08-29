@@ -9,7 +9,6 @@ from dashboard.models import (
 
 
 class UploadSessionSerializer(serializers.ModelSerializer):
-    upload = serializers.SerializerMethodField()
     upload_date = serializers.SerializerMethodField()
     uploaded_by = serializers.SerializerMethodField()
     form = serializers.SerializerMethodField()
@@ -39,9 +38,6 @@ class UploadSessionSerializer(serializers.ModelSerializer):
         return f'?session={obj.id}&step=0&' \
             f'dataset={obj.dataset.id}'
 
-    def get_upload(self, obj: LayerUploadSession):
-        return obj.id
-
     def get_upload_date(self, obj: LayerUploadSession):
         return obj.started_at
 
@@ -49,15 +45,13 @@ class UploadSessionSerializer(serializers.ModelSerializer):
         return obj.uploader.username if obj.uploader else '-'
 
     def get_level_0_entity(self, obj: LayerUploadSession):
-        level_0_entities = []
-        for entity_upload in obj.entityuploadstatus_set.all():
-            if entity_upload.revised_geographical_entity:
-                level_0_entities.append(obj.revised_geographical_entity.label)
-            else:
-                module_name = obj.dataset.module.name
-                level_0_entities.append(module_name)
+        level_0_entities = list(
+            obj.entityuploadstatus_set.filter(
+                revised_geographical_entity__label__isnull=False
+            ).values_list('revised_geographical_entity__label', flat=True)
+        )
         entity_uploads_str = ', '.join(level_0_entities)
-        entity_uploads_str = entity_uploads_str[:12] if len(entity_uploads_str) > 12 else entity_uploads_str
+        entity_uploads_str = entity_uploads_str[:20] if len(entity_uploads_str) > 12 else entity_uploads_str
         if len(level_0_entities) > 1:
             entity_uploads_str += '...'
         elif len(level_0_entities) == 1 and entity_uploads_str != level_0_entities[0]:
@@ -68,7 +62,6 @@ class UploadSessionSerializer(serializers.ModelSerializer):
         model = LayerUploadSession
         fields = [
             'id',
-            'upload',
             'dataset',
             'type',
             'upload_date',

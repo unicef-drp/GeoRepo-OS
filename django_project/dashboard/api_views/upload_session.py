@@ -133,6 +133,21 @@ class UploadSessionList(AzureAuthRequiredMixin, APIView):
                 continue
             filter_kwargs.update({f'{model_field}__in': filter_values})
 
+        if 'level_0_entity' in dict(request.data):
+            filter_values = sorted(dict(request.data).get('level_0_entity', []))
+            if filter_values:
+                entity_uploads = EntityUploadStatus.objects.filter(
+                    revised_geographical_entity__label__in=filter_values
+                ).values_list('upload_session')
+                print(entity_uploads)
+                upload_sessions = LayerUploadSession.objects.filter(
+                    Q(dataset__module__name__in=filter_values) |
+                    Q(id__in=entity_uploads)
+                )
+                print(upload_sessions)
+
+                filter_kwargs.update({f'id__in': upload_sessions})
+
         return queryset.filter(**filter_kwargs)
 
     def _search_queryset(self, queryset, request):

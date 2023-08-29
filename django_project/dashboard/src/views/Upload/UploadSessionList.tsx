@@ -1,77 +1,75 @@
 import React, {Fragment, useCallback, useEffect, useRef, useState} from "react";
-import {useNavigate, useSearchParams} from "react-router-dom";
-
-import {Button} from '@mui/material';
-import FilterAlt from "@mui/icons-material/FilterAlt";
-import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
-import axios from "axios";
+import List, {ActionDataInterface, TABLE_OFFSET_HEIGHT} from "../../components/List";
 import toLower from "lodash/toLower";
-
-import Loading from "../../components/Loading";
-import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
-import ResizeTableEvent from "../../components/ResizeTableEvent";
-import {RootState} from "../../app/store";
-import {TABLE_OFFSET_HEIGHT} from "../../components/List";
-import {getDefaultFilter, ReviewFilterInterface} from "./Filter"
-import {modules} from "../../modules";
+import cloneDeep from "lodash/cloneDeep";
+import {useNavigate} from "react-router-dom";
+import DeleteIcon from "@mui/icons-material/Delete";
+import FactCheckIcon from '@mui/icons-material/FactCheck';
+import IconButton from '@mui/material/IconButton';
 import {setModule} from "../../reducers/module";
-import {setSelectedReviews} from "../../reducers/reviewAction";
+import {modules} from "../../modules";
+import {ReviewListRoute} from "../routes";
+import {fetchData, postData} from "../../utils/Requests";
+import Loading from "../../components/Loading";
+import AlertDialog from '../../components/AlertDialog'
+import ResizeTableEvent from "../../components/ResizeTableEvent";
+import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
+import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
+import {Button, Chip} from "@mui/material";
+import FilterAlt from "@mui/icons-material/FilterAlt";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {
   setAvailableFilters,
   setCurrentFilters as setInitialFilters
-} from "../../reducers/reviewTable";
+} from "../../reducers/uploadTable";
+import {RootState} from "../../app/store";
+import axios from "axios";
+import {getDefaultFilter, UploadFilterInterface} from "./UploadFilter";
+
+const READ_ONLY_SESSION_STATUSES = ['Canceled', 'Done', 'Reviewing']
+const DELETE_UPLOAD_SESSION_URL = '/api/delete-upload-session'
+
+interface UploadSessionInterface {
+  id: number,
+  level_0_entity: string,
+  dataset: string,
+  type: string,
+  upload_date: Date,
+  uploaded_by: string,
+  status: string
+}
 
 const USER_COLUMNS = [
   'id',
   'level_0_entity',
-  'upload',
   'dataset',
-  'start_date',
-  'revision',
-  'status',
-  'submitted_by',
-  'module',
-  'is_comparison_ready'
+  'type',
+  'uploaded_by',
+  'status'
 ]
 
-interface reviewTableRowInterface {
-  id: number,
-  level_0_entity: string,
-  upload: string,
-  dataset: string,
-  start_date: string,
-  revision: number,
-  status: string,
-  submitted_by: string,
-  module: string,
-  is_comparison_ready: string
-}
+const FILTER_VALUES_API_URL = '/api/upload-session-filter/values/'
+const UPLOAD_SESSION_LIST_URL = '/api/upload-sessions/'
 
-const FILTER_VALUES_API_URL = '/api/review-filter/values/'
-const VIEW_LIST_URL = '/api/review-list/'
-const FilterIcon: any = FilterAlt
-
-
-export default function ReviewList() {
-  const initialColumns = useAppSelector((state: RootState) => state.reviewTable.currentColumns)
-  const initialFilters = useAppSelector((state: RootState) => state.reviewTable.currentFilters)
-  const availableFilters = useAppSelector((state: RootState) => state.reviewTable.availableFilters)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [data, setData] = useState<any[]>([])
-  const navigate = useNavigate()
+export default function UploadSessionList() {
   const dispatch = useAppDispatch()
-  const isBatchReview = useAppSelector((state: RootState) => state.reviewAction.isBatchReview)
-  const isBatchReviewAvailable = useAppSelector((state: RootState) => state.reviewAction.isBatchReviewAvailable)
-  const pendingReviews = useAppSelector((state: RootState) => state.reviewAction.pendingReviews)
-  const reviewUpdatedAt = useAppSelector((state: RootState) => state.reviewAction.updatedAt)
-
-  const [columns, setColumns] = useState<any>([])
+  const initialColumns = useAppSelector((state: RootState) => state.uploadTable.currentColumns)
+  const initialFilters = useAppSelector((state: RootState) => state.uploadTable.currentFilters)
+  const availableFilters = useAppSelector((state: RootState) => state.uploadTable.availableFilters)
+  const [selectedSession, setSelectedSession] = useState<any>(null)
+  const [confirmationOpen, setConfirmationOpen] = useState<boolean>(false)
+  const [confirmationText, setConfirmationText] = useState<string>('')
+  const [deleteButtonDisabled, setDeleteButtonDisabled] = useState<boolean>(false)
+  const navigate = useNavigate()
+  
+  const [loading, setLoading] = useState<boolean>(true)
+  const [columns, setColumns] = useState([])
+  const [allData, setAllData] = useState<any[]>()
+  const [data, setData] = useState<UploadSessionInterface[]>([])
   const [totalCount, setTotalCount] = useState<number>(0)
   const [pagination, setPagination] = useState<PaginationInterface>(getDefaultPagination())
-  const [filterValues, setFilterValues] = useState<ReviewFilterInterface>(availableFilters)
-  const [currentFilters, setCurrentFilters] = useState<ReviewFilterInterface>(initialFilters)
+  const [filterValues, setFilterValues] = useState<UploadFilterInterface>(availableFilters)
+  const [currentFilters, setCurrentFilters] = useState<UploadFilterInterface>(initialFilters)
   const axiosSource = useRef(null)
   const newCancelToken = useCallback(() => {
     axiosSource.current = axios.CancelToken.source();
@@ -80,48 +78,57 @@ export default function ReviewList() {
   const ref = useRef(null)
   const [tableHeight, setTableHeight] = useState(0)
 
-  let selectableRowsMode: any = isBatchReview ? 'multiple' : 'none'
+  const FilterIcon: any = FilterAlt
 
   const fetchFilterValues = async () => {
     let filters = []
+    filters.push(axios.get(`${FILTER_VALUES_API_URL}id/`))
     filters.push(axios.get(`${FILTER_VALUES_API_URL}level_0_entity/`))
-    filters.push(axios.get(`${FILTER_VALUES_API_URL}upload/`))
     filters.push(axios.get(`${FILTER_VALUES_API_URL}dataset/`))
-    filters.push(axios.get(`${FILTER_VALUES_API_URL}revision/`))
+    filters.push(axios.get(`${FILTER_VALUES_API_URL}type/`))
+    filters.push(axios.get(`${FILTER_VALUES_API_URL}uploaded_by/`))
     filters.push(axios.get(`${FILTER_VALUES_API_URL}status/`))
     let resultData = await Promise.all(filters)
     let filterVals = {
-      'level_0_entity': resultData[0].data,
-      'upload': resultData[1].data,
+      'id': resultData[0].data,
+      'level_0_entity': resultData[1].data,
       'dataset': resultData[2].data,
-      'revision': resultData[3].data,
-      'status': resultData[4].data,
+      'type': resultData[3].data,
+      'uploaded_by': resultData[4].data,
+      'status': resultData[5].data,
       'search_text': ''
     }
     setFilterValues(filterVals)
     dispatch(setAvailableFilters(JSON.stringify(filterVals)))
     return filterVals
   }
-
-  const fetchReviewList = () => {
+  
+  const fetchUploadList = () => {
     if (axiosSource.current) axiosSource.current.cancel()
     let cancelFetchToken = newCancelToken()
     setLoading(true)
+    let _additional_filters = ''
     let sortBy = pagination.sortOrder.name ? pagination.sortOrder.name : ''
     let sortDirection = pagination.sortOrder.direction ? pagination.sortOrder.direction : ''
-    const url = `${VIEW_LIST_URL}?` + `page=${pagination.page + 1}&page_size=${pagination.rowsPerPage}` +
-      `&sort_by=${sortBy}&sort_direction=${sortDirection}`
-    axios.post(
-      url,
+
+    axios.post(`${UPLOAD_SESSION_LIST_URL}?` + `page=${pagination.page + 1}&page_size=${pagination.rowsPerPage}` +
+      `&sort_by=${sortBy}&sort_direction=${sortDirection}` +
+      `${_additional_filters}`,
       currentFilters,
       {
         cancelToken: cancelFetchToken
+      }).then(
+      response => {
+        setAllData(cloneDeep(response.data.results))
+        let _sessionData = response.data.results.map((responseData: any) => {
+          delete responseData['form']
+          return responseData
+        })
+        setLoading(false)
+        setData(_sessionData as UploadSessionInterface[])
+        setTotalCount(response.data.count)
       }
-    ).then((response) => {
-      setLoading(false)
-      setData(response.data.results as reviewTableRowInterface[])
-      setTotalCount(response.data.count)
-    }).catch(error => {
+    ).catch(error => {
       if (!axios.isCancel(error)) {
         console.log(error)
         setLoading(false)
@@ -134,21 +141,24 @@ export default function ReviewList() {
       }
     })
   }
-
+  
   const getExistingFilterValue = (colName: string): string[] => {
     let values: string[] = []
     switch (colName) {
+      case 'id':
+        values = currentFilters.id
+        break;
       case 'level_0_entity':
         values = currentFilters.level_0_entity
-        break;
-      case 'upload':
-        values = currentFilters.upload
         break;
       case 'dataset':
         values = currentFilters.dataset
         break;
-      case 'revision':
-        values = currentFilters.revision
+      case 'type':
+        values = currentFilters.type
+        break;
+      case 'uploaded_by':
+        values = currentFilters.uploaded_by
         break;
       case 'status':
         values = currentFilters.status
@@ -162,13 +172,14 @@ export default function ReviewList() {
   useEffect(() => {
     const fetchFilterValuesData = async () => {
       let filterVals: any = {}
-      if (filterValues.status.length > 0) {
+      if (filterValues.status.length > 0  ) {
         filterVals = filterValues
       } else {
         filterVals = await fetchFilterValues()
       }
+
       const getLabel = (columnName: string) : string => {
-        if (columnName === 'upload') {
+        if (columnName === 'id') {
           return 'Upload ID'
         }
         return columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' ')
@@ -184,22 +195,73 @@ export default function ReviewList() {
             sort: true
           }
         }
-        if (['level_0_entity', 'upload', 'revision', 'dataset', 'status'].includes(columnName)) {
+        if (columnName != 'upload_date') {
           // set filter values in dropdown
           _options.options.filterOptions = {
             names: filterVals[columnName]
           }
-          _options.options.filterList = getExistingFilterValue(columnName)
           _options.options.filter = true
         } else {
           _options.options.filter = false
         }
-        if (columnName == 'start_date') {
-          _options.options.customBodyRender = (value: string) => {
-              return new Date(value).toDateString()
-          }
+        if (columnName != 'upload_date') {
+          // set existing filter values
+          _options.options.filterList = getExistingFilterValue(columnName)
         }
         return _options
+      })
+      _columns.push({
+        name: '',
+        options: {
+          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+            let rowData = tableMeta.rowData
+            const deleteLabel = () => {
+              if (rowData[5] === 'Done') {
+                return 'Cannot removed processed upload'
+              } else if (rowData[5] === 'Processing') {
+                return 'Cannot removed ongoing upload'
+              }
+              return 'Delete'
+            }
+            return (
+              <div className="TableActionContent">
+                <IconButton
+                  aria-label={rowData[5] !== 'Reviewing' ? 'Review is not available' : 'Review'}
+                  title={rowData[5] !== 'Reviewing' ? 'Review is not available' : 'Review'}
+                  key={0}
+                  disabled={rowData[5] !== 'Reviewing'}
+                  color='primary'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(`${ReviewListRoute.path}?upload=${rowData[0]}`)
+                  }}
+                  className=''
+                >
+                  <FactCheckIcon />
+                </IconButton>
+
+                <IconButton
+                  aria-label= {deleteLabel()}
+                  title={deleteLabel()}
+                  key={1}
+                  disabled={['Done', 'Processing'].includes(rowData[5])}
+                  color='error'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedSession(rowData)
+                    setConfirmationText(
+                      `Are you sure you want to delete Upload #${rowData[0]}?`)
+                    setConfirmationOpen(true)
+                  }}
+                  className=''
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </div>
+            )
+          },
+          filter: false
+        }
       })
       setColumns(_columns)
     }
@@ -207,7 +269,7 @@ export default function ReviewList() {
   }, [pagination, currentFilters])
 
   useEffect(() => {
-    fetchReviewList()
+    fetchUploadList()
   }, [pagination, filterValues, currentFilters])
 
   const onTableChangeState = (action: string, tableState: any) => {
@@ -237,20 +299,21 @@ export default function ReviewList() {
   }
 
   const handleFilterSubmit = (applyFilters: any) => {
-    let filterList = applyFilters()
-    let filter = getDefaultFilter()
     type Column = {
       name: string,
       label: string,
       options: any
     }
+    let filterList: string[][] = applyFilters()
+    let filter = getDefaultFilter()
+
     for (let idx in filterList) {
       let col: Column = columns[idx]
       if (!col.options.filter)
         continue
       if (filterList[idx] && filterList[idx].length) {
         const key = col.name as string
-        filter[key as keyof ReviewFilterInterface] = filterList[idx]
+        filter[key as keyof UploadFilterInterface] = filterList[idx] as any
       }
     }
     setCurrentFilters({...filter, 'search_text': currentFilters['search_text']})
@@ -267,52 +330,51 @@ export default function ReviewList() {
     dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'search_text': search_text})))
   }
 
-  useEffect(() => {
-    let upload
-    try {
-      upload = searchParams.get('upload') ? [searchParams.get('upload')] : []
-    } catch (error: any) {
-      upload = currentFilters['upload']
-    }
-    setCurrentFilters({...currentFilters, 'upload': upload})
-    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'upload': upload})))
-  }, [searchParams])
-
-  useEffect(() => {
-    if (reviewUpdatedAt) {
-      fetchReviewList()
-    }
-  }, [reviewUpdatedAt])
-
-  const canRowBeSelected = (dataIndex: number, rowData: any) => {
-    if (!isBatchReviewAvailable)
-      return false
-    return !pendingReviews.includes(rowData['id']) && rowData['is_comparison_ready']
+  const handleDeleteClick = () => {
+    setDeleteButtonDisabled(true)
+    postData(
+      `${DELETE_UPLOAD_SESSION_URL}/${selectedSession[0]}`, {}
+    ).then(
+      response => {
+        setDeleteButtonDisabled(false)
+        fetchUploadList()
+        setConfirmationOpen(false)
+      }
+    ).catch(error => {
+      setDeleteButtonDisabled(false)
+      alert('Error deleting upload session')
+    })
   }
 
-  const selectionChanged = (data: any) => {
-    dispatch(setSelectedReviews(data))
+  const handleClose = () => {
+    setConfirmationOpen(false)
   }
 
   const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-    console.log(rowData)
-    let moduleName = toLower(rowData[8]).replace(' ', '_')
+    const row = allData.find(sessionData => sessionData.id === rowData[0])
+    let moduleName = toLower(row.type.replace(' ', '_'))
     if (!moduleName) {
       moduleName = modules[0]
     }
     dispatch(setModule(moduleName))
-    // Go to review page
-    navigate(`/${moduleName}/review_detail?id=${rowData[0]}`)
+    navigate(`/${moduleName}/upload_wizard/${row.form}`)
   }
 
   return (
-    loading ?
-      <div className={"loading-container"}><Loading/></div> :
-      <div className="AdminContentMain review-list main-data-list">
-        <Fragment>
+    <div className="AdminContentMain main-data-list">
+      <AlertDialog open={confirmationOpen} alertClosed={handleClose}
+          alertConfirmed={handleDeleteClick}
+          alertLoading={deleteButtonDisabled}
+          alertDialogTitle={'Delete upload session'}
+          alertDialogDescription={confirmationText}
+          confirmButtonText='Delete'
+          confirmButtonProps={{color: 'error', autoFocus: true}}
+      />
+    {loading ? <Loading/> :
+       <Fragment>
           <div className='AdminList' ref={ref}>
             <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
-                                onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
+                              onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
             <div className='AdminTable'>
               <MUIDataTable
                 title=''
@@ -326,21 +388,14 @@ export default function ReviewList() {
                   rowsPerPageOptions: rowsPerPageOptions,
                   sortOrder: pagination.sortOrder as MUISortOptions,
                   jumpToPage: true,
-                  isRowSelectable: (dataIndex: number, selectedRows: any) => {
-                    return canRowBeSelected(dataIndex, data[dataIndex])
-                  },
-                  onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
-                    // @ts-ignore
-                    const rowDataSelected = rowsSelected.map((index) => data[index]['id'])
-                    selectionChanged(rowDataSelected)
-                  },
                   onRowClick: (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
                     handleRowClick(rowData, rowMeta)
                   },
                   onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
                   customSearchRender: debounceSearchRender(500),
-                  selectableRows: selectableRowsMode,
-                  selectToolbarPlacement: 'none',
+                  selectableRows: 'none',
+                  tableBodyHeight: `${tableHeight}px`,
+                  tableBodyMaxHeight: `${tableHeight}px`,
                   textLabels: {
                     body: {
                       noMatch: loading ?
@@ -367,9 +422,7 @@ export default function ReviewList() {
                   searchOpen: (currentFilters.search_text != null && currentFilters.search_text.length > 0),
                   filter: true,
                   filterType: 'multiselect',
-                  confirmFilters: true,
-                  tableBodyHeight: `${tableHeight}px`,
-                  tableBodyMaxHeight: `${tableHeight}px`,
+                  confirmFilters: true
                 }}
                 components={{
                   icons: {
@@ -379,7 +432,7 @@ export default function ReviewList() {
               />
             </div>
           </div>
-        </Fragment>
-      </div>
+        </Fragment>}
+    </div>
   )
 }

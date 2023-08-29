@@ -1,4 +1,4 @@
-import { lazy } from '@loadable/component';
+  import { lazy } from '@loadable/component';
 import HomeIcon from '@mui/icons-material/Home';
 import {OverridableComponent} from "@mui/material/OverridableComponent";
 import {SvgIconTypeMap} from "@mui/material/SvgIcon/SvgIcon";
@@ -48,7 +48,7 @@ export const UploadSessionListRoute: RouteInterface = {
   id: 'upload_list',
   name: 'Uploads',
   path: '/upload_list',
-  element: lazy(() => import('./UploadSessionList' /* webpackChunkName: "upload_session_list" */)),
+  element: lazy(() => import('./Upload/UploadSessionList' /* webpackChunkName: "upload_session_list" */)),
   icon: ViewListIcon
 }
 

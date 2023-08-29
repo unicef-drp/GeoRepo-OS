@@ -210,8 +210,7 @@ urlpatterns = [
         name='upload-session-list'
     ),
     re_path(
-        r'api/upload-session-filter/value/'
-        r'(?P<criteria>\w+)/?$',
+        r'api/upload-session-filter/values/(?P<criteria>\w+)/?$',
         UploadSessionFilterValue.as_view(),
         name='upload-session-filter-value'
     ),
