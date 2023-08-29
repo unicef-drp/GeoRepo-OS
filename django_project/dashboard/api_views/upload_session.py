@@ -1,5 +1,8 @@
-from django.shortcuts import get_object_or_404
+import math
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django.http import HttpResponseForbidden
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -109,30 +112,146 @@ class UpdateUploadSession(AzureAuthRequiredMixin, APIView):
         }, status=200)
 
 
-class UploadSessions(AzureAuthRequiredMixin, APIView):
+class UploadSessionList(AzureAuthRequiredMixin, APIView):
     permission_classes = (
         permissions.IsAuthenticated,
     )
 
-    def get(self, request):
+    def _filter_queryset(self, queryset, request):
+        criteria_field_mapping = {
+            'id': 'id',
+            'uploaded_by': 'uploader__username',
+            'type': 'dataset__module__name',
+            'dataset': 'dataset__label',
+            'status': 'status',
+        }
+
+        filter_kwargs = {}
+        for filter_field, model_field in criteria_field_mapping.items():
+            filter_values = dict(request.data).get(filter_field, [])
+            if not filter_values:
+                continue
+            filter_kwargs.update({f'{model_field}__in': filter_values})
+
+        return queryset.filter(**filter_kwargs)
+
+    def _search_queryset(self, queryset, request):
+        search_text = request.data.get('search_text', '')
+        if not search_text:
+            return queryset
+        char_fields = [
+            field.name for field in LayerUploadSession._meta.get_fields() if
+            field.get_internal_type() in
+            ['UUIDField', 'CharField', 'TextField']
+        ]
+        q_args = [
+            Q(**{f"{field}__icontains": search_text}) for field in char_fields
+        ]
+        args = Q()
+        for arg in q_args:
+            args |= arg
+        queryset = queryset.filter(*(args,))
+        return queryset
+
+    def _sort_queryset(self, queryset, request):
+        sort_by = request.query_params.get('sort_by', 'id')
+        sort_direction = request.query_params.get('sort_direction', 'asc')
+        if not sort_by:
+            sort_by = 'id'
+        if not sort_direction:
+            sort_direction = 'asc'
+
+        ordering_mapping = {
+            'id': 'id',
+            'uploaded_by': 'uploader__username',
+            'type': 'dataset__module__name',
+            'dataset': 'dataset__label',
+            'status': 'status',
+        }
+        sort_by = ordering_mapping.get(sort_by, sort_by)
+        ordering = sort_by if sort_direction == 'asc' else f"-{sort_by}"
+        queryset = queryset.order_by(ordering)
+        return queryset
+
+    def post(self, request):
         status = request.GET.get('status', '')
-        if self.request.user.is_superuser:
-            layer_sessions = (
-                LayerUploadSession.objects.filter(
-                    dataset__isnull=False
-                ).order_by('-started_at')
-            )
-        else:
-            layer_sessions = LayerUploadSession.objects.filter(
-                uploader=self.request.user
-            ).order_by('-started_at')
+        layer_sessions = LayerUploadSession.get_upload_session_for_user(request.user)
         if status:
             layer_sessions = layer_sessions.filter(
                 status__iexact=status
             )
-        return Response(
-            UploadSessionSerializer(layer_sessions, many=True).data
+        layer_sessions = self._search_queryset(
+            layer_sessions, self.request
         )
+        layer_sessions = self._filter_queryset(
+            layer_sessions, self.request
+        )
+        page = int(self.request.GET.get('page', '1'))
+        page_size = int(self.request.query_params.get('page_size', '10'))
+        layer_sessions = self._sort_queryset(layer_sessions, self.request)
+        paginator = Paginator(layer_sessions, page_size)
+        total_page = math.ceil(paginator.count / page_size)
+        if page > total_page:
+            output = []
+        else:
+            paginated_entities = paginator.get_page(page)
+            output = UploadSessionSerializer(
+                paginated_entities,
+                many=True
+            ).data
+        output = output
+        return Response({
+            'count': paginator.count,
+            'page': page,
+            'total_page': total_page,
+            'page_size': page_size,
+            'results': output,
+        })
+
+
+class UploadSessionFilterValue(
+    AzureAuthRequiredMixin,
+    APIView
+):
+    """
+    Get filter value for given UploadSession and criteria
+    """
+    permission_classes = [IsAuthenticated]
+    querysets = LayerUploadSession.objects.none()
+
+    def fetch_criteria_values(self, criteria):
+        criteria_field_mapping = {
+            'id': 'id',
+            'uploaded_by': 'uploader__username',
+            'type': 'dataset__module__name',
+            'dataset': 'dataset__label',
+            'status': 'status',
+        }
+        field = criteria_field_mapping.get(criteria, None)
+
+        if not field:
+            if criteria == 'level_0_entity':
+                return self.fetch_level_0_entity()
+
+        filter_values = self.querysets.\
+            filter(**{f"{field}__isnull": False}).order_by().\
+            values_list(field, flat=True).distinct()
+        return [val for val in filter_values]
+
+    def fetch_level_0_entity(self):
+        return list(EntityUploadStatus.objects.
+            filter(revised_geographical_entity__label__isnull=False).
+            order_by('revised_geographical_entity__label').
+            values_list('revised_geographical_entity__label', flat=True).
+            distinct())
+
+    def get(self, request, criteria, *args, **kwargs):
+        self.querysets = LayerUploadSession.get_upload_session_for_user(request.user)
+        try:
+            data = self.fetch_criteria_values(criteria)
+        except AttributeError:
+            data = []
+        return Response(status=200, data=data)
 
 
 class UploadSessionDetail(AzureAuthRequiredMixin, APIView):

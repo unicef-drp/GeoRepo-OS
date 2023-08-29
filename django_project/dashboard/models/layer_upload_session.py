@@ -163,3 +163,16 @@ class LayerUploadSession(models.Model):
             status=''
         )
         return existing_uploads.exists()
+
+    @classmethod
+    def get_upload_session_for_user(self, user):
+        upload_sessions = LayerUploadSession.objects.filter(
+            uploader=user
+        ).order_by('-started_at')
+        if user.is_superuser:
+            upload_sessions = (
+                LayerUploadSession.objects.filter(
+                    dataset__isnull=False
+                ).order_by('-started_at')
+            )
+        return upload_sessions

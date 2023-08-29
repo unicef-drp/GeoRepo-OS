@@ -15,6 +15,7 @@ class UploadSessionSerializer(serializers.ModelSerializer):
     form = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
     dataset = serializers.SerializerMethodField()
+    level_0_entity = serializers.SerializerMethodField()
 
     def get_dataset(self, obj: LayerUploadSession):
         if obj.dataset:
@@ -47,6 +48,22 @@ class UploadSessionSerializer(serializers.ModelSerializer):
     def get_uploaded_by(self, obj: LayerUploadSession):
         return obj.uploader.username if obj.uploader else '-'
 
+    def get_level_0_entity(self, obj: LayerUploadSession):
+        level_0_entities = []
+        for entity_upload in obj.entityuploadstatus_set.all():
+            if entity_upload.revised_geographical_entity:
+                level_0_entities.append(obj.revised_geographical_entity.label)
+            else:
+                module_name = obj.dataset.module.name
+                level_0_entities.append(module_name)
+        entity_uploads_str = ', '.join(level_0_entities)
+        entity_uploads_str = entity_uploads_str[:12] if len(entity_uploads_str) > 12 else entity_uploads_str
+        if len(level_0_entities) > 1:
+            entity_uploads_str += '...'
+        elif len(level_0_entities) == 1 and entity_uploads_str != level_0_entities[0]:
+            entity_uploads_str += '...'
+        return entity_uploads_str
+
     class Meta:
         model = LayerUploadSession
         fields = [
@@ -57,7 +74,8 @@ class UploadSessionSerializer(serializers.ModelSerializer):
             'upload_date',
             'uploaded_by',
             'status',
-            'form'
+            'form',
+            'level_0_entity'
         ]
 
 
