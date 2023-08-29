@@ -1,5 +1,5 @@
 import React, {Fragment, useCallback, useEffect, useRef, useState} from "react";
-import List, {ActionDataInterface, TABLE_OFFSET_HEIGHT} from "../../components/List";
+import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import toLower from "lodash/toLower";
 import cloneDeep from "lodash/cloneDeep";
 import {useNavigate} from "react-router-dom";
@@ -9,13 +9,13 @@ import IconButton from '@mui/material/IconButton';
 import {setModule} from "../../reducers/module";
 import {modules} from "../../modules";
 import {ReviewListRoute} from "../routes";
-import {fetchData, postData} from "../../utils/Requests";
+import {postData} from "../../utils/Requests";
 import Loading from "../../components/Loading";
 import AlertDialog from '../../components/AlertDialog'
 import ResizeTableEvent from "../../components/ResizeTableEvent";
 import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
 import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
-import {Button, Chip} from "@mui/material";
+import {Button} from "@mui/material";
 import FilterAlt from "@mui/icons-material/FilterAlt";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {
@@ -26,7 +26,6 @@ import {RootState} from "../../app/store";
 import axios from "axios";
 import {getDefaultFilter, UploadFilterInterface} from "./UploadFilter";
 
-const READ_ONLY_SESSION_STATUSES = ['Canceled', 'Done', 'Reviewing']
 const DELETE_UPLOAD_SESSION_URL = '/api/delete-upload-session'
 
 interface UploadSessionInterface {
