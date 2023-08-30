@@ -51,8 +51,10 @@ from georepo.forms import (
 from georepo.utils.dataset_view import (
     get_view_tiling_status
 )
-
-
+from georepo.utils.admin import (
+    get_deleted_objects,
+    delete_selected
+)
 User = get_user_model()
 
 
@@ -277,6 +279,7 @@ class DatasetAdmin(GuardedModelAdmin):
         'label', 'short_code', 'max_privacy_level', 'min_privacy_level',
         'uuid', 'arcgis_config')
     actions = [
+        delete_selected,
         populate_default_tile_config, generate_simplified_geometry,
         do_dataset_patch, refresh_dynamic_views,
         populate_default_admin_level_names,
@@ -317,6 +320,13 @@ class DatasetAdmin(GuardedModelAdmin):
             )
         else:
             return '-'
+
+    def get_deleted_objects(self, objs, request):
+        """
+        Hook for customizing the delete process for the delete view and the
+        "delete selected" action.
+        """
+        return get_deleted_objects(objs, request, self.admin_site, True)
 
 
 class LayerStyleAdmin(admin.ModelAdmin):
