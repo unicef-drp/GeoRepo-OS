@@ -1,22 +1,29 @@
+import math
 import os.path
 import shutil
-import math
-import zipfile
 import tempfile
-from django.utils.translation import gettext_lazy as _
+import zipfile
 
 from django import forms
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth import get_user_model
-from django.contrib import admin, messages
 from django.conf import settings
-from django.http import HttpResponse
-from rest_framework.authtoken.models import Token
-from django.utils.html import format_html
-from core.settings.utils import absolute_path
-from guardian.admin import GuardedModelAdmin
+from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import (
     UserChangeForm, ReadOnlyPasswordHashField
+)
+from django.http import HttpResponse
+from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
+from guardian.admin import GuardedModelAdmin
+from rest_framework.authtoken.models import Token
+
+from core.settings.utils import absolute_path
+from georepo.forms import (
+    AzureAdminUserCreationForm,
+    AzureAdminUserChangeForm,
+    DatasetAdminCreationForm,
+    DatasetAdminChangeForm
 )
 from georepo.models import (
     GeographicalEntity,
@@ -42,19 +49,14 @@ from georepo.models import (
     GeorepoRole,
     UserAccessRequest
 )
-from georepo.forms import (
-    AzureAdminUserCreationForm,
-    AzureAdminUserChangeForm,
-    DatasetAdminCreationForm,
-    DatasetAdminChangeForm
-)
-from georepo.utils.dataset_view import (
-    get_view_tiling_status
-)
 from georepo.utils.admin import (
     get_deleted_objects,
     delete_selected
 )
+from georepo.utils.dataset_view import (
+    get_view_tiling_status
+)
+
 User = get_user_model()
 
 
