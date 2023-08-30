@@ -7,7 +7,9 @@ from core.settings.utils import absolute_path
 from georepo.tests.model_factories import (
     DatasetF
 )
-from modules.admin_boundaries.geometry_checker.hierarchy_check import hierarchy_check
+from modules.admin_boundaries.geometry_checker.hierarchy_check import (
+    hierarchy_check
+)
 
 
 class TestHierarchyCheck(TestCase):
