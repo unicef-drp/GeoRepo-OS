@@ -245,8 +245,12 @@ export default function ReviewMap(props: ReviewMapInterface) {
         }, 200)
     }, []);
 
+    let _preferences: any = window.preferences
+    // let _maptiler = _preferences ? _preferences['maptiler_api_key'] : ''
+    let _maptiler = ''
     return (
     <div className="map-wrap review-map">
+        {_maptiler ? null : <h2>Please set Maptiler API Key on the admin!</h2>}
         { loading ?
             <Skeleton variant="rectangular" height={'100%'} width={'100%'}/> :
             <div ref={mapContainer} className="map" />}
