@@ -39,6 +39,7 @@ from modules.admin_boundaries.geometry_checker import (
     duplicate_nodes_check,
     duplicate_check,
     contained_check,
+    hierarchy_check,
     overlap_check,
     gap_check,
     valid_nodes_check,
@@ -46,9 +47,6 @@ from modules.admin_boundaries.geometry_checker import (
 )
 
 logger = logging.getLogger(__name__)
-
-# Minimum overlap percentage for HIERARCHY GEOMETRY CHECK
-HIERARCHY_OVERLAPS_THRESHOLD = 99
 
 
 def do_self_intersects_check(geom: GEOSGeometry,
@@ -156,6 +154,34 @@ def do_duplicate_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'duplicate_check {(end - start)} seconds')
+    return is_valid
+
+
+def do_hierarchy_check(geom: GEOSGeometry,
+                       internal_code: str,
+                       entity_upload: EntityUploadStatus,
+                       parent: GeographicalEntity) -> bool:
+    start = time.time()
+    try:
+        errors, geom_error = hierarchy_check(
+            geom,
+            internal_code,
+            parent.geometry
+        )
+        is_valid = len(errors) == 0
+    except Exception as ex:
+        logger.error(ex)
+        logger.error(traceback.format_exc())
+        is_valid = False
+        if entity_upload.logs is None:
+            entity_upload.logs = ''
+        entity_upload.logs += (
+            f'\nException {type(ex)} on hierarchy_check'
+            f'{internal_code} = {str(ex)}'
+        )
+        entity_upload.save(update_fields=['logs'])
+    end = time.time()
+    logger.debug(f'hierarchy_check {(end - start)} seconds')
     return is_valid
 
 
@@ -776,19 +802,12 @@ def run_validation(entity_upload: EntityUploadStatus) -> bool:
                     ] += 1
 
                 # Check hierarchy by geometry
-                layer_error[ErrorType.GEOMETRY_HIERARCHY.value] = ''
-                if parent and not parent.geometry.covers(geom):
-                    intersection = parent.geometry.intersection(
-                        geom
-                    )
-                    overlap_percentage = (
-                        intersection.area / geom.area
-                    ) * 100
-                    layer_error[ErrorType.GEOMETRY_HIERARCHY.value] = (
-                        ERROR_CHECK
-                        if overlap_percentage < HIERARCHY_OVERLAPS_THRESHOLD
-                        else ''
-                    )
+                is_valid_hierarchy = do_hierarchy_check(
+                    geom, internal_code, entity_upload, parent
+                )
+                layer_error[ErrorType.GEOMETRY_HIERARCHY.value] = (
+                    ERROR_CHECK if not is_valid_hierarchy else ''
+                )
                 if layer_error[ErrorType.GEOMETRY_HIERARCHY.value]:
                     error_found = True
                     level_error_report[
