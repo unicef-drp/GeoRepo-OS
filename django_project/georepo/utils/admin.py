@@ -24,15 +24,15 @@ from georepo.tasks.dataset_delete import dataset_delete
 IS_POPUP_VAR = "_popup"
 TO_FIELD_VAR = "_to_field"
 
-
 HORIZONTAL, VERTICAL = 1, 2
 csrf_protect_m = method_decorator(csrf_protect)
 
 
 def get_deleted_objects(objs, request, admin_site, disable_summary=False):
     """
-    This function can be used to override django.contrib.admin.utils.get_deleted_objects,
-    to support disabling summary of objects that will be deleted.
+    This function can be used to override
+    django.contrib.admin.utils.get_deleted_objects, to support
+    disabling summary of objects that will be deleted.
 
     Find all objects related to ``objs`` that should also be deleted. ``objs``
     must be a homogeneous iterable of objects (e.g. a QuerySet).
@@ -60,7 +60,8 @@ def get_deleted_objects(objs, request, admin_site, disable_summary=False):
         no_edit_link = "%s: %s" % (capfirst(opts.verbose_name), obj)
 
         if has_admin:
-            if not admin_site._registry[model].has_delete_permission(request, obj):
+            if not admin_site._registry[model]. \
+                has_delete_permission(request, obj):
                 perms_needed.add(opts.verbose_name)
             try:
                 admin_url = reverse(
@@ -68,14 +69,17 @@ def get_deleted_objects(objs, request, admin_site, disable_summary=False):
                     % (admin_site.name, opts.app_label, opts.model_name),
                     None,
                     (quote(obj.pk),),
-                    )
+                )
             except NoReverseMatch:
                 # Change url doesn't exist -- don't display link to edit
                 return no_edit_link
 
             # Display a link to the admin page.
             return format_html(
-                '{}: <a href="{}">{}</a>', capfirst(opts.verbose_name), admin_url, obj
+                '{}: <a href="{}">{}</a>',
+                capfirst(opts.verbose_name),
+                admin_url,
+                obj
             )
         else:
             # Don't display link to edit, because it either has no
@@ -107,14 +111,16 @@ def get_deleted_objects(objs, request, admin_site, disable_summary=False):
 )
 def delete_selected(modeladmin, request, queryset):
     """
-    This function can be used to override django.contrib.admin.actions.delete_selected,
-    to support object deletion in background.
+    This function can be used to override
+    django.contrib.admin.actions.delete_selected, to support
+    object deletion in background.
 
     This action first displays a confirmation page which shows all the
     deletable objects, or, if the user has no permission one of the related
     childs (foreignkeys), a "permission denied" message.
 
-    Next, it deletes all selected objects and redirects back to the change list.
+    Next, it deletes all selected objects and redirects back to the
+    change list.
     """
     opts = modeladmin.model._meta
     app_label = opts.app_label
@@ -142,7 +148,10 @@ def delete_selected(modeladmin, request, queryset):
             dataset_delete.delay(ids)
             modeladmin.message_user(
                 request,
-                _("System is currently deleting %(count)d %(items)s in the background.")
+                _(
+                    "System is currently deleting %(count)d "
+                    "%(items)s in the background."
+                )
                 % {"count": n, "items": model_ngettext(modeladmin.opts, n)},
                 messages.SUCCESS,
             )
@@ -175,10 +184,10 @@ def delete_selected(modeladmin, request, queryset):
     # Display the confirmation page
     return TemplateResponse(
         request,
-        modeladmin.delete_selected_confirmation_template
-        or [
-            "admin/%s/%s/delete_selected_confirmation.html"
-            % (app_label, opts.model_name),
+        modeladmin.delete_selected_confirmation_template or
+        [
+            "admin/%s/%s/delete_selected_confirmation.html" %
+            (app_label, opts.model_name),
             "admin/%s/delete_selected_confirmation.html" % app_label,
             "admin/delete_selected_confirmation.html",
         ],
