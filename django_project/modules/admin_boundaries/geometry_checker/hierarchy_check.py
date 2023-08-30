@@ -16,8 +16,6 @@ def hierarchy_check(
         parent_geom: GEOSGeometry
 ) -> Tuple[List[HierarchyCheckError], str]:
     errors: List[HierarchyCheckError] = []
-    print(geom.area)
-    print(parent_geom.area)
     if not geom.valid:
         return errors, geom.valid_reason
     if not parent_geom.valid:
