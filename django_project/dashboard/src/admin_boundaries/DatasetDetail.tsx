@@ -7,6 +7,15 @@ import DatasetGeneral from "./Configurations/DatasetGeneral";
 import DatasetTilingConfig from "../views/Dataset/Configurations/DatasetTilingConfig";
 import DatasetAdminLevelNames from "./Configurations/DatasetAdminLevelNames";
 import DatasetEntities from "../views/Dataset/DatasetEntities";
+import {useNavigate} from "react-router-dom";
+
+
+export function NavigateComponent(props: {url: String}) {
+    const navigate = useNavigate();
+    navigate(`${props.url}`)
+
+    return (<></>)
+}
 
 
 export default function DatasetDetailWrapper() {
@@ -39,6 +48,16 @@ export default function DatasetDetailWrapper() {
         {
             title: 'TILING CONFIG',
             element: DatasetTilingConfig,
+            permissions: ['Manage']
+        },
+        {
+            title: 'UPLOAD HISTORY',
+            element: NavigateComponent,
+            permissions: ['Manage']
+        },
+        {
+            title: 'VIEW',
+            element: NavigateComponent,
             permissions: ['Manage']
         }
     ])

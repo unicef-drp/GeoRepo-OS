@@ -1,5 +1,5 @@
 import React, {Fragment, useCallback, useEffect, useRef, useState} from 'react';
-import {useNavigate} from "react-router-dom";
+import {useNavigate, useSearchParams} from "react-router-dom";
 import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import Loading from "../../components/Loading";
 import {postData} from "../../utils/Requests";
@@ -107,6 +107,7 @@ export default function Views() {
   const [deleteButtonDisabled, setDeleteButtonDisabled] = useState<boolean>(false)
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams()
 
 
   const [loading, setLoading] = useState(true)
@@ -184,6 +185,17 @@ export default function Views() {
       }
     })
   }
+
+  useEffect(() => {
+    let dataset
+    try {
+      dataset = searchParams.get('dataset') ? [searchParams.get('dataset')] : []
+    } catch (error: any) {
+      dataset = currentFilters['dataset']
+    }
+    setCurrentFilters({...currentFilters, 'dataset': dataset})
+    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'dataset': dataset})))
+  }, [searchParams])
 
   const getExistingFilterValue = (colName: string): string[] => {
     let values: string[] = []
