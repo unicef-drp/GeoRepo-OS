@@ -56,6 +56,7 @@ INSTALLED_APPS = INSTALLED_APPS + (
     'georepo',
     'dashboard',
     'modules',
+    'docs',
 )
 
 EXPORT_FOLDER_OUTPUT = os.path.join(
