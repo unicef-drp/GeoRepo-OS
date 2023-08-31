@@ -40,7 +40,7 @@ export default function UploadComponent(props: UploadComponentInterface)  {
     const fileWithMeta = props.fileWithMeta
     return (
       <Card sx={{ minWidth: 730, marginTop: 1 }}>
-        <CardContent style={{ display: 'flex', flexDirection: 'row' }}>
+        <CardContent style={{ display: 'flex', flexDirection: 'row' , padding: '0px'}}>
           <Grid container>
             <Grid item padding='10px'>
               <Grid container flexDirection='column'>
@@ -72,18 +72,26 @@ export default function UploadComponent(props: UploadComponentInterface)  {
                   </Grid>
                 </Grid>
                 <LinearProgress variant="determinate" value={meta.percent} sx={{ marginTop: 2 }} />
-                <div className={"button-container"}>
-                  { !props.isReadOnly && (
-                    <Button variant="outlined" color="error" onClick={() => fileWithMeta.remove()} sx={{ marginTop: 1 }}>
-                      Remove
-                    </Button>
-                  )}
-                  { props.isReadOnly && (
-                    <Button variant="outlined" color="primary" onClick={() => props.downloadLayerFile(meta.id)} sx={{ marginTop: 1 }}>
-                      Download
-                    </Button>
-                  )}
-                </div>
+              </Grid>
+            </Grid>
+            <Grid item padding={'20px'}>
+              <Grid container flexDirection='column'>
+                <Grid container>
+                  <Grid item xs={12} md={8}>
+                    <div className={"button-container"}>
+                      { !props.isReadOnly && (
+                        <Button variant="outlined" color="error" onClick={() => fileWithMeta.remove()} sx={{ marginTop: 1 }}>
+                          Remove
+                        </Button>
+                      )}
+                      { props.isReadOnly && (
+                        <Button variant="outlined" color="primary" onClick={() => props.downloadLayerFile(meta.id)} sx={{ marginTop: 1 }}>
+                          Download
+                        </Button>
+                      )}
+                    </div>
+                  </Grid>
+                </Grid>
               </Grid>
             </Grid>
           </Grid>
