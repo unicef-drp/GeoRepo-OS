@@ -22,6 +22,15 @@ update:
 	@echo "Update production instance"
 	@echo "------------------------------------------------------------------"
 	@docker-compose ${ARGS} up -d django auth worker celery_beat nginx
+
+# use .azure.env in docker-compose.override.yml
+test-azure:
+	@echo
+	@echo "------------------------------------------------------------------"
+	@echo "Run Azure production instance"
+	@echo "------------------------------------------------------------------"
+	@docker-compose ${ARGS} up -d azurite django auth worker celery_beat nginx
+
 # below commands are executed already from django entrypoint+initialize.py
 # @docker-compose ${ARGS} exec -T django python manage.py migrate
 # @docker-compose ${ARGS} exec -T django npm --prefix /home/web/django_project/dashboard install /home/web/django_project/dashboard --legacy-peer-deps
@@ -78,6 +87,15 @@ dev:
 	@echo "Running in dev mode"
 	@echo "------------------------------------------------------------------"
 	@docker-compose ${ARGS} up -d dev webpack-watcher worker celery_beat
+	@docker-compose ${ARGS} up --no-recreate --no-deps -d
+
+# use .azure.env in docker-compose.override.yml
+dev-azure:
+	@echo
+	@echo "------------------------------------------------------------------"
+	@echo "Running in dev mode"
+	@echo "------------------------------------------------------------------"
+	@docker-compose ${ARGS} up -d dev webpack-watcher worker celery_beat azurite
 	@docker-compose ${ARGS} up --no-recreate --no-deps -d
 
 dev-kill:

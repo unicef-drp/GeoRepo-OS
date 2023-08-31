@@ -9,11 +9,11 @@ import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
-import UserInterface from '../../models/user';
 import Loading from "../../components/Loading";
 import AlertMessage from '../../components/AlertMessage';
 import {postData} from "../../utils/Requests";
 import AlertDialog from '../../components/AlertDialog';
+import Scrollable from "../../components/Scrollable";
 
 interface UserCreateGeneralInterface {
     onUserCreated: (newValue: number) => void
@@ -110,130 +110,132 @@ export default function UserCreateGeneral(props: UserCreateGeneralInterface) {
     }
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                <AlertMessage message={alertMessage} onClose={() => {
-                    props.onUserCreated( userId)
-                    setAlertMessage('')
-                }} />
-                <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
-                         alertConfirmed={alertConfirmed}
-                         alertLoading={alertLoading}
-                         alertDialogTitle={alertDialogTitle}
-                         alertDialogDescription={alertDialogDescription} />
-                <div className='FormContainer'>
-                    <FormControl className='FormContent'>
-                        <Grid container columnSpacing={2} rowSpacing={2}>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>First Name</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    id="input_first_name"
+        <Scrollable>
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto'}}>
+                <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                    <AlertMessage message={alertMessage} onClose={() => {
+                        props.onUserCreated( userId)
+                        setAlertMessage('')
+                    }} />
+                    <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
+                            alertConfirmed={alertConfirmed}
+                            alertLoading={alertLoading}
+                            alertDialogTitle={alertDialogTitle}
+                            alertDialogDescription={alertDialogDescription} />
+                    <div className='FormContainer'>
+                        <FormControl className='FormContent'>
+                            <Grid container columnSpacing={2} rowSpacing={2}>
+                                <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                    <Typography variant={'subtitle1'}>First Name</Typography>
+                                </Grid>
+                                <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                                    <TextField
+                                        id="input_first_name"
+                                        hiddenLabel={true}
+                                        type={"text"}
+                                        sx={{ width: '100%' }}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                        setFirstName(e.target.value)
+                                        }}
+                                    />
+                                </Grid>
+                                <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                    <Typography variant={'subtitle1'}>Last Name</Typography>
+                                </Grid>
+                                <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                                    <TextField
+                                        id="input_last_name"
+                                        hiddenLabel={true}
+                                        type={"text"}
+                                        sx={{ width: '100%' }}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                        setLastName(e.target.value)
+                                        }}
+                                    />
+                                </Grid>
+                                <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                    <Typography variant={'subtitle1'}>Email</Typography>
+                                </Grid>
+                                <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                                    <TextField
+                                        id="input_email"
+                                        hiddenLabel={true}
+                                        type={"email"}
+                                        sx={{ width: '100%' }}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            if ((window as any).use_azure) {
+                                                setUsername(e.target.value)
+                                            }
+                                            setEmail(e.target.value)
+                                        }}
+                                    />
+                                </Grid>
+                                <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                    <Typography variant={'subtitle1'}>Username</Typography>
+                                </Grid>
+                                <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                                    <TextField
+                                        id="input_username"
+                                        disabled={(window as any).use_azure}
+                                        hiddenLabel={true}
+                                        type={"text"}
+                                        value={username}
+                                        sx={{ width: '100%' }}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                        setUsername(e.target.value)
+                                        }}
+                                    />
+                                </Grid>
+                                {!(window as any).use_azure ? <><Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                    <Typography variant={'subtitle1'}>Password</Typography>
+                                </Grid><Grid item md={8} xs={12} sx={{display: 'flex'}}>
+                                    <TextField
+                                    id="input_password"
                                     hiddenLabel={true}
-                                    type={"text"}
-                                    sx={{ width: '100%' }}
+                                    type={"password"}
+                                    sx={{width: '100%'}}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                      setFirstName(e.target.value)
-                                    }}
-                                />
+                                        setPassword(e.target.value);
+                                    }}/>
+                                </Grid></> : ''}
                             </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Last Name</Typography>
+                            <Divider variant="middle" />
+                            <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}}>
+                                <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                    <Typography variant={'subtitle1'}>Role</Typography>
+                                </Grid>
+                                <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                                    <Select
+                                        labelId="roles-select-label"
+                                        id="roles-select"
+                                        value={role}
+                                        onChange={(event: SelectChangeEvent) => {
+                                            setRole(event.target.value as string)
+                                        }}
+                                    >
+                                        { ROLE_TYPES.map((value, index) => {
+                                            return <MenuItem key={index} value={value}>{value}</MenuItem>
+                                        })}
+                                    </Select>
+                                </Grid>
                             </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    id="input_last_name"
-                                    hiddenLabel={true}
-                                    type={"text"}
-                                    sx={{ width: '100%' }}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                      setLastName(e.target.value)
-                                    }}
-                                />
+                            <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}} flexDirection={'row'} justifyContent={'space-between'}>
+                                <Grid item>
+                                    <div className='button-container'>
+                                        <Button
+                                            variant={"contained"}
+                                            disabled={loading}
+                                            onClick={handleSaveClick}>
+                                            <span style={{ display: 'flex' }}>
+                                            { loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { "Save" }</span>
+                                        </Button>
+                                    </div>
+                                </Grid>
                             </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Email</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    id="input_email"
-                                    hiddenLabel={true}
-                                    type={"email"}
-                                    sx={{ width: '100%' }}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                        if ((window as any).use_azure) {
-                                            setUsername(e.target.value)
-                                        }
-                                        setEmail(e.target.value)
-                                    }}
-                                />
-                            </Grid>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Username</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    id="input_username"
-                                    disabled={(window as any).use_azure}
-                                    hiddenLabel={true}
-                                    type={"text"}
-                                    value={username}
-                                    sx={{ width: '100%' }}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                      setUsername(e.target.value)
-                                    }}
-                                />
-                            </Grid>
-                            {!(window as any).use_azure ? <><Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Password</Typography>
-                            </Grid><Grid item md={8} xs={12} sx={{display: 'flex'}}>
-                                <TextField
-                                  id="input_password"
-                                  hiddenLabel={true}
-                                  type={"password"}
-                                  sx={{width: '100%'}}
-                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                      setPassword(e.target.value);
-                                  }}/>
-                            </Grid></> : ''}
-                        </Grid>
-                        <Divider variant="middle" />
-                        <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}}>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Role</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <Select
-                                    labelId="roles-select-label"
-                                    id="roles-select"
-                                    value={role}
-                                    onChange={(event: SelectChangeEvent) => {
-                                        setRole(event.target.value as string)
-                                    }}
-                                >
-                                    { ROLE_TYPES.map((value, index) => {
-                                        return <MenuItem key={index} value={value}>{value}</MenuItem>
-                                    })}
-                                </Select>
-                            </Grid>
-                        </Grid>
-                        <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}} flexDirection={'row'} justifyContent={'space-between'}>
-                            <Grid item>
-                                <div className='button-container'>
-                                    <Button
-                                        variant={"contained"}
-                                        disabled={loading}
-                                        onClick={handleSaveClick}>
-                                        <span style={{ display: 'flex' }}>
-                                        { loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { "Save" }</span>
-                                    </Button>
-                                </div>
-                            </Grid>
-                        </Grid>
-                    </FormControl>
-                </div>
+                        </FormControl>
+                    </div>
+                </Box>
             </Box>
-        </Box>
+        </Scrollable>
     )
 }

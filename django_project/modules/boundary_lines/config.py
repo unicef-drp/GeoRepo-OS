@@ -8,6 +8,12 @@ from dashboard.models.entity_upload import (
 )
 
 
+def vector_tile_geometry_type():
+    """Return geometry type in this module."""
+    # return empty so tegola will infer the type from table
+    return ''
+
+
 def generate_adm0_default_views(dataset: Dataset):
     # no adm0 default views for boundary lines
     pass

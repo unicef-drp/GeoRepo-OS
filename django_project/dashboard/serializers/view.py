@@ -11,6 +11,7 @@ from georepo.utils.permission import (
     PermissionType,
     get_external_view_permission_privacy_level
 )
+from georepo.utils.dataset_view import get_view_tiling_status
 from rest_framework.authtoken.models import Token
 
 
@@ -43,22 +44,12 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
         return obj.max_privacy_level
 
     def get_status(self, obj: DatasetView):
-        user_privacy_levels = self.context.get('user_privacy_levels', {})
-        privacy_level = user_privacy_levels.get(obj.dataset.id, 0)
-        if privacy_level > 0:
-            resource = DatasetViewResource.objects.filter(
-                dataset_view=obj,
-                privacy_level=privacy_level
-            ).first()
-            if resource:
-                return (
-                    obj.DatasetViewStatus.labels[
-                        obj.DatasetViewStatus.values.index(
-                            resource.status
-                        )
-                    ]
-                )
-        return obj.DatasetViewStatus.PENDING.value
+        tiling_status, _ = get_view_tiling_status(
+            DatasetViewResource.objects.filter(
+                dataset_view=obj
+            )
+        )
+        return tiling_status
 
     def get_layer_tiles(self, obj: DatasetView):
         user = self.context.get('user', None)

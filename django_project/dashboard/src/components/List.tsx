@@ -20,7 +20,7 @@ import {MUIDataTableColumnDef} from "mui-datatables";
 import ResizeTableEvent from "./ResizeTableEvent"
 
 // 145 = filter + filter chips + col headers
-export const TABLE_OFFSET_HEIGHT = 130
+export const TABLE_OFFSET_HEIGHT = 160
 
 axios.defaults.headers.common = {
     'X-CSRFToken' : (window as any).csrfToken
@@ -60,7 +60,8 @@ interface ListInterface {
     customColumnHeaderRender?: any,
     canRowBeSelected?: (dataIndex: number, rowData: any) => boolean,
     excludedColumns?: string[],
-    title?: React.ReactNode
+    title?: React.ReactNode,
+    fetchUseCache?: boolean
 }
 
 /**
@@ -189,7 +190,8 @@ export default function List(
         customOptions = {},
         canRowBeSelected = null,
         excludedColumns = [],
-        title = null
+        title = null,
+        fetchUseCache = true
     } : ListInterface
 ) {
     const [data, setData] = useState(initData);
@@ -203,7 +205,7 @@ export default function List(
     /** Fetch list of data */
     const fetchData = (url: string) => {
         if (!data || data.length == 0) {
-            fetchingData(url, {}, {}).then(
+            fetchingData(url, {}, {}, null, fetchUseCache).then(
                 (data) => {
                     if (data.responseStatus == 'success') {
                         setData(data.responseData)

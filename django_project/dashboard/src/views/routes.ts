@@ -1,4 +1,4 @@
-import { lazy } from '@loadable/component';
+  import { lazy } from '@loadable/component';
 import HomeIcon from '@mui/icons-material/Home';
 import {OverridableComponent} from "@mui/material/OverridableComponent";
 import {SvgIconTypeMap} from "@mui/material/SvgIcon/SvgIcon";
@@ -10,6 +10,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import ViewCompactAltIcon from '@mui/icons-material/ViewCompactAlt';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 
 export interface RouteInterface {
   id: string,
@@ -47,7 +48,7 @@ export const UploadSessionListRoute: RouteInterface = {
   id: 'upload_list',
   name: 'Uploads',
   path: '/upload_list',
-  element: lazy(() => import('./UploadSessionList' /* webpackChunkName: "upload_session_list" */)),
+  element: lazy(() => import('./Upload/UploadSessionList' /* webpackChunkName: "upload_session_list" */)),
   icon: ViewListIcon
 }
 
@@ -81,6 +82,14 @@ export const UserDetailRoute: RouteInterface = {
   path: '/user',
   element: lazy(() => import('./User/UserDetail' /* webpackChunkName: "user_detail" */)),
   parent: UserListRoute
+}
+
+export const UserProfileRoute: RouteInterface = {
+  id: 'user_profile',
+  name: 'Profile',
+  path: '/profile',
+  element: lazy(() => import('./User/UserDetail' /* webpackChunkName: "user_detail" */)),
+  icon: ManageAccountsIcon
 }
 
 export const UserAddRoute: RouteInterface = {
@@ -216,7 +225,8 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   ModuleDetailRoute,
   InvalidPermissionRoute,
   AccessRequestListRoute,
-  AccessRequestDetailRoute
+  AccessRequestDetailRoute,
+  UserProfileRoute
 ] : [
   HomeRoute,
   DatasetRoute,
@@ -230,7 +240,8 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   ViewEditTilingConfigRoute,
   EntityConceptUCodeRoute,
   InvalidPermissionRoute,
-  AccessRequestSubmitRoute
+  AccessRequestSubmitRoute,
+  UserProfileRoute
 ]
 
 

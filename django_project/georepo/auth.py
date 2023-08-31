@@ -1,9 +1,11 @@
 import jwt
 from rest_framework import authentication
+from knox.auth import TokenAuthentication
 from django.utils.translation import gettext_lazy as _
+from core.models.token_detail import ApiKey
 
 
-class CustomTokenAuthentication(authentication.TokenAuthentication):
+class CustomTokenAuthentication(TokenAuthentication):
     """
     Customized token based authentication.
     Clients should authenticate by passing the token key in the url.
@@ -19,6 +21,40 @@ class CustomTokenAuthentication(authentication.TokenAuthentication):
             pass
         return False
 
+    def test_user_key(self, user, user_key):
+        if user.email != user_key:
+            msg = _('Invalid token! No matching user!.')
+            raise authentication.exceptions.AuthenticationFailed(msg)
+
+    def get_user_key_param(self, request):
+        url_string = request.META['QUERY_STRING']
+        if url_string:
+            params = url_string.split('&')
+            user_keys = [
+                x for x in params if
+                x.startswith('georepo_user_key=')
+            ]
+            return (
+                user_keys[0].replace('georepo_user_key=', '') if
+                user_keys else ''
+            )
+        return ''
+
+    def authenticate_credentials(self, key):
+        user, token = (
+            super(CustomTokenAuthentication, self).
+            authenticate_credentials(key)
+        )
+        # check flag in TokenDetail
+        try:
+            if not token.apikey.is_active:
+                raise authentication.exceptions.\
+                    AuthenticationFailed(_('Invalid token.'))
+        except ApiKey.DoesNotExist:
+            raise authentication.exceptions.\
+                AuthenticationFailed(_('Invalid token.'))
+        return (user, token)
+
     def authenticate(self, request):
         token = request.GET.get('token', '')
         if token:
@@ -26,7 +62,12 @@ class CustomTokenAuthentication(authentication.TokenAuthentication):
             if self.test_jwt_token(token):
                 keyword = 'Bearer'
             request.META['HTTP_AUTHORIZATION'] = f'{keyword} {token}'
-        return super(CustomTokenAuthentication, self).authenticate(request)
+        user_key = self.get_user_key_param(request)
+        user, token = (
+            super(CustomTokenAuthentication, self).authenticate(request)
+        )
+        self.test_user_key(user, user_key)
+        return (user, token)
 
 
 class BearerAuthentication(CustomTokenAuthentication):
@@ -54,14 +95,11 @@ class BearerAuthentication(CustomTokenAuthentication):
         # skip this authentication if this is a jwt token
         if self.test_jwt_token(auth[1].decode()):
             return None
-        try:
-            token = auth[1].decode()
-        except UnicodeError:
-            msg = _('Invalid token header. '
-                    'Token string should not contain invalid characters.')
-            raise authentication.TokenAuthentication.\
-                exceptions.AuthenticationFailed(msg)
-        return self.authenticate_credentials(token)
+        user, token = self.authenticate_credentials(auth[1])
+        # validate if GeoRepo-User-Key match with username
+        user_key = request.META.get('HTTP_GEOREPO_USER_KEY', b'')
+        self.test_user_key(user, user_key)
+        return (user, token)
 
     def authenticate_header(self, request):
         return self.keyword[0]

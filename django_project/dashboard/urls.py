@@ -26,7 +26,8 @@ from dashboard.api_views.layer_upload import (
 )
 from dashboard.api_views.upload_session import (
     AddUploadSession,
-    UploadSessions,
+    UploadSessionList,
+    UploadSessionFilterValue,
     UploadSessionDetail,
     UploadSessionSummary,
     UploadSessionUpdateStep, CanAddUpload, UpdateUploadSession,
@@ -45,7 +46,8 @@ from dashboard.api_views.validate import ValidateUploadSession, \
 from dashboard.api_views.users import (
     UserList,
     UserDetail,
-    UserPermissionDetail
+    UserPermissionDetail,
+    TokenDetail
 )
 from dashboard.api_views.groups import (
     GroupList,
@@ -204,8 +206,13 @@ urlpatterns = [
     ),
     re_path(
         r'api/upload-sessions/?$',
-        UploadSessions.as_view(),
-        name='upload-sessions'
+        UploadSessionList.as_view(),
+        name='upload-session-list'
+    ),
+    re_path(
+        r'api/upload-session-filter/values/(?P<criteria>\w+)/?$',
+        UploadSessionFilterValue.as_view(),
+        name='upload-session-filter-value'
     ),
     re_path(
         r'api/upload-session/(?P<id>\d+)/?$',
@@ -218,7 +225,7 @@ urlpatterns = [
         name='upload-session-update-step'
     ),
     re_path(
-        r'api/upload-session-summary/(?P<id>\d+)/?$',
+        r'api/upload-session-summary/(?P<pk>\d+)/?$',
         UploadSessionSummary.as_view(),
         name='upload-session-summary'
     ),
@@ -296,6 +303,9 @@ urlpatterns = [
     re_path(r'api/user/(?P<id>\d+)/?$',
             UserDetail.as_view(),
             name='user-detail'),
+    re_path(r'api/token/(?P<id>\d+)/?$',
+            TokenDetail.as_view(),
+            name='token-detail'),
     re_path(r'api/user/?$',
             UserDetail.as_view(),
             name='user-create'),

@@ -12,10 +12,11 @@ import {useAppDispatch} from "../../app/hooks";
 import {updateMenu} from "../../reducers/breadcrumbMenu";
 import TabPanel, {a11yProps} from '../../components/TabPanel';
 import Skeleton from '@mui/material/Skeleton';
-import {UserDetailRoute} from '../routes';
+import {UserDetailRoute, UserProfileRoute} from '../routes';
 import UserInterface from '../../models/user';
 import UserDetailGeneral from './UserDetailGeneral';
 import UserPermission from './UserPermission';
+import UserAPIKeys from './UserAPIKeys';
 
 const FETCH_USER_DETAIL_URL = '/api/user/'
 
@@ -26,11 +27,25 @@ export default function UserDetail(props: any) {
     const [searchParams, setSearchParams] = useSearchParams()
     const [tabSelected, setTabSelected] = useState(0)
     const [user, setUser] = useState<UserInterface>(null)
+    const [isUserProfile, setIsUserProfile] = useState(searchParams.get('id') === null)
 
+    const updateBreadcrumb = (user: UserInterface) => {
+      if (!isUserProfile) {
+        dispatch(updateMenu({
+          id: `user_detail`,
+          name: `${user.username} (${user.role})`
+        }))
+      } else {
+        dispatch(updateMenu({
+          id: `profile`,
+          name: `${user.username} (${user.role})`
+        }))
+      }
+    }
 
-    const fetchUserDetail = () => {
+    const fetchUserDetail = (user_id: number) => {
         setLoading(true)
-        axios.get(`${FETCH_USER_DETAIL_URL}${searchParams.get("id")}/`).then(
+        axios.get(`${FETCH_USER_DETAIL_URL}${user_id}/`).then(
             response => {
               setLoading(false)
               let _user: UserInterface = response.data as UserInterface
@@ -42,10 +57,7 @@ export default function UserDetail(props: any) {
                 }
               });
               setUser(_user)
-              dispatch(updateMenu({
-                id: `user_detail`,
-                name: `${_user.username} (${_user.role})`
-              }))
+              updateBreadcrumb(_user)
             }
           ).catch((error) => {
             if (error.response) {
@@ -64,13 +76,31 @@ export default function UserDetail(props: any) {
             setTabSelected(tab)
         }
         let userId = searchParams.get('id')
+        setIsUserProfile(userId === null)
         if (userId && (user == null || (user && user.id != parseInt(userId)))) {
-            fetchUserDetail()
+            fetchUserDetail(parseInt(userId))
+        } else if (userId === null) {
+          // user profile
+          fetchUserDetail(parseInt((window as any).user_id))
         }
     }, [searchParams])
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+      if (!isUserProfile && searchParams.get('id')) {
         navigate(`${UserDetailRoute.path}?id=${searchParams.get('id')}&tab=${newValue}`)
+      } else {
+        navigate(`${UserProfileRoute.path}?tab=${newValue}`)
+      }
+    }
+
+    const onUserUpdated = () => {
+      let userId = searchParams.get('id')
+      if (userId) {
+        fetchUserDetail(parseInt(userId))
+      } else {
+        // user profile
+        fetchUserDetail(parseInt((window as any).user_id))
+      }
     }
 
     return (
@@ -85,16 +115,20 @@ export default function UserDetail(props: any) {
                         <Tooltip title="Admin role has all permissions">
                             <span>PERMISSION</span>
                         </Tooltip> : 'PERMISSION'}  />
+                      <Tab key={'tab-2'} label={'API Key Enrolment'} {...a11yProps(0)} />
                 </Tabs>
             </Box>
             { loading && <Skeleton variant="rectangular" height={'100%'} width={'100%'}/> }
             { !loading && (
               <Grid container sx={{ flexGrow: 1, flexDirection: 'column' }}>
                 <TabPanel key={0} value={tabSelected} index={0} padding={1}>
-                    <UserDetailGeneral user={user} onUserUpdated={fetchUserDetail} />
+                    <UserDetailGeneral isUserProfile={isUserProfile} user={user} onUserUpdated={onUserUpdated} />
                 </TabPanel>
                 <TabPanel key={1} value={tabSelected} index={1} padding={1}>
-                    <UserPermission user={user} />
+                    <UserPermission isUserProfile={isUserProfile} user={user} />
+                </TabPanel>
+                <TabPanel key={2} value={tabSelected} index={2} padding={1}>
+                    <UserAPIKeys user={user} isUserProfile={isUserProfile} />
                 </TabPanel>
               </Grid>
             )}

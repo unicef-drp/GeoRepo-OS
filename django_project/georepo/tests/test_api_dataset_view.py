@@ -42,6 +42,15 @@ from georepo.utils.permission import (
 )
 
 
+class DummyTask:
+    def __init__(self, id):
+        self.id = id
+
+
+def mocked_run_generate_vector_tiles(*args, **kwargs):
+    return DummyTask('1')
+
+
 def mocked_cache_get(self, *args, **kwargs):
     return OrderedDict()
 
@@ -122,6 +131,10 @@ class TestApiDatasetView(TestCase):
             response = view(request)
         self.assertEqual(response.status_code, 404)
 
+    @mock.patch(
+        'dashboard.tasks.remove_view_resource_data.delay',
+        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
+    )
     def test_dataset_view_list(self):
         dataset = DatasetF.create()
         dataset_view = DatasetViewF.create(

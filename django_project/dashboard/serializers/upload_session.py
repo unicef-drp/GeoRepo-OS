@@ -9,12 +9,12 @@ from dashboard.models import (
 
 
 class UploadSessionSerializer(serializers.ModelSerializer):
-    upload = serializers.SerializerMethodField()
     upload_date = serializers.SerializerMethodField()
     uploaded_by = serializers.SerializerMethodField()
     form = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
     dataset = serializers.SerializerMethodField()
+    level_0_entity = serializers.SerializerMethodField()
 
     def get_dataset(self, obj: LayerUploadSession):
         if obj.dataset:
@@ -38,26 +38,39 @@ class UploadSessionSerializer(serializers.ModelSerializer):
         return f'?session={obj.id}&step=0&' \
             f'dataset={obj.dataset.id}'
 
-    def get_upload(self, obj: LayerUploadSession):
-        return obj.source
-
     def get_upload_date(self, obj: LayerUploadSession):
         return obj.started_at
 
     def get_uploaded_by(self, obj: LayerUploadSession):
         return obj.uploader.username if obj.uploader else '-'
 
+    def get_level_0_entity(self, obj: LayerUploadSession):
+        level_0_entities = list(
+            obj.entityuploadstatus_set.filter(
+                revised_geographical_entity__label__isnull=False
+            ).values_list('revised_geographical_entity__label', flat=True)
+        )
+        entity_uploads_str = ', '.join(level_0_entities)
+        entity_uploads_str = entity_uploads_str[:20] if \
+            len(entity_uploads_str) > 12 else entity_uploads_str
+        if len(level_0_entities) > 1:
+            entity_uploads_str += '...'
+        elif len(level_0_entities) == 1 and \
+            entity_uploads_str != level_0_entities[0]:
+            entity_uploads_str += '...'
+        return entity_uploads_str
+
     class Meta:
         model = LayerUploadSession
         fields = [
             'id',
-            'upload',
             'dataset',
             'type',
             'upload_date',
             'uploaded_by',
             'status',
-            'form'
+            'form',
+            'level_0_entity'
         ]
 
 

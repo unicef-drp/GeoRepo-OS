@@ -124,6 +124,10 @@ class DatasetAdminChangeForm(DatasetAdminForm):
     def __init__(self, *args, **kwargs):
         super(DatasetAdminChangeForm, self).__init__(*args, **kwargs)
         self.fields['short_code'].disabled = True
+        instance = getattr(self, 'instance', None)
+        if instance and instance.pk:
+            if not instance.short_code:
+                self.fields['short_code'].disabled = False
 
     class Meta:  # noqa D106
         model = Dataset

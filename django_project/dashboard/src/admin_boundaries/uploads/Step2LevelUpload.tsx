@@ -464,6 +464,179 @@ function Step2LevelUpload(props: LevelUploadInterface) {
                   <FormControl className='FormContent' disabled={props.isReadOnly}>
                       <Grid container columnSpacing={2}>
                           <Grid item xl={9} md={9} xs={12}>
+                              <Grid container columnSpacing={1}>
+                                <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
+                                </Grid>
+                                <Grid item md={8} xl={8} xs={12} textAlign="left">
+                                  <FormLabel className='form-sublabel'>Default</FormLabel>
+                                </Grid>
+                            </Grid>
+                              <Grid container className='field-container align-start' columnSpacing={1}>
+                                  <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
+                                      <Typography variant={'subtitle1'}>Name Fields</Typography>
+                                  </Grid>
+                                  <Grid item md={8} xl={8} xs={12}>
+                                      <RadioGroup
+                                        row
+                                        aria-labelledby="name-field-radio-buttons-group-label"
+                                        name="name-field-radio-buttons-group"
+                                        value={defaultNameFieldId}
+                                        onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                                          let _value = (event.target as HTMLInputElement).value
+                                          setDefaultNameFieldId(_value)
+                                          setNameFields(
+                                            handleDefaultChange(event, nameFields) as NameField[]
+                                          )
+                                        }}
+                                      >
+                                      {nameFields.map((nameField: NameField, index: Number) => (
+                                        <NameFieldFormControl nameField={nameField} index={index} key={nameField.id}
+                                          languageOptions={props.languageOptions} attributes={attributes}
+                                          handleNameLanguageChange={handleNameLanguageChange} removeNameField={removeNameField}
+                                          isReadOnly={props.isReadOnly} addNameField={addNameField} />
+                                      ))}
+                                    </RadioGroup>
+                                  </Grid>
+                              </Grid>
+                              <Grid container columnSpacing={1}>
+                                <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
+                                </Grid>
+                                <Grid item md={8} xl={8} xs={12} textAlign="left">
+                                  <FormLabel className='form-sublabel'>Default</FormLabel>
+                                </Grid>
+                              </Grid>
+                              <Grid container className='field-container align-start' columnSpacing={1}>
+                                <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
+                                    <Typography variant={'subtitle1'}>Id Fields</Typography>
+                                </Grid>
+                                <Grid item md={8} xl={8} xs={12}>
+                                  <RadioGroup
+                                    row
+                                    aria-labelledby="id-field-radio-buttons-group-label"
+                                    name="id-field-radio-buttons-group"
+                                    value={defaultIdFieldId}
+                                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                                      let _value = (event.target as HTMLInputElement).value
+                                      setDefaultIdFieldId(_value)
+                                      setIdFields(
+                                        handleDefaultChange(event, idFields) as IdField[]
+                                      )
+                                    }}
+                                  >
+                                    {idFields.map((idField: IdField, index: number) => (
+                                      <IdFieldFormControl idField={idField} index={index} key={idField.id}
+                                        idTypes={idTypes} attributes={attributes}
+                                        handleIdTypeChange={handleIdTypeChange} removeIdField={removeIdField}
+                                        isReadOnly={props.isReadOnly} addIdField={addIdField}
+                                        handleOnNewIdType={handleOnNewIdType} />
+                                    ))}
+                                  </RadioGroup>
+                                </Grid>
+                              </Grid>
+                              { parseInt(props.uploadData.level) > 0 ?
+                              <Grid container className='field-container' columnSpacing={1}>
+                                    <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                        <Typography variant={'subtitle1'}>Parent Id Field</Typography>
+                                    </Grid>
+                                    <Grid item md={8} xl={8} xs={12}>
+                                      <Grid container>
+                                        <Grid item md={11} xl={11} xs={12}>
+                                          <AttributeSelect
+                                            id={'parent-id-field'}
+                                            name={'Parent Id Field'}
+                                            value={parentIdField}
+                                            attributes={attributes}
+                                            selectionChanged={(value: any) => {
+                                              setParentIdField(value as string)
+                                              setIsDirty(true)
+                                            }}
+                                            required
+                                            isReadOnly={props.isReadOnly}
+                                          />
+                                        </Grid>
+                                        <Grid item md={1} xs={12} textAlign="left"></Grid>
+                                      </Grid>
+                                    </Grid>
+                                </Grid> : null }
+                              <Grid container className='field-container' columnSpacing={1}>
+      <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+        {locationTypeSelection==='location_type_field' && (<Typography variant={'subtitle1'}>Location Type Field</Typography>)}
+        {locationTypeSelection==='user_input' && (<Typography variant={'subtitle1'}>Location Type</Typography>)}
+      </Grid>
+      <Grid item md={8} xl={8} xs={12}>
+          <Grid container>
+            <Grid item md={11} xl={11} xs={12}>
+              <Grid container flexDirection={'row'} sx={{alignItems: 'center'}}>
+                <Grid item>
+                  <FormControl sx={{width: '100%', marginBottom:  '20px'}} disabled={props.isReadOnly}>
+                    <FormLabel id="location-type-radio-buttons-group-label" className='form-sublabel'>Select From</FormLabel>
+                    <RadioGroup
+                        row
+                        aria-labelledby="location-type-radio-buttons-group-label"
+                        name="location-type-radio-buttons-group"
+                        value={locationTypeSelection}
+                        onChange={handleLocationTypeSelectionOnChange}
+                      >
+                      <FormControlLabel value="location_type_field" control={<Radio />} label="Fields" />
+                      <FormControlLabel value="user_input" control={<Radio />} label="User Input" />
+                    </RadioGroup>
+                  </FormControl>
+                </Grid>
+                <Grid item sx={{flex: 1}}>
+                  { locationTypeSelection==='location_type_field' && (<FormControl sx={{width: '100%'}}>
+                      <AttributeSelect
+                        id='location-type-field'
+                        name={'Location Type Field'}
+                        value={locationTypeField}
+                        attributes={attributes}
+                        selectionChanged={(value: any) => {
+                          setLocationTypeField(value as string)
+                          setIsDirty(true)
+                        }}
+                        required
+                        isReadOnly={props.isReadOnly}
+                      />
+                  </FormControl>)}
+                  { locationTypeSelection==='user_input' && (<FormControl sx={{width: '100%'}}>
+                    <Autocomplete
+                      className="location-type-search"
+                      value={entityType}
+                      onChange={(event, newValue) => {
+                        if (newValue !== null)
+                          setEntityType(newValue.replace('Add "', '').replace(/"/g,''))
+                        else
+                          setEntityType('')
+                        setIsDirty(true)
+                      }}
+                      filterOptions={(options, params) => {
+                        const filtered = filterEntityTypeList(options, params)
+                        if (params.inputValue !== '') {
+                          filtered.push(`Add "${params.inputValue}"`)
+                        }
+                        return filtered
+                      }}
+                      options={entityTypes}
+                      getOptionLabel={(option) => {
+                        return option
+                      }}
+                      selectOnFocus
+                      clearOnBlur
+                      handleHomeEndKeys
+                      renderOption={(props, option) => <li {...props}>{option}</li>}
+                      freeSolo
+                      renderInput={(params) => <TextField {...params} label="Location Type" />}
+                      disableClearable
+                      disabled={props.isReadOnly}
+                    />
+                  </FormControl>)}
+                </Grid>
+              </Grid>
+            </Grid>
+            <Grid item md={1} xs={12} textAlign="left"></Grid>
+          </Grid>
+
+      </Grid>
+  </Grid>
                               <Grid container className='field-container' columnSpacing={1}>
                                   <Grid className={'form-label'} item md={4} xl={4} xs={12}>
                                     {privacyLevelSelection==='privacy_level_field' && (<Typography variant={'subtitle1'}>Privacy Level Field</Typography>)}
@@ -529,180 +702,6 @@ function Step2LevelUpload(props: LevelUploadInterface) {
 
                                   </Grid>
                               </Grid>
-                              <Grid container className='field-container' columnSpacing={1}>
-                                  <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                    {locationTypeSelection==='location_type_field' && (<Typography variant={'subtitle1'}>Location Type Field</Typography>)}
-                                    {locationTypeSelection==='user_input' && (<Typography variant={'subtitle1'}>Location Type</Typography>)}
-                                  </Grid>
-                                  <Grid item md={8} xl={8} xs={12}>
-                                      <Grid container>
-                                        <Grid item md={11} xl={11} xs={12}>
-                                          <Grid container flexDirection={'row'} sx={{alignItems: 'center'}}>
-                                            <Grid item>
-                                              <FormControl sx={{width: '100%', marginBottom:  '20px'}} disabled={props.isReadOnly}>
-                                                <FormLabel id="location-type-radio-buttons-group-label" className='form-sublabel'>Select From</FormLabel>
-                                                <RadioGroup
-                                                    row
-                                                    aria-labelledby="location-type-radio-buttons-group-label"
-                                                    name="location-type-radio-buttons-group"
-                                                    value={locationTypeSelection}
-                                                    onChange={handleLocationTypeSelectionOnChange}
-                                                  >
-                                                  <FormControlLabel value="location_type_field" control={<Radio />} label="Fields" />
-                                                  <FormControlLabel value="user_input" control={<Radio />} label="User Input" />
-                                                </RadioGroup>
-                                              </FormControl>
-                                            </Grid>
-                                            <Grid item sx={{flex: 1}}>
-                                              { locationTypeSelection==='location_type_field' && (<FormControl sx={{width: '100%'}}>
-                                                  <AttributeSelect
-                                                    id='location-type-field'
-                                                    name={'Location Type Field'}
-                                                    value={locationTypeField}
-                                                    attributes={attributes}
-                                                    selectionChanged={(value: any) => {
-                                                      setLocationTypeField(value as string)
-                                                      setIsDirty(true)
-                                                    }}
-                                                    required
-                                                    isReadOnly={props.isReadOnly}
-                                                  />
-                                              </FormControl>)}
-                                              { locationTypeSelection==='user_input' && (<FormControl sx={{width: '100%'}}>
-                                                <Autocomplete
-                                                  className="location-type-search"
-                                                  value={entityType}
-                                                  onChange={(event, newValue) => {
-                                                    if (newValue !== null)
-                                                      setEntityType(newValue.replace('Add "', '').replace(/"/g,''))
-                                                    else
-                                                      setEntityType('')
-                                                    setIsDirty(true)
-                                                  }}
-                                                  filterOptions={(options, params) => {
-                                                    const filtered = filterEntityTypeList(options, params)
-                                                    if (params.inputValue !== '') {
-                                                      filtered.push(`Add "${params.inputValue}"`)
-                                                    }
-                                                    return filtered
-                                                  }}
-                                                  options={entityTypes}
-                                                  getOptionLabel={(option) => {
-                                                    return option
-                                                  }}
-                                                  selectOnFocus
-                                                  clearOnBlur
-                                                  handleHomeEndKeys
-                                                  renderOption={(props, option) => <li {...props}>{option}</li>}
-                                                  freeSolo
-                                                  renderInput={(params) => <TextField {...params} label="Location Type" />}
-                                                  disableClearable
-                                                  disabled={props.isReadOnly}
-                                                />
-                                              </FormControl>)}
-                                            </Grid>
-                                          </Grid>
-                                        </Grid>
-                                        <Grid item md={1} xs={12} textAlign="left"></Grid>
-                                      </Grid>
-
-                                  </Grid>
-                              </Grid>
-                              <Grid container columnSpacing={1}>
-                                <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
-                                </Grid>
-                                <Grid item md={8} xl={8} xs={12} textAlign="left">
-                                  <FormLabel className='form-sublabel'>Default</FormLabel>
-                                </Grid>
-                              </Grid>
-                              <Grid container className='field-container align-start' columnSpacing={1}>
-                                  <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
-                                      <Typography variant={'subtitle1'}>Name Fields</Typography>
-                                  </Grid>
-                                  <Grid item md={8} xl={8} xs={12}>
-                                      <RadioGroup
-                                        row
-                                        aria-labelledby="name-field-radio-buttons-group-label"
-                                        name="name-field-radio-buttons-group"
-                                        value={defaultNameFieldId}
-                                        onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                                          let _value = (event.target as HTMLInputElement).value
-                                          setDefaultNameFieldId(_value)
-                                          setNameFields(
-                                            handleDefaultChange(event, nameFields) as NameField[]
-                                          )
-                                        }}
-                                      >
-                                      {nameFields.map((nameField: NameField, index: Number) => (
-                                        <NameFieldFormControl nameField={nameField} index={index} key={nameField.id}
-                                          languageOptions={props.languageOptions} attributes={attributes}
-                                          handleNameLanguageChange={handleNameLanguageChange} removeNameField={removeNameField}
-                                          isReadOnly={props.isReadOnly} addNameField={addNameField} />
-                                      ))}
-                                    </RadioGroup>
-                                  </Grid>
-                              </Grid>
-                              <Grid container columnSpacing={1}>
-                                <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
-                                </Grid>
-                                <Grid item md={8} xl={8} xs={12} textAlign="left">
-                                  <FormLabel className='form-sublabel'>Default</FormLabel>
-                                </Grid>
-                              </Grid>
-                              <Grid container className='field-container align-start' columnSpacing={1}>
-                                <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
-                                    <Typography variant={'subtitle1'}>Id Fields</Typography>
-                                </Grid>
-                                <Grid item md={8} xl={8} xs={12}>
-                                  <RadioGroup
-                                    row
-                                    aria-labelledby="id-field-radio-buttons-group-label"
-                                    name="id-field-radio-buttons-group"
-                                    value={defaultIdFieldId}
-                                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                                      let _value = (event.target as HTMLInputElement).value
-                                      setDefaultIdFieldId(_value)
-                                      setIdFields(
-                                        handleDefaultChange(event, idFields) as IdField[]
-                                      )
-                                    }}
-                                  >
-                                    {idFields.map((idField: IdField, index: number) => (
-                                      <IdFieldFormControl idField={idField} index={index} key={idField.id}
-                                        idTypes={idTypes} attributes={attributes}
-                                        handleIdTypeChange={handleIdTypeChange} removeIdField={removeIdField}
-                                        isReadOnly={props.isReadOnly} addIdField={addIdField}
-                                        handleOnNewIdType={handleOnNewIdType} />
-                                    ))}
-                                  </RadioGroup>
-                                </Grid>
-                              </Grid>
-
-                              { parseInt(props.uploadData.level) > 0 ?
-                                <Grid container className='field-container' columnSpacing={1}>
-                                    <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                        <Typography variant={'subtitle1'}>Parent Id Field</Typography>
-                                    </Grid>
-                                    <Grid item md={8} xl={8} xs={12}>
-                                      <Grid container>
-                                        <Grid item md={11} xl={11} xs={12}>
-                                          <AttributeSelect
-                                            id={'parent-id-field'}
-                                            name={'Parent Id Field'}
-                                            value={parentIdField}
-                                            attributes={attributes}
-                                            selectionChanged={(value: any) => {
-                                              setParentIdField(value as string)
-                                              setIsDirty(true)
-                                            }}
-                                            required
-                                            isReadOnly={props.isReadOnly}
-                                          />
-                                        </Grid>
-                                        <Grid item md={1} xs={12} textAlign="left"></Grid>
-                                      </Grid>
-                                    </Grid>
-                                </Grid> : null }
 
                               <Grid container className='field-container' columnSpacing={1}>
                                   <Grid className={'form-label'} item md={4} xl={4} xs={12}>

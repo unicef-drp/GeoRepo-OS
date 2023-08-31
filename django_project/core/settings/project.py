@@ -153,4 +153,7 @@ if USE_AZURE:
             'name': 'Authorization'
         }
     })
+    # Azure blob storage
+    AZURE_STORAGE = os.environ.get('AZURE_STORAGE')
+    AZURE_STORAGE_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER')
 CODE_RELEASE_VERSION = code_release_version()

@@ -3,13 +3,11 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.shortcuts import resolve_url, render, get_object_or_404
-from django.urls import reverse
+from django.shortcuts import resolve_url
 from django.http import HttpResponseRedirect
 
 from .handlers import AzureAuthHandler
 from .exceptions import InvalidUserError
-from .models import ThirdPartyApplication
 
 logger = logging.getLogger(__name__)
 
@@ -63,23 +61,3 @@ def azure_auth_redirect(request):
         logger.exception(e)
     logger.debug("azure_auth_redirect: %s", output)
     return output
-
-
-def azure_auth_third_party(request):
-    client_id = request.GET.get('client_id')
-    # fetch client registered origin
-    app = get_object_or_404(
-        ThirdPartyApplication,
-        client_id=client_id
-    )
-    # fetch access token and refresh token from session
-    token = AzureAuthHandler(request).get_token_from_cache()
-    if token and 'access_token' in token:
-        return render(request, 'third_party.html', context={
-            'access_token': token['access_token'],
-            'requester': app.origin
-        })
-    url_redirect = (
-        reverse('login') + '?next=' +
-        request.path + '?' + request.GET.urlencode())
-    return HttpResponseRedirect(url_redirect)

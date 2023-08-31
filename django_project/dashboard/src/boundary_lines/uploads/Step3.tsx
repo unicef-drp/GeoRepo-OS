@@ -7,14 +7,9 @@ import {useNavigate, useSearchParams} from "react-router-dom";
 import Modal from '@mui/material/Modal';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
 import Grid from '@mui/material/Grid';
 import CircularProgress from '@mui/material/CircularProgress';
-import { DataGrid, GridColDef, GridColumnGroupingModel, GridColumnHeaderParams, GridCellParams } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridColumnHeaderParams, GridCellParams } from '@mui/x-data-grid';
 import {postData} from "../../utils/Requests";
 import {useAppDispatch} from "../../app/hooks";
 import {setPollInterval, FETCH_INTERVAL_JOB} from "../../reducers/notificationPoll";
@@ -22,6 +17,7 @@ import {ReviewListRoute} from "../../views/routes";
 import Scrollable from "../../components/Scrollable";
 import ColumnHeaderIcon from '../../components/ColumnHeaderIcon'
 import { WizardStepInterface } from "../../models/upload";
+import {utcToLocalDateTimeString} from '../../utils/Helpers';
 
 const URL = '/api/entity-upload-status-list/'
 const READY_TO_REVIEW_URL = '/api/ready-to-review/'
@@ -130,6 +126,7 @@ export default function Step3(props: WizardStepInterface) {
             for (let key of Object.keys(responseData)) {
                 uploadRow[key] = responseData[key]
             }
+            uploadRow['started at'] = utcToLocalDateTimeString(new Date(uploadRow['started at']))
             return uploadRow
           }))
         } else if (response.data && response.data['results']) {
@@ -151,6 +148,7 @@ export default function Step3(props: WizardStepInterface) {
             for (let key of Object.keys(responseData)) {
                 uploadRow[key] = responseData[key]
             }
+            uploadRow['started at'] = utcToLocalDateTimeString(new Date(uploadRow['started at']))
             return uploadRow
           }))
         }

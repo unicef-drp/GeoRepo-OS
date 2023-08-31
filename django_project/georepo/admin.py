@@ -1,21 +1,29 @@
+import math
 import os.path
 import shutil
-import math
-import zipfile
 import tempfile
-from django.utils.translation import gettext_lazy as _
+import zipfile
 
 from django import forms
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth import get_user_model
-from django.contrib import admin, messages
 from django.conf import settings
-from django.http import HttpResponse
-from django.utils.html import format_html
-from core.settings.utils import absolute_path
-from guardian.admin import GuardedModelAdmin
+from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import (
     UserChangeForm, ReadOnlyPasswordHashField
+)
+from django.http import HttpResponse
+from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
+from guardian.admin import GuardedModelAdmin
+from rest_framework.authtoken.models import Token
+
+from core.settings.utils import absolute_path
+from georepo.forms import (
+    AzureAdminUserCreationForm,
+    AzureAdminUserChangeForm,
+    DatasetAdminCreationForm,
+    DatasetAdminChangeForm
 )
 from georepo.models import (
     GeographicalEntity,
@@ -41,13 +49,13 @@ from georepo.models import (
     GeorepoRole,
     UserAccessRequest
 )
-from georepo.forms import (
-    AzureAdminUserCreationForm,
-    AzureAdminUserChangeForm,
-    DatasetAdminCreationForm,
-    DatasetAdminChangeForm
+from georepo.utils.admin import (
+    # get_deleted_objects,
+    delete_selected
 )
-
+from georepo.utils.dataset_view import (
+    get_view_tiling_status
+)
 
 User = get_user_model()
 
@@ -189,6 +197,14 @@ def refresh_dynamic_views(modeladmin, request, queryset):
 @admin.action(description='Generate arcgis config')
 def generate_arcgis_config_action(modeladmin, request, queryset):
     from georepo.utils.arcgis import generate_arcgis_config
+    # check if user has API key
+    if not Token.objects.filter(user=request.user).exists():
+        modeladmin.message_user(
+            request,
+            'Please generate API Key for your user account!',
+            messages.ERROR
+        )
+        return
     for dataset in queryset:
         generate_arcgis_config(request.user, dataset, None)
 
@@ -262,9 +278,10 @@ class DatasetAdmin(GuardedModelAdmin):
         }),
     )
     list_display = (
-        'label', 'short_code', 'size', 'task_tiling_status',
-        'geojson', 'layer_preview', 'arcgis_config')
+        'label', 'short_code', 'max_privacy_level', 'min_privacy_level',
+        'uuid', 'arcgis_config')
     actions = [
+        delete_selected,
         populate_default_tile_config, generate_simplified_geometry,
         do_dataset_patch, refresh_dynamic_views,
         populate_default_admin_level_names,
@@ -306,55 +323,14 @@ class DatasetAdmin(GuardedModelAdmin):
         else:
             return '-'
 
-    def geojson(self, obj: Dataset):
-        geojson_file_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(obj.uuid)
-        ) + '.geojson'
-        if os.path.exists(geojson_file_path):
-            return format_html(
-                '<a href="{}">GeoJSON File</a>'.format(
-                    geojson_file_path.replace(
-                        settings.MEDIA_ROOT,
-                        settings.MEDIA_URL
-                    )))
-        return '-'
-
-    def layer_preview(self, obj: Dataset):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
-        )
-        if os.path.exists(tile_path):
-            return format_html(
-                '<a href="/layer-test/?dataset={}">Layer Preview</a>'.format(
-                    obj.label))
-        return '-'
-
-    def task_tiling_status(self, obj: Dataset):
-        tiling_status = (
-            Dataset.DatasetTilingStatus(obj.tiling_status).label
-        )
-        if obj.tiling_status == Dataset.DatasetTilingStatus.PROCESSING:
-            tiling_status = f'{tiling_status} ({obj.tiling_progress:.0f}%)'
-        return tiling_status
-
-    def size(self, obj: Dataset):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
-        )
-        if os.path.exists(tile_path):
-            folder_size = 0
-            # get size
-            for path, dirs, files in os.walk(tile_path):
-                for f in files:
-                    fp = os.path.join(path, f)
-                    folder_size += os.stat(fp).st_size
-
-            return convert_size(folder_size)
-
-        return '0'
+    # Uncomment this function when we want to simplify
+    # the delete confirmation page
+    # def get_deleted_objects(self, objs, request):
+    #     """
+    #     Hook for customizing the delete process for the delete view and the
+    #     "delete selected" action.
+    #     """
+    #     return get_deleted_objects(objs, request, self.admin_site, True)
 
 
 class LayerStyleAdmin(admin.ModelAdmin):
@@ -426,7 +402,6 @@ def generate_view_vector_tiles(modeladmin, request, queryset):
                                               export_data=False)
 
 
-@admin.action(description='Download Storage Usage')
 def download_view_size_action(modeladmin, request, queryset):
     import csv
     # Create the HttpResponse object with the appropriate CSV header.
@@ -471,50 +446,6 @@ def fix_view_privacy_level(modeladmin, request, queryset):
         init_view_privacy_level(dataset_view)
 
 
-@admin.action(description='Move to View Resource')
-def move_resource_view_level4(modeladmin, request, queryset):
-    # move vector tiles + exported data to resource Level 4
-    # this is to patch existing views to view resources
-    for dataset_view in queryset:
-        # retrieve resource level 4
-        resource = DatasetViewResource.objects.get(
-            dataset_view=dataset_view,
-            privacy_level=4
-        )
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(dataset_view.uuid)
-        )
-        new_tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(resource.uuid)
-        )
-        move_directory(tile_path, new_tile_path)
-        if os.path.exists(new_tile_path):
-            resource.status = DatasetView.DatasetViewStatus.DONE
-            resource.vector_tiles_updated_at = dataset_view.tiles_updated_at
-            resource.bbox = dataset_view.bbox
-            resource.save()
-        geojson_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(dataset_view.uuid)
-        )
-        new_geojson_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(resource.uuid)
-        )
-        move_directory(geojson_path, new_geojson_path)
-        shapefile_path = os.path.join(
-            settings.SHAPEFILE_FOLDER_OUTPUT,
-            str(dataset_view.uuid)
-        )
-        new_shapefile_path = os.path.join(
-            settings.SHAPEFILE_FOLDER_OUTPUT,
-            str(resource.uuid)
-        )
-        move_directory(shapefile_path, new_shapefile_path)
-
-
 def view_generate_simplified_geometry(modeladmin, request, queryset):
     from georepo.tasks.simplify_geometry import simplify_geometry_in_view
     from celery.result import AsyncResult
@@ -541,44 +472,40 @@ def view_generate_simplified_geometry(modeladmin, request, queryset):
     )
 
 
+@admin.action(description='Fix Entity Count in View')
+def fix_view_entity_count(modeladmin, request, queryset):
+    from georepo.utils.dataset_view import get_entities_count_in_view
+    for dataset_view in queryset:
+        view_resources = DatasetViewResource.objects.filter(
+            dataset_view=dataset_view
+        )
+        for view_resource in view_resources:
+            view_resource.entity_count = (
+                get_entities_count_in_view(
+                    dataset_view, view_resource.privacy_level
+                )
+            )
+            view_resource.save(update_fields=['entity_count'])
+
+
 class DatasetViewAdmin(GuardedModelAdmin):
     list_display = (
-        'name', 'dataset', 'is_static',
-        'size', 'status', 'uuid', 'layer_preview')
+        'name', 'dataset', 'is_static', 'min_privacy_level',
+        'max_privacy_level', 'tiling_status', 'uuid')
     search_fields = ['name', 'dataset__label', 'uuid']
     actions = [generate_view_vector_tiles, create_sql_view_action,
                generate_view_exported_data,
-               download_view_size_action, fix_view_privacy_level,
-               move_resource_view_level4, view_generate_simplified_geometry]
+               fix_view_privacy_level,
+               fix_view_entity_count,
+               view_generate_simplified_geometry]
 
-    def layer_preview(self, obj: DatasetView):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
+    def tiling_status(self, obj: DatasetView):
+        status, _ = get_view_tiling_status(
+            DatasetViewResource.objects.filter(
+                dataset_view=obj
+            )
         )
-        if os.path.exists(tile_path):
-            return format_html(
-                '<a href="/layer-test/?dataset_view={}">Layer Preview</a>'
-                ''.format(
-                    obj.id))
-        return '-'
-
-    def size(self, obj: DatasetView):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
-        )
-        if os.path.exists(tile_path):
-            folder_size = 0
-            # get size
-            for path, dirs, files in os.walk(tile_path):
-                for f in files:
-                    fp = os.path.join(path, f)
-                    folder_size += os.stat(fp).st_size
-
-            return convert_size(folder_size)
-
-        return '0'
+        return status
 
 
 class LanguageAdmin(admin.ModelAdmin):
@@ -609,6 +536,31 @@ class TagAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ["name"]}
 
 
+@admin.action(description='Regenerate Vector Tiles')
+def regenerate_resource_vector_tiles(modeladmin, request, queryset):
+    from celery.result import AsyncResult
+    from core.celery import app
+    from dashboard.tasks import (
+        generate_view_vector_tiles_task
+    )
+    for view_resource in queryset:
+        if view_resource.vector_tiles_task_id:
+            res = AsyncResult(view_resource.vector_tiles_task_id)
+            if not res.ready():
+                # find if there is running task and stop it
+                app.control.revoke(view_resource.vector_tiles_task_id,
+                                   terminate=True)
+        view_resource.status = DatasetView.DatasetViewStatus.PENDING
+        view_resource.vector_tiles_progress = 0
+        view_resource.save()
+        task = generate_view_vector_tiles_task.apply_async(
+            (view_resource.id, True, True),
+            queue='tegola'
+        )
+        view_resource.vector_tiles_task_id = task.id
+        view_resource.save(update_fields=['vector_tiles_task_id'])
+
+
 @admin.action(description='Resume Vector Tiles Generation')
 def resume_vector_tiles_generation(modeladmin, request, queryset):
     from celery.result import AsyncResult
@@ -623,50 +575,73 @@ def resume_vector_tiles_generation(modeladmin, request, queryset):
                 # find if there is running task and stop it
                 app.control.revoke(view_resource.vector_tiles_task_id,
                                    terminate=True)
+        view_resource.status = DatasetView.DatasetViewStatus.PENDING
+        view_resource.vector_tiles_progress = 0
+        view_resource.save()
         task = generate_view_vector_tiles_task.apply_async(
             (view_resource.id, True, False),
             queue='tegola'
         )
         view_resource.vector_tiles_task_id = task.id
-        view_resource.save()
+        view_resource.save(update_fields=['vector_tiles_task_id'])
+
+
+@admin.action(description='Calculate Vector Tiles Size')
+def calculate_vector_tile_size(modeladmin, request, queryset):
+    from georepo.utils.vector_tile import calculate_vector_tiles_size
+    for view_resource in queryset:
+        calculate_vector_tiles_size(view_resource)
+
+
+@admin.action(description='Cleanup tegola config files')
+def cleanup_tegola_configs(modeladmin, request, queryset):
+    from georepo.utils.vector_tile import clean_tegola_config_files
+    for view_resource in queryset:
+        clean_tegola_config_files(view_resource)
+
+
+@admin.action(description='Fix Entity Count in Resource')
+def fix_entity_count_in_resource(modeladmin, request, queryset):
+    from georepo.utils.dataset_view import get_entities_count_in_view
+    for view_resource in queryset:
+        view_resource.entity_count = (
+            get_entities_count_in_view(
+                view_resource.dataset_view,
+                view_resource.privacy_level
+            )
+        )
+        view_resource.save(update_fields=['entity_count'])
 
 
 class DatasetViewResourceAdmin(admin.ModelAdmin):
-    list_display = ('dataset_view', 'privacy_level', 'uuid',
-                    'status', 'vector_tiles_progress', 'size',
-                    'layer_preview')
     search_fields = ['dataset_view__name', 'uuid']
-    actions = [resume_vector_tiles_generation]
+    actions = [
+        calculate_vector_tile_size,
+        regenerate_resource_vector_tiles,
+        resume_vector_tiles_generation,
+        cleanup_tegola_configs,
+        fix_entity_count_in_resource
+    ]
 
-    def layer_preview(self, obj: DatasetViewResource):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
-        )
-        if os.path.exists(tile_path):
-            return format_html(
-                '<a href="/layer-test/'
-                '?dataset_view_resource={}">Layer Preview</a>'
-                ''.format(
-                    obj.id))
-        return '-'
+    def get_list_display(self, request):
+        def layer_preview(obj: DatasetViewResource):
+            # check if user has API key
+            if not settings.USE_AZURE:
+                if not Token.objects.filter(user=request.user).exists():
+                    return 'Require User API Key!'
+            if obj.vector_tiles_exist:
+                return format_html(
+                    '<a href="/layer-test/'
+                    '?dataset_view_resource={}">Layer Preview</a>'
+                    ''.format(
+                        obj.id))
+            return '-'
 
-    def size(self, obj: DatasetViewResource):
-        tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            str(obj.uuid)
-        )
-        if os.path.exists(tile_path):
-            folder_size = 0
-            # get size
-            for path, dirs, files in os.walk(tile_path):
-                for f in files:
-                    fp = os.path.join(path, f)
-                    folder_size += os.stat(fp).st_size
-
-            return convert_size(folder_size)
-
-        return '0'
+        def size(obj: DatasetViewResource):
+            return convert_size(obj.vector_tiles_size)
+        return ('dataset_view', 'privacy_level', 'entity_count', 'uuid',
+                'status', 'vector_tiles_progress', size,
+                layer_preview)
 
 
 class ModuleAdmin(GuardedModelAdmin):

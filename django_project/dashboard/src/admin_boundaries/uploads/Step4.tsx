@@ -18,6 +18,7 @@ import Scrollable from "../../components/Scrollable";
 import Step4OverlapsError from './Step4OverlapsError'
 import ColumnHeaderIcon from '../../components/ColumnHeaderIcon'
 import { WizardStepInterface } from "../../models/upload";
+import {utcToLocalDateTimeString} from '../../utils/Helpers';
 
 const URL = '/api/entity-upload-status-list/'
 const READY_TO_REVIEW_URL = '/api/ready-to-review/'
@@ -214,6 +215,7 @@ export default function Step4(props: WizardStepInterface) {
             for (let key of Object.keys(responseData)) {
                 uploadRow[key] = responseData[key]
             }
+            uploadRow['started at'] = utcToLocalDateTimeString(new Date(uploadRow['started at']))
             return uploadRow
           }))
         } else if (response.data && response.data['results']) {
@@ -238,6 +240,7 @@ export default function Step4(props: WizardStepInterface) {
             for (let key of Object.keys(responseData)) {
                 uploadRow[key] = responseData[key]
             }
+            uploadRow['started at'] = utcToLocalDateTimeString(new Date(uploadRow['started at']))
             return uploadRow
           }))
         }
@@ -298,9 +301,9 @@ export default function Step4(props: WizardStepInterface) {
       if (response.status === 200) {
         // trigger to fetch notification frequently
         dispatch(setPollInterval(FETCH_INTERVAL_JOB))
-        if ((window as any).is_admin && 'session_source' in response.data) {
-          let _source = response.data['session_source']
-          navigate(`${ReviewListRoute.path}?upload=${_source}`)
+        if ((window as any).is_admin && 'session_id' in response.data) {
+          let _id = response.data['session_id']
+          navigate(`${ReviewListRoute.path}?upload=${_id}`)
         } else {
           navigate(ReviewListRoute.path)
         }
