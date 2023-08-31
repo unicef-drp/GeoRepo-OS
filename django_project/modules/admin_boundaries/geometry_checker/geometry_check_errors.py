@@ -62,3 +62,12 @@ class DuplicateCheckError(object):
 
     def __str__(self) -> str:
         return f'{self.feature_id} - {self.other_feature_id}'
+
+
+class HierarchyCheckError(object):
+
+    def __init__(self, feature_id,
+                 overlap_percentage: float
+                 ) -> None:
+        self.feature_id = feature_id
+        self.overlap_percentage = overlap_percentage
