@@ -57,7 +57,7 @@ nav:
                         - API:
                                 - user/api/index.md
                                 - Guide: user/api/guide/index.md
-                                - Reference: user/api/manual/index.md
+                                - Manual: https://georepo.unicef.org/api/v1/docs/
         - Administrators:
                 - Overview:
                         - administrator/index.md
