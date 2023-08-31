@@ -55,17 +55,6 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/django_cache:/home/web/django_cache
-    ports:
-      # for ssh
-      - "51103:22"
-      - "51105:8081"
-      # for pg_tileserv
-      - "51106:7800"
-      - "51107:7801"
-      # for debugpy
-      - "55678:5678"
-      # for tegola tile
-      - "51108:9090"
     links:
       - db
       - worker
