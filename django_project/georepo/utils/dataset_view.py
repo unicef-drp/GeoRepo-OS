@@ -480,7 +480,7 @@ def get_view_tiling_status(view_resource_queryset):
     )
     if error_queryset.exists():
         return 'Error', tiling_progress
-    tiling_status = 'Pending'
+    tiling_status = 'Ready'
     if isclose(tiling_progress, 100, abs_tol=1e-4):
         tiling_status = 'Done'
     elif tiling_progress > 0:

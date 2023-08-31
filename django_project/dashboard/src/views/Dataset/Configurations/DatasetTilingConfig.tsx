@@ -549,7 +549,7 @@ export default function DatasetTilingConfig(props: DatasetTilingConfigInterface)
         }
         return (
             <span style={{display:'flex', marginLeft: '5px' }}>
-                <CircularProgress size={18} />
+                {tilingStatus === 'Processing' && <CircularProgress size={18} /> }
                 <span style={{marginLeft: '5px' }}>{tilingStatus}{tilingStatus === 'Processing' && tilingProgress ? ` ${tilingProgress}%`:''}</span>
             </span>
         )
