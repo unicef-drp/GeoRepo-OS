@@ -52,7 +52,7 @@ export default function DatasetDetailWrapper() {
             permissions: ['Manage']
         },
         {
-            title: 'VIEW',
+            title: 'VIEWS',
             element: NavigateComponent,
             permissions: ['Manage']
         }
