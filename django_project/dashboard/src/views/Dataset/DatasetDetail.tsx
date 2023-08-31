@@ -23,10 +23,6 @@ const DatasetDetailTab = (Component: React.ElementType, givenProps: DatasetDetai
   return <Component {...givenProps} />
 }
 
-const DatasetNavTab = (Component: React.ElementType, url: String) => {
-  return <Component url={url} />
-}
-
 export default function DatasetDetail(props: DatasetDetailInterface) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate()
@@ -95,20 +91,12 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
     }, [searchParams])
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-      navigate(`/${props.moduleName}/dataset_entities?id=${currentDatasetId ? currentDatasetId : searchParams.get('id')}&tab=${newValue}`)
-    }
-
-    const tabDetail = (tab: any, idx: number) => {
-      if (idx < 6) {
-        return DatasetDetailTab(tab.element, {
-                  dataset: dataset,
-                  onDatasetUpdated: fetchDatasetDetail,
-                  isReadOnly: !dataset.is_active
-                })
-      } else if (idx == 6) {
-        return DatasetNavTab(tab.element, `/upload_list?dataset=${dataset.dataset}`)
-      } else if (idx == 7) {
-        return DatasetNavTab(tab.element, `/views?dataset=${dataset.dataset}`)
+      if (newValue == 6) {
+        navigate(`/upload_list?dataset=${dataset.dataset}`)
+      } else if (newValue == 7) {
+        navigate(`/views?dataset=${dataset.dataset}`)
+      } else {
+        navigate(`/${props.moduleName}/dataset_entities?id=${currentDatasetId ? currentDatasetId : searchParams.get('id')}&tab=${newValue}`)
       }
     }
 
@@ -129,7 +117,11 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
                 {
                 filteredTabs.map((tab, index) => {
                   return <TabPanel key={index} value={tabSelected} index={index} padding={1} noPadding={tab.title==='PREVIEW'} >
-                    {tabDetail(tab, index)}
+                    {DatasetDetailTab(tab.element, {
+                      dataset: dataset,
+                      onDatasetUpdated: fetchDatasetDetail,
+                      isReadOnly: !dataset.is_active
+                    })}
                   </TabPanel>
                 })
               }
