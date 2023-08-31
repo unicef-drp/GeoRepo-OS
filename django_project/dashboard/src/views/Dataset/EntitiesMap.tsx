@@ -129,7 +129,14 @@ class SelectControl<IControl> {
             this._selectMode = value
         }
         const divRoot = ReactDOM.createRoot(this._container)
-        divRoot.render(<ToggleSelect map={this._map} onToggleSelect={toogle_select} />);
+        let _preferences: any = window.preferences
+        let _maptiler = _preferences ? _preferences['maptiler_api_key'] : ''
+        divRoot.render(
+          <>
+              {_maptiler ? null : <h2>Please set Maptiler API Key on the admin!</h2>}
+              <ToggleSelect map={this._map} onToggleSelect={toogle_select} />
+          </>
+        );
         return this._container;
     }
 
