@@ -36,7 +36,7 @@ interface DashboardInterface {
 }
 
 function Dashboard(props: DashboardInterface) {
-  const helpPageRef = useRef<HTMLButtonElement | null>(null)
+  const helpPageRef = useRef(null)
   const [appRoutes, setAppRoutes] = useState<RouteInterface[]>([])
   const [appHeaderButtons, setAppHeaderButtons] = useState([])
 

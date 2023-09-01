@@ -56,14 +56,17 @@ export default function UserMenu(props: UserMenuInterface) {
         <Box className='NavHeader-Username' sx={{display:{xs:'none', sm: 'flex'}}}>{getLoggedInName()}</Box>
         <div className='HelpButton .SvgButton'>
           <a href='#' onClick={_ => {
+            // @ts-ignore
             props.helpPageRef.current?.open()
           }}>
             <HelpIcon/>
           </a>
         </div>
-        <button onClick={handleClick} type="button">
-          <SettingsIcon/>
-        </button>
+        <div>
+          <button onClick={handleClick} type="button">
+            <SettingsIcon/>
+          </button>
+        </div>
         <Menu
           anchorEl={anchorEl}
           open={open}
