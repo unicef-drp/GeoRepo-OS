@@ -18,8 +18,6 @@ import Notification from '../components/Notification';
 import Maintenance from '../components/Maintenance';
 import Loading from "../components/Loading";
 import ErrorBoundary from "../components/ErrorBoundary";
-import { HelpCenter } from '../components/HelpCenter'
-import HelpIcon from '@mui/icons-material/Help';
 
 
 export function useMatchedRoute(routes: RouteInterface[]) {
@@ -69,14 +67,7 @@ function Dashboard(props: DashboardInterface) {
 
   return (
     <div className="App">
-      <NavBar helpPageRef={helpPageRef}/>
-      {/*<div className='HelpButton .SvgButton'>*/}
-      {/*  <a href='#' onClick={_ => {*/}
-      {/*    helpPageRef?.current.open()*/}
-      {/*  }}>*/}
-      {/*    <HelpIcon/>*/}
-      {/*  </a>*/}
-      {/*</div>*/}
+      <div><NavBar helpPageRef={helpPageRef}/></div>
       <main>
             {
               appRoutes.length === 0  || appHeaderButtons.length === 0 ? <div style={{width: "100%"}} className={"loading-container"}>
@@ -100,7 +91,6 @@ function Dashboard(props: DashboardInterface) {
                 </Router>
             }
       </main>
-      <HelpCenter ref={helpPageRef}/>
     </div>
   );
 }
