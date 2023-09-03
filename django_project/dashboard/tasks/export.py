@@ -86,22 +86,6 @@ def generate_view_export_data(view_id: str):
         logger.error(f'DatasetView {view_id} does not exist')
 
 
-@shared_task(name="generate_dataset_export_data")
-def generate_dataset_export_data(dataset_id: str):
-    from georepo.models.dataset import Dataset
-    from georepo.utils.geojson import generate_geojson
-    from georepo.utils.shapefile import generate_shapefile
-    try:
-        dataset = Dataset.objects.get(id=dataset_id)
-        logger.info('Extracting geojson from dataset...')
-        generate_geojson(dataset)
-        logger.info('Extracting shapefile from dataset...')
-        generate_shapefile(dataset)
-        logger.info('Extract dataset data done')
-    except Dataset.DoesNotExist:
-        logger.error(f'Dataset {dataset_id} does not exist')
-
-
 @shared_task(name="remove_view_resource_data")
 def remove_view_resource_data(resource_id: str):
     # remove vector tiles dir

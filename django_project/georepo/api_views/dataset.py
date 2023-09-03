@@ -42,7 +42,7 @@ from georepo.serializers.dataset import (
     DetailedDatasetSerializer
 )
 from georepo.utils.renderers import GeojsonRenderer, ShapefileRenderer
-from georepo.utils.exporter_base import DatasetExporterBase
+from georepo.utils.exporter_base import get_dataset_exported_file_name
 from georepo.utils.unique_code import parse_unique_code
 from georepo.utils.uuid_helper import get_uuid_value
 from georepo.utils.url_helper import get_page_size
@@ -195,7 +195,7 @@ class DatasetExportDownload(GenericAPIView):
             flat=True
         ).distinct()
         for level in levels:
-            exported_name = DatasetExporterBase.get_exported_file_name(level)
+            exported_name = get_dataset_exported_file_name(level)
             file_path = os.path.join(
                 settings.GEOJSON_FOLDER_OUTPUT if format == 'geojson' else
                 settings.SHAPEFILE_FOLDER_OUTPUT,
@@ -298,7 +298,7 @@ class DatasetExportDownloadByLevel(DatasetExportDownload):
         admin_level = self.kwargs.get('admin_level')
         suffix = '.geojson' if format == 'geojson' else '.zip'
         results = []
-        exported_name = DatasetExporterBase.get_exported_file_name(
+        exported_name = get_dataset_exported_file_name(
             admin_level
         )
         file_path = os.path.join(
@@ -471,7 +471,7 @@ class DatasetExportDownloadByCountry(DatasetExportDownload):
                 flat=True
             ).distinct()
             for level in levels:
-                exported_name = DatasetExporterBase.get_exported_file_name(
+                exported_name = get_dataset_exported_file_name(
                     level,
                     adm0
                 )
@@ -584,7 +584,7 @@ class DatasetExportDownloadByCountryAndLevel(DatasetExportDownloadByCountry):
             if adm0.unique_code in added_ucodes:
                 # skip if it's the same entity
                 continue
-            exported_name = DatasetExporterBase.get_exported_file_name(
+            exported_name = get_dataset_exported_file_name(
                 admin_level,
                 adm0
             )

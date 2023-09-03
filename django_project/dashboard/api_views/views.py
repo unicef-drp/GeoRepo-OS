@@ -31,13 +31,13 @@ from georepo.models.dataset_view import (
     DATASET_VIEW_ALL_VERSIONS_TAG,
     DATASET_VIEW_LATEST_TAG,
     DATASET_VIEW_DATASET_TAG,
-    DATASET_VIEW_SUBSET_TAG,
-    DatasetViewResource
+    DATASET_VIEW_SUBSET_TAG
 )
 from georepo.utils.dataset_view import (
     trigger_generate_vector_tile_for_view,
     create_sql_view,
-    init_view_privacy_level
+    init_view_privacy_level,
+    get_view_resource_from_view
 )
 from georepo.tasks.simplify_geometry import simplify_geometry_in_view
 from georepo.utils.permission import (
@@ -661,10 +661,10 @@ class DownloadView(AzureAuthRequiredMixin,
             dataset_view=dataset_view
         )
         # get resource for the privacy level
-        resource = DatasetViewResource.objects.filter(
-            dataset_view=dataset_view,
-            privacy_level=user_privacy_level
-        ).first()
+        resource = get_view_resource_from_view(
+            dataset_view,
+            user_privacy_level
+        )
         if resource is None:
             raise Http404('The requested file does not exist')
         result_list = []

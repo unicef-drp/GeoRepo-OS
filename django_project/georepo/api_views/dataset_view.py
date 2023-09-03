@@ -24,7 +24,6 @@ from georepo.utils.permission import (
 from georepo.api_views.api_cache import ApiCache
 from georepo.models.dataset_view import (
     DatasetView,
-    DatasetViewResource,
     DATASET_VIEW_DATASET_TAG
 )
 from georepo.models.entity import (
@@ -55,6 +54,9 @@ from georepo.utils.permission import (
     EXTERNAL_READ_VIEW_PERMISSION_LIST
 )
 from georepo.utils.exporter_base import APIDownloaderBase
+from georepo.utils.dataset_view import (
+    get_view_resource_from_view
+)
 
 
 @method_decorator(
@@ -392,10 +394,10 @@ class DatasetViewExportDownload(APIDownloaderBase):
             dataset_view=dataset_view
         )
         # get resource for the privacy level
-        resource = DatasetViewResource.objects.filter(
-            dataset_view=dataset_view,
-            privacy_level=user_privacy_level
-        ).first()
+        resource = get_view_resource_from_view(
+            dataset_view,
+            user_privacy_level
+        )
         if resource is None:
             return [], 0
         entities = GeographicalEntity.objects.filter(
@@ -438,18 +440,18 @@ class DatasetViewExportDownload(APIDownloaderBase):
         return results, total_count
 
     @swagger_auto_schema(
-                operation_id='download-dataset-view',
-                tags=[DOWNLOAD_DATA_TAG],
-                manual_parameters=[uuid_param, format_param],
-                responses={
-                    200: openapi.Schema(
-                        description=(
-                            'Dataset zip file'
-                        ),
-                        type=openapi.TYPE_FILE
-                    ),
-                    404: APIErrorSerializer
-                }
+        operation_id='download-dataset-view',
+        tags=[DOWNLOAD_DATA_TAG],
+        manual_parameters=[uuid_param, format_param],
+        responses={
+            200: openapi.Schema(
+                description=(
+                    'Dataset zip file'
+                ),
+                type=openapi.TYPE_FILE
+            ),
+            404: APIErrorSerializer
+        }
     )
     def get(self, request, *args, **kwargs):
         uuid = kwargs.get('uuid', None)
@@ -502,10 +504,10 @@ class DatasetViewExportDownloadByLevel(DatasetViewExportDownload):
             dataset_view=dataset_view
         )
         # get resource for the privacy level
-        resource = DatasetViewResource.objects.filter(
-            dataset_view=dataset_view,
-            privacy_level=user_privacy_level
-        ).first()
+        resource = get_view_resource_from_view(
+            dataset_view,
+            user_privacy_level
+        )
         if resource is None:
             return [], 0
         # admin level
@@ -678,10 +680,10 @@ class DatasetViewExportDownloadByCountry(DatasetViewExportDownload):
             dataset_view=dataset_view
         )
         # get resource for the privacy level
-        resource = DatasetViewResource.objects.filter(
-            dataset_view=dataset_view,
-            privacy_level=user_privacy_level
-        ).first()
+        resource = get_view_resource_from_view(
+            dataset_view,
+            user_privacy_level
+        )
         if resource is None:
             return [], 0
         results = []
@@ -933,10 +935,10 @@ class DatasetViewExportDownloadByCountryAndLevel(
             dataset_view=dataset_view
         )
         # get resource for the privacy level
-        resource = DatasetViewResource.objects.filter(
-            dataset_view=dataset_view,
-            privacy_level=user_privacy_level
-        ).first()
+        resource = get_view_resource_from_view(
+            dataset_view,
+            user_privacy_level
+        )
         if resource is None:
             return [], 0
         # admin level

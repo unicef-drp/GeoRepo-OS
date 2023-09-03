@@ -1,9 +1,7 @@
 import fiona
-from fiona.crs import from_epsg
 import zipfile
 import os
 import subprocess
-from uuid import uuid4
 from django.core.files.storage import default_storage
 from django.conf import settings
 from django.core.files.uploadedfile import (
@@ -11,11 +9,10 @@ from django.core.files.uploadedfile import (
     TemporaryUploadedFile
 )
 from georepo.models import (
-    Dataset, DatasetView,
+    DatasetView,
     DatasetViewResource
 )
 from georepo.utils.exporter_base import (
-    DatasetExporterBase,
     DatasetViewExporterBase
 )
 
@@ -128,87 +125,6 @@ def validate_shapefile_zip(layer_file_path: any):
                     error.append(f'{filename}.dbf')
     is_valid = is_valid and len(error) == 0
     return is_valid, error
-
-
-class ShapefileExporter(DatasetExporterBase):
-    output = 'shapefile'
-
-    def write_entities(self, schema, entities, context, exported_name) -> str:
-        shapefile_output_folder = os.path.join(
-            settings.SHAPEFILE_FOLDER_OUTPUT,
-            str(self.dataset.uuid)
-        )
-        if not os.path.exists(shapefile_output_folder):
-            os.mkdir(shapefile_output_folder)
-        suffix = '.shp'
-        crs = from_epsg(4326)
-        output_driver = 'ESRI Shapefile'
-        tmp_filename = str(uuid4())
-        shape_file = os.path.join(
-            shapefile_output_folder,
-            tmp_filename
-        ) + suffix
-        with fiona.open(shape_file, 'w', driver=output_driver,
-                        crs=crs,
-                        schema=schema) as c:
-            entities = entities.iterator()
-            records = []
-            record_count = 0
-            for entity in entities:
-                data = self.get_serializer()(
-                    entity,
-                    many=False,
-                    context=context
-                ).data
-                records.append(data)
-                record_count += 1
-                if len(records) >= SHAPEFILE_RECORDS_BUFFER_TX:
-                    c.writerecords(records)
-                    records.clear()
-                if record_count % SHAPEFILE_RECORDS_BUFFER == 0:
-                    c.flush()
-            if len(records) > 0:
-                c.writerecords(records)
-        # zip all the files
-        tmp_zip_file_path = os.path.join(
-            shapefile_output_folder,
-            f'tmp_{exported_name}'
-        ) + '.zip'
-        with zipfile.ZipFile(
-                tmp_zip_file_path, 'w', zipfile.ZIP_DEFLATED) as archive:
-            for suffix in GENERATED_FILES:
-                shape_file = os.path.join(
-                    shapefile_output_folder,
-                    tmp_filename
-                ) + suffix
-                if not os.path.exists(shape_file):
-                    continue
-                archive.write(
-                    shape_file,
-                    arcname=exported_name + suffix
-                )
-                os.remove(shape_file)
-        # move zip file
-        zip_file_path = os.path.join(
-            shapefile_output_folder,
-            f'{exported_name}'
-        ) + '.zip'
-        if os.path.exists(zip_file_path):
-            os.remove(zip_file_path)
-        os.rename(tmp_zip_file_path, zip_file_path)
-        return zip_file_path
-
-
-def generate_shapefile(dataset: Dataset):
-    """
-    Extract shape file from dataset and then save it to
-    shapefile dataset folder
-    :param dataset: Dataset object
-    :return: shapefile path
-    """
-    exporter = ShapefileExporter(dataset)
-    exporter.init_exporter()
-    exporter.run()
 
 
 class ShapefileViewExporter(DatasetViewExporterBase):
