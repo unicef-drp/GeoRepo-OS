@@ -23,6 +23,7 @@ import {
   setCurrentColumns
 } from "../../reducers/entitiesTable";
 import {RootState} from "../../app/store";
+import cloneDeep from "lodash/cloneDeep";
 
 export interface EntitiesTableInterface {
     dataset_id: string,
@@ -91,7 +92,7 @@ const COLUMNS = [
 ]
 
 
-const FILTER_COLUMNS = [
+const FILTER_ENABLED_COLUMNS = [
     'country',
     'level',
     'type',
@@ -124,7 +125,8 @@ const API_URL = '/api/dashboard-dataset/list/'
 const FilterIcon: any = FilterAlt
 
 export default function EntitiesTable(props: EntitiesTableInterface) {
-
+    const dispatch = useAppDispatch()
+    const initialColumns = useAppSelector((state: RootState) => state.entitiesTable.currentColumns)
     const [loading, setLoading] = useState<boolean>(true)
     const [columns, setColumns] = useState<any>([])
     const [data, setData] = useState<EntityTableRowInterface[]>([])
@@ -277,8 +279,8 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                     } else {
                         options.options = {
                             searchable: false,
-                            display: COLUMNS.includes(column_name),
-                            filter: FILTER_COLUMNS.includes(column_name),
+                            display: initialColumns.includes(column_name),
+                            filter: FILTER_ENABLED_COLUMNS.includes(column_name),
                         }
                         if (column_name === 'level') {
                             options.options.customFilterListOptions = {
@@ -320,7 +322,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                                 names: filter_values[column_name]
                             }
                         }
-                        if (FILTER_COLUMNS.includes(column_name)) {
+                        if (FILTER_ENABLED_COLUMNS.includes(column_name)) {
                             // set existing filter values 
                             options.options.filterList = getExistingFilterValue(column_name)
                         }
@@ -330,7 +332,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
             } else {
                 // update existing filters from props Filter obj
                 const _columns = columns.map((column: any) => {
-                    if (FILTER_COLUMNS.includes(column.name)) {
+                    if (FILTER_ENABLED_COLUMNS.includes(column.name)) {
                         let _opt = {...column.options}
                         _opt.filterList = getExistingFilterValue(column.name)
                         return { ...column, options: _opt}
@@ -499,6 +501,13 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                     rowsPerPage: tableState.rowsPerPage
                 })
                 break;
+            case 'viewColumnsChange':
+                let _columns = cloneDeep(columns)
+                for (let i = 0; i < tableState.columns.length; i++) {
+                  _columns[i].options.display = tableState.columns[i].display == 'true'
+                }
+
+                setColumns(_columns)
             default:
           }
     }

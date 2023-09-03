@@ -8,13 +8,16 @@ export interface TableState {
 
 const initialState: TableState = {
   currentColumns: [
+    'country',
+    'level',
+    'type',
     'name',
-    'description',
-    'tags',
-    'dataset',
-    'min_privacy',
-    'max_privacy',
-    'status'
+    'default_code',
+    'code',
+    'concept_ucode',
+    'updated',
+    'rev',
+    'status',
   ]
 };
 
