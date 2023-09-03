@@ -11,6 +11,7 @@ export interface EntitiesFilterInterface {
     revision: string[],
     search_text: string,
     updated_at: Date,
+    privacy_level: string[],
     points?: any[]
 }
 
@@ -26,6 +27,7 @@ export function getDefaultFilter():EntitiesFilterInterface {
         revision: [],
         search_text: '',
         updated_at: null,
+        privacy_level: [],
         points: []
     }
 }

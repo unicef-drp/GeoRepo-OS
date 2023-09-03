@@ -306,6 +306,13 @@ class DashboardDatasetFilterValue(AzureAuthRequiredMixin,
             revision_number__isnull=True
         ).order_by().values_list('revision_number', flat=True).distinct()
 
+    def fetch_available_privacy(self, dataset, privacy_level):
+        return [3, 4]
+        return GeographicalEntity.objects.filter(
+            dataset=dataset,
+            privacy_level__lte=privacy_level
+        ).order_by().values_list('privacy_level', flat=True).distinct()
+
     def fetch_status(self):
         return (
             'Pending',
@@ -341,6 +348,8 @@ class DashboardDatasetFilterValue(AzureAuthRequiredMixin,
             data = self.fetch_available_revision(dataset, privacy_level)
         elif criteria == 'status':
             data = self.fetch_status()
+        elif criteria == 'privacy_level':
+            data = self.fetch_available_privacy(dataset, privacy_level)
         return Response(status=200, data=data)
 
 

@@ -81,6 +81,10 @@ def generate_query_condition(
             )
             query_values.append(valid_from)
             query_values.append(valid_from)
+    if 'privacy_level' in filter.filters and len(filter.filters['privacy_level']) > 0:
+        sql = (
+            sql + 'AND ge.privacy_level IN %s ')
+        query_values.append(tuple(filter.filters['type']))
     if ('search_text' in filter.filters and
             len(filter.filters['search_text']) > 0):
         sql = (
@@ -90,17 +94,38 @@ def generate_query_condition(
             'gg.unique_code ilike %s OR '
             'gg.concept_ucode ilike %s OR '
             'ge_id.value ilike %s OR '
-            'ge_name.name ilike %s '
-            ') '
+            'ge_name.name ilike %s  OR '
+            'gg.unique_code ilike %s  OR '
+            'gg.internal_code ilike %s  OR '
+            'gg.label ilike %s  OR '
+            'gg.source ilike %s  OR '
+            'gg.source_url ilike %s  OR '
+            'gg.license ilike %s  OR '
+            'gg.qc_notes ilike %s  OR '
+            'gg.admin_level_name ilike %s '
         )
+
         search_text = '%' + filter.filters['search_text'] + '%'
-        query_values.append(search_text)
-        query_values.append(search_text)
-        query_values.append(search_text)
-        query_values.append(search_text)
-        query_values.append(search_text)
-        query_values.append(search_text)
-        query_values.append(search_text)
+        for i in range(15):
+            query_values.append(search_text)
+
+        try:
+            search_text_int = int(filter.filters['search_text'])
+            sql = (
+                sql + 'OR gg.revision_number = %s OR '
+                'gg.version = %s OR '
+                'gg.feature_units = %s OR '
+                'gg.vertices = %s '
+                ')'
+            )
+            for i in range(4):
+                query_values.append(search_text_int)
+        except ValueError:
+            sql = (
+                sql + ')'
+            )
+            pass
+
     if 'points' in filter.filters:
         points_cond = []
         for lngLat in filter.filters['points']:
@@ -157,7 +182,28 @@ def generate_entity_query(
         'when gg.is_approved then \'Approved\' '
         'else \'Pending\' '
         'end status, '
-        '\'\' as centroid '
+        '\'\' as centroid, '
+        'gg.unique_code_version, '
+        'gg.is_latest, '
+        'gg.is_approved, '
+        'gg.approved_date, '
+        'gg.source, '
+        'gg.source_url, '
+        'gg.license, '
+        'gg.qc_notes, '
+        'gg.version, '
+        'gg.feature_units, '
+        'gg.area, '
+        'gg.perimeter, '
+        'gg.vertices, '
+        'gg.vertex_density, '
+        'gg.line_resolution, '
+        'gg.admin_level_name, '
+        'layerfile.name as layer_file, '
+        'gg.privacy_level, '
+        'string_agg(distinct auth_user.first_name || \' \' || auth_user.last_name, \', \') as approved_by, '
+        'string_agg(distinct ge_name.name, \', \') as other_name, '
+        'string_agg(distinct ge_id.value, \', \') as other_id '
     )
     sql_joins = (
         'from georepo_geographicalentity gg '
@@ -169,6 +215,10 @@ def generate_entity_query(
         '    ge_id.geographical_entity_id = gg.id '
         'left join georepo_entityname ge_name on '
         '    ge_name.geographical_entity_id = gg.id '
+        'left join dashboard_layerfile layerfile on '
+        '    layerfile.id = gg.layer_file_id '
+        'left join auth_user auth_user on '
+        '    auth_user.id = gg.approved_by_id '
     )
     sql_joins = sql_joins + 'where gg.dataset_id = %s '
     sql_cond, query_values = generate_query_condition(
@@ -188,7 +238,7 @@ def generate_entity_query(
     sql = (
         sql_select + sql_joins + sql_cond +
         'group by gg.id, parent_0.id, ge.label, '
-        'gg.level, gg.revision_number'
+        'gg.level, gg.revision_number, layerfile.name'
     )
     if sort_by and sort_direction:
         sql = (
