@@ -9,6 +9,11 @@ import DatasetAdminLevelNames from "./Configurations/DatasetAdminLevelNames";
 import DatasetEntities from "../views/Dataset/DatasetEntities";
 
 
+export function NavigateComponent() {
+    return (<></>)
+}
+
+
 export default function DatasetDetailWrapper() {
     const [tabs, setTabs] = useState<DatasetTabElementInterface[]>([
         {
@@ -39,6 +44,16 @@ export default function DatasetDetailWrapper() {
         {
             title: 'TILING CONFIG',
             element: DatasetTilingConfig,
+            permissions: ['Manage']
+        },
+        {
+            title: 'UPLOAD HISTORY',
+            element: NavigateComponent,
+            permissions: ['Manage']
+        },
+        {
+            title: 'VIEWS',
+            element: NavigateComponent,
             permissions: ['Manage']
         }
     ])

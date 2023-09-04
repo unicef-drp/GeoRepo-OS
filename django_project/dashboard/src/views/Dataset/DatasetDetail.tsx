@@ -91,7 +91,13 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
     }, [searchParams])
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-      navigate(`/${props.moduleName}/dataset_entities?id=${currentDatasetId ? currentDatasetId : searchParams.get('id')}&tab=${newValue}`)
+      if (newValue == 6) {
+        navigate(`/upload_list?dataset=${dataset.dataset}`)
+      } else if (newValue == 7) {
+        navigate(`/views?dataset=${dataset.dataset}`)
+      } else {
+        navigate(`/${props.moduleName}/dataset_entities?id=${currentDatasetId ? currentDatasetId : searchParams.get('id')}&tab=${newValue}`)
+      }
     }
 
     return (

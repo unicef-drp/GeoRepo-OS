@@ -2,7 +2,7 @@ import React, {Fragment, useCallback, useEffect, useRef, useState} from "react";
 import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import toLower from "lodash/toLower";
 import cloneDeep from "lodash/cloneDeep";
-import {useNavigate} from "react-router-dom";
+import {useNavigate, useSearchParams} from "react-router-dom";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import IconButton from '@mui/material/IconButton';
@@ -59,8 +59,9 @@ export default function UploadSessionList() {
   const [confirmationOpen, setConfirmationOpen] = useState<boolean>(false)
   const [confirmationText, setConfirmationText] = useState<string>('')
   const [deleteButtonDisabled, setDeleteButtonDisabled] = useState<boolean>(false)
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  
+
   const [loading, setLoading] = useState<boolean>(true)
   const [columns, setColumns] = useState([])
   const [allData, setAllData] = useState<any[]>()
@@ -140,6 +141,17 @@ export default function UploadSessionList() {
       }
     })
   }
+
+  useEffect(() => {
+    let dataset
+    try {
+      dataset = searchParams.get('dataset') ? [searchParams.get('dataset')] : []
+    } catch (error: any) {
+      dataset = currentFilters['dataset']
+    }
+    setCurrentFilters({...currentFilters, 'dataset': dataset})
+    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'dataset': dataset})))
+  }, [searchParams])
   
   const getExistingFilterValue = (colName: string): string[] => {
     let values: string[] = []
