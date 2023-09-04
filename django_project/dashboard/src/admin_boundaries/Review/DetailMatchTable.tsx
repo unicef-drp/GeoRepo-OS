@@ -39,6 +39,7 @@ import { ReviewTabInterface, DISABLED_STATUS_LIST, BoundaryData } from '../../mo
 import PaginationInterface from '../../models/pagination';
 import CircleIcon from '@mui/icons-material/Circle';
 import { useKeyPress } from '../../components/UseKeyPress';
+import { rowsPerPageOptions } from '../../models/pagination';
 
 
 const COLUMNS = [
@@ -92,8 +93,6 @@ const BOOLEAN_COLUMN_FILTER_VALUES = [
     'No',
     'Yes'
 ]
-
-const rowsPerPageOptions = [5, 20, 50, 100]
 
 const getDefaultPagination = ():PaginationInterface => {
     return {
