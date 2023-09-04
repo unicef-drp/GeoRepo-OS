@@ -84,8 +84,8 @@ def generate_query_condition(
     if 'privacy_level' in filter.filters and \
         len(filter.filters['privacy_level']) > 0:
         sql = (
-            sql + 'AND ge.privacy_level IN %s ')
-        query_values.append(tuple(filter.filters['type']))
+            sql + 'AND gg.privacy_level IN %s ')
+        query_values.append(tuple(filter.filters['privacy_level']))
     if ('search_text' in filter.filters and
             len(filter.filters['search_text']) > 0):
         sql = (

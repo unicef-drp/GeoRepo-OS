@@ -307,7 +307,6 @@ class DashboardDatasetFilterValue(AzureAuthRequiredMixin,
         ).order_by().values_list('revision_number', flat=True).distinct()
 
     def fetch_available_privacy(self, dataset, privacy_level):
-        return [3, 4]
         return GeographicalEntity.objects.filter(
             dataset=dataset,
             privacy_level__lte=privacy_level

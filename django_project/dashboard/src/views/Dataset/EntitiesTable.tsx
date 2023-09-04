@@ -536,7 +536,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                             tableBodyHeight: `${tableHeight}px`,
                             download: false,
                             print: false,
-                            // viewColumns: true,
+                            viewColumns: true,
                             confirmFilters: true,
                             filter: true,
                             filterType: 'multiselect',
