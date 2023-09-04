@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {GridSortingInitialState} from "@mui/x-data-grid";
 import MUIDataTable, {MUIDataTableColumnDef} from "mui-datatables";
 import FilterAlt from '@mui/icons-material/FilterAlt';
+import { rowsPerPageOptions } from '../models/pagination';
 
 import '../styles/Table.scss';
 
@@ -76,7 +77,6 @@ export function AdminTable({
             selectableRowsMode = 'multiple'
         }
         let rowsPerPage = options['rowsPerPage'] !== undefined ? options['rowsPerPage'] : 50
-        let rowsPerPageOptions = options['rowsPerPageOptions'] !== undefined ? options['rowsPerPageOptions'] : [50, 100, 200]
         return (
           <div className='AdminTable'>
                 <MUIDataTable

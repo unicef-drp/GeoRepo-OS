@@ -161,6 +161,8 @@ def do_hierarchy_check(geom: GEOSGeometry,
                        internal_code: str,
                        entity_upload: EntityUploadStatus,
                        parent: GeographicalEntity) -> bool:
+    if parent is None:
+        return True
     start = time.time()
     try:
         errors, geom_error = hierarchy_check(
