@@ -78,20 +78,9 @@ class TestUploadSessionSummary(TestCase):
         )
         self.factory = APIRequestFactory()
 
-    @patch('georepo.utils.layers.json.load', autospec=True)
+    @patch('georepo.utils.layers.check_properties', autospec=True)
     def test_upload_session_summary(self, mock_json_load):
-        mock_json_load.return_value = {
-            'type': 'FeatureCollection',
-            'features': [
-                {
-                    'type': 'Feature',
-                    'geometry': {
-                        'type': 'Point',
-                        'coordinates': [0, 0]
-                    }
-                }
-            ]
-        }
+        mock_json_load.return_value = ([], 1)
         request = self.factory.get(
             reverse(
                 'upload-session-summary',
