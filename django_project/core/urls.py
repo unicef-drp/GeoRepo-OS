@@ -96,7 +96,8 @@ urlpatterns += [
 urlpatterns += [
     re_path(r'^api/v1/', include(('georepo.urls_v1', 'api'), namespace='v1')),
     re_path(r'^(?!api/v1/)', include('georepo.urls')),
-    re_path(r'^(?!api/v1/)', include('dashboard.urls'))
+    re_path(r'^(?!api/v1/)', include('docs.urls')),
+    re_path(r'^(?!api/v1/)', include('dashboard.urls')),
 ]
 
 

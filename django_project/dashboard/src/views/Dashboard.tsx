@@ -1,4 +1,4 @@
-import React, {Suspense, useEffect, useState} from 'react';
+import React, {Suspense, useEffect, useState, useRef} from 'react';
 import {useSearchParams} from "react-router-dom";
 import '../styles/App.scss';
 import '../styles/mui.scss';
@@ -34,6 +34,7 @@ interface DashboardInterface {
 }
 
 function Dashboard(props: DashboardInterface) {
+  const helpPageRef = useRef(null)
   const [appRoutes, setAppRoutes] = useState<RouteInterface[]>([])
   const [appHeaderButtons, setAppHeaderButtons] = useState([])
 
@@ -66,7 +67,7 @@ function Dashboard(props: DashboardInterface) {
 
   return (
     <div className="App">
-      <NavBar/>
+      <div><NavBar helpPageRef={helpPageRef}/></div>
       <main>
             {
               appRoutes.length === 0  || appHeaderButtons.length === 0 ? <div style={{width: "100%"}} className={"loading-container"}>
