@@ -6,6 +6,7 @@ from dashboard.models import (
     SHAPEFILE,
     GEOPACKAGE
 )
+from georepo.utils.geojson import get_geojson_feature_count
 from georepo.utils.shapefile import get_shape_file_feature_count
 from georepo.utils.gpkg_file import get_gpkg_feature_count
 
@@ -19,20 +20,16 @@ def check_properties(
     if not layer_file:
         return error_messages, feature_count
     if layer_file.layer_type == GEOJSON:
-        with open(layer_file.layer_file.path) as json_file:
-            data = json.load(json_file)
-
-        try:
-            feature_count = len(data['features'])
-        except (KeyError, IndexError):
-            return error_messages, feature_count
+        feature_count = get_geojson_feature_count(
+            layer_file.layer_file
+        )
     elif layer_file.layer_type == SHAPEFILE:
         feature_count = get_shape_file_feature_count(
-            layer_file.layer_file.path
+            layer_file.layer_file
         )
     elif layer_file.layer_type == GEOPACKAGE:
         feature_count = get_gpkg_feature_count(
-            layer_file.layer_file.path
+            layer_file.layer_file
         )
 
     return error_messages, feature_count

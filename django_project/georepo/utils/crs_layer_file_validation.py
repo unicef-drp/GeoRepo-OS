@@ -1,4 +1,5 @@
-import os
+from django.core.files.storage import default_storage
+from django.conf import settings
 from django.core.files.uploadedfile import (
     InMemoryUploadedFile,
     TemporaryUploadedFile
@@ -9,6 +10,7 @@ from fiona.io import (
 )
 from fiona.crs import from_epsg
 from georepo.utils.shapefile import store_zip_memory_to_temp_file
+from georepo.utils.fiona_utils import open_collection, delete_tmp_shapefile
 
 
 def get_crs_epsg(crs):
@@ -26,12 +28,11 @@ def validate_layer_file_in_crs_4326(layer_file_obj: any, type: any):
             # fiona having issues with reading ZipMemoryFile
             # need to store to temp file
             tmp_file = store_zip_memory_to_temp_file(layer_file_obj)
-            file_path = f'zip://{tmp_file}'
-            with fiona.open(file_path) as collection:
+            with open_collection(tmp_file, type) as collection:
                 valid = get_crs_epsg(collection.crs) == epsg_mapping['init']
                 crs = get_crs_epsg(collection.crs)
-            if os.path.exists(tmp_file):
-                os.remove(tmp_file)
+            default_storage.delete(tmp_file)
+            delete_tmp_shapefile(collection.path)
         else:
             # geojson/geopackage can be read using MemoryFile
             with MemoryFile(layer_file_obj.file) as file:
@@ -46,9 +47,15 @@ def validate_layer_file_in_crs_4326(layer_file_obj: any, type: any):
         if type == 'SHAPEFILE':
             if isinstance(layer_file_obj, TemporaryUploadedFile):
                 file_path = f'zip://{layer_file_obj.temporary_file_path()}'
+                with fiona.open(file_path) as collection:
+                    valid = get_crs_epsg(collection.crs) == epsg_mapping['init']
+                    crs = get_crs_epsg(collection.crs)
             else:
-                file_path = f'zip://{layer_file_obj}'
-        with fiona.open(file_path) as collection:
-            valid = get_crs_epsg(collection.crs) == epsg_mapping['init']
-            crs = get_crs_epsg(collection.crs)
+                with open_collection(file_path, type) as collection:
+                    valid = get_crs_epsg(collection.crs) == epsg_mapping['init']
+                    crs = get_crs_epsg(collection.crs)
+        else:
+            with open_collection(file_path, type) as collection:
+                valid = get_crs_epsg(collection.crs) == epsg_mapping['init']
+                crs = get_crs_epsg(collection.crs)
     return valid, crs

@@ -5,8 +5,7 @@ import subprocess
 from django.core.files.storage import default_storage
 from django.conf import settings
 from django.core.files.uploadedfile import (
-    InMemoryUploadedFile,
-    TemporaryUploadedFile
+    InMemoryUploadedFile
 )
 from georepo.models import (
     DatasetView,
@@ -14,6 +13,11 @@ from georepo.models import (
 )
 from georepo.utils.exporter_base import (
     DatasetViewExporterBase
+)
+from georepo.utils.fiona_utils import (
+    list_layers_shapefile,
+    delete_tmp_shapefile,
+    open_collection_by_file
 )
 
 # buffer the data before writing/flushing to file
@@ -23,28 +27,30 @@ SHAPEFILE_RECORDS_BUFFER = 800
 GENERATED_FILES = ['.shp', '.dbf', '.shx', '.cpg', '.prj']
 
 
-def extract_shapefile_attributes(layer_file_path: str):
+def extract_shapefile_attributes(layer_file):
     """
     Load and read shape file, and returns all the attributes
     :param layer_file_path: path of the layer file
     :return: list of attributes, e.g. ['id', 'name', ...]
     """
     attrs = []
-    with fiona.open(f'zip://{layer_file_path}') as collection:
+    with open_collection_by_file(layer_file, 'SHAPEFILE') as collection:
         try:
             attrs = next(iter(collection))["properties"].keys()
         except (KeyError, IndexError):
             pass
+        delete_tmp_shapefile(collection.path)
     return attrs
 
 
-def get_shape_file_feature_count(layer_file_path: str):
+def get_shape_file_feature_count(layer_file):
     """
     Get Feature count in shape file
     """
     feature_count = 0
-    with fiona.open(f'zip://{layer_file_path}') as collection:
+    with open_collection_by_file(layer_file, 'SHAPEFILE') as collection:
         feature_count = len(collection)
+        delete_tmp_shapefile(collection.path)
     return feature_count
 
 
@@ -56,8 +62,7 @@ def store_zip_memory_to_temp_file(file_obj: InMemoryUploadedFile):
     with default_storage.open(path, 'wb+') as destination:
         for chunk in file_obj.chunks():
             destination.write(chunk)
-    tmp_file = os.path.join(settings.MEDIA_ROOT, path)
-    return tmp_file
+    return path
 
 
 def validate_shapefile_zip(layer_file_path: any):
@@ -67,22 +72,7 @@ def validate_shapefile_zip(layer_file_path: any):
     if there are 2 layers inside the zip, and 1 of them is invalid,
     then fiona will only return 1 layer
     """
-    layers = []
-    try:
-        tmp_file = None
-        if isinstance(layer_file_path, InMemoryUploadedFile):
-            tmp_file = store_zip_memory_to_temp_file(layer_file_path)
-            layers = fiona.listlayers(f'zip://{tmp_file}')
-            if os.path.exists(tmp_file):
-                os.remove(tmp_file)
-        elif isinstance(layer_file_path, TemporaryUploadedFile):
-            layers = fiona.listlayers(
-                f'zip://{layer_file_path.temporary_file_path()}'
-            )
-        else:
-            layers = fiona.listlayers(f'zip://{layer_file_path}')
-    except Exception:
-        pass
+    layers = list_layers_shapefile(layer_file_path)
     is_valid = len(layers) > 0
     error = []
     names = []

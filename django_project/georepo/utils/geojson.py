@@ -11,23 +11,35 @@ from georepo.models import (
 from georepo.utils.exporter_base import (
     DatasetViewExporterBase
 )
+from georepo.utils.fiona_utils import (
+    open_collection_by_file
+)
 
 # buffer the data before writing/flushing to file
 GEOJSON_RECORDS_BUFFER_TX = 250
 GEOJSON_RECORDS_BUFFER = 500
 
 
-def extract_geojson_attributes(layer_file_path: str):
+def get_geojson_feature_count(layer_file):
+    """
+    Get Feature count in geojson file
+    """
+    feature_count = 0
+    with open_collection_by_file(layer_file, 'GEOJSON') as collection:
+        feature_count = len(collection)
+    return feature_count
+
+
+def extract_geojson_attributes(layer_file):
     """
     Load and read geojson, and returns all the attributes
     :param layer_file_path: path of the layer file
     :return: list of attributes, e.g. ['id', 'name', ...]
     """
     attrs = []
-    with open(layer_file_path) as json_file:
-        data = json.load(json_file)
+    with open_collection_by_file(layer_file, 'GEOJSON') as collection:
         try:
-            attrs = data['features'][0]['properties'].keys()
+            attrs = next(iter(collection))["properties"].keys()
         except (KeyError, IndexError):
             pass
     return attrs
