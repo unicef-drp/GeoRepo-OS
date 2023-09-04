@@ -108,6 +108,7 @@ def generate_view_geojson(dataset_view: DatasetView,
     exporter = GeojsonViewExporter(dataset_view, view_resource=view_resource)
     exporter.init_exporter()
     exporter.run()
+    return exporter
 
 
 def validate_geojson(geojson: dict) -> bool:

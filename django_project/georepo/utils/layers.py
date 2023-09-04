@@ -1,4 +1,3 @@
-import json
 from typing import Tuple
 from dashboard.models import (
     LayerFile,

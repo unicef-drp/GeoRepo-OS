@@ -18,7 +18,7 @@ from django.contrib.gis.db.models.functions import AsGeoJSON
 from core.models.preferences import SitePreferences
 from django.conf import settings
 from georepo.models import (
-    Dataset, EntityId, EntityName, GeographicalEntity,
+    EntityId, EntityName, GeographicalEntity,
     DatasetView, DatasetViewResource
 )
 from georepo.utils.custom_geo_functions import ForcePolygonCCW
@@ -35,7 +35,10 @@ from georepo.utils.renderers import (
     KmlRenderer,
     TopojsonRenderer
 )
-
+from georepo.utils.azure_blob_storage import (
+    DirectoryClient,
+    StorageContainerClient
+)
 
 PROPERTY_INT_VALUES = ['admin_level']
 PROPERTY_BOOL_VALUES = ['is_latest']
@@ -594,20 +597,57 @@ class DatasetViewExporterBase(object):
             self.get_base_output_dir(),
             f'temp_{str(resource.uuid)}'
         )
-        # copy from temp dir to output dir
-        output_dir = os.path.join(
-            self.get_base_output_dir(),
-            str(resource.uuid)
-        )
-        if os.path.exists(output_dir):
-            shutil.rmtree(output_dir)
-        try:
-            shutil.move(
-                tmp_output_dir,
-                output_dir
+        if settings.USE_AZURE:
+            output_dir = (
+                f'media/export_data/{self.output}/'
+                f'{str(resource.uuid)}'
             )
-        except FileNotFoundError as ex:
-            print(ex)
+            client = DirectoryClient(settings.AZURE_STORAGE,
+                                     settings.AZURE_STORAGE_CONTAINER)
+            client.rmdir(output_dir)
+            client.upload_dir(tmp_output_dir, output_dir)
+            if self.output != 'geojson':
+                self.do_remove_temp_dir(resource)
+        else:
+            # copy from temp dir to output dir
+            output_dir = os.path.join(
+                self.get_base_output_dir(),
+                str(resource.uuid)
+            )
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+            try:
+                shutil.move(
+                    tmp_output_dir,
+                    output_dir
+                )
+            except FileNotFoundError as ex:
+                print(ex)
+
+    def do_remove_temp_dir(self, resource: DatasetViewResource):
+        tmp_output_dir = os.path.join(
+            self.get_base_output_dir(),
+            f'temp_{str(resource.uuid)}'
+        )
+        if os.path.exists(tmp_output_dir):
+            shutil.rmtree(tmp_output_dir)
+
+    def do_remove_temp_dirs(self):
+        for res in self.resources:
+            resource = res['resource']
+            self.do_remove_temp_dir(resource)
+
+    def get_geojson_reference_file(self, resource: DatasetViewResource,
+                                   exported_name: str):
+        res_name = str(resource.uuid)
+        if settings.USE_AZURE:
+            res_name = f'temp_{str(resource.uuid)}'
+        file_path = os.path.join(
+            settings.GEOJSON_FOLDER_OUTPUT,
+            res_name,
+            exported_name
+        ) + '.geojson'
+        return file_path
 
 
 class APIDownloaderBase(GenericAPIView):
@@ -625,34 +665,51 @@ class APIDownloaderBase(GenericAPIView):
         if format == 'geojson':
             output = {
                 'suffix': '.geojson',
-                'directory': settings.GEOJSON_FOLDER_OUTPUT
+                'directory': (
+                    settings.GEOJSON_FOLDER_OUTPUT if
+                    not settings.USE_AZURE else
+                    'media/export_data/geojson/'
+                )
             }
         elif format == 'shapefile':
             output = {
                 'suffix': '.zip',
-                'directory': settings.SHAPEFILE_FOLDER_OUTPUT
+                'directory': (
+                    settings.SHAPEFILE_FOLDER_OUTPUT if
+                    not settings.USE_AZURE else
+                    'media/export_data/shapefile/'
+                )
             }
         elif format == 'kml':
             output = {
                 'suffix': '.kml',
-                'directory': settings.KML_FOLDER_OUTPUT
+                'directory': (
+                    settings.KML_FOLDER_OUTPUT if
+                    not settings.USE_AZURE else
+                    'media/export_data/kml/'
+                )
             }
         elif format == 'topojson':
             output = {
                 'suffix': '.topojson',
-                'directory': settings.TOPOJSON_FOLDER_OUTPUT
+                'directory': (
+                    settings.TOPOJSON_FOLDER_OUTPUT if
+                    not settings.USE_AZURE else
+                    'media/export_data/topojson/'
+                )
             }
         return output
 
     def append_readme(self, resource: DatasetViewResource,
                       output_format, results):
         # add readme
-        file_path = os.path.join(
+        file_path = self.get_resource_path(
             output_format['directory'],
-            str(resource.uuid),
-            'readme.txt'
+            resource,
+            'readme.txt',
+            ''
         )
-        if os.path.exists(file_path):
+        if self.check_exists(file_path):
             results.append(file_path)
 
     def get_output_names(self, dataset_view: DatasetView):
@@ -670,10 +727,21 @@ class APIDownloaderBase(GenericAPIView):
                         item_file_name = file_name
                     else:
                         item_file_name = f'{prefix_name} {file_name}'
-                    archive.write(
-                        result,
-                        arcname=item_file_name
-                    )
+                    if settings.USE_AZURE:
+                        if StorageContainerClient:
+                            bc = StorageContainerClient.get_blob_client(
+                                blob=result)
+                            download_stream = bc.download_blob(
+                                max_concurrency=2,
+                                validate_content=False
+                            )
+                            archive.writestr(item_file_name,
+                                             download_stream.readall())
+                    else:
+                        archive.write(
+                            result,
+                            arcname=item_file_name
+                        )
             tmp_file.seek(0)
             response = HttpResponse(
                 tmp_file.read(), content_type='application/x-zip-compressed'
@@ -684,3 +752,28 @@ class APIDownloaderBase(GenericAPIView):
                 )
             )
             return response
+
+    def check_exists(self, file_path):
+        if settings.USE_AZURE:
+            if StorageContainerClient:
+                bc = StorageContainerClient.get_blob_client(blob=file_path)
+                return bc.exists()
+            else:
+                raise RuntimeError('Invalid Azure Storage Container')
+        else:
+            return os.path.exists(file_path)
+
+    def get_resource_path(self, base_dir, resource: DatasetViewResource,
+                          exported_name, file_suffix):
+        if settings.USE_AZURE:
+            if not base_dir.endswith('/'):
+                base_dir += '/'
+            return (
+                f'{base_dir}{str(resource.uuid)}/'
+                f'{exported_name}{file_suffix}'
+            )
+        return os.path.join(
+            base_dir,
+            str(resource.uuid),
+            exported_name
+        ) + file_suffix

@@ -1,5 +1,4 @@
 import math
-import os.path
 from django.db.models.expressions import RawSQL
 from django.db.models import FilteredRelation, Q
 from django.http import (
@@ -419,21 +418,23 @@ class DatasetViewExportDownload(APIDownloaderBase):
         total_count = 0
         for level in levels:
             exported_name = f'adm{level}'
-            file_path = os.path.join(
+            file_path = self.get_resource_path(
                 output_format['directory'],
-                str(resource.uuid),
-                exported_name
-            ) + output_format['suffix']
-            if not os.path.exists(file_path):
+                resource,
+                exported_name,
+                output_format['suffix']
+            )
+            if not self.check_exists(file_path):
                 return [], 0
             results.append(file_path)
             # add metadata (for geojson)
-            metadata_file_path = os.path.join(
+            metadata_file_path = self.get_resource_path(
                 output_format['directory'],
-                str(resource.uuid),
-                exported_name
-            ) + '.xml'
-            if os.path.exists(metadata_file_path):
+                resource,
+                exported_name,
+                '.xml'
+            )
+            if self.check_exists(metadata_file_path):
                 results.append(metadata_file_path)
             total_count += 1
         self.append_readme(resource, output_format, results)
@@ -514,21 +515,23 @@ class DatasetViewExportDownloadByLevel(DatasetViewExportDownload):
         admin_level = self.kwargs.get('admin_level')
         results = []
         exported_name = f'adm{admin_level}'
-        file_path = os.path.join(
+        file_path = self.get_resource_path(
             output_format['directory'],
-            str(resource.uuid),
-            exported_name
-        ) + output_format['suffix']
-        if not os.path.exists(file_path):
+            resource,
+            exported_name,
+            output_format['suffix']
+        )
+        if not self.check_exists(file_path):
             return [], 0
         results.append(file_path)
         # add metadata (for geojson)
-        metadata_file_path = os.path.join(
+        metadata_file_path = self.get_resource_path(
             output_format['directory'],
-            str(resource.uuid),
-            exported_name
-        ) + '.xml'
-        if os.path.exists(metadata_file_path):
+            resource,
+            exported_name,
+            '.xml'
+        )
+        if self.check_exists(metadata_file_path):
             results.append(metadata_file_path)
         total_count = 1
         self.append_readme(resource, output_format, results)
@@ -718,21 +721,23 @@ class DatasetViewExportDownloadByCountry(DatasetViewExportDownload):
             ).distinct()
             for level in levels:
                 exported_name = f'adm{level}'
-                file_path = os.path.join(
+                file_path = self.get_resource_path(
                     output_format['directory'],
-                    str(resource.uuid),
-                    exported_name
-                ) + output_format['suffix']
-                if not os.path.exists(file_path):
+                    resource,
+                    exported_name,
+                    output_format['suffix']
+                )
+                if not self.check_exists(file_path):
                     return [], 0
                 results.append(file_path)
                 # add metadata (for geojson)
-                metadata_file_path = os.path.join(
+                metadata_file_path = self.get_resource_path(
                     output_format['directory'],
-                    str(resource.uuid),
-                    exported_name
-                ) + '.xml'
-                if os.path.exists(metadata_file_path):
+                    resource,
+                    exported_name,
+                    '.xml'
+                )
+                if self.check_exists(metadata_file_path):
                     results.append(metadata_file_path)
             added_ucodes.append(adm0.unique_code)
             total_count += 1
@@ -954,21 +959,23 @@ class DatasetViewExportDownloadByCountryAndLevel(
                 # skip if it's the same entity
                 continue
             exported_name = f'adm{admin_level}'
-            file_path = os.path.join(
+            file_path = self.get_resource_path(
                 output_format['directory'],
-                str(resource.uuid),
-                exported_name
-            ) + output_format['suffix']
-            if not os.path.exists(file_path):
+                resource,
+                exported_name,
+                output_format['suffix']
+            )
+            if not self.check_exists(file_path):
                 return [], 0
             results.append(file_path)
             # add metadata (for geojson)
-            metadata_file_path = os.path.join(
+            metadata_file_path = self.get_resource_path(
                 output_format['directory'],
-                str(resource.uuid),
-                exported_name
-            ) + '.xml'
-            if os.path.exists(metadata_file_path):
+                resource,
+                exported_name,
+                '.xml'
+            )
+            if self.check_exists(metadata_file_path):
                 results.append(metadata_file_path)
             added_ucodes.append(adm0.unique_code)
             total_count += 1

@@ -36,7 +36,7 @@ def generate_view_vector_tiles_task(view_resource_id: str,
                 f'Extracting geojson from view {view.name} - '
                 f'{view_resource.privacy_level}...'
             )
-            generate_view_geojson(view, view_resource)
+            geojson_exporter = generate_view_geojson(view, view_resource)
             logger.info(
                 f'Extracting shapefile from view {view.name} - '
                 f'{view_resource.privacy_level}...'
@@ -53,6 +53,11 @@ def generate_view_vector_tiles_task(view_resource_id: str,
             )
             generate_view_topojson(view, view_resource)
             logger.info('Extract view data done')
+            if settings.USE_AZURE:
+                logger.info('Removing temporary geojson files...')
+                # cleanup geojson files if using Azure
+                geojson_exporter.do_remove_temp_dirs()
+                logger.info('Removing temporary geojson files done')
     except DatasetViewResource.DoesNotExist:
         logger.error(f'DatasetViewResource {view_resource_id} does not exist')
 
@@ -68,7 +73,7 @@ def generate_view_export_data(view_id: str):
     try:
         view = DatasetView.objects.get(id=view_id)
         logger.info(f'Extracting geojson from view {view.name}...')
-        generate_view_geojson(view)
+        geojson_exporter = generate_view_geojson(view)
         logger.info(
             f'Extracting shapefile from view {view.name}...'
         )
@@ -82,6 +87,11 @@ def generate_view_export_data(view_id: str):
         )
         generate_view_topojson(view)
         logger.info('Extract view data done')
+        if settings.USE_AZURE:
+            logger.info('Removing temporary geojson files...')
+            # cleanup geojson files if using Azure
+            geojson_exporter.do_remove_temp_dirs()
+            logger.info('Removing temporary geojson files done')
     except DatasetView.DoesNotExist:
         logger.error(f'DatasetView {view_id} does not exist')
 

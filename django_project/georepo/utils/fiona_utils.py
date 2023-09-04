@@ -12,11 +12,14 @@ from fiona.collection import Collection
 
 def open_collection(fp: str, type: str) -> Collection:
     result: Collection = None
-    
+
     if settings.USE_AZURE:
         if type == 'SHAPEFILE':
             with default_storage.open(fp, 'rb') as source:
-                with NamedTemporaryFile(delete=False, suffix='.zip') as temp_file:
+                with (
+                    NamedTemporaryFile(delete=False,
+                                       suffix='.zip') as temp_file
+                ):
                     temp_file.write(source.read())
                     temp_file.flush()
             result = fiona.open(f'zip://{temp_file.name}', encoding='utf-8')
@@ -37,7 +40,9 @@ def open_collection_by_file(fp, type: str) -> Collection:
     file_path = None
     if settings.USE_AZURE:
         if type == 'SHAPEFILE':
-            with NamedTemporaryFile(delete=False, suffix='.zip') as temp_file:
+            with (
+                NamedTemporaryFile(delete=False, suffix='.zip') as temp_file
+            ):
                 temp_file.write(fp.read())
                 temp_file.flush()
             file_path = f'zip://{temp_file.name}'
@@ -75,7 +80,10 @@ def list_layers_shapefile(fp: str):
             )
         else:
             with default_storage.open(fp, 'rb') as source:
-                with NamedTemporaryFile(delete=False, suffix='.zip') as temp_file:
+                with (
+                    NamedTemporaryFile(delete=False,
+                                       suffix='.zip') as temp_file
+                ):
                     temp_file.write(source.read())
                     temp_file.flush()
             layers = fiona.listlayers(f'zip://{temp_file.name}')

@@ -1,5 +1,4 @@
 from django.core.files.storage import default_storage
-from django.conf import settings
 from django.core.files.uploadedfile import (
     InMemoryUploadedFile,
     TemporaryUploadedFile
@@ -48,11 +47,15 @@ def validate_layer_file_in_crs_4326(layer_file_obj: any, type: any):
             if isinstance(layer_file_obj, TemporaryUploadedFile):
                 file_path = f'zip://{layer_file_obj.temporary_file_path()}'
                 with fiona.open(file_path) as collection:
-                    valid = get_crs_epsg(collection.crs) == epsg_mapping['init']
+                    valid = (
+                        get_crs_epsg(collection.crs) == epsg_mapping['init']
+                    )
                     crs = get_crs_epsg(collection.crs)
             else:
                 with open_collection(file_path, type) as collection:
-                    valid = get_crs_epsg(collection.crs) == epsg_mapping['init']
+                    valid = (
+                        get_crs_epsg(collection.crs) == epsg_mapping['init']
+                    )
                     crs = get_crs_epsg(collection.crs)
         else:
             with open_collection(file_path, type) as collection:

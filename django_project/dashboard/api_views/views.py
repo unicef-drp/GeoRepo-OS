@@ -1,6 +1,5 @@
 import re
 import uuid
-import os.path
 import math
 from django.db.models.expressions import RawSQL, Q
 from django.conf import settings
@@ -690,21 +689,23 @@ class DownloadView(AzureAuthRequiredMixin,
             if filter_levels and level not in filter_levels:
                 continue
             exported_name = f'adm{level}'
-            file_path = os.path.join(
+            file_path = self.get_resource_path(
                 output_format['directory'],
-                str(resource.uuid),
-                exported_name
-            ) + output_format['suffix']
-            if not os.path.exists(file_path):
+                resource,
+                exported_name,
+                output_format['suffix']
+            )
+            if not self.check_exists(file_path):
                 raise Http404('The requested file does not exist')
             result_list.append(file_path)
             # add metadata (for geojson)
-            metadata_file_path = os.path.join(
+            metadata_file_path = self.get_resource_path(
                 output_format['directory'],
-                str(resource.uuid),
-                exported_name
-            ) + '.xml'
-            if os.path.exists(metadata_file_path):
+                resource,
+                exported_name,
+                '.xml'
+            )
+            if self.check_exists(metadata_file_path):
                 result_list.append(metadata_file_path)
             total_count += 1
         self.append_readme(resource, output_format, result_list)

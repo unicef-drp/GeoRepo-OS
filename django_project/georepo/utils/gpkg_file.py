@@ -1,4 +1,3 @@
-import fiona
 from georepo.utils.fiona_utils import open_collection_by_file
 
 
