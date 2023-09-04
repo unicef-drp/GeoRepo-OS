@@ -81,7 +81,8 @@ def generate_query_condition(
             )
             query_values.append(valid_from)
             query_values.append(valid_from)
-    if 'privacy_level' in filter.filters and len(filter.filters['privacy_level']) > 0:
+    if 'privacy_level' in filter.filters and \
+        len(filter.filters['privacy_level']) > 0:
         sql = (
             sql + 'AND ge.privacy_level IN %s ')
         query_values.append(tuple(filter.filters['type']))
@@ -201,7 +202,8 @@ def generate_entity_query(
         'gg.admin_level_name, '
         'layerfile.name as layer_file, '
         'gg.privacy_level, '
-        'string_agg(distinct auth_user.first_name || \' \' || auth_user.last_name, \', \') as approved_by, '
+        'string_agg(distinct auth_user.first_name || \' \' '
+        '|| auth_user.last_name, \', \') as approved_by, '
         'string_agg(distinct ge_name.name, \', \') as other_name, '
         'string_agg(distinct ge_id.value, \', \') as other_id '
     )
