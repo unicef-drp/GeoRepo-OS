@@ -100,14 +100,11 @@ def generate_query_condition(
             'gg.internal_code ilike %s  OR '
             'gg.label ilike %s  OR '
             'gg.source ilike %s  OR '
-            'gg.source_url ilike %s  OR '
-            'gg.license ilike %s  OR '
-            'gg.qc_notes ilike %s  OR '
             'gg.admin_level_name ilike %s '
         )
 
         search_text = '%' + filter.filters['search_text'] + '%'
-        for i in range(15):
+        for i in range(12):
             query_values.append(search_text)
 
         try:
@@ -186,20 +183,8 @@ def generate_entity_query(
         '\'\' as centroid, '
         'gg.unique_code_version, '
         'gg.is_latest, '
-        'gg.is_private, '
-        'gg.is_validated, '
         'gg.approved_date, '
         'gg.source, '
-        'gg.source_url, '
-        'gg.license, '
-        'gg.qc_notes, '
-        'gg.version, '
-        'gg.feature_units, '
-        'gg.area, '
-        'gg.perimeter, '
-        'gg.vertices, '
-        'gg.vertex_density, '
-        'gg.line_resolution, '
         'gg.admin_level_name, '
         'layerfile.name as layer_file, '
         'gg.privacy_level, '

@@ -22,8 +22,6 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
     layer_file = serializers.SerializerMethodField(source='layer_file')
     approved_by = serializers.SerializerMethodField(source='approved_by')
     is_latest = serializers.SerializerMethodField(source='is_latest')
-    is_private = serializers.SerializerMethodField(source='is_private')
-    is_validated = serializers.SerializerMethodField(source='is_validated')
 
     def get_country(self, obj):
         return obj['country']
@@ -55,12 +53,6 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
     def get_is_latest(self, obj):
         return str(obj['is_latest'])
 
-    def get_is_private(self, obj):
-        return str(obj['is_private'])
-
-    def get_is_validated(self, obj):
-        return str(obj['is_validated'])
-
 
     class Meta:
         model = GeographicalEntity
@@ -79,21 +71,9 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
             'centroid',
             'unique_code_version',
             'is_latest',
-            'is_validated',
-            'is_private',
             'approved_date',
             'geometry',
             'source',
-            'source_url',
-            'license',
-            'qc_notes',
-            'version',
-            'feature_units',
-            'area',
-            'perimeter',
-            'vertices',
-            'vertex_density',
-            'line_resolution',
             'admin_level_name',
             'approved_by',
             'parent',
