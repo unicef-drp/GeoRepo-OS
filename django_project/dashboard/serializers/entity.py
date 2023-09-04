@@ -16,6 +16,11 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
     rev = serializers.CharField(source='revision_number')
     status = serializers.SerializerMethodField()
     centroid = serializers.SerializerMethodField()
+    privacy_level = serializers.SerializerMethodField(source='privacy_level')
+    other_name = serializers.SerializerMethodField(source='other_name')
+    other_id = serializers.SerializerMethodField(source='other_id')
+    layer_file = serializers.SerializerMethodField(source='layer_file')
+    approved_by = serializers.SerializerMethodField(source='approved_by')
 
     def get_country(self, obj):
         return obj['country']
@@ -28,6 +33,22 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
 
     def get_centroid(self, obj):
         return obj['centroid']
+
+    def get_privacy_level(self, obj):
+        return obj['privacy_level']
+
+    def get_other_name(self, obj):
+        return obj['other_name']
+
+    def get_other_id(self, obj):
+        return obj['other_id']
+
+    def get_layer_file(self, obj):
+        return obj['layer_file']
+
+    def get_approved_by(self, obj):
+        return obj['approved_by']
+
 
     class Meta:
         model = GeographicalEntity
@@ -43,7 +64,31 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
             'updated',
             'rev',
             'status',
-            'centroid'
+            'centroid',
+            'unique_code_version',
+            'is_latest',
+            'is_approved',
+            'approved_date',
+            'geometry',
+            'source',
+            'source_url',
+            'license',
+            'qc_notes',
+            'version',
+            'feature_units',
+            'area',
+            'perimeter',
+            'vertices',
+            'vertex_density',
+            'line_resolution',
+            'admin_level_name',
+            'approved_by',
+            'parent',
+            'layer_file',
+            'ancestor',
+            'privacy_level',
+            'other_name',
+            'other_id'
         ]
 
 

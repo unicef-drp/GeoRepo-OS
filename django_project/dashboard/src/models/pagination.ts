@@ -18,4 +18,4 @@ export const getDefaultPagination = ():PaginationInterface => {
     }
 }
 
-export const rowsPerPageOptions = [10, 15, 20, 25]
+export const rowsPerPageOptions = [10, 50, 100, 200]

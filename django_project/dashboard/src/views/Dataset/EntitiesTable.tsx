@@ -18,6 +18,13 @@ import ResizeTableEvent from "../../components/ResizeTableEvent"
 import Loading from "../../components/Loading";
 import PaginationInterface, { getDefaultPagination, rowsPerPageOptions } from '../../models/pagination';
 
+import { useAppSelector, useAppDispatch } from '../../app/hooks';
+import {
+  setCurrentColumns
+} from "../../reducers/entitiesTable";
+import {RootState} from "../../app/store";
+import cloneDeep from "lodash/cloneDeep";
+
 export interface EntitiesTableInterface {
     dataset_id: string,
     session: string,
@@ -31,8 +38,46 @@ export interface EntitiesTableInterface {
     viewUuid?: string
 }
 
-const COLUMNS = [
+const ALL_COLUMNS = [
     'id',
+    'country',
+    'type',
+    'name',
+    'default_code',
+    'code',
+    'concept_ucode',
+    'updated',
+    'rev',
+    'status',
+    'centroid',
+    'privacy_level',
+    'unique_code_version',
+    'level',
+    'end_date',
+    'is_latest',
+    'is_approved',
+    'approved_date',
+    'geometry',
+    'source',
+    'source_url',
+    'license',
+    'qc_notes',
+    'version',
+    'feature_units',
+    'area',
+    'perimeter',
+    'vertices',
+    'vertex_density',
+    'line_resolution',
+    'admin_level_name',
+    'dataset',
+    'approved_by',
+    'layer_file',
+    'other_name',
+    'other_id'
+]
+
+const COLUMNS = [
     'country',
     'level',
     'type',
@@ -43,7 +88,19 @@ const COLUMNS = [
     'updated',
     'rev',
     'status',
-    'centroid'
+    'privacy_level'
+]
+
+
+const FILTER_ENABLED_COLUMNS = [
+    'country',
+    'level',
+    'type',
+    'name',
+    'updated',
+    'rev',
+    'status',
+    'privacy_level'
 ]
 
 
@@ -68,6 +125,8 @@ const API_URL = '/api/dashboard-dataset/list/'
 const FilterIcon: any = FilterAlt
 
 export default function EntitiesTable(props: EntitiesTableInterface) {
+    const dispatch = useAppDispatch()
+    const initialColumns = useAppSelector((state: RootState) => state.entitiesTable.currentColumns)
     const [loading, setLoading] = useState<boolean>(true)
     const [columns, setColumns] = useState<any>([])
     const [data, setData] = useState<EntityTableRowInterface[]>([])
@@ -95,6 +154,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
         filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/type/?${_query_params}`))
         filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/revision/?${_query_params}`))
         filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/status/?${_query_params}`))
+        filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/privacy_level/?${_query_params}`))
         let resultData = await Promise.all(filters)
         let filter_values = {
             'country': resultData[0].data,
@@ -103,6 +163,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
             'type': resultData[3].data,
             'rev': resultData[4].data,
             'status': resultData[5].data,
+            'privacy_level': resultData[6].data,
         }
         setFilterValues(filter_values)
         return filter_values
@@ -154,13 +215,16 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
         const fetchFilterValuesData = async() => {
             let filter_values:any = await fetchFilterValues()
             if (columns.length === 0) {
-                setColumns(COLUMNS.map((column_name) => {
+                setColumns(ALL_COLUMNS.map((column_name) => {
                     let options:any = {
                         name: column_name,
                         data_type: (column_name !== 'id' && column_name !== 'centroid') ?'string_array':'',
                         label: column_name.charAt(0).toUpperCase() + column_name.slice(1).replaceAll('_', ' '),
                         options: {
                         }
+                    }
+                    if (column_name === 'privacy_level') {
+                        options.label = 'Privacy'
                     }
                     if (column_name === 'updated') {
                         options.data_type = 'date_range'
@@ -215,8 +279,8 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                     } else {
                         options.options = {
                             searchable: false,
-                            display: column_name !== 'id' && column_name !== 'centroid',
-                            filter: column_name !== 'id' && column_name !== 'code' && column_name !== 'default_code' && column_name !== 'concept_ucode',
+                            display: initialColumns.includes(column_name),
+                            filter: FILTER_ENABLED_COLUMNS.includes(column_name),
                         }
                         if (column_name === 'level') {
                             options.options.customFilterListOptions = {
@@ -258,8 +322,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                                 names: filter_values[column_name]
                             }
                         }
-                        if (column_name === 'country' || column_name === 'level' || column_name === 'type' ||
-                            column_name === 'name' || column_name === 'status' || column_name === 'rev' || column_name === 'centroid') {
+                        if (FILTER_ENABLED_COLUMNS.includes(column_name)) {
                             // set existing filter values 
                             options.options.filterList = getExistingFilterValue(column_name)
                         }
@@ -269,8 +332,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
             } else {
                 // update existing filters from props Filter obj
                 const _columns = columns.map((column: any) => {
-                    if (column.name === 'country' || column.name === 'level' || column.name === 'type' ||
-                            column.name === 'name' || column.name === 'status' || column.name === 'rev' || column.name === 'centroid') {
+                    if (FILTER_ENABLED_COLUMNS.includes(column.name)) {
                         let _opt = {...column.options}
                         _opt.filterList = getExistingFilterValue(column.name)
                         return { ...column, options: _opt}
@@ -394,6 +456,9 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
             case 'centroid':
                 values = props.filter.points
                 break;
+            case 'privacy_level':
+                values = props.filter.privacy_level
+                break;
             default:
                 break;
         }
@@ -436,6 +501,13 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                     rowsPerPage: tableState.rowsPerPage
                 })
                 break;
+            case 'viewColumnsChange':
+                let _columns = cloneDeep(columns)
+                for (let i = 0; i < tableState.columns.length; i++) {
+                  _columns[i].options.display = tableState.columns[i].display == 'true'
+                }
+
+                setColumns(_columns)
             default:
           }
     }
@@ -464,7 +536,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                             tableBodyHeight: `${tableHeight}px`,
                             download: false,
                             print: false,
-                            viewColumns: false,
+                            viewColumns: true,
                             confirmFilters: true,
                             filter: true,
                             filterType: 'multiselect',
