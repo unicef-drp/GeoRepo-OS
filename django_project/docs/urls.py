@@ -15,7 +15,7 @@ urlpatterns = [
         name='index'
     ),
     re_path(
-        r'^docs/(?P<page_name>[^/]+)/data',
+        r'^docs/data',
         DocumentationDetail.as_view(),
         name='documentation-detail'
     )

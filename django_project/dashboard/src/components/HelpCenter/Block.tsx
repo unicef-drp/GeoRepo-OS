@@ -54,12 +54,19 @@ export default function Block({data, isRoot}: BlockInterface) {
 
           const parser = new DOMParser()
           const htmlDoc = parser.parseFromString(response, 'text/html')
-          const _element = htmlDoc.getElementById(data.anchor.replace('#', ''))
+          const anchor = data.anchor.replace('#', '')
+          let _element: HTMLElement = htmlDoc.getElementsByTagName('article')[0]
+          if (anchor) {
+            _element = htmlDoc.getElementById(data.anchor.replace('#', ''))
+          } else if (_element) {
+            // @ts-ignore
+            _element = _element.getElementsByTagName('div')[0]?.firstChild
+          }
           if (!_element) return
           if (!content.title) {
             content.title = _element.innerText.replaceAll('¶', '')
           }
-          const contents = getContents(content, _element.nextElementSibling)
+          const contents: string[] = getContents(content, _element.nextElementSibling)
           if (contents.length) {
             content.html = contents.join('').replaceAll(
               /src="[^h]/g, function (found:String) {

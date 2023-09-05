@@ -42,12 +42,8 @@ function ThemeButton({children, tabIndex, variant, disabled, className}: AdminTa
 // @ts-ignore
 /** Help center section */
 
-export const HelpCenter = forwardRef(
-  (
-    // @ts-ignore
-    { pageName = 'global' },
-    ref
-  ) => {
+export const HelpCenter = forwardRef(({}, ref) =>
+{
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(true)
     const [data, setData] = useState(null)
@@ -61,7 +57,7 @@ export const HelpCenter = forwardRef(
     useEffect(
       () => {
         setLoading(true)
-        fetch(`/docs/${pageName}/data`)
+        fetch(`/docs/data?relative_url=` + window.location.pathname,)
           .then(response => response.json())
           .then((response) => {
             if (response.detail) {
