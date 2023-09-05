@@ -46,7 +46,7 @@ class TestUploadSessionSummary(TestCase):
             code='EN'
         )
         self.module = ModuleF.create(
-            name='admin_boundaries'
+            name='Admin Boundaries'
         )
         self.dataset = DatasetF.create(
             module=self.module
@@ -57,6 +57,7 @@ class TestUploadSessionSummary(TestCase):
         self.superuser = UserF.create(is_superuser=True)
         self.layer_file = LayerFileF.create(
             layer_file=FileField(filename=f'{uuid4().hex}.geojson'),
+            layer_type='GEOJSON',
             layer_upload_session=self.layer_upload_session,
             name_fields=[
                 {
@@ -78,7 +79,8 @@ class TestUploadSessionSummary(TestCase):
         )
         self.factory = APIRequestFactory()
 
-    @patch('georepo.utils.layers.check_properties', autospec=True)
+    @patch('modules.admin_boundaries.field_mapping.check_properties',
+           autospec=True)
     def test_upload_session_summary(self, mock_json_load):
         mock_json_load.return_value = ([], 1)
         request = self.factory.get(
