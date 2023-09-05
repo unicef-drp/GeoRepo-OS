@@ -1,8 +1,6 @@
 import os
 import json
-import fiona
-from fiona.crs import from_epsg
-from uuid import UUID, uuid4
+from uuid import UUID
 from datetime import date, datetime
 from django.conf import settings
 
@@ -11,8 +9,10 @@ from georepo.models import (
     DatasetViewResource
 )
 from georepo.utils.exporter_base import (
-    DatasetExporterBase,
     DatasetViewExporterBase
+)
+from georepo.utils.fiona_utils import (
+    open_collection_by_file
 )
 
 # buffer the data before writing/flushing to file
@@ -20,17 +20,26 @@ GEOJSON_RECORDS_BUFFER_TX = 250
 GEOJSON_RECORDS_BUFFER = 500
 
 
-def extract_geojson_attributes(layer_file_path: str):
+def get_geojson_feature_count(layer_file):
+    """
+    Get Feature count in geojson file
+    """
+    feature_count = 0
+    with open_collection_by_file(layer_file, 'GEOJSON') as collection:
+        feature_count = len(collection)
+    return feature_count
+
+
+def extract_geojson_attributes(layer_file):
     """
     Load and read geojson, and returns all the attributes
     :param layer_file_path: path of the layer file
     :return: list of attributes, e.g. ['id', 'name', ...]
     """
     attrs = []
-    with open(layer_file_path) as json_file:
-        data = json.load(json_file)
+    with open_collection_by_file(layer_file, 'GEOJSON') as collection:
         try:
-            attrs = data['features'][0]['properties'].keys()
+            attrs = next(iter(collection))["properties"].keys()
         except (KeyError, IndexError):
             pass
     return attrs
@@ -44,68 +53,6 @@ def json_serial(obj):
     if isinstance(obj, UUID):
         return str(obj)
     raise TypeError("Type %s not serializable" % type(obj))
-
-
-class GeojsonExporter(DatasetExporterBase):
-    output = 'geojson'
-
-    def write_entities(self, schema, entities, context, exported_name) -> str:
-        geojson_output_folder = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(self.dataset.uuid)
-        )
-        if not os.path.exists(geojson_output_folder):
-            os.mkdir(geojson_output_folder)
-        suffix = '.geojson'
-        crs = from_epsg(4326)
-        output_driver = 'GeoJSON'
-        tmp_filename = str(uuid4())
-        tmp_geojson_file = os.path.join(
-            geojson_output_folder,
-            tmp_filename
-        ) + suffix
-        with fiona.open(tmp_geojson_file, 'w', driver=output_driver,
-                        crs=crs,
-                        schema=schema) as c:
-            entities = entities.iterator()
-            records = []
-            record_count = 0
-            for entity in entities:
-                data = self.get_serializer()(
-                    entity,
-                    many=False,
-                    context=context
-                ).data
-                records.append(data)
-                record_count += 1
-                if len(records) >= GEOJSON_RECORDS_BUFFER_TX:
-                    c.writerecords(records)
-                    records.clear()
-                if record_count % GEOJSON_RECORDS_BUFFER == 0:
-                    c.flush()
-            if len(records) > 0:
-                c.writerecords(records)
-        # move the file
-        geojson_file_path = os.path.join(
-            geojson_output_folder,
-            f'{exported_name}'
-        ) + suffix
-        if os.path.exists(geojson_file_path):
-            os.remove(geojson_file_path)
-        os.rename(tmp_geojson_file, geojson_file_path)
-        return geojson_file_path
-
-
-def generate_geojson(dataset: Dataset):
-    """
-    Extract geojson from dataset and then save it to
-    geojson dataset folder
-    :param dataset: Dataset object
-    :return: geojson path
-    """
-    exporter = GeojsonExporter(dataset)
-    exporter.init_exporter()
-    exporter.run()
 
 
 class GeojsonViewExporter(DatasetViewExporterBase):
@@ -161,6 +108,7 @@ def generate_view_geojson(dataset_view: DatasetView,
     exporter = GeojsonViewExporter(dataset_view, view_resource=view_resource)
     exporter.init_exporter()
     exporter.run()
+    return exporter
 
 
 def validate_geojson(geojson: dict) -> bool:

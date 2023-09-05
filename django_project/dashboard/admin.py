@@ -1,7 +1,12 @@
+import re
+from datetime import datetime
 from django.contrib import admin, messages
+from django.contrib.admin.widgets import AdminFileWidget
+from django.db.models.fields.files import FileField
 from django import forms
 from django.urls import path
 from django.http import HttpResponseRedirect
+from django.utils.safestring import mark_safe
 from tinymce.widgets import TinyMCE
 from dashboard.models import (
     LayerFile,
@@ -19,19 +24,43 @@ from dashboard.models import (
 from georepo.models import TemporaryTilingConfig
 
 
+class OverrideURLFileWidget(AdminFileWidget):
+    def render(self, name, value, attrs=None, renderer=None):
+        ori_output = super(OverrideURLFileWidget, self).render(
+            name, value, attrs, renderer)
+        result = re.sub(r"(.+)<a href=.+>(.+)<\/a>(.+)", r"\1 \2 \3",
+                        ori_output)
+        output = [result]
+        return mark_safe(''.join(output))
+
+
 class LayerFileAdmin(admin.ModelAdmin):
-    list_display = ('meta_id', 'upload_date', 'processed', 'layer_file')
+    list_display = ('meta_id', 'upload_date', 'processed')
+    formfield_overrides = {
+        FileField: {'widget': OverrideURLFileWidget},
+    }
 
 
 @admin.action(description='Validate entity upload')
 def validate_entity_upload(modeladmin, request, queryset):
+    from georepo.tasks import validate_ready_uploads
     for entity_upload in queryset:
         # revert status to STARTED
         entity_upload.status = STARTED
         entity_upload.comparison_data_ready = False
         entity_upload.boundary_comparison_summary = None
         entity_upload.progress = ''
+        entity_upload.logs = ''
+        entity_upload.started_at = datetime.now()
+        entity_upload.summaries = None
+        entity_upload.error_report = None
         entity_upload.save()
+        task = validate_ready_uploads.apply_async(
+            (entity_upload.id,),
+            queue='validation'
+        )
+        entity_upload.task_id = task.id
+        entity_upload.save(update_fields=['task_id'])
 
 
 @admin.action(description='Run comparison boundary')
@@ -61,7 +90,9 @@ class LayerUploadSessionAdmin(admin.ModelAdmin):
 class EntityUploadAdmin(admin.ModelAdmin):
     search_fields = [
         'upload_session__source',
-        'upload_session__dataset__label'
+        'upload_session__dataset__label',
+        'revised_entity_id',
+        'revised_entity_name'
     ]
     actions = [validate_entity_upload, run_comparison_boundary_action]
     list_display = ('upload_session', 'get_dataset', 'started_at',
@@ -77,6 +108,9 @@ class EntityUploadAdmin(admin.ModelAdmin):
         'revised_geographical_entity'
     )
     readonly_fields = ['started_at']
+    formfield_overrides = {
+        FileField: {'widget': OverrideURLFileWidget},
+    }
 
     def get_dataset(self, obj):
         return obj.upload_session.dataset

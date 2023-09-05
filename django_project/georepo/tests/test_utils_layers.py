@@ -1,3 +1,4 @@
+from fiona.errors import DriverError
 from django.test import TestCase, override_settings
 from georepo.utils import absolute_path
 from georepo.tests.model_factories import (
@@ -68,6 +69,5 @@ class TestCheckProperties(TestCase):
                               'geojson_dataset', 'level_0_2.geojson')
             )
         )
-        errors, feature_count = check_properties(layer_file_4)
-        self.assertEqual(len(errors), 0)
-        self.assertEqual(feature_count, 0)
+        with self.assertRaises(DriverError):
+            check_properties(layer_file_4)

@@ -1,6 +1,5 @@
 from typing import Tuple, List
 import json
-import fiona
 import logging
 
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
@@ -15,11 +14,13 @@ from dashboard.models import (
     EntityUploadChildLv1,
     LayerFile
 )
-from dashboard.models.layer_file import (
-    SHAPEFILE
-)
 from georepo.utils.layers import get_feature_value
 from georepo.utils.unique_code import get_latest_revision_number
+from georepo.utils.fiona_utils import (
+    open_collection_by_file,
+    delete_tmp_shapefile
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +90,8 @@ def do_process_layer_files_for_parent_matching(
     )
     total_no_match = 0
     results = []
-    layer_file_path = layer_file.layer_file.path
-    if layer_file.layer_type == SHAPEFILE:
-        layer_file_path = f'zip://{layer_file.layer_file.path}'
-    with fiona.open(layer_file_path, encoding='utf-8') as features:
+    with open_collection_by_file(layer_file.layer_file,
+                                 layer_file.layer_type) as features:
         total_features = len(features)
         upload_session.progress = (
             'Auto parent matching admin level 1 entities '
@@ -160,6 +159,7 @@ def do_process_layer_files_for_parent_matching(
         )
         upload_session.save(update_fields=['progress'])
         logger.info(upload_session.progress)
+        delete_tmp_shapefile(features.path)
     return results
 
 
@@ -185,10 +185,8 @@ def do_process_layer_files_for_parent_matching_level0(
             if name_field['default']][0]
     )
     total_no_match = 0
-    layer_file_path = layer_file.layer_file.path
-    if layer_file.layer_type == SHAPEFILE:
-        layer_file_path = f'zip://{layer_file.layer_file.path}'
-    with fiona.open(layer_file_path, encoding='utf-8') as features:
+    with open_collection_by_file(layer_file.layer_file,
+                                 layer_file.layer_type) as features:
         total_features = len(features)
         upload_session.progress = (
             'Auto parent matching admin level 1 entities '
@@ -255,6 +253,7 @@ def do_process_layer_files_for_parent_matching_level0(
         )
         upload_session.save(update_fields=['progress'])
         logger.info(upload_session.progress)
+        delete_tmp_shapefile(features.path)
 
 
 def find_matched_entity_upload(entity_uploads: List[EntityUploadStatus],

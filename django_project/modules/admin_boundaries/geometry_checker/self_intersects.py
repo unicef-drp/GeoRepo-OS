@@ -68,6 +68,6 @@ def self_intersects_check_with_flag(geom: GEOSGeometry):
     )
     reason = reason_ptr.value
     free(reason_ptr)
-    if not is_valid and 'self-intersection' in reason.lower():
+    if not is_valid and b'self-intersection' in reason.lower():
         return False, reason, out
     return True, None, None

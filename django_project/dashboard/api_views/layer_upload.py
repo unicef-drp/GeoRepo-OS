@@ -366,14 +366,14 @@ class LayerFileAttributes(AzureAuthRequiredMixin, APIView):
             raise Http404('File is missing!')
         attributes = []
         if layer_file.layer_type == GEOJSON:
-            attributes = extract_geojson_attributes(layer_file.layer_file.path)
+            attributes = extract_geojson_attributes(layer_file.layer_file)
         elif layer_file.layer_type == SHAPEFILE:
             attributes = extract_shapefile_attributes(
-                layer_file.layer_file.path
+                layer_file.layer_file
             )
         elif layer_file.layer_type == GEOPACKAGE:
             attributes = extract_gpkg_attributes(
-                layer_file.layer_file.path
+                layer_file.layer_file
             )
         return Response(status=200, data=attributes)
 

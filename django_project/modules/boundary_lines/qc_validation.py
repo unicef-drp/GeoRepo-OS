@@ -4,7 +4,6 @@ import json
 import uuid
 from io import StringIO
 
-import fiona
 import logging
 
 from core.celery import app
@@ -17,7 +16,7 @@ from django.db.models import IntegerField, Max
 from django.db.models.functions import Cast
 
 from dashboard.models.layer_upload_session import LayerUploadSession
-from dashboard.models import LayerFile, ERROR, SHAPEFILE
+from dashboard.models import LayerFile, ERROR
 from dashboard.models.entity_upload import EntityUploadStatus, VALID
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity, EntityId
@@ -29,6 +28,10 @@ from modules.boundary_lines.error_type import (
 from georepo.models.boundary_type import BoundaryType
 from georepo.utils.layers import check_valid_value, get_feature_value
 from georepo.utils.unique_code import generate_unique_code
+from georepo.utils.fiona_utils import (
+    open_collection_by_file,
+    delete_tmp_shapefile
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +71,8 @@ def run_validation(entity_upload: EntityUploadStatus):
         }
         for error_type in ErrorType:
             level_error_report[error_type.value] = 0
-        layer_file_path = layer_file.layer_file.path
-        if layer_file.layer_type == SHAPEFILE:
-            layer_file_path = f'zip://{layer_file.layer_file.path}'
-        with fiona.open(layer_file_path, encoding='utf-8') as layer:
+        with open_collection_by_file(layer_file.layer_file,
+                                     layer_file.layer_type) as layer:
             layer_index = 0
             for feature_idx, feature in enumerate(layer):
                 layer_index += 1
@@ -227,6 +228,7 @@ def run_validation(entity_upload: EntityUploadStatus):
                     except IntegrityError:
                         pass
             error_summaries.append(level_error_report)
+            delete_tmp_shapefile(layer.path)
 
     if len(validation_summaries) > 0:
         entity_upload.status = ERROR
