@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from django.contrib import admin, messages
 from django.contrib.admin.widgets import AdminFileWidget
 from django.db.models.fields.files import FileField
@@ -42,13 +43,24 @@ class LayerFileAdmin(admin.ModelAdmin):
 
 @admin.action(description='Validate entity upload')
 def validate_entity_upload(modeladmin, request, queryset):
+    from georepo.tasks import validate_ready_uploads
     for entity_upload in queryset:
         # revert status to STARTED
         entity_upload.status = STARTED
         entity_upload.comparison_data_ready = False
         entity_upload.boundary_comparison_summary = None
         entity_upload.progress = ''
+        entity_upload.logs = ''
+        entity_upload.started_at = datetime.now()
+        entity_upload.summaries = None
+        entity_upload.error_report = None
         entity_upload.save()
+        task = validate_ready_uploads.apply_async(
+            (entity_upload.id,),
+            queue='validation'
+        )
+        entity_upload.task_id = task.id
+        entity_upload.save(update_fields=['task_id'])
 
 
 @admin.action(description='Run comparison boundary')

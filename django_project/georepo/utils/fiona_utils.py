@@ -66,11 +66,12 @@ def open_collection_by_file(fp, type: str) -> Collection:
 
 
 def delete_tmp_shapefile(file_path: str):
-    cleaned_fp = file_path
-    if '/vsizip/' in file_path:
-        cleaned_fp = file_path.replace('/vsizip/', '')
-    if os.path.exists(cleaned_fp):
-        os.remove(cleaned_fp)
+    if settings.USE_AZURE and file_path.endswith('.zip'):
+        cleaned_fp = file_path
+        if '/vsizip/' in file_path:
+            cleaned_fp = file_path.replace('/vsizip/', '')
+        if os.path.exists(cleaned_fp):
+            os.remove(cleaned_fp)
 
 
 def list_layers_shapefile(fp: str):
