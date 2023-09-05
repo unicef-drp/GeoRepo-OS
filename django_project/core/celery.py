@@ -22,6 +22,10 @@ app = Celery('georepo')
 # - namespace='CELERY' means all celery-related configuration keys
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
+# set visibility timeout (Redis) to 3 hours
+# https://stackoverflow.com/questions/27310899/
+# celery-is-rerunning-long-running-completed-tasks-over-and-over
+app.conf.broker_transport_options = {'visibility_timeout': 3 * 3600}
 
 
 def create_celery_logger_handler(logger, propagate):
