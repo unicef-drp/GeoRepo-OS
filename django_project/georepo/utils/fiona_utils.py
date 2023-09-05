@@ -17,8 +17,11 @@ def open_collection(fp: str, type: str) -> Collection:
         if type == 'SHAPEFILE':
             with default_storage.open(fp, 'rb') as source:
                 with (
-                    NamedTemporaryFile(delete=False,
-                                       suffix='.zip') as temp_file
+                    NamedTemporaryFile(
+                        delete=False,
+                        suffix='.zip',
+                        dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
+                    ) as temp_file
                 ):
                     temp_file.write(source.read())
                     temp_file.flush()
@@ -41,7 +44,11 @@ def open_collection_by_file(fp, type: str) -> Collection:
     if settings.USE_AZURE:
         if type == 'SHAPEFILE':
             with (
-                NamedTemporaryFile(delete=False, suffix='.zip') as temp_file
+                NamedTemporaryFile(
+                    delete=False,
+                    suffix='.zip',
+                    dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
+                ) as temp_file
             ):
                 temp_file.write(fp.read())
                 temp_file.flush()
@@ -59,17 +66,24 @@ def open_collection_by_file(fp, type: str) -> Collection:
 
 
 def delete_tmp_shapefile(file_path: str):
-    if '/vsizip//tmp/' in file_path:
+    cleaned_fp = file_path
+    if '/vsizip/' in file_path:
         cleaned_fp = file_path.replace('/vsizip/', '')
-        if os.path.exists(cleaned_fp):
-            os.remove(cleaned_fp)
+    if os.path.exists(cleaned_fp):
+        os.remove(cleaned_fp)
 
 
 def list_layers_shapefile(fp: str):
     layers = []
     if settings.USE_AZURE:
         if isinstance(fp, InMemoryUploadedFile):
-            with NamedTemporaryFile(delete=False, suffix='.zip') as temp_file:
+            with (
+                NamedTemporaryFile(
+                    delete=False,
+                    suffix='.zip',
+                    dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
+                ) as temp_file
+            ):
                 temp_file.write(fp.read())
                 temp_file.flush()
             layers = fiona.listlayers(f'zip://{temp_file.name}')
@@ -81,8 +95,11 @@ def list_layers_shapefile(fp: str):
         else:
             with default_storage.open(fp, 'rb') as source:
                 with (
-                    NamedTemporaryFile(delete=False,
-                                       suffix='.zip') as temp_file
+                    NamedTemporaryFile(
+                        delete=False,
+                        suffix='.zip',
+                        dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
+                    ) as temp_file
                 ):
                     temp_file.write(source.read())
                     temp_file.flush()

@@ -162,6 +162,14 @@ if USE_AZURE:
     AZURE_CONTAINER = AZURE_STORAGE_CONTAINER
     # 100MB
     AZURE_BLOB_MAX_MEMORY_SIZE = 100*1024*1024
-    AZURE_OVERWRITE_FILES = True
+    AZURE_OVERWRITE_FILES = False
     AZURE_LOCATION = 'media'
+    # set temp directory to azure disk
+    FILE_UPLOAD_TEMP_DIR = os.path.join(
+        MEDIA_ROOT,
+        'tmp'
+    )
+    if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
+        os.mkdir(FILE_UPLOAD_TEMP_DIR)
+
 CODE_RELEASE_VERSION = code_release_version()
