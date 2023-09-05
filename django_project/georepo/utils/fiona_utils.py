@@ -21,8 +21,8 @@ def open_collection(fp: str, type: str) -> Collection:
                         delete=False,
                         suffix='.zip',
                         dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
-                    ) as temp_file
-                ):
+                    )
+                ) as temp_file:
                     temp_file.write(source.read())
                     temp_file.flush()
             result = fiona.open(f'zip://{temp_file.name}', encoding='utf-8')
@@ -48,8 +48,8 @@ def open_collection_by_file(fp, type: str) -> Collection:
                     delete=False,
                     suffix='.zip',
                     dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
-                ) as temp_file
-            ):
+                )
+            ) as temp_file:
                 temp_file.write(fp.read())
                 temp_file.flush()
             file_path = f'zip://{temp_file.name}'
@@ -82,8 +82,8 @@ def list_layers_shapefile(fp: str):
                     delete=False,
                     suffix='.zip',
                     dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
-                ) as temp_file
-            ):
+                )
+            ) as temp_file:
                 temp_file.write(fp.read())
                 temp_file.flush()
             layers = fiona.listlayers(f'zip://{temp_file.name}')
@@ -99,8 +99,8 @@ def list_layers_shapefile(fp: str):
                         delete=False,
                         suffix='.zip',
                         dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
-                    ) as temp_file
-                ):
+                    )
+                ) as temp_file:
                     temp_file.write(source.read())
                     temp_file.flush()
             layers = fiona.listlayers(f'zip://{temp_file.name}')

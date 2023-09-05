@@ -1,7 +1,11 @@
+import re
 from django.contrib import admin, messages
+from django.contrib.admin.widgets import AdminFileWidget
+from django.db.models.fields.files import FileField
 from django import forms
 from django.urls import path
 from django.http import HttpResponseRedirect
+from django.utils.safestring import mark_safe
 from tinymce.widgets import TinyMCE
 from dashboard.models import (
     LayerFile,
@@ -19,8 +23,21 @@ from dashboard.models import (
 from georepo.models import TemporaryTilingConfig
 
 
+class OverrideURLFileWidget(AdminFileWidget):
+    def render(self, name, value, attrs=None, renderer=None):
+        ori_output = super(OverrideURLFileWidget, self).render(
+            name, value, attrs, renderer)
+        result = re.sub(r"(.+)<a href=.+>(.+)<\/a>(.+)", r"\1 \2 \3",
+                        ori_output)
+        output = [result]
+        return mark_safe(''.join(output))
+
+
 class LayerFileAdmin(admin.ModelAdmin):
-    list_display = ('meta_id', 'upload_date', 'processed', 'layer_file')
+    list_display = ('meta_id', 'upload_date', 'processed')
+    formfield_overrides = {
+        FileField: {'widget': OverrideURLFileWidget},
+    }
 
 
 @admin.action(description='Validate entity upload')
@@ -61,7 +78,9 @@ class LayerUploadSessionAdmin(admin.ModelAdmin):
 class EntityUploadAdmin(admin.ModelAdmin):
     search_fields = [
         'upload_session__source',
-        'upload_session__dataset__label'
+        'upload_session__dataset__label',
+        'revised_entity_id',
+        'revised_entity_name'
     ]
     actions = [validate_entity_upload, run_comparison_boundary_action]
     list_display = ('upload_session', 'get_dataset', 'started_at',
@@ -77,6 +96,9 @@ class EntityUploadAdmin(admin.ModelAdmin):
         'revised_geographical_entity'
     )
     readonly_fields = ['started_at']
+    formfield_overrides = {
+        FileField: {'widget': OverrideURLFileWidget},
+    }
 
     def get_dataset(self, obj):
         return obj.upload_session.dataset
