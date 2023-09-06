@@ -130,8 +130,8 @@ For more information how to set up on pycharm, please visit [Using a Docker Comp
 ### Production
 
 ```
-git clone https://github.com/unicef-drp/GeoSight
-cd GeoSight/deployment
+git clone https://github.com/unicef-drp/GeoRepo-OS
+cd GeoRepo-OS/deployment
 docker-compose up -d
 ```
 
@@ -152,8 +152,8 @@ docker-compose down
 ### Development
 
 ```
-git clone https://github.com/unicef-drp/GeoSight-OS
-cd GeoSight-OS/deployment
+git clone https://github.com/unicef-drp/GeoRepo-OS
+cd GeoRepo-OS-OS/deployment
 cp .template.env .env
 cp docker-compose.override.template.yml docker-compose.override.yml
 ```
@@ -181,8 +181,8 @@ Wait until it is on.
 
 The web can be accessed using `http://localhost:2000/`
 
-If the web is taking long time to load, restart geosight_dev container by `make dev-reload`.<br>
-The sequence should be `make frontend-dev`, after that run or restart geosight_dev. 
+If the web is taking long time to load, restart georepo_dev container by `make dev-reload`.<br>
+The sequence should be `make frontend-dev`, after that run or restart georepo_dev. 
 
 To stop dev:
 

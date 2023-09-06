@@ -12,7 +12,7 @@ license: This program is free software; you can redistribute it and/or modify it
 #context_id: 1234
 ---
 
-# GeoSight Developer Guide
+# GeoRepo Developer Guide
 
 In this section of the documentation, we aim to onboard developers onto the process of setting up a developer workstation, understanding the system architecture, contributing back to the project and so forth. Here is a brief overview of the content provided here:
 

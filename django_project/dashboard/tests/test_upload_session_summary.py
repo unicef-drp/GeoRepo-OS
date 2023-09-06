@@ -1,8 +1,8 @@
 # coding=utf-8
 """
-GeoSight is UNICEF's geospatial web-based business intelligence platform.
+GeoRepo is UNICEF's geospatial web-based business intelligence platform.
 
-Contact : geosight-no-reply@unicef.org
+Contact : georepo-no-reply@unicef.org
 
 .. note:: This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
