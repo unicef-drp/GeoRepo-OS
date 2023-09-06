@@ -1,11 +1,7 @@
 import zipfile
 import os
 import subprocess
-from django.core.files.storage import default_storage
 from django.conf import settings
-from django.core.files.uploadedfile import (
-    InMemoryUploadedFile
-)
 from georepo.models import (
     DatasetView,
     DatasetViewResource
@@ -51,23 +47,6 @@ def get_shape_file_feature_count(layer_file):
         feature_count = len(collection)
         delete_tmp_shapefile(collection.path)
     return feature_count
-
-
-def store_zip_memory_to_temp_file(file_obj: InMemoryUploadedFile):
-    if settings.USE_AZURE:
-        path = 'tmp/' + file_obj.name
-    else:
-        tmp_path = os.path.join(settings.MEDIA_ROOT, 'tmp')
-        if not os.path.exists(tmp_path):
-            os.makedirs(tmp_path)
-        path = os.path.join(
-            tmp_path,
-            file_obj.name
-        )
-    with default_storage.open(path, 'wb+') as destination:
-        for chunk in file_obj.chunks():
-            destination.write(chunk)
-    return path
 
 
 def validate_shapefile_zip(layer_file_path: any):

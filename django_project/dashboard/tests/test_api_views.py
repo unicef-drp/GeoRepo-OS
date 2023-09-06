@@ -179,8 +179,8 @@ class TestApiViews(TestCase):
         self.superuser = UserF.create(is_superuser=True)
 
     @mock.patch(
-        'dashboard.api_views.layer_upload.validate_layer_file_in_crs_4326',
-        mock.Mock(return_value=(True, 'EPSG:4326')))
+        'dashboard.api_views.layer_upload.validate_layer_file_metadata',
+        mock.Mock(return_value=(True, 'EPSG:4326', 1, [])))
     def test_layer_upload(self):
         file = SimpleUploadedFile(
             'admin.geojson',
