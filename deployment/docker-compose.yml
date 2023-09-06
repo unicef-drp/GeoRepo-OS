@@ -55,6 +55,7 @@ x-common-django:
     - TEGOLA_CONCURRENCY=${TEGOLA_CONCURRENCY:-0}
     - AZURE_STORAGE=${AZURE_STORAGE}
     - AZURE_STORAGE_CONTAINER=${AZURE_STORAGE_CONTAINER}
+    - AZURE_TEMP_DIRECTORY=${AZURE_TEMP_DIRECTORY:-/home/web/media/tmp}
   volumes:
     - static-data:/home/web/static
     - media-data:/home/web/media
@@ -88,7 +89,7 @@ services:
     environment:
       # take care to let the project name below match that
       # declared in the top of the makefile
-      - DUMPPREFIX=PG_GeoSight
+      - DUMPPREFIX=PG_GeoRepo
       # These are all defaults anyway, but setting explicitly in
       # case we ever want to ever use different credentials
       - POSTGRES_USER=${DATABASE_USERNAME:-docker}

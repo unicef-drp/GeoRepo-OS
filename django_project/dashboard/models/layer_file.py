@@ -124,5 +124,10 @@ class LayerFile(models.Model):
         help_text='user input privacy level'
     )
 
+    attributes = models.JSONField(
+        default=list,
+        blank=True
+    )
+
     def __str__(self):
         return self.name

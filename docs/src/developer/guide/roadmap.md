@@ -1,6 +1,6 @@
 ---
-title: GeoRepo-OS Documentation Home 
-summary: GeoRepo is a UNICEF’s geospatial web-based data storage and administrative boundary harmonization platform.
+title: GeoRepo-OS Development Roadmap
+summary: GeoRepo is a UNICEF's geospatial web-based data storage and administrative boundary harmonization platform.
     - Tim Sutton
     - Dimas Tri Ciputra
     - Danang Tri Massandy
@@ -21,11 +21,8 @@ expected to be introduced.
 
 ## Future plans
 
-- A data model for scenarios instead of pulling in google sheets or similar
-- More ingestors for risk data
-- Hazard data support with auto aggregation of risk factors such as population
-  counts etc.
-- Single sign on support
+- New types of 'modules' e.g. schools, healthcare facilities etc.
+- 
 
 ## Considerations
 

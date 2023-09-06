@@ -1,6 +1,6 @@
 ---
-title: GeoRepo-OS Documentation Home 
-summary: GeoRepo is a UNICEF’s geospatial web-based data storage and administrative boundary harmonization platform.
+title: GeoRepo-OS Developer Guide
+summary: GeoRepo is a UNICEF's geospatial web-based data storage and administrative boundary harmonization platform.
     - Tim Sutton
     - Dimas Tri Ciputra
     - Danang Tri Massandy
@@ -12,59 +12,15 @@ license: This program is free software; you can redistribute it and/or modify it
 #context_id: 1234
 ---
 
-# GeoRepo
+# GeoRepo Developer Guide
 
-## QUICK INSTALLATION GUIDE
+In this section of the documentation, we aim to onboard developers onto the process of setting up a developer workstation, understanding the system architecture, contributing back to the project and so forth. Here is a brief overview of the content provided here:
 
-### Development
-
-This will clone GeoRepo repository to your machine
-
-```bash
-git clone git@github.com:unicef-drp/GeoRepo-OS.git
-```
-
-Add your fork repository as second remote URLs
-
-```bash
-git remote add userA git@github.com:userA/GeoRepo-OS.git
-```
-
-Create docker-compose.override.yml and .env file from the template
-
-```bash
-cd deployment
-cp docker-compose.override.template.yml docker-compose.override.yml
-cp .template.env .env
-cd ..
-```
-
-Change DJANGO_SETTINGS_MODULE in the .env file to point to dev environment:
-
-```text
-DJANGO_SETTINGS_MODULE = core.settings.dev
-```
-
-Run make build command
-
-```bash
-make build
-```
-
-To start the containers, we can use make dev command
-
-```bash
-make dev
-```
-
-We can verify the containers are running successfully using docker ps command
-
-```bash
-docker ps
-```
-
-```bash
-make migrate
-```
-
+* **[Architecture:](./architecture.md)** - Here we outline the system architecture using ER Diagrams, Software Component Diagrams etc.
+* **[Prerequisites:](./prerequisites.md)** - An overview of the software that needs to be installed before you can start. 
+* **[Cloning:](./cloning.md)** - In this section we cover how to make a local working copy on your own machine. 
+* **[IDE Setup:](./ide-setup.md)** - Here we walk through setting up your IDE. 
+* **[Building:](./building.md)** - This covers tasks related to building the application so you can test it in your browser.
+* **[Workflows:](./workflows.md)** - Examples of typical workflows for adding features, fixing bugs etc. 
+* **[Roadmap:](./roadmap.md)** - Here we outline future plans for the project.
 

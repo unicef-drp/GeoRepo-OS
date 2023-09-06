@@ -119,8 +119,10 @@ export default function Step1(props: WizardStepInterface) {
     const currentFiles: any = dropZoneCurrent['files']
     let allFilesValid = true
     for (let file of currentFiles) {
+      let _isInitFile = initialFiles.findIndex((f) => f.name.includes(file.meta.id))
+      if (_isInitFile > -1) continue
       // @ts-ignore
-      if (!levels![file.meta.id]) {
+      if (!levels![file.meta.id] || file.meta.status !== 'done') {
         allFilesValid = false
         break
       }
@@ -135,6 +137,7 @@ export default function Step1(props: WizardStepInterface) {
   // called every time a file's `status` changes
   // @ts-ignore
   const handleChangeStatus = (file, status) => {
+    console.log('***status***', status)
     let {meta, f, xhr} = file
     const _levels: Level = levels!
     meta.uploadSession = props.uploadSession
@@ -151,7 +154,7 @@ export default function Step1(props: WizardStepInterface) {
         _levels[meta.id] = '' + (Object.keys(_levels).length + (uploadLevel0 ? 0 : 1))
       }
       meta.level = _levels[meta.id]
-      setLevels(_levels)
+      setLevels({..._levels})
     }
     if (status === 'done') {
       setLevels({..._levels})
@@ -208,6 +211,18 @@ export default function Step1(props: WizardStepInterface) {
         let response = JSON.parse(xhr.response)
         setIsError(true)
         setAlertMessage(response.detail)
+      }, 300)
+    }
+    if (status === 'aborted') {
+      setTimeout(() => {
+        file.remove()
+      }, 300)
+    }
+    if (status === 'error_file_size') {
+      setTimeout(() => {
+        file.remove()
+        setIsError(true)
+        setAlertMessage('Unable to upload file with more than 600MB!')
       }, 300)
     }
   }
@@ -419,6 +434,7 @@ export default function Step1(props: WizardStepInterface) {
                 downloadLayerFile={downloadLayerFile}
                 uploadLevel0={uploadLevel0}
                 isReadOnly={props.isReadOnly}
+                initialFiles={initialFiles}
                 />
               }
               getUploadParams={getUploadParams}
@@ -426,6 +442,7 @@ export default function Step1(props: WizardStepInterface) {
               onChangeStatus={handleChangeStatus}
               accept={ALLOWABLE_FILE_TYPES.join(', ')}
               LayoutComponent={CustomLayout}
+              maxSizeBytes={ 600 * 1024 * 1024}
             />
         </div>
       </Scrollable>

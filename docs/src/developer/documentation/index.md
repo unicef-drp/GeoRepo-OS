@@ -38,89 +38,26 @@ For each of the main topic areas (user, admin, developer, devops, api user) we p
 
 ### Organisation
 
-The documentation is organised in the following structure:
+The documentation is broadly organised in the following structure. This structure may change over time as sections are added / moved / removed:
 
 ```
 src
 ├── about
-│   ├── code-of-conduct.md
-│   ├── contributing.md
-│   ├── disclaimer.md
-│   ├── img
-│   │   └── naming-convention.README
-│   ├── index.md
-│   ├── license.md
-│   └── running-instances.md
 ├── administrator
 │   ├── guide
-│   │   └── index.md
-│   ├── index.md
 │   └── manual
-│       ├── img
-│       │   └── naming-convention.README
-│       └── index.md
 ├── developer
-│   ├── api
-│   │   ├── guide
-│   │   │   └── index.md
-│   │   ├── index.md
-│   │   └── manual
-│   │       └── index.md
 │   ├── documentation
-│   │   ├── img
-│   │   │   └── naming-convention.README
-│   │   └── index.md
 │   ├── guide
-│   │   ├── architecture.md
-│   │   ├── building.md
-│   │   ├── cloning.md
-│   │   ├── configuration.md
-│   │   ├── design.md
-│   │   ├── ide-setup.md
-│   │   ├── img
-│   │   │   └── naming-convention.README
-│   │   ├── index.md
-│   │   ├── prerequisites.md
-│   │   ├── roadmap.md
-│   │   ├── templates
-│   │   │   ├── commit-message-convention.md
-│   │   │   └── pull-request-template.md
-│   │   └── workflows.md
-│   ├── img
-│   │   └── naming-convention.README
-│   ├── index.md
 │   └── manual
-│       ├── index.md
-│       └── README.txt
 ├── devops
 │   ├── guide
-│   │   └── index.md
-│   ├── img
-│   │   └── naming-convention.README
-│   ├── index.md
 │   └── manual
-│       └── index.md
-├── img
-│   ├── favicon.ico
-│   ├── KartozaBackgroundBorder.png
-│   ├── logo.png
-│   ├── logo.svg
-│   ├── naming-convention.README
-│   └── screenshot.png
-├── index.md
 └── user
+│   ├── api
     ├── guide
-    │   └── index.md
-    ├── img
-    │   └── naming-convention.README
-    ├── index.md
     ├── manual
-    │   ├── home.md
-    │   ├── img
-    │   │   └── naming-convention.README
-    │   └── index.md
     └── quickstart
-        └── index.md
 ```
 
 ## File naming conventions
@@ -159,7 +96,7 @@ Once the editor loads, you will be greeted by 1️⃣ a preview of the project's
 ![Web Editor 2](img/dev-docs-web-editor-2.png)
 
 Once you have expanded the `docs` directory, 1️⃣ click on the `src` directory. All sub-directories within the `src` directory contain the files that become the documentation. Each sub-directory contains an `index.md` file that is required for the building of the documentation and static site. If you add a new sub-directory into any folder it must also contain a populated `index.md` file.
-![Wed Editor 3](img/dev-docs-web-editor-3.png)
+![Web Editor 3](img/dev-docs-web-editor-3.png){: style="height:300px"}
 
 Once you have chosen which section of documentation you would like to edit (e.g. user/guide/index.md), click on the file and it will open in the web editor.
 ![Web Editor 4](img/dev-docs-web-editor-4.png)
@@ -228,14 +165,18 @@ If you want to work with the documentation locally (i.e. directly on your PC), y
 
 1. Install python
 2. Install pip
-3. Install the python modules listed in docs/requirements.txt
-4. If you are on Linux or macOS, open the docs directory in a shell and run ``build-docs-html.sh``
-5. In the docs directory, run ``mkdocs serve``
-6. Open your web browser at https://localhost:8000 to view the rendered docs.
+3. Install virtualenv (`pip install virtualenv`)
+4. Make the docs folder your working directory (`cd docs`)
+4. Create the virtual env in the docs folder (`python -m venv env`)
+5. Activate the venv (`source env/bin/activate`)
+5. Install the python modules listed in docs/requirements.txt (`pip install -r requirements.txt`)
+6. If you are on Linux or macOS, open the docs directory in a shell and run ``build-docs-html.sh``
+7. In the docs directory, run ``mkdocs serve``
+8. Open your web browser at https://localhost:8000 to view the rendered docs.
 
 Note that ``mkdocs serve`` will dynamically re-render the docs any time you make a change. The process above is illustrated in the diagram below:
 
-![Pull Request 2](img/html-workflow.png)
+![](img/html-workflow.png)
 
 ### Hooks
 

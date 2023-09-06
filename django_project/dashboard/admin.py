@@ -22,6 +22,7 @@ from dashboard.models import (
     EntitiesUserConfig
 )
 from georepo.models import TemporaryTilingConfig
+from georepo.utils.layers import fetch_layer_file_metadata
 
 
 class OverrideURLFileWidget(AdminFileWidget):
@@ -34,11 +35,19 @@ class OverrideURLFileWidget(AdminFileWidget):
         return mark_safe(''.join(output))
 
 
+@admin.action(description='Calculate Layer File Metadata')
+def fetch_layer_file_metadata_action(modeladmin, request, queryset):
+    for layer_file in queryset:
+        fetch_layer_file_metadata(layer_file)
+
+
 class LayerFileAdmin(admin.ModelAdmin):
-    list_display = ('meta_id', 'upload_date', 'processed')
+    list_display = ('meta_id', 'name', 'upload_date', 'level', 'processed',
+                    'feature_count', 'layer_type')
     formfield_overrides = {
         FileField: {'widget': OverrideURLFileWidget},
     }
+    actions = [fetch_layer_file_metadata_action]
 
 
 @admin.action(description='Validate entity upload')
