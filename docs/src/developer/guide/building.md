@@ -35,7 +35,8 @@ Open  terminal within the dev container context by clicking the `+`icon in the t
 ## Install FrontEnd libraries
 
 ```
-make frontend-dev
+cd /home/web/project/django_project/dashboard
+npm install --legacy-peer-deps
 ```
 
 ![image.png](img/building-4.png)
@@ -56,6 +57,11 @@ python manage.py createsuperuser
 
 During this process you will be prompted for your user name (defaults to root), email address and a password (which you need to confirm). Complete these as needed.
 
+## Run the development server
+
+Activate the Run and Debug tab 1️⃣ then select `Django + React` from the list of runners 3️⃣ and then press the Run icon 2️⃣. After doing this, the console should update indicate that the site can be opened at http://127.0.0.1:2000/
+
+![image.png](img/running-1.png)
 
 ## Viewing your test instance
 
@@ -65,7 +71,7 @@ After completing the steps above, you should have the development server availab
 http://localhost:2000
 ```
 
-![image.png](img/building-5.png)
+![image.png](img/running-2.png)
 
 The site will be rather bare bones since it will need to be configured in the admin area to set up the theme etc.
 

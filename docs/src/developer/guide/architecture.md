@@ -42,6 +42,15 @@ The following is a list, with brief descriptions, of the key components used in 
 The following diagram represents the docker containers, ports and volumes that are used to compose this platform.
 
 ![](img/architecture-docker-diagram.png)
+
+This diagram was generated using this command:
+
+```
+docker run --rm -it --name dcv -v $(pwd):/input \
+pmsipilot/docker-compose-viz render --force -r -m \
+image docker-compose.override.template.yml
+```
+
 ## ER Diagram
 
 The following diagram represents all of the databsse entities that are created by the Django ORM (Object Relational Mapper). Right click the image and open it in its own tab to see it at full resolution.

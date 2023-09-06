@@ -89,7 +89,7 @@ to the discovery of geographical entities.
 
 ## How to authenticate to the API
 
--  🔐 API_KEY: access public data
+🔐 API_KEY: access public data
 
 ### Generating an API KEY
 

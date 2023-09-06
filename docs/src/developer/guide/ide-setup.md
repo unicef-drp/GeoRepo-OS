@@ -42,16 +42,7 @@ DJANGO_SETTINGS_MODULE=core.settings.dev
 ```
 
 ![image.png](./img/ide-setup-4.png)
-### Override Docker Configs
-We are going to copy the docker overrides template to a local file that will not be under version control.
 
-![image.png](./img/ide-setup-5.png)
-
-Rename the file to `docker-compose.override.yml`
-
-![image.png](./img/ide-setup-6.png)
-
-Initially you will not need to change anything in this file, though you may want to take a look through the various configurations provided here if you want to tweak your local setup.
 
 
 🪧 Now that you have your IDE set up, we can move on to [building the project](building.md).
