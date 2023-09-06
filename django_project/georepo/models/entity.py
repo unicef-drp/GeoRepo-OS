@@ -3,6 +3,7 @@ from uuid import uuid4
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 # revision uuid
 UUID_ENTITY_ID = 'uuid'
@@ -477,4 +478,25 @@ class EntitySimplified(models.Model):
 
     simplified_geometry = models.GeometryField(
         null=True
+    )
+
+
+class TemporaryEntitySimplified(models.Model):
+    session = models.CharField(
+        max_length=256
+    )
+
+    geographical_entity = models.ForeignKey(
+        'georepo.GeographicalEntity',
+        on_delete=models.CASCADE
+    )
+
+    simplify_tolerance = models.FloatField(
+        default=0
+    )
+
+    simplified_geometry = models.GeometryField()
+
+    created_at = models.DateTimeField(
+        default=timezone.now
     )
