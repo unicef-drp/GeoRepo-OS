@@ -38,89 +38,26 @@ For each of the main topic areas (user, admin, developer, devops, api user) we p
 
 ### Organisation
 
-The documentation is organised in the following structure:
+The documentation is broadly organised in the following structure. This structure may change over time as sections are added / moved / removed:
 
 ```
 src
 ├── about
-│   ├── code-of-conduct.md
-│   ├── contributing.md
-│   ├── disclaimer.md
-│   ├── img
-│   │   └── naming-convention.README
-│   ├── index.md
-│   ├── license.md
-│   └── running-instances.md
 ├── administrator
 │   ├── guide
-│   │   └── index.md
-│   ├── index.md
 │   └── manual
-│       ├── img
-│       │   └── naming-convention.README
-│       └── index.md
 ├── developer
-│   ├── api
-│   │   ├── guide
-│   │   │   └── index.md
-│   │   ├── index.md
-│   │   └── manual
-│   │       └── index.md
 │   ├── documentation
-│   │   ├── img
-│   │   │   └── naming-convention.README
-│   │   └── index.md
 │   ├── guide
-│   │   ├── architecture.md
-│   │   ├── building.md
-│   │   ├── cloning.md
-│   │   ├── configuration.md
-│   │   ├── design.md
-│   │   ├── ide-setup.md
-│   │   ├── img
-│   │   │   └── naming-convention.README
-│   │   ├── index.md
-│   │   ├── prerequisites.md
-│   │   ├── roadmap.md
-│   │   ├── templates
-│   │   │   ├── commit-message-convention.md
-│   │   │   └── pull-request-template.md
-│   │   └── workflows.md
-│   ├── img
-│   │   └── naming-convention.README
-│   ├── index.md
 │   └── manual
-│       ├── index.md
-│       └── README.txt
 ├── devops
 │   ├── guide
-│   │   └── index.md
-│   ├── img
-│   │   └── naming-convention.README
-│   ├── index.md
 │   └── manual
-│       └── index.md
-├── img
-│   ├── favicon.ico
-│   ├── KartozaBackgroundBorder.png
-│   ├── logo.png
-│   ├── logo.svg
-│   ├── naming-convention.README
-│   └── screenshot.png
-├── index.md
 └── user
+│   ├── api
     ├── guide
-    │   └── index.md
-    ├── img
-    │   └── naming-convention.README
-    ├── index.md
     ├── manual
-    │   ├── home.md
-    │   ├── img
-    │   │   └── naming-convention.README
-    │   └── index.md
     └── quickstart
-        └── index.md
 ```
 
 ## File naming conventions
