@@ -1,9 +1,8 @@
 ---
 title: GeoRepo-OS Documentation Home 
-summary: GeoRepo is a UNICEF’s geospatial web-based data storage and administrative boundary harmonization platform.
+summary: GeoRepo is UNICEF's geospatial web-based business intelligence platform.
     - Tim Sutton
-    - Dimas Tri Ciputra
-    - Danang Tri Massandy
+    - Irwan Fathurrahman
 date: 2023-08-03
 some_url: https://github.com/unicef-drp/GeoRepo-OS
 copyright: Copyright 2023, Unicef

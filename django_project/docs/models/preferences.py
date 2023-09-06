@@ -8,7 +8,7 @@ class Preferences(SingletonModel):
 
     documentation_base_url = models.CharField(
         max_length=512,
-        default='https://unicef-drp.github.io/GeoSight-OS'
+        default='https://unicef-drp.github.io/GeoRepo-OS'
     )
 
     class Meta:  # noqa: D106
