@@ -153,11 +153,12 @@ const COLUMN_DESCRIPTION: {
 
 const IN_PROGRES_STATUS_LIST = ['Started', 'Processing']
 
+const DOWNLOAD_ERROR_REPORT_URL = '/api/entity-upload-error-download/'
 
 export default function Step4(props: WizardStepInterface) {
   const [uploadData, setUploadData] = useState<any[]>([])
   const [errorSummaries, setErrorSummaries] = useState<any[]>([])
-  const [errorReportPath, setErrorReportPath] = useState<string>('')
+  const [errorReportId, setErrorReportId] = useState<number>(0)
   const [hasErrorOverlaps, setHasErrorOverlaps] = useState(false)
   const [viewOverlapId, setViewOverlapId] = useState<number>(null)
   const [allFinished, setAllFinished] = useState<boolean>(false)
@@ -263,7 +264,7 @@ export default function Step4(props: WizardStepInterface) {
 
   const showError = async (id: any, errorSummariesData: any[], errorPath: string, is_importable: boolean) => {
     setErrorSummaries(errorSummariesData)
-    setErrorReportPath(errorPath)
+    setErrorReportId(id)
     let _hasErrorOverlaps = false
     let _view_overlaps = null
     for (let summary of errorSummariesData) {
@@ -284,10 +285,10 @@ export default function Step4(props: WizardStepInterface) {
     setSelectedEntities(data)
   }
 
-  const downloadReport = (reportPath: string) => {
+  const downloadReport = (reportPathId: number) => {
     const link = document.createElement("a");
     link.download = `error_report.csv`;
-    link.href = reportPath;
+    link.href = `${DOWNLOAD_ERROR_REPORT_URL}${reportPathId}/`;
     link.click();
   }
 
@@ -372,7 +373,7 @@ export default function Step4(props: WizardStepInterface) {
                 />
               </Box>
               <Box  sx={{width: '100%'}}>
-              { errorReportPath ? (
+              { errorReportId ? (
                 <Box className={'error-report-button-container'}>
                   <Grid container flexDirection={'row'} justifyContent={'space-between'}>
                     <Grid item>
@@ -381,7 +382,7 @@ export default function Step4(props: WizardStepInterface) {
                       </Button>} */}
                     </Grid>
                     <Grid item>
-                      <Button variant={'contained'} onClick={() => downloadReport(errorReportPath)}>
+                      <Button variant={'contained'} onClick={() => downloadReport(errorReportId)}>
                         Download Error Report
                       </Button>
                     </Grid>

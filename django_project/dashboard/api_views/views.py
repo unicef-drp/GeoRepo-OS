@@ -1,6 +1,5 @@
 import re
 import uuid
-import os.path
 import math
 from django.db.models.expressions import RawSQL, Q
 from django.conf import settings
@@ -31,13 +30,13 @@ from georepo.models.dataset_view import (
     DATASET_VIEW_ALL_VERSIONS_TAG,
     DATASET_VIEW_LATEST_TAG,
     DATASET_VIEW_DATASET_TAG,
-    DATASET_VIEW_SUBSET_TAG,
-    DatasetViewResource
+    DATASET_VIEW_SUBSET_TAG
 )
 from georepo.utils.dataset_view import (
     trigger_generate_vector_tile_for_view,
     create_sql_view,
-    init_view_privacy_level
+    init_view_privacy_level,
+    get_view_resource_from_view
 )
 from georepo.tasks.simplify_geometry import simplify_geometry_in_view
 from georepo.utils.permission import (
@@ -661,10 +660,10 @@ class DownloadView(AzureAuthRequiredMixin,
             dataset_view=dataset_view
         )
         # get resource for the privacy level
-        resource = DatasetViewResource.objects.filter(
-            dataset_view=dataset_view,
-            privacy_level=user_privacy_level
-        ).first()
+        resource = get_view_resource_from_view(
+            dataset_view,
+            user_privacy_level
+        )
         if resource is None:
             raise Http404('The requested file does not exist')
         result_list = []
@@ -690,21 +689,23 @@ class DownloadView(AzureAuthRequiredMixin,
             if filter_levels and level not in filter_levels:
                 continue
             exported_name = f'adm{level}'
-            file_path = os.path.join(
+            file_path = self.get_resource_path(
                 output_format['directory'],
-                str(resource.uuid),
-                exported_name
-            ) + output_format['suffix']
-            if not os.path.exists(file_path):
+                resource,
+                exported_name,
+                output_format['suffix']
+            )
+            if not self.check_exists(file_path):
                 raise Http404('The requested file does not exist')
             result_list.append(file_path)
             # add metadata (for geojson)
-            metadata_file_path = os.path.join(
+            metadata_file_path = self.get_resource_path(
                 output_format['directory'],
-                str(resource.uuid),
-                exported_name
-            ) + '.xml'
-            if os.path.exists(metadata_file_path):
+                resource,
+                exported_name,
+                '.xml'
+            )
+            if self.check_exists(metadata_file_path):
                 result_list.append(metadata_file_path)
             total_count += 1
         self.append_readme(resource, output_format, result_list)

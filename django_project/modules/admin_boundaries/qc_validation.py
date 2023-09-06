@@ -7,7 +7,6 @@ import logging
 import traceback
 import time
 
-import fiona
 from core.celery import app
 
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
@@ -16,7 +15,7 @@ from django.db import IntegrityError
 from django.db.models import IntegerField, Max
 from django.db.models.functions import Cast
 
-from dashboard.models import LayerFile, ERROR, SHAPEFILE
+from dashboard.models import LayerFile, ERROR
 from dashboard.models.entity_upload import EntityUploadStatus, VALID, \
     EntityUploadChildLv1
 from dashboard.models.layer_upload_session import LayerUploadSession
@@ -44,6 +43,10 @@ from modules.admin_boundaries.geometry_checker import (
     gap_check,
     valid_nodes_check,
     self_intersects_check_with_flag
+)
+from georepo.utils.fiona_utils import (
+    open_collection_by_file,
+    delete_tmp_shapefile
 )
 
 logger = logging.getLogger(__name__)
@@ -161,6 +164,8 @@ def do_hierarchy_check(geom: GEOSGeometry,
                        internal_code: str,
                        entity_upload: EntityUploadStatus,
                        parent: GeographicalEntity) -> bool:
+    if parent is None:
+        return True
     start = time.time()
     try:
         errors, geom_error = hierarchy_check(
@@ -410,11 +415,8 @@ def run_validation(entity_upload: EntityUploadStatus) -> bool:
             'Entity',
             ancestor.label if ancestor else entity_upload.revised_entity_name
         )
-
-        layer_file_path = layer_file.layer_file.path
-        if layer_file.layer_type == SHAPEFILE:
-            layer_file_path = f'zip://{layer_file.layer_file.path}'
-        with fiona.open(layer_file_path, encoding='utf-8') as layer:
+        with open_collection_by_file(layer_file.layer_file,
+                                     layer_file.layer_type) as layer:
             internal_code = ''
 
             # Check parent entities
@@ -956,6 +958,7 @@ def run_validation(entity_upload: EntityUploadStatus) -> bool:
                     level_error_report[ErrorType.GAPS.value] = len(errors)
             logger.debug(level_error_report)
             error_summaries.append(level_error_report)
+            delete_tmp_shapefile(layer.path)
 
     if (
         entity_upload.revised_entity_id and

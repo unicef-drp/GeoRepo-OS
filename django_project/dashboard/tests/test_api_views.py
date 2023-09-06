@@ -2755,6 +2755,7 @@ class TestApiViews(TestCase):
             privacy_level=4
         ).first()
         resource.uuid = uuid.UUID('e59f8338-e8a8-4e6d-9e0d-c63108a8048e')
+        resource.entity_count = 2
         resource.save()
         parent = GeographicalEntityF.create(
             dataset=dataset_view.dataset,

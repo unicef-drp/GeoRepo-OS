@@ -8,6 +8,7 @@ import reviewActionReducer from "../reducers/reviewAction"
 import reviewTableReducer from "../reducers/reviewTable"
 import viewTableReducer from "../reducers/viewTable"
 import uploadTableReducer from "../reducers/uploadTable"
+import entitiesTableReducer from "../reducers/entitiesTable"
 
 export const store = configureStore({
   reducer: {
@@ -19,7 +20,8 @@ export const store = configureStore({
     reviewAction: reviewActionReducer,
     reviewTable: reviewTableReducer,
     viewTable: viewTableReducer,
-    uploadTable: uploadTableReducer
+    uploadTable: uploadTableReducer,
+    entitiesTable: entitiesTableReducer
   },
 });
 

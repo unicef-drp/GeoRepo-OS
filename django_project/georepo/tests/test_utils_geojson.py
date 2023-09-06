@@ -1,4 +1,3 @@
-import mock
 import json
 from django.test import TestCase, override_settings
 from georepo.utils import absolute_path
@@ -9,8 +8,7 @@ from georepo.tests.model_factories import (
     GeographicalEntityF
 )
 from georepo.utils.geojson import (
-    extract_geojson_attributes,
-    generate_geojson
+    extract_geojson_attributes
 )
 
 
@@ -46,11 +44,3 @@ class TestUtilsGeojson(TestCase):
         self.assertEqual(len(attrs), 22)
         self.assertIn('code_1', attrs)
         self.assertIn('name_1', attrs)
-
-    @override_settings(GEOJSON_FOLDER_OUTPUT='/opt/geojson_test')
-    def test_generate_geojson(self):
-        with mock.patch(
-            'georepo.utils.geojson.GeojsonExporter.run'
-        ) as mocked_file:
-            generate_geojson(self.dataset)
-            mocked_file.assert_called()

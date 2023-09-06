@@ -1,14 +1,17 @@
 import uuid
 
-import fiona
 
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
 
-from dashboard.models import SHAPEFILE, LayerUploadSession, CANCELED
+from dashboard.models import LayerUploadSession, CANCELED
 from dashboard.models.entity_upload import EntityUploadStatus
 from georepo.utils.module_import import module_function
 from georepo.utils.layers import get_feature_value
+from georepo.utils.fiona_utils import (
+    open_collection_by_file,
+    delete_tmp_shapefile
+)
 
 
 def validate_layer_file(entity_upload: EntityUploadStatus) -> bool:
@@ -35,11 +38,9 @@ def read_layer_files(layer_files):
             [id_field['field'] for id_field in layer_file.id_fields
                 if id_field['default']][0]
         )
-        layer_file_path = layer_file.layer_file.path
-        if layer_file.layer_type == SHAPEFILE:
-            layer_file_path = f'zip://{layer_file.layer_file.path}'
         cache = []
-        with fiona.open(layer_file_path, encoding='utf-8') as layer:
+        with open_collection_by_file(layer_file.layer_file,
+                                     layer_file.layer_type) as layer:
             for feature in layer:
                 data = {
                     id_field: (
@@ -51,6 +52,7 @@ def read_layer_files(layer_files):
                         str(feature['properties'][layer_file.parent_id_field])
                     )
                 cache.append(data)
+            delete_tmp_shapefile(layer.path)
         result[str(layer_file.id)] = cache
     return result
 
@@ -190,10 +192,8 @@ def retrieve_layer0_default_codes(
         [name_field['field'] for name_field in layer_file.name_fields
             if name_field['default']][0]
     )
-    layer_file_path = layer_file.layer_file.path
-    if layer_file.layer_type == SHAPEFILE:
-        layer_file_path = f'zip://{layer_file.layer_file.path}'
-    with fiona.open(layer_file_path, encoding='utf-8') as features:
+    with open_collection_by_file(layer_file.layer_file,
+                                 layer_file.layer_type) as features:
         for feature in features:
             layer0_default_codes.append({
                 'id': str(uuid.uuid4()),
@@ -207,4 +207,5 @@ def retrieve_layer0_default_codes(
                 'revision': None,
                 'max_level': default_max_level
             })
+        delete_tmp_shapefile(features.path)
     return layer0_default_codes

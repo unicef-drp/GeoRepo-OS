@@ -10,6 +10,7 @@ import DetailMatchInfo from './DetailMatchInfo';
 import Loading from "../../components/Loading";
 import ColumnHeaderIcon from '../../components/ColumnHeaderIcon'
 import AlertMessage from '../../components/AlertMessage';
+import { rowsPerPageOptions } from '../../models/pagination';
 
 const LOAD_BOUNDARY_LIST_URL = '/api/boundary-comparison-closest/'
 const REMATCH_BOUNDARY_URL = '/api/boundary-compare-entities/'
@@ -244,7 +245,7 @@ export default function RematchEntityList(props: RematchEntityListInterface) {
                         page: pagination.page,
                         count: totalCount,
                         rowsPerPage: pagination.rowsPerPage,
-                        rowsPerPageOptions: [5, 10, 20, 30],
+                        rowsPerPageOptions: rowsPerPageOptions,
                         onTableChange: (action:string, tableState:any) => onTableChangeState(action, tableState),
                     }}
                 />

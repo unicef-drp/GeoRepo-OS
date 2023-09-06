@@ -18,19 +18,27 @@ from django.contrib.gis.db.models.functions import AsGeoJSON
 from core.models.preferences import SitePreferences
 from django.conf import settings
 from georepo.models import (
-    Dataset, EntityId, EntityName, GeographicalEntity,
+    EntityId, EntityName, GeographicalEntity,
     DatasetView, DatasetViewResource
 )
 from georepo.utils.custom_geo_functions import ForcePolygonCCW
 from core.settings.utils import absolute_path
-from georepo.utils.dataset_view import check_view_exists, create_sql_view
+from georepo.serializers.entity import ExportGeojsonSerializer
+from georepo.utils.dataset_view import (
+    check_view_exists,
+    create_sql_view,
+    get_entities_count_in_view
+)
 from georepo.utils.renderers import (
     GeojsonRenderer,
     ShapefileRenderer,
     KmlRenderer,
     TopojsonRenderer
 )
-
+from georepo.utils.azure_blob_storage import (
+    DirectoryClient,
+    StorageContainerClient
+)
 
 PROPERTY_INT_VALUES = ['admin_level']
 PROPERTY_BOOL_VALUES = ['is_latest']
@@ -49,241 +57,12 @@ def get_property_type(property: str):
     return 'str'
 
 
-class DatasetExporterBase(object):
-    output = None
-
-    def __init__(self, dataset: Dataset) -> None:
-        self.dataset = dataset
-        self.total_to_be_exported = 0
-        self.total_exported = 0
-        self.generated_files = []
-        self.levels = []
-        self.countries = {}
-
-    @staticmethod
-    def get_exported_file_name(level: int, adm0: GeographicalEntity = None):
-        exported_name = f'all_adm{level}'
-        if adm0:
-            exported_name = f'{adm0.unique_code}_adm{level}'
-        return exported_name
-
-    def init_exporter(self):
-        # count levels + countries
-        entities = self.dataset.geographicalentity_set.filter(
-            dataset=self.dataset,
-            is_approved=True,
-            is_latest=True
-        )
-        self.levels = entities.order_by('level').values_list(
-            'level',
-            flat=True
-        ).distinct()
-        adm0_list = entities.filter(
-            level=0
-        ).order_by('unique_code').values_list(
-            'unique_code',
-            flat=True
-        ).distinct()
-        self.total_to_be_exported = len(self.levels)
-        self.countries = {}
-        for adm0 in adm0_list:
-            adm0_levels = entities.filter(
-                Q(ancestor__unique_code=adm0) | Q(unique_code=adm0)
-            ).order_by('level').values_list(
-                'level',
-                flat=True
-            ).distinct()
-            self.countries[adm0] = adm0_levels
-            self.total_to_be_exported = (
-                self.total_to_be_exported +
-                len(adm0_levels)
-            )
-        self.total_exported = 0
-        self.generated_files = []
-
-    def get_serializer(self):
-        from georepo.serializers.entity import ExportGeojsonSerializer
-        return ExportGeojsonSerializer
-
-    def write_entities(self, schema, entities, context, exported_name) -> str:
-        raise NotImplementedError
-
-    def run(self):
-        print(
-            f'Exporting {self.output} from {self.dataset.label} '
-            f'(0/{self.total_to_be_exported})'
-        )
-        # export for each admin level
-        for level in self.levels:
-            print(
-                f'Exporting {self.output} of level {level} from '
-                f'{self.dataset.label} ({self.total_exported}/'
-                f'{self.total_to_be_exported})'
-            )
-            self.do_export(level)
-            self.total_exported += 1
-        # export for each adm level 0 for each level
-        for adm0 in self.countries:
-            # fetch adm0 entity
-            adm0_entity = GeographicalEntity.objects.filter(
-                dataset=self.dataset,
-                is_approved=True,
-                is_latest=True,
-                level=0,
-                unique_code=adm0
-            ).first()
-            if not adm0_entity:
-                continue
-            levels = self.countries[adm0]
-            for level in levels:
-                print(
-                    f'Exporting {self.output} of adm0 {adm0}-{level} from '
-                    f'{self.dataset.label} ({self.total_exported}/'
-                    f'{self.total_to_be_exported})'
-                )
-                self.do_export(level, adm0=adm0_entity)
-                self.total_exported += 1
-        print(
-            f'Exporting {self.output} is finished from {self.dataset.label} '
-            f'({self.total_exported}/{self.total_to_be_exported})'
-        )
-        print(self.generated_files)
-
-    def do_export(self, level: int, adm0: GeographicalEntity = None):
-        exported_name = self.get_exported_file_name(level, adm0)
-        entities, max_level, ids, names = self.get_dataset_entity_query(
-            level=level,
-            country=adm0
-        )
-        if entities.count() == 0:
-            return None
-        context = {
-            'max_level': max_level,
-            'ids': ids,
-            'names': names
-        }
-        first_entity = entities.first()
-        schema = self.get_schema(first_entity, context)
-        exported_file_path = self.write_entities(
-            schema,
-            entities,
-            context,
-            exported_name
-        )
-        if exported_file_path:
-            self.generated_files.append(exported_file_path)
-
-    def get_dataset_entity_query(self, level: int = None,
-                                 country: GeographicalEntity = None):
-        # initial fields to select
-        values = [
-            'id', 'label', 'internal_code',
-            'unique_code', 'unique_code_version',
-            'geometry', 'uuid', 'uuid_revision',
-            'type__label', 'level', 'start_date', 'end_date',
-            'is_latest', 'admin_level_name'
-        ]
-        entities = GeographicalEntity.objects.filter(
-            dataset=self.dataset,
-            is_approved=True,
-            is_latest=True
-        )
-        if level is not None:
-            entities = entities.filter(
-                level=level
-            )
-        if country:
-            # filter by ancestor
-            entities = entities.filter(
-                Q(ancestor=country) | Q(id=country.id)
-            )
-        entities = entities.annotate(
-            rhr_geom=ForcePolygonCCW(F('geometry'))
-        )
-        values.append('rhr_geom')
-        # get max levels
-        max_level = 0
-        max_level_entity = entities.order_by(
-                'level'
-        ).last()
-        if max_level_entity:
-            max_level = max_level_entity.level
-        related = ''
-        for i in range(max_level):
-            related = related + (
-                '__parent' if i > 0 else 'parent'
-            )
-            # fetch parent's default code
-            values.append(f'{related}__internal_code')
-            values.append(f'{related}__unique_code')
-            values.append(f'{related}__unique_code_version')
-            values.append(f'{related}__level')
-            values.append(f'{related}__type__label')
-        # retrieve all ids in current dataset
-        ids = EntityId.objects.filter(
-            geographical_entity__dataset__uuid=self.dataset.uuid,
-            geographical_entity__is_approved=True,
-            geographical_entity__is_latest=True,
-            geographical_entity__level=level
-        ).order_by('code').values(
-            'code__id', 'code__name', 'default'
-        ).distinct('code__id')
-        # conditional join to entity id for each id
-        for id in ids:
-            field_key = f"id_{id['code__id']}"
-            annotations = {
-                field_key: FilteredRelation(
-                    'entity_ids',
-                    condition=Q(entity_ids__code__id=id['code__id'])
-                )
-            }
-            entities = entities.annotate(**annotations)
-            values.append(f'{field_key}__value')
-        names = EntityName.objects.filter(
-            geographical_entity__dataset__uuid=self.dataset.uuid,
-            geographical_entity__is_approved=True,
-            geographical_entity__is_latest=True,
-            geographical_entity__level=level
-        )
-        # get max idx in the names
-        names_max_idx = names.aggregate(
-            Max('idx')
-        )
-        if names_max_idx['idx__max'] is not None:
-            for name_idx in range(names_max_idx['idx__max'] + 1):
-                field_key = f"name_{name_idx}"
-                annotations = {
-                    field_key: FilteredRelation(
-                        'entity_names',
-                        condition=Q(
-                            entity_names__idx=name_idx
-                        )
-                    )
-                }
-                entities = entities.annotate(**annotations)
-                values.append(f'{field_key}__name')
-                values.append(f'{field_key}__language__code')
-                values.append(f'{field_key}__label')
-        entities = entities.values(*values)
-        return entities, max_level, ids, names_max_idx
-
-    def get_schema(self, entity: GeographicalEntity, context):
-        # NOTE: if the shapefile includes all version,
-        # then need to use entity at lowest level to get complete schema
-        data = self.get_serializer()(
-            entity,
-            many=False,
-            context=context
-        ).data
-        properties = []
-        for property in data['properties']:
-            properties.append((property, get_property_type(property)))
-        geometry = GEOSGeometry(entity['rhr_geom'])
-        schema = {
-            'geometry': geometry.geom_type,
-            'properties': OrderedDict(properties)
-        }
-        return schema
+def get_dataset_exported_file_name(level: int,
+                                   adm0: GeographicalEntity = None):
+    exported_name = f'all_adm{level}'
+    if adm0:
+        exported_name = f'{adm0.unique_code}_adm{level}'
+    return exported_name
 
 
 class DatasetViewExporterBase(object):
@@ -312,6 +91,14 @@ class DatasetViewExporterBase(object):
                 id=self.view_resource.id
             )
         for resource in resources:
+            # check entities count in current privacy level
+            entity_count = get_entities_count_in_view(
+                self.dataset_view,
+                resource.privacy_level
+            )
+            # skip generation if no entity at current level
+            if entity_count == 0:
+                continue
             # check if view at privacy level has data
             entities = GeographicalEntity.objects.filter(
                 dataset=self.dataset_view.dataset,
@@ -343,7 +130,6 @@ class DatasetViewExporterBase(object):
         self.generated_files = []
 
     def get_serializer(self):
-        from georepo.serializers.entity import ExportGeojsonSerializer
         return ExportGeojsonSerializer
 
     def write_entities(self, schema, entities, context,
@@ -353,6 +139,15 @@ class DatasetViewExporterBase(object):
 
     def get_base_output_dir(self) -> str:
         raise NotImplementedError
+
+    def get_tmp_output_dir(self, resource: DatasetViewResource) -> str:
+        tmp_output_dir = os.path.join(
+            self.get_base_output_dir(),
+            f'temp_{str(resource.uuid)}'
+        )
+        if not os.path.exists(tmp_output_dir):
+            os.mkdir(tmp_output_dir)
+        return tmp_output_dir
 
     def run(self):
         print(
@@ -367,12 +162,7 @@ class DatasetViewExporterBase(object):
         for res in self.resources:
             resource = res['resource']
             levels = res['levels']
-            tmp_output_dir = os.path.join(
-                self.get_base_output_dir(),
-                f'temp_{str(resource.uuid)}'
-            )
-            if not os.path.exists(tmp_output_dir):
-                os.mkdir(tmp_output_dir)
+            tmp_output_dir = self.get_tmp_output_dir(resource)
             # export for each admin level
             for level in levels:
                 print(
@@ -385,21 +175,7 @@ class DatasetViewExporterBase(object):
                 self.total_exported += 1
             # export readme
             self.export_readme(tmp_output_dir)
-            # copy from temp dir to output dir
-            output_dir = os.path.join(
-                self.get_base_output_dir(),
-                str(resource.uuid)
-            )
-            if os.path.exists(output_dir):
-                shutil.rmtree(output_dir)
-            try:
-                shutil.move(
-                    tmp_output_dir,
-                    output_dir
-                )
-            except FileNotFoundError as ex:
-                print(ex)
-
+            self.do_export_post_process(resource)
         print(
             f'Exporting {self.output} is finished '
             f'from {self.dataset_view.name} '
@@ -816,6 +592,63 @@ class DatasetViewExporterBase(object):
         # return template file path
         return metadata_filepath
 
+    def do_export_post_process(self, resource: DatasetViewResource):
+        tmp_output_dir = os.path.join(
+            self.get_base_output_dir(),
+            f'temp_{str(resource.uuid)}'
+        )
+        if settings.USE_AZURE:
+            output_dir = (
+                f'media/export_data/{self.output}/'
+                f'{str(resource.uuid)}'
+            )
+            client = DirectoryClient(settings.AZURE_STORAGE,
+                                     settings.AZURE_STORAGE_CONTAINER)
+            client.rmdir(output_dir)
+            client.upload_dir(tmp_output_dir, output_dir)
+            if self.output != 'geojson':
+                self.do_remove_temp_dir(resource)
+        else:
+            # copy from temp dir to output dir
+            output_dir = os.path.join(
+                self.get_base_output_dir(),
+                str(resource.uuid)
+            )
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+            try:
+                shutil.move(
+                    tmp_output_dir,
+                    output_dir
+                )
+            except FileNotFoundError as ex:
+                print(ex)
+
+    def do_remove_temp_dir(self, resource: DatasetViewResource):
+        tmp_output_dir = os.path.join(
+            self.get_base_output_dir(),
+            f'temp_{str(resource.uuid)}'
+        )
+        if os.path.exists(tmp_output_dir):
+            shutil.rmtree(tmp_output_dir)
+
+    def do_remove_temp_dirs(self):
+        for res in self.resources:
+            resource = res['resource']
+            self.do_remove_temp_dir(resource)
+
+    def get_geojson_reference_file(self, resource: DatasetViewResource,
+                                   exported_name: str):
+        res_name = str(resource.uuid)
+        if settings.USE_AZURE:
+            res_name = f'temp_{str(resource.uuid)}'
+        file_path = os.path.join(
+            settings.GEOJSON_FOLDER_OUTPUT,
+            res_name,
+            exported_name
+        ) + '.geojson'
+        return file_path
+
 
 class APIDownloaderBase(GenericAPIView):
     """Base class for download view."""
@@ -832,34 +665,51 @@ class APIDownloaderBase(GenericAPIView):
         if format == 'geojson':
             output = {
                 'suffix': '.geojson',
-                'directory': settings.GEOJSON_FOLDER_OUTPUT
+                'directory': (
+                    settings.GEOJSON_FOLDER_OUTPUT if
+                    not settings.USE_AZURE else
+                    'media/export_data/geojson/'
+                )
             }
         elif format == 'shapefile':
             output = {
                 'suffix': '.zip',
-                'directory': settings.SHAPEFILE_FOLDER_OUTPUT
+                'directory': (
+                    settings.SHAPEFILE_FOLDER_OUTPUT if
+                    not settings.USE_AZURE else
+                    'media/export_data/shapefile/'
+                )
             }
         elif format == 'kml':
             output = {
                 'suffix': '.kml',
-                'directory': settings.KML_FOLDER_OUTPUT
+                'directory': (
+                    settings.KML_FOLDER_OUTPUT if
+                    not settings.USE_AZURE else
+                    'media/export_data/kml/'
+                )
             }
         elif format == 'topojson':
             output = {
                 'suffix': '.topojson',
-                'directory': settings.TOPOJSON_FOLDER_OUTPUT
+                'directory': (
+                    settings.TOPOJSON_FOLDER_OUTPUT if
+                    not settings.USE_AZURE else
+                    'media/export_data/topojson/'
+                )
             }
         return output
 
     def append_readme(self, resource: DatasetViewResource,
                       output_format, results):
         # add readme
-        file_path = os.path.join(
+        file_path = self.get_resource_path(
             output_format['directory'],
-            str(resource.uuid),
-            'readme.txt'
+            resource,
+            'readme.txt',
+            ''
         )
-        if os.path.exists(file_path):
+        if self.check_exists(file_path):
             results.append(file_path)
 
     def get_output_names(self, dataset_view: DatasetView):
@@ -877,10 +727,21 @@ class APIDownloaderBase(GenericAPIView):
                         item_file_name = file_name
                     else:
                         item_file_name = f'{prefix_name} {file_name}'
-                    archive.write(
-                        result,
-                        arcname=item_file_name
-                    )
+                    if settings.USE_AZURE:
+                        if StorageContainerClient:
+                            bc = StorageContainerClient.get_blob_client(
+                                blob=result)
+                            download_stream = bc.download_blob(
+                                max_concurrency=2,
+                                validate_content=False
+                            )
+                            archive.writestr(item_file_name,
+                                             download_stream.readall())
+                    else:
+                        archive.write(
+                            result,
+                            arcname=item_file_name
+                        )
             tmp_file.seek(0)
             response = HttpResponse(
                 tmp_file.read(), content_type='application/x-zip-compressed'
@@ -891,3 +752,28 @@ class APIDownloaderBase(GenericAPIView):
                 )
             )
             return response
+
+    def check_exists(self, file_path):
+        if settings.USE_AZURE:
+            if StorageContainerClient:
+                bc = StorageContainerClient.get_blob_client(blob=file_path)
+                return bc.exists()
+            else:
+                raise RuntimeError('Invalid Azure Storage Container')
+        else:
+            return os.path.exists(file_path)
+
+    def get_resource_path(self, base_dir, resource: DatasetViewResource,
+                          exported_name, file_suffix):
+        if settings.USE_AZURE:
+            if not base_dir.endswith('/'):
+                base_dir += '/'
+            return (
+                f'{base_dir}{str(resource.uuid)}/'
+                f'{exported_name}{file_suffix}'
+            )
+        return os.path.join(
+            base_dir,
+            str(resource.uuid),
+            exported_name
+        ) + file_suffix

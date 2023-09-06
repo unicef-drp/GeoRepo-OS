@@ -16,6 +16,12 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
     rev = serializers.CharField(source='revision_number')
     status = serializers.SerializerMethodField()
     centroid = serializers.SerializerMethodField()
+    privacy_level = serializers.SerializerMethodField(source='privacy_level')
+    other_name = serializers.SerializerMethodField(source='other_name')
+    other_id = serializers.SerializerMethodField(source='other_id')
+    layer_file = serializers.SerializerMethodField(source='layer_file')
+    approved_by = serializers.SerializerMethodField(source='approved_by')
+    is_latest = serializers.SerializerMethodField(source='is_latest')
 
     def get_country(self, obj):
         return obj['country']
@@ -28,6 +34,25 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
 
     def get_centroid(self, obj):
         return obj['centroid']
+
+    def get_privacy_level(self, obj):
+        return obj['privacy_level']
+
+    def get_other_name(self, obj):
+        return obj['other_name']
+
+    def get_other_id(self, obj):
+        return obj['other_id']
+
+    def get_layer_file(self, obj):
+        return obj['layer_file']
+
+    def get_approved_by(self, obj):
+        return obj['approved_by']
+
+    def get_is_latest(self, obj):
+        return str(obj['is_latest'])
+
 
     class Meta:
         model = GeographicalEntity
@@ -43,7 +68,20 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
             'updated',
             'rev',
             'status',
-            'centroid'
+            'centroid',
+            'unique_code_version',
+            'is_latest',
+            'approved_date',
+            'geometry',
+            'source',
+            'admin_level_name',
+            'approved_by',
+            'parent',
+            'layer_file',
+            'ancestor',
+            'privacy_level',
+            'other_name',
+            'other_id'
         ]
 
 

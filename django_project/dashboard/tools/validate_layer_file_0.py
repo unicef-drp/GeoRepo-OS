@@ -1,5 +1,4 @@
 from typing import Tuple, List
-import fiona
 import json
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 
@@ -13,8 +12,9 @@ from georepo.utils.unique_code import get_latest_revision_number
 from dashboard.models import (
     LayerUploadSession, EntityUploadStatus
 )
-from dashboard.models.layer_file import (
-    SHAPEFILE
+from georepo.utils.fiona_utils import (
+    open_collection_by_file,
+    delete_tmp_shapefile
 )
 
 
@@ -40,10 +40,8 @@ def validate_layer_file_0(
     layer0_default_codes = []
     is_valid = True
     duplicate_code = None
-    layer_file_path = layer_file_0.layer_file.path
-    if layer_file_0.layer_type == SHAPEFILE:
-        layer_file_path = f'zip://{layer_file_0.layer_file.path}'
-    with fiona.open(layer_file_path, encoding='utf-8') as features:
+    with open_collection_by_file(layer_file_0.layer_file,
+                                 layer_file_0.layer_type) as features:
         for feature in features:
             # default code
             entity_id = (
@@ -58,6 +56,7 @@ def validate_layer_file_0(
                 duplicate_code = entity_id
                 break
             layer0_default_codes.append(entity_id)
+        delete_tmp_shapefile(features.path)
     return is_valid, duplicate_code
 
 
@@ -128,10 +127,8 @@ def create_temp_admin_level_0(upload_session: LayerUploadSession):
             if id_field['default']][0]
     )
     layer0_default_codes = []
-    layer_file_path = layer_file_0.layer_file.path
-    if layer_file_0.layer_type == SHAPEFILE:
-        layer_file_path = f'zip://{layer_file_0.layer_file.path}'
-    with fiona.open(layer_file_path, encoding='utf-8') as features:
+    with open_collection_by_file(layer_file_0.layer_file,
+                                 layer_file_0.layer_type) as features:
         for feature in features:
             # default code
             entity_id = (
@@ -160,6 +157,7 @@ def create_temp_admin_level_0(upload_session: LayerUploadSession):
                 is_validated=False,
                 is_latest=False
             )
+        delete_tmp_shapefile(features.path)
 
 
 def remove_temp_admin_level_0(upload_session: LayerUploadSession):

@@ -27,11 +27,8 @@ class TopojsonViewExporter(DatasetViewExporterBase):
             tmp_output_dir,
             exported_name
         ) + suffix
-        geojson_file = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(resource.uuid),
-            exported_name
-        ) + '.geojson'
+        geojson_file = self.get_geojson_reference_file(
+            resource, exported_name)
         # use ogr to convert from geojson to topojson_file
         command_list = (
             [

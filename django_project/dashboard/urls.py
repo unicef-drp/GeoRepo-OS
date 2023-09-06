@@ -122,6 +122,9 @@ from dashboard.api_views.access_request import (
     AccessRequestDetail,
     SubmitPermissionAccessRequest
 )
+from dashboard.api_views.media import (
+    ErrorReportAPIView
+)
 
 urlpatterns = [
     path('tinymce/', include('tinymce.urls')),
@@ -263,6 +266,11 @@ urlpatterns = [
         r'api/entity-upload-status-detail/(?P<id>\d+)/?$',
         EntityUploadStatusDetail.as_view(),
         name='entity-upload-status-detail'
+    ),
+    re_path(
+        r'api/entity-upload-error-download/(?P<upload_id>\d+)/?$',
+        ErrorReportAPIView.as_view(),
+        name='entity-upload-error-download'
     ),
     re_path(
         r'api/entity-upload-status-list/?$',

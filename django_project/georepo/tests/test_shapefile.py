@@ -8,6 +8,7 @@ from georepo.utils.shapefile import (
     get_shape_file_feature_count,
     validate_shapefile_zip
 )
+from dashboard.tests.model_factories import LayerFileF
 
 
 class TestShapeFile(TestCase):
@@ -20,7 +21,10 @@ class TestShapeFile(TestCase):
             'shapefile_dataset',
             'shp_1_1.zip'
         )
-        attrs = extract_shapefile_attributes(shape_file_1_path)
+        layer_file = LayerFileF.create(
+            layer_file=shape_file_1_path
+        )
+        attrs = extract_shapefile_attributes(layer_file.layer_file)
         self.assertEqual(len(attrs), 7)
         self.assertIn('id', attrs)
         self.assertIn('name_0', attrs)
@@ -33,7 +37,10 @@ class TestShapeFile(TestCase):
             'shapefile_dataset',
             'shp_1_1.zip'
         )
-        features_count = get_shape_file_feature_count(shape_file_1_path)
+        layer_file = LayerFileF.create(
+            layer_file=shape_file_1_path
+        )
+        features_count = get_shape_file_feature_count(layer_file.layer_file)
         self.assertEqual(features_count, 3)
 
     @override_settings(MEDIA_ROOT='/home/web/django_project/georepo')

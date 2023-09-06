@@ -4,6 +4,7 @@ import axios from "axios";
 import List from "../../components/List";
 import Loading from "../../components/Loading";
 import ColumnHeaderIcon from '../../components/ColumnHeaderIcon'
+import { rowsPerPageOptions } from '../../models/pagination'
 
 const LOAD_COUNTRY_LIST_URL = '/api/entity-upload-level1-list/'
 const LOAD_REMATCH_LIST_URL = '/api/entity-upload-rematch-list/'
@@ -81,7 +82,7 @@ export default function Step3RematchCountryList(props: RematchCountryListInterfa
                     download: false,
                     print: false,
                     tableBodyMaxHeight: '400px',
-                    rowsPerPageOptions: [5, 10],
+                    rowsPerPageOptions: rowsPerPageOptions,
                     rowsPerPage: 10
                 }}
                 customColumnHeaderRender={customColumnHeaderRender}
