@@ -65,13 +65,30 @@ def open_collection_by_file(fp, type: str) -> Collection:
     return result
 
 
-def delete_tmp_shapefile(file_path: str):
-    if settings.USE_AZURE and file_path.endswith('.zip'):
+def delete_tmp_shapefile(file_path: str, azure_only=True):
+    check_azure = settings.USE_AZURE
+    if not azure_only:
+        check_azure = True
+    if check_azure and file_path.endswith('.zip'):
         cleaned_fp = file_path
         if '/vsizip/' in file_path:
             cleaned_fp = file_path.replace('/vsizip/', '')
         if os.path.exists(cleaned_fp):
             os.remove(cleaned_fp)
+
+
+def store_zip_memory_to_temp_file(file_obj: InMemoryUploadedFile):
+    with (
+        NamedTemporaryFile(
+            delete=False,
+            suffix='.zip',
+            dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
+        )
+    ) as temp_file:
+        for chunk in file_obj.chunks():
+            temp_file.write(chunk)
+        path = f'zip://{temp_file.name}'
+    return path
 
 
 def list_layers_shapefile(fp: str):

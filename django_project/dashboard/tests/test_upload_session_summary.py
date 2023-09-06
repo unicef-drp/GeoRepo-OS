@@ -21,7 +21,6 @@ from uuid import uuid4
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIRequestFactory
-from unittest.mock import patch
 from factory.django import FileField
 
 from georepo.tests.model_factories import (
@@ -59,6 +58,7 @@ class TestUploadSessionSummary(TestCase):
             layer_file=FileField(filename=f'{uuid4().hex}.geojson'),
             layer_type='GEOJSON',
             layer_upload_session=self.layer_upload_session,
+            feature_count=1,
             name_fields=[
                 {
                     "id": "1",
@@ -79,10 +79,7 @@ class TestUploadSessionSummary(TestCase):
         )
         self.factory = APIRequestFactory()
 
-    @patch('modules.admin_boundaries.field_mapping.check_properties',
-           autospec=True)
-    def test_upload_session_summary(self, mock_json_load):
-        mock_json_load.return_value = ([], 1)
+    def test_upload_session_summary(self):
         request = self.factory.get(
             reverse(
                 'upload-session-summary',

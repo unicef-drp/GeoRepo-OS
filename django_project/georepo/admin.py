@@ -613,6 +613,23 @@ def fix_entity_count_in_resource(modeladmin, request, queryset):
         view_resource.save(update_fields=['entity_count'])
 
 
+@admin.action(description='Stop Vector Tile Process')
+def stop_vector_tile_process(modeladmin, request, queryset):
+    from celery.result import AsyncResult
+    from core.celery import app
+    for view_resource in queryset:
+        if view_resource.vector_tiles_task_id:
+            res = AsyncResult(view_resource.vector_tiles_task_id)
+            if not res.ready():
+                # find if there is running task and stop it
+                app.control.revoke(view_resource.vector_tiles_task_id,
+                                   terminate=True)
+        view_resource.status = DatasetView.DatasetViewStatus.PENDING
+        view_resource.vector_tiles_progress = 0
+        view_resource.vector_tiles_task_id = ''
+        view_resource.save()
+
+
 class DatasetViewResourceAdmin(admin.ModelAdmin):
     search_fields = ['dataset_view__name', 'uuid']
     actions = [
@@ -620,7 +637,8 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
         regenerate_resource_vector_tiles,
         resume_vector_tiles_generation,
         cleanup_tegola_configs,
-        fix_entity_count_in_resource
+        fix_entity_count_in_resource,
+        stop_vector_tile_process
     ]
 
     def get_list_display(self, request):

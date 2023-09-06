@@ -20,14 +20,11 @@ from dashboard.models import (
 from dashboard.tasks import process_layer_upload_session
 from dashboard.serializers.layer_uploads import LayerUploadSerializer
 from georepo.models import Dataset
-from georepo.utils.geojson import extract_geojson_attributes
 from georepo.utils.shapefile import (
-    extract_shapefile_attributes,
     validate_shapefile_zip
 )
-from georepo.utils.gpkg_file import extract_gpkg_attributes
-from georepo.utils.crs_layer_file_validation import \
-    validate_layer_file_in_crs_4326
+from georepo.utils.layers import \
+    validate_layer_file_metadata
 
 
 class LayerProcessStatusView(APIView):
@@ -78,10 +75,10 @@ class LayerUploadView(AzureAuthRequiredMixin, APIView):
                 os.remove(file_obj.temporary_file_path())
 
     def check_crs_type(self, file_obj: any, type: any):
-        return validate_layer_file_in_crs_4326(
-                    file_obj,
-                    type
-                )
+        return validate_layer_file_metadata(
+            file_obj,
+            type
+        )
 
     def post(self, request, format=None):
         file_obj = request.FILES['file']
@@ -106,7 +103,8 @@ class LayerUploadView(AzureAuthRequiredMixin, APIView):
                         'detail': validate_shp_file
                     }
                 )
-        is_valid_crs, crs = self.check_crs_type(file_obj, layer_type)
+        is_valid_crs, crs, feature_count, attrs = self.check_crs_type(
+            file_obj, layer_type)
         if not is_valid_crs:
             self.remove_temp_file(file_obj)
             return Response(
@@ -131,22 +129,36 @@ class LayerUploadView(AzureAuthRequiredMixin, APIView):
                 name=file_obj.name,
                 uploader=self.request.user,
                 layer_upload_session=upload_session,
-                upload_date=datetime.now(),
-                layer_type=layer_type
+                layer_type=layer_type,
+                defaults={
+                    'upload_date': datetime.now(),
+                    'feature_count': feature_count,
+                    'attributes': attrs
+                }
             )
         else:
             layer_file, _ = LayerFile.objects.get_or_create(
                 name=file_obj.name,
                 uploader=self.request.user,
-                upload_date=datetime.now(),
-                layer_type=layer_type
+                layer_type=layer_type,
+                defaults={
+                    'upload_date': datetime.now(),
+                    'feature_count': feature_count,
+                    'attributes': attrs
+                }
             )
         if level:
             layer_file.level = level
-        layer_file.layer_file = file_obj
-        layer_file.meta_id = request.POST.get('id', '')
-        layer_file.save()
-        self.remove_temp_file(file_obj)
+        try:
+            layer_file.layer_file = file_obj
+            layer_file.meta_id = request.POST.get('id', '')
+            layer_file.save()
+        except Exception:
+            # if fail to upload, remove the file
+            layer_file.delete()
+            return Response(status=400)
+        finally:
+            self.remove_temp_file(file_obj)
         return Response(status=204)
 
 
@@ -346,7 +358,13 @@ class UpdateLayerUpload(AzureAuthRequiredMixin, APIView):
             layer_upload.id_fields = id_fields
         if boundary_type:
             layer_upload.boundary_type = boundary_type
-        layer_upload.save()
+        layer_upload.save(update_fields=[
+            'privacy_level_field', 'privacy_level',
+            'location_type_field', 'entity_type',
+            'parent_id_field', 'source_field',
+            'name_fields', 'id_fields',
+            'boundary_type'
+        ])
         return Response(status=200, data=LayerUploadSerializer(
             layer_upload
         ).data)
@@ -364,18 +382,7 @@ class LayerFileAttributes(AzureAuthRequiredMixin, APIView):
         )
         if not layer_file.layer_file:
             raise Http404('File is missing!')
-        attributes = []
-        if layer_file.layer_type == GEOJSON:
-            attributes = extract_geojson_attributes(layer_file.layer_file)
-        elif layer_file.layer_type == SHAPEFILE:
-            attributes = extract_shapefile_attributes(
-                layer_file.layer_file
-            )
-        elif layer_file.layer_type == GEOPACKAGE:
-            attributes = extract_gpkg_attributes(
-                layer_file.layer_file
-            )
-        return Response(status=200, data=attributes)
+        return Response(status=200, data=layer_file.attributes)
 
 
 class LayerFileEntityTypeList(AzureAuthRequiredMixin, APIView):
@@ -417,7 +424,7 @@ class LayerFileChangeLevel(AzureAuthRequiredMixin, APIView):
                     }
                 )
             layer_file.level = level
-            layer_file.save()
+            layer_file.save(update_fields=['level'])
         return Response(status=204)
 
 

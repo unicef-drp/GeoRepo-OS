@@ -30,6 +30,7 @@ interface UploadComponentInterface {
     level: string,
     totalLevel: number,
     uploadLevel0: boolean,
+    initialFiles?: File[],
     moveLevelUp?: (layerId: string) => void,
     moveLevelDown?: (layerId: string) => void,
     downloadLayerFile?: (layerId: string) => void
@@ -38,18 +39,20 @@ interface UploadComponentInterface {
 export default function UploadComponent(props: UploadComponentInterface)  {
     const meta = props.meta
     const fileWithMeta = props.fileWithMeta
+    const initialFiles = props.initialFiles ? props.initialFiles : []
+    let _isInitFile = initialFiles.findIndex((f) => f.name.includes(meta.id)) > -1
     return (
       <Card sx={{ minWidth: 730, marginTop: 1 }}>
         <CardContent style={{ display: 'flex', flexDirection: 'row' , padding: '0px'}}>
           <Grid container>
             <Grid item padding='10px'>
               <Grid container flexDirection='column'>
-                <IconButton aria-label="move up" size="medium" disabled={isFirstLevel(props.level, props.uploadLevel0) || props.isReadOnly} onClick={() => props.moveLevelUp(meta.id)}>
+                <IconButton aria-label="move up" size="medium" disabled={isFirstLevel(props.level, props.uploadLevel0) || props.isReadOnly || (!_isInitFile && fileWithMeta.meta.status !== 'done')} onClick={() => props.moveLevelUp(meta.id)}>
                   <Tooltip title="Move Up">
                     <ArrowCircleUpIcon />
                   </Tooltip>
                 </IconButton>
-                <IconButton aria-label="move down" size="medium" disabled={isLastLevel(props.level, props.totalLevel, props.uploadLevel0) || props.isReadOnly} onClick={() => props.moveLevelDown(meta.id)}>
+                <IconButton aria-label="move down" size="medium" disabled={isLastLevel(props.level, props.totalLevel, props.uploadLevel0) || props.isReadOnly || (!_isInitFile && fileWithMeta.meta.status !== 'done')} onClick={() => props.moveLevelDown(meta.id)}>
                   <Tooltip title="Move Down">
                     <ArrowCircleDownIcon />
                   </Tooltip>
@@ -80,7 +83,13 @@ export default function UploadComponent(props: UploadComponentInterface)  {
                   <Grid item xs={12} md={8}>
                     <div className={"button-container"}>
                       { !props.isReadOnly && (
-                        <Button variant="outlined" color="error" onClick={() => fileWithMeta.remove()} sx={{ marginTop: 1 }}>
+                        <Button variant="outlined" color="error" onClick={() => {
+                          if (fileWithMeta.meta.status === 'uploading') {
+                            fileWithMeta.cancel()
+                          } else {
+                            fileWithMeta.remove()
+                          }
+                        }} sx={{ marginTop: 1 }}>
                           Remove
                         </Button>
                       )}
