@@ -1,5 +1,4 @@
 from dashboard.models import LayerFile
-from georepo.utils.layers import check_properties
 
 
 def is_valid(layer_file: LayerFile):
@@ -34,8 +33,6 @@ def get_summary(layer_file: LayerFile):
             f'id_field ({id_field["idType"]["name"]}) = '
             f'{id_field_value}'
         )
-
-    error_messages, feature_count = check_properties(layer_file)
-    summary_data['feature_count'] = feature_count
+    summary_data['feature_count'] = layer_file.feature_count
     summary_data['valid'] = True
     return summary_data

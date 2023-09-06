@@ -1,6 +1,5 @@
 import collections.abc
 from georepo.models import Language
-from georepo.utils.layers import check_properties
 from dashboard.models import LayerFile
 
 
@@ -92,8 +91,6 @@ def get_summary(layer_file: LayerFile):
         f'{privacy_level_field}',
         f'source_id_field = {layer_file.source_field}'
     ])
-
-    error_messages, feature_count = check_properties(layer_file)
-    summary_data['feature_count'] = feature_count
+    summary_data['feature_count'] = layer_file.feature_count
     summary_data['valid'] = True
     return summary_data

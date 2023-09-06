@@ -1,4 +1,14 @@
 from typing import Tuple
+import time
+from django.core.files.uploadedfile import (
+    InMemoryUploadedFile,
+    TemporaryUploadedFile
+)
+import fiona
+from fiona.crs import from_epsg
+from fiona.io import (
+    MemoryFile
+)
 from dashboard.models import (
     LayerFile,
     GEOJSON,
@@ -8,6 +18,21 @@ from dashboard.models import (
 from georepo.utils.geojson import get_geojson_feature_count
 from georepo.utils.shapefile import get_shape_file_feature_count
 from georepo.utils.gpkg_file import get_gpkg_feature_count
+from georepo.utils.fiona_utils import (
+    open_collection,
+    delete_tmp_shapefile,
+    store_zip_memory_to_temp_file,
+    open_collection_by_file
+)
+
+
+def get_attributes(collection):
+    attrs = []
+    try:
+        attrs = next(iter(collection))["properties"].keys()
+    except (KeyError, IndexError):
+        pass
+    return list(attrs)
 
 
 def check_properties(
@@ -59,3 +84,75 @@ def get_feature_value(feature, field_name, default='') -> str:
         # convert the returned value as string
         value = str(value).strip()
     return value
+
+
+def get_crs_epsg(crs):
+    return crs['init'] if 'init' in crs else None
+
+
+def validate_layer_file_metadata(layer_file_obj: any, type: any):
+    """Validate crs to be EPSG:4326"""
+    start = time.time()
+    epsg_mapping = from_epsg(4326)
+    valid = False
+    crs = None
+    feature_count = 0
+    attributes = []
+    # if less than <2MB, it will be InMemoryUploadedFile
+    if isinstance(layer_file_obj, InMemoryUploadedFile):
+        if type == 'SHAPEFILE':
+            # fiona having issues with reading ZipMemoryFile
+            # need to store to temp file
+            tmp_file = store_zip_memory_to_temp_file(layer_file_obj)
+            with fiona.open(tmp_file) as collection:
+                valid = get_crs_epsg(collection.crs) == epsg_mapping['init']
+                crs = get_crs_epsg(collection.crs)
+                feature_count = len(collection)
+                attributes = get_attributes(collection)
+            delete_tmp_shapefile(collection.path, False)
+        else:
+            # geojson/geopackage can be read using MemoryFile
+            with MemoryFile(layer_file_obj.file) as file:
+                with file.open() as collection:
+                    valid = (
+                        get_crs_epsg(collection.crs) == epsg_mapping['init']
+                    )
+                    crs = get_crs_epsg(collection.crs)
+                    feature_count = len(collection)
+                    attributes = get_attributes(collection)
+    else:
+        # TemporaryUploadedFile or just string to file path
+        file_path = layer_file_obj
+        if isinstance(layer_file_obj, TemporaryUploadedFile):
+            file_path = (
+                f'zip://{layer_file_obj.temporary_file_path()}' if
+                type == 'SHAPEFILE' else
+                f'{layer_file_obj.temporary_file_path()}'
+            )
+            with fiona.open(file_path) as collection:
+                valid = (
+                    get_crs_epsg(collection.crs) == epsg_mapping['init']
+                )
+                crs = get_crs_epsg(collection.crs)
+                feature_count = len(collection)
+                attributes = get_attributes(collection)
+        else:
+            with open_collection(file_path, type) as collection:
+                valid = (
+                    get_crs_epsg(collection.crs) == epsg_mapping['init']
+                )
+                crs = get_crs_epsg(collection.crs)
+                feature_count = len(collection)
+                attributes = get_attributes(collection)
+    end = time.time()
+    print(f'validate_layer_file_metadata {(end - start)}')
+    return valid, crs, feature_count, attributes
+
+
+def fetch_layer_file_metadata(layer_file: LayerFile):
+    with open_collection_by_file(layer_file.layer_file,
+                                 layer_file.layer_type) as collection:
+        layer_file.feature_count = len(collection)
+        layer_file.attributes = get_attributes(collection)
+        layer_file.save(update_fields=['feature_count', 'attributes'])
+        delete_tmp_shapefile(collection.path)
