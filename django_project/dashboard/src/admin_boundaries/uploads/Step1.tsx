@@ -210,6 +210,13 @@ export default function Step1(props: WizardStepInterface) {
         setAlertMessage(response.detail)
       }, 300)
     }
+    if (status === 'error_file_size') {
+      setTimeout(() => {
+        file.remove()
+        setIsError(true)
+        setAlertMessage('Unable to upload file with more than 600MB!')
+      }, 300)
+    }
   }
 
   const handleSubmit = () => {
@@ -426,6 +433,7 @@ export default function Step1(props: WizardStepInterface) {
               onChangeStatus={handleChangeStatus}
               accept={ALLOWABLE_FILE_TYPES.join(', ')}
               LayoutComponent={CustomLayout}
+              maxSizeBytes={ 600 * 1024 * 1024}
             />
         </div>
       </Scrollable>

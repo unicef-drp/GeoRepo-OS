@@ -166,10 +166,8 @@ if USE_AZURE:
     AZURE_OVERWRITE_FILES = False
     AZURE_LOCATION = 'media'
     # set temp directory to azure disk
-    FILE_UPLOAD_TEMP_DIR = os.path.join(
-        MEDIA_ROOT,
-        'tmp'
-    )
+    FILE_UPLOAD_TEMP_DIR = os.getenv('AZURE_TEMP_DIRECTORY',
+                                     '/home/web/media/tmp')
     if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
         os.mkdir(FILE_UPLOAD_TEMP_DIR)
 

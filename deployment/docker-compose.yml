@@ -55,6 +55,7 @@ x-common-django:
     - TEGOLA_CONCURRENCY=${TEGOLA_CONCURRENCY:-0}
     - AZURE_STORAGE=${AZURE_STORAGE}
     - AZURE_STORAGE_CONTAINER=${AZURE_STORAGE_CONTAINER}
+    - AZURE_TEMP_DIRECTORY=${AZURE_TEMP_DIRECTORY:-/home/web/media/tmp}
   volumes:
     - static-data:/home/web/static
     - media-data:/home/web/media
