@@ -12,6 +12,7 @@ from django.contrib.auth.views import LoginView
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import HttpResponseNotFound
+from core.models.preferences import SitePreferences
 import json
 
 
@@ -41,6 +42,7 @@ schema_view_v1 = get_schema_view(
     openapi.Info(
         title="GeoRepo API",
         default_version='v1.0.0',
+        description=SitePreferences.preferences().swagger_ui_info,
     ),
     public=True,
     permission_classes=[permissions.AllowAny],

@@ -162,11 +162,5 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10240  # higher than the count of fields
 SWAGGER_SETTINGS = {
     'TAGS_SORTER': 'alpha',
     'showCommonExtensions': 'true',
-    'SECURITY_DEFINITIONS': {
-        'ApiKey Auth': {
-            'type': 'apiKey',
-            'in': 'header',
-            'name': 'Authorization'
-        }
-    },
+    'SECURITY_DEFINITIONS': {},
 }
