@@ -194,7 +194,8 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
                 if 'names' in v:
                     for value in v['names']:
                         label = (
-                            value['label'] if value and 'label' in value else None
+                            value['label'] if value and 'label' in value else
+                            None
                         )
                         if label:
                             v[label] = (

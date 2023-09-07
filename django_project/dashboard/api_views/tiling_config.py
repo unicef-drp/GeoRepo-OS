@@ -1,4 +1,3 @@
-from django.conf import settings
 import uuid
 from django.shortcuts import get_object_or_404
 from django.db.models.expressions import RawSQL
@@ -32,14 +31,12 @@ from dashboard.serializers.tiling_config import (
     ViewTilingConfigSerializer
 )
 from georepo.utils.dataset_view import (
-    trigger_generate_vector_tile_for_view,
     get_view_tiling_status
 )
 from georepo.tasks.simplify_geometry import (
     simplify_geometry_in_dataset,
     simplify_geometry_in_view
 )
-from georepo.utils.unique_code import get_latest_revision_number
 from dashboard.api_views.common import (
     DatasetManagePermission
 )
@@ -258,7 +255,7 @@ class PreviewTempTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
             flat=True
         ).distinct()
         if zoom_levels:
-            return zoom_levels[0], zoom_levels[len(zoom_levels)-1]
+            return zoom_levels[0], zoom_levels[len(zoom_levels) - 1]
         return 0, 0
 
     def prepare_response(self, session, entities, adm0_id = None):
@@ -277,7 +274,7 @@ class PreviewTempTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
         ).distinct()
         level_result = []
         # Generate from 0 - 6 admin levels
-        entity_levels = [ x for x in range(7)]
+        entity_levels = [x for x in range(7)]
         for level in entity_levels:
             simplify_per_level = {
                 'level': level,
@@ -309,7 +306,7 @@ class PreviewTempTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
             is_latest=True
         )
         return self.prepare_response(session, entities, adm0_id)
-        
+
     def get_view_levels(self, session, view_uuid, adm0_id = None):
         dataset_view = get_object_or_404(DatasetView, uuid=view_uuid)
         dataset = dataset_view.dataset
@@ -379,7 +376,6 @@ class FetchGeoJsonPreview(AzureAuthRequiredMixin, APIView):
         )
         return self.prepare_response(entities, adm0_id, level)
 
-    
     def get_view_entities(self, view_uuid, adm0_id, level):
         dataset_view = get_object_or_404(DatasetView, uuid=view_uuid)
         dataset = dataset_view.dataset
@@ -452,17 +448,6 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
             update_fields=['simplification_task_id',
                            'simplification_progress']
         )
-        views = DatasetView.objects.filter(
-            dataset=dataset
-        )
-        for view in views:
-            # check for view in dataset that inherits tiling config
-            tiling_config_exists = DatasetViewTilingConfig.objects.filter(
-                dataset_view=view
-            ).exists()
-            if tiling_config_exists:
-                continue
-            trigger_generate_vector_tile_for_view(view, export_data=False)
 
     def apply_to_datasetview(self, dataset_view_uuid, configs):
         dataset_view = get_object_or_404(
@@ -503,8 +488,6 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
             update_fields=['simplification_task_id',
                            'simplification_progress']
         )
-        trigger_generate_vector_tile_for_view(dataset_view,
-                                              export_data=False)
 
     def post(self, request, *args, **kwargs):
         object_uuid = request.data.get('object_uuid')
@@ -605,100 +588,3 @@ class TilingConfigCheckStatus(AzureAuthRequiredMixin, APIView):
                 }
             }
         )
-
-
-class UpdateDatasetTilingConfig(AzureAuthRequiredMixin,
-                                DatasetManagePermission, APIView):
-    """
-    Update dataset tiling config
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        dataset_uuid = kwargs.get('uuid')
-        dataset = get_object_or_404(
-            Dataset,
-            uuid=dataset_uuid
-        )
-        serializers = []
-        zoom_levels = []
-        for data in request.data:
-            serializer = TilingConfigSerializer(
-                data=data,
-                many=False,
-                context={
-                    'zoom_levels': zoom_levels,
-                    'current_zoom': data['zoom_level']
-                }
-            )
-            serializer.is_valid(raise_exception=True)
-            serializers.append(serializer)
-            zoom_levels.append(serializer.validated_data['zoom_level'])
-        for serializer in serializers:
-            serializer.save(dataset=dataset)
-        if not settings.DEBUG:
-            # Trigger simplification
-            if dataset.simplification_task_id:
-                res = AsyncResult(dataset.simplification_task_id)
-                if not res.ready():
-                    app.control.revoke(
-                        dataset.simplification_task_id,
-                        terminate=True
-                    )
-            task_simplify = simplify_geometry_in_dataset.delay(dataset.id)
-            dataset.simplification_task_id = task_simplify.id
-            dataset.simplification_progress = 'Started'
-            dataset.save(
-                update_fields=['simplification_task_id',
-                               'simplification_progress']
-            )
-        return Response(status=204)
-
-
-class UpdateDatasetViewTilingConfig(AzureAuthRequiredMixin, APIView):
-    """
-    Update dataset view tiling config
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        dataset_view_uuid = kwargs.get('view')
-        dataset_view = get_object_or_404(
-            DatasetView,
-            uuid=dataset_view_uuid
-        )
-        serializers = []
-        zoom_levels = []
-        for data in request.data:
-            serializer = ViewTilingConfigSerializer(
-                data=data,
-                many=False,
-                context={
-                    'zoom_levels': zoom_levels,
-                    'current_zoom': data['zoom_level']
-                }
-            )
-            serializer.is_valid(raise_exception=True)
-            serializers.append(serializer)
-            zoom_levels.append(serializer.validated_data['zoom_level'])
-        for serializer in serializers:
-            serializer.save(dataset_view=dataset_view)
-        if not settings.DEBUG:
-            # Trigger simplification
-            if dataset_view.simplification_task_id:
-                res = AsyncResult(dataset_view.simplification_task_id)
-                if not res.ready():
-                    app.control.revoke(
-                        dataset_view.simplification_task_id,
-                        terminate=True
-                    )
-            task_simplify = simplify_geometry_in_view.delay(dataset_view.id)
-            dataset_view.simplification_task_id = task_simplify.id
-            dataset_view.simplification_progress = 'Started'
-            dataset_view.save(
-                update_fields=['simplification_task_id',
-                               'simplification_progress']
-            )
-            trigger_generate_vector_tile_for_view(dataset_view,
-                                                  export_data=False)
-        return Response(status=204)

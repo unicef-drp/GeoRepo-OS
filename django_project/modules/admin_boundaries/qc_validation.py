@@ -48,6 +48,7 @@ from georepo.utils.fiona_utils import (
     open_collection_by_file,
     delete_tmp_shapefile
 )
+from georepo.utils.mapshaper import simplify_for_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -370,8 +371,6 @@ def run_validation(entity_upload: EntityUploadStatus) -> bool:
             )
         revised.unique_code_version = None
         revised.save()
-        # generate simplified geom for cloned admin level 0
-        revised.do_simplification()
         entity_upload.revised_geographical_entity = revised
         entity_upload.revision_number = revision
         entity_upload.save()
@@ -869,8 +868,6 @@ def run_validation(entity_upload: EntityUploadStatus) -> bool:
                         'privacy_level': geo_privacy_level
                     }
                 )
-                # update simplify geom
-                geo.do_simplification()
 
                 for name_field in name_fields:
                     try:
@@ -1004,7 +1001,8 @@ def run_validation(entity_upload: EntityUploadStatus) -> bool:
         entity_upload.status = VALID
 
     entity_upload.save()
-
+    # do simplification for dataset
+    simplify_for_dataset(dataset)
     # note: error/invalid geometries will be removed
     # if it's not selected to be imported
     logger.info(f'finished validation admin_boundaries {entity_upload.id}')

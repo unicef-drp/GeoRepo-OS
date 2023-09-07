@@ -3,7 +3,6 @@ from uuid import uuid4
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.db import IntegrityError, transaction
-from django.utils import timezone
 
 # revision uuid
 UUID_ENTITY_ID = 'uuid'
@@ -275,70 +274,6 @@ class GeographicalEntity(models.Model):
             ancestor_filters,
         )
 
-    def do_simplification(self):
-        """
-        Generate simplified geometry from tiling configs.
-
-        This will concat tolerance values from dataset+view configs.
-        """
-        from georepo.models.dataset_tile_config import AdminLevelTilingConfig
-        from georepo.models.dataset_view_tile_config import (
-            ViewAdminLevelTilingConfig
-        )
-        if not self.geometry:
-            return
-        # get existing tolerance
-        existing_simplifications = EntitySimplified.objects.filter(
-            geographical_entity=self
-        ).values_list('simplify_tolerance', flat=True)
-        # retrieve tolerance value for each zoom level
-        simplifications = AdminLevelTilingConfig.objects.filter(
-            dataset_tiling_config__dataset=self.dataset,
-            level=self.level
-        ).order_by('simplify_tolerance').values_list(
-            'simplify_tolerance', flat=True
-        ).distinct()
-        simplifications = list(simplifications)
-
-        # retrieve+concat tolerance value from view tiling config
-        view_simplifications = ViewAdminLevelTilingConfig.objects.filter(
-            level=self.level,
-            view_tiling_config__dataset_view__dataset=self.dataset,
-        ).order_by('simplify_tolerance').values_list(
-            'simplify_tolerance', flat=True
-        ).distinct()
-        for view_simplification in view_simplifications:
-            if view_simplification not in simplifications:
-                simplifications.append(view_simplification)
-        for existing_simplification in existing_simplifications:
-            if existing_simplification not in simplifications:
-                EntitySimplified.objects.filter(
-                    geographical_entity=self,
-                    simplify_tolerance=existing_simplification
-                ).delete()
-        for simplification in simplifications:
-            if simplification in existing_simplifications:
-                continue
-            # ST_Intersection before ST_SimplifyVW
-            #   to resolve issue ST_Transform
-            #   returns tolerance condition error (-20)
-            # update: move this to postgreSql function
-            entity_w_simplified = GeographicalEntity.objects.raw(
-                'SELECT gg.id, '
-                'simplifygeometry(gg.geometry, %s) AS simplify '
-                'FROM georepo_geographicalentity gg '
-                'WHERE gg.id=%s',
-                [
-                    simplification,
-                    self.id
-                ]
-            )[0]
-            EntitySimplified.objects.create(
-                geographical_entity=self,
-                simplify_tolerance=simplification,
-                simplified_geometry=entity_w_simplified.simplify
-            )
-
 
 class EntityName(models.Model):
     id = models.AutoField(primary_key=True)
@@ -478,25 +413,4 @@ class EntitySimplified(models.Model):
 
     simplified_geometry = models.GeometryField(
         null=True
-    )
-
-
-class TemporaryEntitySimplified(models.Model):
-    session = models.CharField(
-        max_length=256
-    )
-
-    geographical_entity = models.ForeignKey(
-        'georepo.GeographicalEntity',
-        on_delete=models.CASCADE
-    )
-
-    simplify_tolerance = models.FloatField(
-        default=0
-    )
-
-    simplified_geometry = models.GeometryField()
-
-    created_at = models.DateTimeField(
-        default=timezone.now
     )

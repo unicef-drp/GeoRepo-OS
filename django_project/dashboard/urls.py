@@ -103,8 +103,8 @@ from dashboard.api_views.views import (
     DownloadView, ViewFilterValue
 )
 from dashboard.api_views.tiling_config import (
-    FetchDatasetTilingConfig, UpdateDatasetTilingConfig,
-    FetchDatasetViewTilingConfig, UpdateDatasetViewTilingConfig,
+    FetchDatasetTilingConfig,
+    FetchDatasetViewTilingConfig,
     CreateTemporaryTilingConfig, TemporaryTilingConfigAPIView,
     ConfirmTemporaryTilingConfigAPIView,
     TilingConfigCheckStatus,
@@ -595,15 +595,9 @@ urlpatterns = [
     re_path(r'api/fetch-tiling-configs/dataset/(?P<uuid>[\da-f-]+)/?$',
             FetchDatasetTilingConfig.as_view(),
             name='fetch-tiling-configs'),
-    re_path(r'api/update-tiling-configs/dataset/(?P<uuid>[\da-f-]+)/?$',
-            UpdateDatasetTilingConfig.as_view(),
-            name='update-tiling-configs'),
     re_path(r'api/fetch-tiling-configs/view/(?P<view>[\da-f-]+)/?$',
             FetchDatasetViewTilingConfig.as_view(),
             name='fetch-view-tiling-configs'),
-    re_path(r'api/update-tiling-configs/view/(?P<view>[\da-f-]+)/?$',
-            UpdateDatasetViewTilingConfig.as_view(),
-            name='update-view-tiling-configs'),
     re_path(r'api/entity-upload-status/fetch-overlaps/'
             r'(?P<upload_id>\d+)/?$',
             OverlapsEntityUploadList.as_view(),
