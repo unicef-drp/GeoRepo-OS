@@ -88,6 +88,11 @@ class SitePreferencesAdmin(admin.ModelAdmin):
                 'base_url_help_page',
             )
         }),
+        ('Swagger UI', {
+            'fields': (
+                'swagger_ui_info',
+            )
+        })
     )
     inlines = (SitePreferencesImageInline,)
 

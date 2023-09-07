@@ -147,13 +147,6 @@ if USE_AZURE:
     # override logout url in swagger ui
     SWAGGER_SETTINGS['LOGIN_URL'] = '/azure-auth/login'
     SWAGGER_SETTINGS['LOGOUT_URL'] = '/azure-auth/logout'
-    SWAGGER_SETTINGS['SECURITY_DEFINITIONS'].update({
-        'B2C JWT Token Auth': {
-            'type': 'apiKey',
-            'in': 'header',
-            'name': 'Authorization'
-        }
-    })
     # Azure blob storage
     AZURE_STORAGE = os.environ.get('AZURE_STORAGE')
     AZURE_STORAGE_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER')
