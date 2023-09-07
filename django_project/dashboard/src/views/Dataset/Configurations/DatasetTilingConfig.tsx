@@ -432,7 +432,7 @@ export function DatasetTilingConfigMatrix(props: DatasetTilingConfigInterface) {
                                 { props.hideBottomNotes !== true && (
                                         <p>
                                             Use the matrix above to enable boundaries to be rendered into tiles at different zoom levels and with different simplification levels. 
-                                            Enter 0 to enable rendering without simplification. Using too large a simplification factor may result in artifacts such as slivers or polygons being rendered as triangles. 
+                                            Enter 1 to enable rendering without simplification. Using too small a simplification factor may result in artifacts such as slivers or polygons being rendered as triangles. 
                                             Note that pressing save will result in the entire tileset to be rerendered to cache, a CPU and time intensive operation.
                                         </p>
                                 )}
