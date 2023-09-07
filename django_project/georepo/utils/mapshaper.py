@@ -121,7 +121,7 @@ def read_output_simplification(output_file_path, tolerance):
             geom = None
             try:
                 geom = GEOSGeometry(geom_str)
-            except Exception as ex:
+            except Exception:
                 pass
             if geom is None:
                 continue
