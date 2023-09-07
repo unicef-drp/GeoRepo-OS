@@ -1,6 +1,8 @@
 from django.conf import settings
 import uuid
 from django.shortcuts import get_object_or_404
+from django.db.models.expressions import RawSQL
+from django.db.models import F, Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,7 +11,12 @@ from azure_auth.backends import AzureAuthRequiredMixin
 from celery.result import AsyncResult
 from django.utils import timezone
 from core.celery import app
-from georepo.models import Dataset, DatasetView, DatasetViewResource
+from georepo.models import (
+    Dataset,
+    DatasetView,
+    DatasetViewResource,
+    GeographicalEntity
+)
 from georepo.models.dataset_tile_config import (
     DatasetTilingConfig, TemporaryTilingConfig,
     AdminLevelTilingConfig
@@ -18,6 +25,8 @@ from georepo.models.dataset_view_tile_config import (
     DatasetViewTilingConfig,
     ViewAdminLevelTilingConfig
 )
+from georepo.serializers.entity import SimpleGeographicalGeojsonSerializer
+from georepo.utils.custom_geo_functions import ForcePolygonCCW
 from dashboard.serializers.tiling_config import (
     TilingConfigSerializer,
     ViewTilingConfigSerializer
@@ -30,6 +39,7 @@ from georepo.tasks.simplify_geometry import (
     simplify_geometry_in_dataset,
     simplify_geometry_in_view
 )
+from georepo.utils.unique_code import get_latest_revision_number
 from dashboard.api_views.common import (
     DatasetManagePermission
 )
@@ -232,6 +242,170 @@ class TemporaryTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
                     created_at=timezone.now()
                 )
         return Response(status=204)
+
+
+class PreviewTempTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
+    """
+    Fetch temporary tiling config for preview
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get_max_min_zoom(self, session):
+        zoom_levels = TemporaryTilingConfig.objects.filter(
+            session=session
+        ).order_by('zoom_level').values_list(
+            'zoom_level',
+            flat=True
+        ).distinct()
+        if zoom_levels:
+            return zoom_levels[0], zoom_levels[len(zoom_levels)-1]
+        return 0, 0
+
+    def prepare_response(self, session, entities, adm0_id = None):
+        # retrieve list of adm0
+        adm0 = entities.filter(
+            level=0
+        ).order_by('label').values('id', 'label')
+        first_adm0 = adm0_id or adm0[0]['id']
+        min_zoom, max_zoom = self.get_max_min_zoom(session)
+        dataset_levels = entities.filter(
+            Q(ancestor=first_adm0) |
+            (Q(ancestor__isnull=True) & Q(id=first_adm0))
+        ).order_by('level').values_list(
+            'level',
+            flat=True
+        ).distinct()
+        level_result = []
+        # Generate from 0 - 6 admin levels
+        entity_levels = [ x for x in range(7)]
+        for level in entity_levels:
+            simplify_per_level = {
+                'level': level,
+                'factors': [],
+                'has_data': level in dataset_levels
+            }
+            configs = TemporaryTilingConfig.objects.filter(
+                session=session,
+                level=level
+            ).order_by('zoom_level')
+            for config in configs:
+                simplify_per_level['factors'].append({
+                    'zoom_level': config.zoom_level,
+                    'simplify': config.simplify_tolerance
+                })
+            level_result.append(simplify_per_level)
+        return {
+            'levels': level_result,
+            'countries': adm0,
+            'max_zoom': max_zoom,
+            'min_zoom': min_zoom
+        }
+
+    def get_dataset_levels(self, session, dataset_uuid, adm0_id = None):
+        dataset = get_object_or_404(Dataset, uuid=dataset_uuid)
+        entities = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            is_latest=True
+        )
+        return self.prepare_response(session, entities, adm0_id)
+        
+    def get_view_levels(self, session, view_uuid, adm0_id = None):
+        dataset_view = get_object_or_404(DatasetView, uuid=view_uuid)
+        dataset = dataset_view.dataset
+        entities = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            is_latest=True
+        )
+        # raw_sql to view to select id
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(dataset_view.uuid))
+        entities = entities.filter(
+            id__in=RawSQL(raw_sql, [])
+        )
+        return self.prepare_response(session, entities, adm0_id)
+
+    def get(self, request, *args, **kwargs):
+        session = kwargs.get('session')
+        dataset_uuid = request.GET.get('dataset_uuid', None)
+        view_uuid = request.GET.get('view_uuid', None)
+        adm0_id = request.GET.get('adm0_id', None)
+        if dataset_uuid:
+            return Response(
+                status=200,
+                data=self.get_dataset_levels(session, dataset_uuid, adm0_id)
+            )
+        elif view_uuid:
+            return Response(
+                status=200,
+                data=self.get_view_levels(session, view_uuid, adm0_id)
+            )
+        return Response(status=200)
+
+
+class FetchGeoJsonPreview(AzureAuthRequiredMixin, APIView):
+    """
+    Fetch geojson for country and admin level for preview
+    """
+    permission_classes = [IsAuthenticated]
+
+    def prepare_response(self, entities, adm0_id, level):
+        if level == 0:
+            entities = entities.filter(id=adm0_id)
+        else:
+            entities = entities.filter(ancestor_id=adm0_id)
+        entities = entities.annotate(
+            rhr_geom=ForcePolygonCCW(F('geometry'))
+        )
+        values = ['id', 'rhr_geom']
+        entities = entities.order_by('id').values(*values)
+        return Response(
+            status=200,
+            data=SimpleGeographicalGeojsonSerializer(
+                entities,
+                many=True
+            ).data
+        )
+
+    def get_dataset_entities(self, dataset_uuid, adm0_id, level):
+        dataset = get_object_or_404(Dataset, uuid=dataset_uuid)
+        entities = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            is_latest=True,
+            level=level
+        )
+        return self.prepare_response(entities, adm0_id, level)
+
+    
+    def get_view_entities(self, view_uuid, adm0_id, level):
+        dataset_view = get_object_or_404(DatasetView, uuid=view_uuid)
+        dataset = dataset_view.dataset
+        entities = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            is_latest=True,
+            level=level
+        )
+        # raw_sql to view to select id
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(dataset_view.uuid))
+        entities = entities.filter(
+            id__in=RawSQL(raw_sql, [])
+        )
+        return self.prepare_response(entities, adm0_id, level)
+
+    def get(self, request, *args, **kwargs):
+        dataset_uuid = request.GET.get('dataset_uuid', None)
+        view_uuid = request.GET.get('view_uuid', None)
+        adm0_id = int(request.GET.get('adm0_id'))
+        level = int(request.GET.get('level'))
+        if view_uuid:
+            return self.get_view_entities(view_uuid, adm0_id, level)
+        return self.get_dataset_entities(dataset_uuid, adm0_id, level)
 
 
 class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):

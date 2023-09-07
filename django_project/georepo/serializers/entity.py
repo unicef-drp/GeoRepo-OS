@@ -187,27 +187,30 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
         results = []
         for k, v in representation.items():
             if k == 'properties':
-                for code, value in v['ext_codes'].items():
-                    v[code] = value
-                for value in v['names']:
-                    label = (
-                        value['label'] if value and 'label' in value else None
-                    )
-                    if label:
-                        v[label] = (
-                            value['name'] if value and 'name' in value else
-                            None
+                if 'ext_codes' in v:
+                    for code, value in v['ext_codes'].items():
+                        v[code] = value
+                    del v['ext_codes']
+                if 'names' in v:
+                    for value in v['names']:
+                        label = (
+                            value['label'] if value and 'label' in value else None
                         )
-                for parent in v['parents']:
-                    parent_key = f"adm{parent['admin_level']}"
-                    for code, value in parent.items():
-                        if code == 'admin_level' or code == 'default':
-                            continue
-                        v[f'{parent_key}_{code}'] = value
-                # remove
-                del v['parents']
-                del v['ext_codes']
-                del v['names']
+                        if label:
+                            v[label] = (
+                                value['name'] if value and 'name' in value else
+                                None
+                            )
+                    del v['names']
+                if 'parents' in v:
+                    for parent in v['parents']:
+                        parent_key = f"adm{parent['admin_level']}"
+                        for code, value in parent.items():
+                            if code == 'admin_level' or code == 'default':
+                                continue
+                            v[f'{parent_key}_{code}'] = value
+                    # remove
+                    del v['parents']
             results.append((k, v))
         return OrderedDict(results)
 
@@ -415,6 +418,19 @@ class GeographicalGeojsonSerializer(
             'ext_codes',
             'names',
             'parents'
+        ]
+
+
+class SimpleGeographicalGeojsonSerializer(
+        GeographicalEntitySerializer,
+        GeoFeatureModelSerializer):
+    output_format = 'geojson'
+
+    class Meta:
+        model = GeographicalEntity
+        geo_field = 'geometry'
+        fields = [
+            'id'
         ]
 
 
