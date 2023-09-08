@@ -156,3 +156,14 @@ class EntityByConceptUCode(APIView):
                 }
             ).data
         )
+
+
+class EntityEdit(APIView):
+    """
+    Edit Entitiy
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, entity_id, *args, **kwargs):
+        entity = get_object_or_404(GeographicalEntity, id=entity_id)
+        return Response({}, 200)

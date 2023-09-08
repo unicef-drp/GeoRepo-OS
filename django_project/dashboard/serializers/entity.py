@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.db.models import Q
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
+from georepo.models.entity import EntityName, EntityId
 from dashboard.models import EntitiesUserConfig
 
 
@@ -202,4 +203,26 @@ class EntityConceptUCodeSerializer(serializers.ModelSerializer):
             'concept_uuid',
             'dataset_name',
             'session'
+        ]
+
+
+class EntityEditSerializer(serializers.ModelSerializer):
+    names = serializers.SerializerMethodField()
+    codes = serializers.SerializerMethodField()
+
+    def get_names(self, obj):
+        names = EntityName.objects.filter(geographical_entity=obj)
+        return [{
+            'id':
+            'is'
+        }]
+
+    class Meta:
+        model = GeographicalEntity
+        fields = [
+            'names',
+            'codes',
+            'type',
+            'source',
+            'privacy_level'
         ]
