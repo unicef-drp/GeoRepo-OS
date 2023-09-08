@@ -18,12 +18,13 @@ import ResizeTableEvent from "../../components/ResizeTableEvent"
 import Loading from "../../components/Loading";
 import PaginationInterface, { getDefaultPagination, rowsPerPageOptions } from '../../models/pagination';
 
-import { useAppSelector, useAppDispatch } from '../../app/hooks';
-import {
-  setCurrentColumns
-} from "../../reducers/entitiesTable";
+import { useAppSelector } from '../../app/hooks';
+import { useNavigate } from "react-router-dom";
 import {RootState} from "../../app/store";
 import cloneDeep from "lodash/cloneDeep";
+import IconButton from "@mui/material/IconButton";
+import EditIcon from '@mui/icons-material/Edit';
+import {DatasetCreateRoute, ReviewListRoute} from "../routes";
 
 export interface EntitiesTableInterface {
     dataset_id: string,
@@ -44,7 +45,7 @@ const ALL_COLUMNS = [
     'type',
     'name',
     'default_code',
-    'code',
+    'ucode',
     'concept_ucode',
     'updated',
     'rev',
@@ -64,20 +65,6 @@ const ALL_COLUMNS = [
     'layer_file',
     'other_name',
     'other_id'
-]
-
-const COLUMNS = [
-    'country',
-    'level',
-    'type',
-    'name',
-    'default_code',
-    'code',
-    'concept_ucode',
-    'updated',
-    'rev',
-    'status',
-    'privacy_level'
 ]
 
 
@@ -100,7 +87,7 @@ interface EntityTableRowInterface {
     type: string,
     name: string,
     default_code: string,
-    code: string,
+    ucode: string,
     concept_ucode: string,
     updated: Date,
     rev: number,
@@ -114,7 +101,6 @@ const API_URL = '/api/dashboard-dataset/list/'
 const FilterIcon: any = FilterAlt
 
 export default function EntitiesTable(props: EntitiesTableInterface) {
-    const dispatch = useAppDispatch()
     const initialColumns = useAppSelector((state: RootState) => state.entitiesTable.currentColumns)
     const [loading, setLoading] = useState<boolean>(true)
     const [columns, setColumns] = useState<any>([])
@@ -129,6 +115,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
         axiosSource.current = axios.CancelToken.source();
         return axiosSource.current.token;
       }, [])
+    const navigate = useNavigate()
 
     const fetchFilterValues = async () => {
         if (Object.keys(filterValues).length != 0) return filterValues
@@ -204,7 +191,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
         const fetchFilterValuesData = async() => {
             let filter_values:any = await fetchFilterValues()
             if (columns.length === 0) {
-                setColumns(ALL_COLUMNS.map((column_name) => {
+                let _columns = ALL_COLUMNS.map((column_name) => {
                     let options:any = {
                         name: column_name,
                         data_type: (column_name !== 'id' && column_name !== 'centroid') ?'string_array':'',
@@ -317,7 +304,35 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                         }
                     }
                     return options
-                }))
+                })
+                _columns.push({
+                name: 'Action',
+                options: {
+                  customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+                    let rowData = tableMeta.rowData
+                    return (
+                      <div className="TableActionContent">
+                        <IconButton
+                          aria-label={'Edit'}
+                          title={'Edit'}
+                          key={0}
+                          disabled={false}
+                          color='primary'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`${DatasetCreateRoute.path}`)
+                          }}
+                          className=''
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </div>
+                    )
+                  },
+                  filter: false
+                }
+                })
+                setColumns(_columns)
             } else {
                 // update existing filters from props Filter obj
                 const _columns = columns.map((column: any) => {

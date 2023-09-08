@@ -10,7 +10,7 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     name = serializers.CharField(source='label')
     default_code = serializers.CharField(source='internal_code')
-    code = serializers.CharField(source='unique_code')
+    ucode = serializers.CharField(source='unique_code')
     concept_ucode = serializers.CharField()
     updated = serializers.DateTimeField(source='start_date')
     rev = serializers.CharField(source='revision_number')
@@ -63,7 +63,7 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
             'type',
             'name',
             'default_code',
-            'code',
+            'ucode',
             'concept_ucode',
             'updated',
             'rev',

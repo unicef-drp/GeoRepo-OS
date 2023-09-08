@@ -166,6 +166,20 @@ devweb-shell:
 	@echo "------------------------------------------------------------------"
 	@docker-compose exec dev /bin/bash
 
+run-local:
+	@echo
+	@echo "------------------------------------------------------------------"
+	@echo "Running Django in development mode"
+	@echo "------------------------------------------------------------------"
+	@docker-compose exec dev python manage.py runserver 0.0.0.0:8080 --settings=core.settings.dev
+
+run-frontend:
+	@echo
+	@echo "------------------------------------------------------------------"
+	@echo "Running Django in development mode"
+	@echo "------------------------------------------------------------------"
+	@docker-compose exec dev cd dashboard/ && npm run serve
+
 db-bash:
 	@echo
 	@echo "------------------------------------------------------------------"

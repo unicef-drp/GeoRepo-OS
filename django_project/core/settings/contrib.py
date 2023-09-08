@@ -18,8 +18,12 @@ INSTALLED_APPS = INSTALLED_APPS + (
     'django_celery_results',
     'tinymce',
     'taggit',
-    'captcha'
+    'captcha',
+    'easyaudit'
 )
+
+MIDDLEWARE = MIDDLEWARE + ['easyaudit.middleware.easyaudit.EasyAuditMiddleware']
+
 WEBPACK_LOADER = {
     'DEFAULT': {
         'BUNDLE_DIR_NAME': 'dashboard/',  # must end with slash
@@ -67,3 +71,15 @@ REST_KNOX = {
   'TOKEN_LIMIT_PER_USER': 1,
   'AUTO_REFRESH': False,
 }
+
+# django-easy-audit settings
+DJANGO_EASY_AUDIT_UNREGISTERED_CLASSES_EXTRA = [
+    'django_celery_beat.SolarSchedule',
+    'django_celery_beat.IntervalSchedule',
+    'django_celery_beat.ClockedSchedule',
+    'django_celery_beat.CrontabSchedule',
+    'django_celery_beat.PeriodicTasks',
+    'django_celery_beat.PeriodicTask'
+]
+DJANGO_EASY_AUDIT_WATCH_AUTH_EVENTS = False
+DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False

@@ -172,7 +172,6 @@ export const ViewEditTilingConfigRoute: RouteInterface = {
   parent: ViewEditRoute
 }
 
-
 export const EntityConceptUCodeRoute: RouteInterface = {
   id: 'entity_by_concept_ucode',
   name: 'Entity Detail By Concept UCode',
@@ -180,6 +179,14 @@ export const EntityConceptUCodeRoute: RouteInterface = {
   element: lazy(() => import('./Dataset/ConceptUcodeDetail' /* webpackChunkName: "concept_ucode_detail" */)),
   parent: DatasetRoute
 }
+
+// export const EntityEditRoute: RouteInterface = {
+//   id: 'entity_edit',
+//   name: 'Entity Edit',
+//   path: '/entity',
+//   element: lazy(() => import('./Dataset/EntityDetail' /* webpackChunkName: "entity_edit" */)),
+//   parent: DatasetRoute
+// }
 
 export const ModuleListRoute: RouteInterface = {
   id: 'module_list',
