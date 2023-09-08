@@ -30,7 +30,7 @@ interface UserAPIKeysInterface {
 
 interface UserAPIKeyCreateFormInterface {
     loading: boolean,
-    handleSaveClick: (platform?: string, owner?: string, contact?: string) => void
+    handleSaveClick: (platform?: string) => void
 }
 
 interface UserAPIKeyItemInterface {
@@ -43,17 +43,13 @@ interface UserAPIKeyItemInterface {
 }
 
 interface TempAPIKeyData {
-    platform?: string,
-    owner?: string,
-    contact?: string,
+    platform?: string
 }
 
 const USER_API_KEYS_URL = '/api/token/'
 
 function UserAPIKeyCreateForm(props: UserAPIKeyCreateFormInterface) {
     const [platform, setPlatform] = useState('')
-    const [owner, setOwner] = useState('')
-    const [contact, setContact] = useState('')
 
     return (
         <Grid container sx={{width: '50%'}}>
@@ -73,32 +69,6 @@ function UserAPIKeyCreateForm(props: UserAPIKeyCreateFormInterface) {
                                 sx={{ width: '100%' }}
                             />
                         </Grid>
-                        <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                            <Typography variant={'subtitle1'}>Owner</Typography>
-                        </Grid>
-                        <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                            <TextField
-                                id="input_owner"
-                                hiddenLabel={true}
-                                type={"text"}
-                                value={owner}
-                                onChange={(e) => setOwner(e.target.value)}
-                                sx={{ width: '100%' }}
-                            />
-                        </Grid>
-                        <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                            <Typography variant={'subtitle1'}>Contact</Typography>
-                        </Grid>
-                        <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                            <TextField
-                                id="input_contact"
-                                hiddenLabel={true}
-                                type={"text"}
-                                value={contact}
-                                onChange={(e) => setContact(e.target.value)}
-                                sx={{ width: '100%' }}
-                            />
-                        </Grid>
                     </Grid>
                     <Grid container sx={{paddingTop: '1em'}} flexDirection={'row'} justifyContent={'flex-end'}>
                         <Grid item>
@@ -106,7 +76,7 @@ function UserAPIKeyCreateForm(props: UserAPIKeyCreateFormInterface) {
                                 className='button-with-loading'
                                 variant={"contained"}
                                 disabled={props.loading}
-                                onClick={() => props.handleSaveClick(platform, owner, contact)}
+                                onClick={() => props.handleSaveClick(platform)}
                                 sx={{ width: '200px'}}>
                                 <span style={{ display: 'flex' }}>
                                 { props.loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { "Generate API Key" }</span>
@@ -226,20 +196,6 @@ function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
                                         </Grid>
                                     </Grid>
                                 </Grid>
-                                <Grid item>
-                                    <Grid container flexDirection={'row'}>
-                                        <Grid className={'form-label'} item>
-                                            <Typography variant={'subtitle1'}>Owner : {displayValue(props.apiKey.owner)}</Typography>
-                                        </Grid>
-                                    </Grid>
-                                </Grid>
-                                <Grid item>
-                                    <Grid container flexDirection={'row'}>
-                                        <Grid className={'form-label'} item>
-                                            <Typography variant={'subtitle1'}>Contact : {displayValue(props.apiKey.contact)}</Typography>
-                                        </Grid>
-                                    </Grid>
-                                </Grid>
                             </Grid>
                         </Grid>
                         <Grid item>
@@ -334,11 +290,9 @@ export default function UserAPIKeys(props: UserAPIKeysInterface) {
           })
     }
 
-    const doCreateAPIKey = (platform?: string, owner?: string, contact?: string) => {
+    const doCreateAPIKey = (platform?: string) => {
         axios.post(`${USER_API_KEYS_URL}${props.user.id}/`, {
-            'platform': platform,
-            'owner': owner,
-            'contact': contact
+            'platform': platform
         }).then(
             response => {
                 setAlertLoading(false)
@@ -352,8 +306,6 @@ export default function UserAPIKeys(props: UserAPIKeysInterface) {
                     'api_key': response.data['api_key'],
                     'created': response.data['created'],
                     'platform': platform,
-                    'owner': owner,
-                    'contact': contact,
                     'is_active': true
                 })
             }
@@ -396,16 +348,14 @@ export default function UserAPIKeys(props: UserAPIKeysInterface) {
         setAlertOpen(true)
     }
 
-    const createAPIKey = (platform?: string, owner?: string, contact?: string) => {
+    const createAPIKey = (platform?: string) => {
         // set warning
         setActionLoading(true)
         setAlertDialogTitle('Generating new API Key')
         setAlertDialogDescription('This API Key is personal and please do not share it with other people. If we notice suspect behavior, your API Key can be deleted and your account suspended.')
         setConfirmMode(1)
         setTempCreateAPIKeyData({
-            'platform': platform,
-            'owner': owner,
-            'contact': contact
+            'platform': platform
         })
         setAlertOpen(true)
     }
@@ -421,7 +371,7 @@ export default function UserAPIKeys(props: UserAPIKeysInterface) {
         setAlertLoading(true)
         if (confirmMode === 1) {
             // create API Key
-            doCreateAPIKey(tempCreateAPIKeyData.platform, tempCreateAPIKeyData.owner, tempCreateAPIKeyData.contact)
+            doCreateAPIKey(tempCreateAPIKeyData.platform)
         } else {
             doDeleteAPIKey()
         }
