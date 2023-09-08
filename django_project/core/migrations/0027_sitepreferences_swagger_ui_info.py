@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0025_delete_old_keys'),
+        ('core', '0026_update_tiling_configs'),
     ]
 
     operations = [
