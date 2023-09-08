@@ -263,7 +263,7 @@ class SitePreferences(SingletonModel):
     class Meta:  # noqa: D106
         verbose_name_plural = "site preferences"
 
-    @staticmethod
+    @staticmethod  # noqa
     def preferences() -> "SitePreferences":
         """Load Site Preference."""
         return SitePreferences.load()

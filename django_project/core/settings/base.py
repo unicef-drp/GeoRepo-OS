@@ -54,6 +54,7 @@ STATICFILES_DIRS = (
     # Don't forget to use absolute paths, not relative paths.
     absolute_path('core', 'static'),
     absolute_path('dashboard', 'bundles'),
+    absolute_path('dashboard', 'static'),
 )
 
 # Every cache key will get prefixed with this value - here we set it to

@@ -32,7 +32,8 @@ from georepo.models import (
     DatasetTilingConfig,
     AdminLevelTilingConfig,
     DatasetViewTilingConfig,
-    ViewAdminLevelTilingConfig
+    ViewAdminLevelTilingConfig,
+    EntitySimplified
 )
 from georepo.utils.permission import (
     grant_dataset_manager,
@@ -324,7 +325,11 @@ class TestDatasetMVTTiles(TestCase):
             level=self.geographical_entity.level,
             simplify_tolerance=0.009
         )
-        self.geographical_entity.do_simplification()
+        EntitySimplified.objects.create(
+            geographical_entity=self.geographical_entity,
+            simplify_tolerance=0.009,
+            simplified_geometry=self.geographical_entity.geometry
+        )
 
     def test_get_tiles(self):
         kwargs = {

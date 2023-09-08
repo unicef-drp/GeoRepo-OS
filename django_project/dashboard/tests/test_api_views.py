@@ -46,8 +46,7 @@ from dashboard.api_views.reviews import (
 from dashboard.api_views.module import ModuleDashboard
 from georepo.models import (
     IdType, GeographicalEntity, Dataset,
-    DatasetView, AdminLevelTilingConfig,
-    DatasetAdminLevelName, BoundaryType
+    DatasetView, DatasetAdminLevelName, BoundaryType
 )
 from dashboard.api_views.views import (
     CreateNewView, DeleteView, UpdateView, ViewDetail,
@@ -95,8 +94,8 @@ from georepo.utils.permission import (
 )
 from modules.admin_boundaries.review import approve_revision
 from dashboard.api_views.tiling_config import (
-    FetchDatasetTilingConfig, UpdateDatasetTilingConfig,
-    FetchDatasetViewTilingConfig, UpdateDatasetViewTilingConfig
+    FetchDatasetTilingConfig,
+    FetchDatasetViewTilingConfig
 )
 from georepo.utils.dataset_view import (
     generate_default_view_dataset_latest
@@ -2495,112 +2494,6 @@ class TestApiViews(TestCase):
         response = query_view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 9)
-
-    @mock.patch(
-        'dashboard.api_views.tiling_config.'
-        'simplify_geometry_in_dataset.delay',
-        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
-    )
-    @mock.patch('dashboard.api_views.tiling_config.app.control.revoke',
-                mock.Mock(side_effect=mocked_revoke_running_task))
-    @override_settings(MEDIA_ROOT='/home/web/django_project/dashboard')
-    def test_update_tiling_configs(self):
-        dataset = DatasetF.create()
-        populate_tile_configs(dataset.id)
-        kwargs = {
-            'uuid': str(dataset.uuid)
-        }
-        tiling_config_path = absolute_path(
-            'dashboard', 'tests',
-            'tiling_config_data',
-            'tiling_config_test.json')
-        with open(tiling_config_path) as json_file:
-            data = json.load(json_file)
-        request = self.factory.post(
-            reverse('update-tiling-configs', kwargs=kwargs),
-            data, format='json'
-        )
-        # should return ok
-        request.user = self.superuser
-        query_view = UpdateDatasetTilingConfig.as_view()
-        response = query_view(request, **kwargs)
-        self.assertEqual(response.status_code, 204)
-        admin_levels = AdminLevelTilingConfig.objects.filter(
-            dataset_tiling_config__dataset=dataset,
-            dataset_tiling_config__zoom_level=4
-        )
-        self.assertEqual(admin_levels.count(), 1)
-        tiling_config_path = absolute_path(
-            'dashboard', 'tests',
-            'tiling_config_data',
-            'tiling_config_test_error.json')
-        with open(tiling_config_path) as json_file:
-            data = json.load(json_file)
-        request = self.factory.post(
-            reverse('update-tiling-configs', kwargs=kwargs),
-            data, format='json'
-        )
-        # should return error
-        request.user = self.superuser
-        query_view = UpdateDatasetTilingConfig.as_view()
-        response = query_view(request, **kwargs)
-        self.assertEqual(response.status_code, 400)
-
-    @mock.patch(
-        'dashboard.api_views.tiling_config.'
-        'trigger_generate_vector_tile_for_view',
-        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
-    )
-    @mock.patch(
-        'dashboard.api_views.tiling_config.simplify_geometry_in_view.delay',
-        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
-    )
-    @override_settings(MEDIA_ROOT='/home/web/django_project/dashboard')
-    def test_update_view_tiling_configs(self):
-        user = UserF.create()
-        dataset = DatasetF.create()
-        populate_tile_configs(dataset.id)
-        view = DatasetViewF.create(
-            dataset=dataset
-        )
-        kwargs = {
-            'view': str(view.uuid)
-        }
-        tiling_config_path = absolute_path(
-            'dashboard', 'tests',
-            'tiling_config_data',
-            'tiling_config_test.json')
-        with open(tiling_config_path) as json_file:
-            data = json.load(json_file)
-        request = self.factory.post(
-            reverse('update-view-tiling-configs', kwargs=kwargs),
-            data, format='json'
-        )
-        # should return ok
-        request.user = user
-        query_view = UpdateDatasetViewTilingConfig.as_view()
-        response = query_view(request, **kwargs)
-        self.assertEqual(response.status_code, 204)
-        # admin_levels = ViewAdminLevelTilingConfig.objects.filter(
-        #     dataset_tiling_config__dataset=dataset,
-        #     dataset_tiling_config__zoom_level=4
-        # )
-        # self.assertEqual(admin_levels.count(), 1)
-        tiling_config_path = absolute_path(
-            'dashboard', 'tests',
-            'tiling_config_data',
-            'tiling_config_test_error.json')
-        with open(tiling_config_path) as json_file:
-            data = json.load(json_file)
-        request = self.factory.post(
-            reverse('update-view-tiling-configs', kwargs=kwargs),
-            data, format='json'
-        )
-        # should return error
-        request.user = user
-        query_view = UpdateDatasetViewTilingConfig.as_view()
-        response = query_view(request, **kwargs)
-        self.assertEqual(response.status_code, 400)
 
     def test_fetch_dataset_boundary_types(self):
         user = UserF.create(is_superuser=True)

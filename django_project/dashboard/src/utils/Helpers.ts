@@ -1,3 +1,5 @@
+import {useRef, useEffect} from 'react';
+
 /**
  * Change string to singular
  */
@@ -55,4 +57,15 @@ export function getMonthName(date: Date): string {
 export function utcToLocalDateTimeString(date: Date): string {
   return `${date.getDate()} ${getMonthName(date)} ${date.getFullYear()} 
   ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
+}
+
+/**
+ * Custom hook to get previous value
+ */
+export const usePrevious = <T extends unknown>(value: T): T | undefined => {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
 }
