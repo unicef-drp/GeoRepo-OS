@@ -256,7 +256,8 @@ class SitePreferences(SingletonModel):
     swagger_ui_info = models.TextField(
         default='',
         help_text=_(
-            'Shown as the introduction at the top of Swagger UI. HTML and Markdown supported.'
+            'Shown as the introduction at the top of '
+            'Swagger UI. HTML and Markdown supported.'
         )
     )
 
