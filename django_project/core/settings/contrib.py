@@ -18,8 +18,7 @@ INSTALLED_APPS = INSTALLED_APPS + (
     'django_celery_results',
     'tinymce',
     'taggit',
-    'captcha',
-    'constance'
+    'captcha'
 )
 WEBPACK_LOADER = {
     'DEFAULT': {
