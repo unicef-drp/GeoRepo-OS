@@ -39,20 +39,13 @@ TEGOLA_AZURE_BASE_PATH = 'layer_tiles'
 
 
 def dataset_view_sql_query(dataset_view: DatasetView, level,
-                           privacy_level, tolerance=None):
-    if tolerance:
-        select_sql = (
-            'SELECT ST_AsMVTGeom(GeomTransformMercator('
-            'simplifygeometry(gg.geometry, {tolerance})), !BBOX!) '
-            'AS geometry, '.format(
-                tolerance=tolerance
-            )
-        )
-    else:
-        select_sql = (
-            'SELECT ST_AsMVTGeom('
-            'GeomTransformMercator(gg.geometry), !BBOX!) AS geometry, '
-        )
+                           privacy_level, tolerance=None,
+                           using_view_tiling_config=False):
+    select_sql = (
+        'SELECT ST_AsMVTGeom('
+        'GeomTransformMercator(ges.simplified_geometry), '
+        '!BBOX!) AS geometry, '
+    )
     # raw_sql to view to select id
     raw_sql = (
         'SELECT id from "{}"'
@@ -113,7 +106,28 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
                 f'{join_name}.geographical_entity_id=gg.id AND '
                 f'{join_name}.idx={name_idx} '
             )
-
+    tiling_config_joins = ''
+    if using_view_tiling_config:
+        tiling_config_joins = (
+            'inner join georepo_datasetviewtilingconfig dtc on '
+            '    dtc.dataset_view_id={dataset_view_id} and '
+            '    dtc.zoom_level=!ZOOM! '
+            'inner join georepo_viewadminleveltilingconfig tc on '
+            '    tc.level=gg.level and '
+            '    ges.simplify_tolerance=tc.simplify_tolerance and '
+            '    tc.view_tiling_config_id = dtc.id '
+        ).format(
+            dataset_view_id=dataset_view.id
+        )
+    else:
+        tiling_config_joins = (
+            'inner join georepo_datasettilingconfig dtc on '
+            '    dtc.dataset_id=gg.dataset_id and dtc.zoom_level=!ZOOM! '
+            'inner join georepo_adminleveltilingconfig tc on '
+            '    tc.level=gg.level and '
+            '    ges.simplify_tolerance=tc.simplify_tolerance and '
+            '    tc.dataset_tiling_config_id = dtc.id '
+        )
     sql = (
         select_sql +
         'ST_AsText(ST_PointOnSurface(gg.geometry)) AS centroid, '
@@ -134,12 +148,15 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         (', '.join(id_field_select)) + ' ' +
         (', ' if name_field_select else ' ') +
         (', '.join(name_field_select)) + ' '
-        'FROM georepo_geographicalentity gg '
+        'FROM georepo_entitysimplified ges '
+        'INNER JOIN georepo_geographicalentity gg on '
+        '    gg.id=ges.geographical_entity_id ' +
+        tiling_config_joins +
         'INNER JOIN georepo_entitytype ge on ge.id = gg.type_id '
         'LEFT JOIN georepo_geographicalentity pg on pg.id = gg.parent_id ' +
         (' '.join(id_field_left_joins)) + ' ' +
         (' '.join(name_field_left_joins)) + ' '
-        'WHERE gg.geometry && ST_Transform(!BBOX!, 4326) '
+        'WHERE ges.simplified_geometry && ST_Transform(!BBOX!, 4326) '
         'AND gg.level = {level} '
         'AND gg.dataset_id = {dataset_id} '
         'AND gg.is_approved=True '
@@ -193,7 +210,7 @@ def get_view_tiling_configs(dataset_view: DatasetView
             tiling_configs.append(
                 TilingConfigZoomLevels(conf.zoom_level, items)
             )
-        return tiling_configs
+        return tiling_configs, True
     # check for dataset tiling configs
     dataset_tiling_conf = DatasetTilingConfig.objects.filter(
         dataset=dataset_view.dataset
@@ -209,8 +226,8 @@ def get_view_tiling_configs(dataset_view: DatasetView
             tiling_configs.append(
                 TilingConfigZoomLevels(conf.zoom_level, items)
             )
-        return tiling_configs
-    return tiling_configs
+        return tiling_configs, False
+    return tiling_configs, False
 
 
 def create_view_configuration_files(
@@ -224,7 +241,8 @@ def create_view_configuration_files(
     )
 
     toml_dataset_filepaths = []
-    tiling_configs = get_view_tiling_configs(view_resource.dataset_view)
+    tiling_configs, using_view_tiling_config = get_view_tiling_configs(
+        view_resource.dataset_view)
     if len(tiling_configs) == 0:
         return []
     # count levels
@@ -293,7 +311,8 @@ def create_view_configuration_files(
                 view_resource.dataset_view,
                 level,
                 view_resource.privacy_level,
-                tolerance=adminlevel_conf.tolerance
+                tolerance=adminlevel_conf.tolerance,
+                using_view_tiling_config=using_view_tiling_config
             )
             provider_layer = {
                 'name': f'Level-{level}',

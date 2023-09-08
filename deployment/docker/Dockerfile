@@ -51,6 +51,9 @@ RUN apt-get install -y --no-install-recommends gdal-bin
 # topojson-server
 RUN npm install -g topojson-server
 
+# mapshaper
+RUN npm install -g mapshaper
+
 ADD django_project /home/web/django_project
 
 EXPOSE 8080

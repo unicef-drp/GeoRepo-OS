@@ -48,7 +48,7 @@ interface DatasetTilingConfigInterface {
     hideBottomNotes?: boolean
 }
 
-interface AdminLevelTiling {
+export interface AdminLevelTiling {
     level: number,
     simplify_tolerance: number
 }
@@ -67,13 +67,13 @@ interface AdminLevelTilingInterface {
     isReadOnly?: boolean
 }
 
-function AdminLevelItem(props: AdminLevelTilingInterface) {
+export function AdminLevelItem(props: AdminLevelTilingInterface) {
     const [isHovering, setIsHovering] = useState(false)
     const [isEdit, setIsEdit] = useState(false)
     const [idx, setIdx] = useState(-1)
     const [item, setItem] = useState({
         level: props.admin_level,
-        simplify_tolerance: 0
+        simplify_tolerance: 1
     })
     useEffect(() => {
         let _idx = props.tiling_config.admin_level_tiling_configs.findIndex((element) => element.level === props.admin_level)
@@ -84,7 +84,7 @@ function AdminLevelItem(props: AdminLevelTilingInterface) {
         } else {
             setItem({
                 level: props.admin_level,
-                simplify_tolerance: 0
+                simplify_tolerance: 1
             })
         }
     }, [props.admin_level, props.tiling_config])
@@ -120,7 +120,7 @@ function AdminLevelItem(props: AdminLevelTilingInterface) {
             } else {
                 setItem({
                     level: props.admin_level,
-                    simplify_tolerance: 0
+                    simplify_tolerance: 1
                 })
             }
         }
@@ -320,7 +320,7 @@ export function DatasetTilingConfigMatrix(props: DatasetTilingConfigInterface) {
         for (let i=0; i < 7; ++i) {
             _newTiling.admin_level_tiling_configs.push({
                 level: i,
-                simplify_tolerance: 0
+                simplify_tolerance: 1
             })
         }
         setData([...data, _newTiling])
@@ -432,7 +432,7 @@ export function DatasetTilingConfigMatrix(props: DatasetTilingConfigInterface) {
                                 { props.hideBottomNotes !== true && (
                                         <p>
                                             Use the matrix above to enable boundaries to be rendered into tiles at different zoom levels and with different simplification levels. 
-                                            Enter 0 to enable rendering without simplification. Using too large a simplification factor may result in artifacts such as slivers or polygons being rendered as triangles. 
+                                            Enter 1 to enable rendering without simplification. Using too small a simplification factor may result in artifacts such as slivers or polygons being rendered as triangles. 
                                             Note that pressing save will result in the entire tileset to be rerendered to cache, a CPU and time intensive operation.
                                         </p>
                                 )}

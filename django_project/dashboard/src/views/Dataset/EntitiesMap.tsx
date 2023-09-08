@@ -17,6 +17,7 @@ import {
     Alert
 } from '@mui/material';
 import Divider from '@mui/material/Divider';
+import { usePrevious } from '../../utils/Helpers';
 
 const MAP_STYLE_URL = window.location.origin + '/api/dataset-style/dataset/'
 const VIEW_MAP_STYLE_URL = window.location.origin + '/api/dataset-style/view/'
@@ -46,14 +47,6 @@ export interface EntitiesMapInterface {
 
 interface LMarker extends Marker {
     label: string
-}
-
-const usePrevious = <T extends unknown>(value: T): T | undefined => {
-    const ref = useRef<T>();
-    useEffect(() => {
-      ref.current = value;
-    });
-    return ref.current;
 }
 
 function ToggleSelect(props: any) {
