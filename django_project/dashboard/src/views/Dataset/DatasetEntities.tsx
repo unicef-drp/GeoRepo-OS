@@ -219,7 +219,11 @@ export default function DatasetEntities(props: DatasetEntitiesInterface) {
                 </Grid>
                 <Grid item xs={6} md={7} id='dataset-entities-list' className='dataset-entities-item'>
                 { datasetId && session && !filterLoading ?
-                    <EntitiesTable dataset_id={datasetId} filter={filter} session={session}
+                    <EntitiesTable
+                      dataset_id={datasetId}
+                      filter={filter}
+                      session={session}
+                      editable={props.dataset.permissions.includes('Manage')}
                         onEntitySelected={fetchGeomDetail}
                         onLoadCompleted={onTableLoadCompleted}
                         onFilterUpdated={onFiltersChanged}

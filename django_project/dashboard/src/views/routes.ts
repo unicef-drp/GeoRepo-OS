@@ -180,13 +180,13 @@ export const EntityConceptUCodeRoute: RouteInterface = {
   parent: DatasetRoute
 }
 
-// export const EntityEditRoute: RouteInterface = {
-//   id: 'entity_edit',
-//   name: 'Entity Edit',
-//   path: '/entity',
-//   element: lazy(() => import('./Dataset/EntityDetail' /* webpackChunkName: "entity_edit" */)),
-//   parent: DatasetRoute
-// }
+export const EntityEditRoute: RouteInterface = {
+  id: 'entity_edit',
+  name: 'Entity Edit',
+  path: '/entity/edit',
+  element: lazy(() => import('./Dataset/EntityEdit' /* webpackChunkName: "entity_edit" */)),
+  parent: DatasetRoute
+}
 
 export const ModuleListRoute: RouteInterface = {
   id: 'module_list',
@@ -228,6 +228,7 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   ViewEditRoute,
   ViewEditTilingConfigRoute,
   EntityConceptUCodeRoute,
+  EntityEditRoute,
   ModuleListRoute,
   ModuleDetailRoute,
   InvalidPermissionRoute,
@@ -246,6 +247,7 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   ViewEditRoute,
   ViewEditTilingConfigRoute,
   EntityConceptUCodeRoute,
+  EntityEditRoute,
   InvalidPermissionRoute,
   AccessRequestSubmitRoute,
   UserProfileRoute

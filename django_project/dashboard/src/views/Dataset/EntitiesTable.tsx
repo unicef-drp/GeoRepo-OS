@@ -24,7 +24,7 @@ import {RootState} from "../../app/store";
 import cloneDeep from "lodash/cloneDeep";
 import IconButton from "@mui/material/IconButton";
 import EditIcon from '@mui/icons-material/Edit';
-import {DatasetCreateRoute, ReviewListRoute} from "../routes";
+import {EntityEditRoute} from "../routes";
 
 export interface EntitiesTableInterface {
     dataset_id: string,
@@ -36,7 +36,8 @@ export interface EntitiesTableInterface {
     onFilterUpdated?: (new_filters: EntitiesFilterUpdateInterface[]) => void,
     onSingleFilterUpdated? : (data: EntitiesFilterUpdateInterface) => void,
     onRowHover?: (id: number, level: number, centroid?: any) => void,
-    viewUuid?: string
+    viewUuid?: string,
+    editable: boolean
 }
 
 const ALL_COLUMNS = [
@@ -320,7 +321,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                           color='primary'
                           onClick={(e) => {
                             e.stopPropagation()
-                            navigate(`${DatasetCreateRoute.path}`)
+                            navigate(`${EntityEditRoute.path}?id=${rowData[0]}&tab=1`)
                           }}
                           className=''
                         >

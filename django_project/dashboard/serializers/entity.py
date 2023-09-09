@@ -206,23 +206,245 @@ class EntityConceptUCodeSerializer(serializers.ModelSerializer):
         ]
 
 
+class EntityNameListSerializer(serializers.ListSerializer):
+
+    def validate(self, data):
+        default_set = set()
+        results = []
+        for item in data:
+            obj = EntityNameSerializer(
+                data=item,
+                context={
+                    'default_set': default_set
+                }
+            )
+            obj.is_valid(raise_exception=True)
+            default_set.add(obj.validated_data['default'])
+            results.append(obj)
+
+        if default_set == {False}:
+            raise serializers.ValidationError(
+                f'No default name is supplied'
+            )
+
+        if len(data) == 0:
+            raise serializers.ValidationError(
+                f'Entity must have at least 1 name'
+            )
+
+        return results
+
+    def save(self, entity):
+        old_data = EntityName.objects.filter(
+            geographical_entity=entity
+        )
+        items = self.validated_data
+        for old in old_data:
+            exists = (
+                [item for item in items if
+                    old.id == item.validated_data['id']]
+            )
+            if len(exists) == 0:
+                old.delete()
+        results = []
+        for item in items:
+            print(item)
+            obj = item.save(entity)
+            results.append(obj)
+        return results
+
+
+class EntityNameSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField()
+    language_id = serializers.IntegerField(allow_null=True)
+
+    def validate_code(self, value):
+        stripped_value = value.strip() if value else ''
+        return stripped_value
+
+    def validate_default(self, value):
+        if 'default_set' in self.context:
+            if value is True and value in self.context['default_set']:
+                raise serializers.ValidationError(
+                    f'Duplicate default'
+                )
+        return value
+
+    def save(self, entity):
+        name_id = self.validated_data['id']
+        language = self.validated_data['language_id']
+        name_value = self.validated_data['name']
+        default = self.validated_data['default']
+        if name_id > 0:
+            try:
+                entity_name = EntityName.objects.get(geographical_entity=entity, id=name_id)
+                entity_name.name = name_value
+                entity_name.default = default
+                entity_name.language_id = language
+                entity_name.save()
+            except EntityId.DoesNotExist:
+                entity_name = None
+        else:
+            entity_name = EntityName.objects.create(
+                name=name_value,
+                default=default,
+                geographical_entity=entity,
+                language_id=language
+            )
+        return entity_name
+
+    class Meta:
+        model = EntityName
+        list_serializer_class = EntityNameListSerializer
+        fields = [
+            'id', 'default', 'name', 'language_id'
+        ]
+
+
+class EntityCodeListSerializer(serializers.ListSerializer):
+
+    def validate(self, data):
+        default_set = set()
+        results = []
+        for item in data:
+            obj = EntityCodeSerializer(
+                data=item,
+                context={
+                    'default_set': default_set
+                }
+            )
+            obj.is_valid(raise_exception=True)
+            default_set.add(obj.validated_data['default'])
+            results.append(obj)
+
+        if default_set == {False}:
+            raise serializers.ValidationError(
+                f'No default code is supplied'
+            )
+
+        if len(data) == 0:
+            raise serializers.ValidationError(
+                f'Entity must have at least 1 code'
+            )
+
+        return results
+
+    def save(self, entity):
+        old_data = EntityId.objects.filter(
+            geographical_entity=entity
+        )
+        items = self.validated_data
+        for old in old_data:
+            exists = (
+                [item for item in items if
+                    old.id == item.validated_data['id']]
+            )
+            if len(exists) == 0:
+                old.delete()
+        results = []
+        for item in items:
+            obj = item.save(entity)
+            results.append(obj)
+        return results
+
+
+class EntityCodeSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField()
+    code_id = serializers.IntegerField()
+
+    def validate_code(self, value):
+        stripped_value = value.strip() if value else ''
+        return stripped_value
+
+    def validate_default(self, value):
+        if 'default_set' in self.context:
+            if value is True and value in self.context['default_set']:
+                raise serializers.ValidationError(
+                    f'Duplicate default'
+                )
+        return value
+
+    def save(self, entity):
+        code_id = self.validated_data['id']
+        code_type = self.validated_data['code_id']
+        code_value = self.validated_data['value']
+        default = self.validated_data['default']
+        if code_id > 0:
+            try:
+                entity_code = EntityId.objects.get(geographical_entity=entity, id=code_id)
+                entity_code.value = code_value
+                entity_code.save()
+            except EntityId.DoesNotExist:
+                pass
+        else:
+            entity_code = EntityId.objects.create(
+                value=code_value,
+                default=default,
+                geographical_entity=entity,
+                code_id=code_type
+            )
+        return entity_code
+
+    class Meta:
+        model = EntityId
+        list_serializer_class = EntityCodeListSerializer
+        fields = [
+            'id', 'default', 'value', 'code_id'
+        ]
+
+
 class EntityEditSerializer(serializers.ModelSerializer):
-    names = serializers.SerializerMethodField()
-    codes = serializers.SerializerMethodField()
+    id = serializers.IntegerField()
+    codes = serializers.SerializerMethodField(
+        source=EntityCodeSerializer(many=True)
+    )
+    names = serializers.SerializerMethodField(
+        source=EntityNameSerializer(many=True)
+    )
+    def validate(self, data):
+        data = super().validate(data)
+        if 'codes' in self.context:
+            name = EntityCodeSerializer(
+                data=self.context['codes'],
+                many=True
+            )
+            name.is_valid(raise_exception=True)
+            data['codes'] = name
+        if 'names' in self.context:
+            name = EntityNameSerializer(
+                data=self.context['names'],
+                many=True
+            )
+            name.is_valid(raise_exception=True)
+            data['names'] = name
+        return data
 
     def get_names(self, obj):
-        names = EntityName.objects.filter(geographical_entity=obj)
-        return [{
-            'id':
-            'is'
-        }]
+        names = EntityName.objects.filter(geographical_entity=obj).order_by('-default', 'name')
+        return EntityNameSerializer(names, many=True).data
+
+    def get_codes(self, obj):
+        codes = EntityId.objects.filter(geographical_entity=obj).order_by('-default', 'value')
+        return EntityCodeSerializer(codes, many=True).data
+
+    def save(self):
+        entity = GeographicalEntity.objects.get(id=self.validated_data['id'])
+        entity.privacy_level = self.validated_data['privacy_level']
+        entity.source = self.validated_data['source']
+        entity.type_id = self.validated_data['type']
+        entity.save()
+        if 'codes' in self.validated_data:
+            self.validated_data['codes'].save(entity)
+        if 'names' in self.validated_data:
+            self.validated_data['names'].save(entity)
 
     class Meta:
         model = GeographicalEntity
         fields = [
-            'names',
-            'codes',
+            'id',
             'type',
             'source',
-            'privacy_level'
+            'privacy_level',
+            'names',
+            'codes'
         ]

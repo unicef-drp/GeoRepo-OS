@@ -7,6 +7,7 @@ from django.http import (
 from azure_auth.backends import AzureAuthRequiredMixin
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
 from georepo.models import (
     IdType
@@ -53,3 +54,19 @@ class AddIdType(AzureAuthRequiredMixin, APIView):
         return Response(status=200, data=IdTypeSerializer(
             id_type
         ).data)
+
+
+class IdTypeList(APIView):
+    """
+    List of Id Type
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(
+            IdTypeSerializer(
+                IdType.objects.all(),
+                many=True
+            ).data,
+            200
+        )
