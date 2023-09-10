@@ -248,7 +248,6 @@ class EntityNameListSerializer(serializers.ListSerializer):
                 old.delete()
         results = []
         for item in items:
-            print(item)
             obj = item.save(entity)
             results.append(obj)
         return results
