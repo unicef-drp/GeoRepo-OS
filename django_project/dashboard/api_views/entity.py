@@ -196,7 +196,8 @@ class EntityEdit(APIView):
             data=request.data,
             context={
                 'codes': request.data.get('codes', []),
-                'names': request.data.get('names', [])
+                'names': request.data.get('names', []),
+                'type': request.data.get('type', None)
             }
         )
         serializer.is_valid(raise_exception=True)

@@ -19,7 +19,7 @@ from dashboard.models import (
 )
 from dashboard.tasks import process_layer_upload_session
 from dashboard.serializers.layer_uploads import LayerUploadSerializer
-from georepo.models import Dataset
+from georepo.models import Dataset, EntityType
 from georepo.utils.shapefile import (
     validate_shapefile_zip
 )
@@ -391,9 +391,15 @@ class LayerFileEntityTypeList(AzureAuthRequiredMixin, APIView):
     """
 
     def get(self, request, format=None):
-        entity_types = LayerFile.objects.exclude(
-            entity_type=''
-        ).values_list('entity_type', flat=True).distinct()
+        mode = request.query_params.get('mode', 'layer_file')
+        if mode == 'all':
+            entity_types = EntityType.objects.exclude(
+                label=''
+            ).order_by('label').values_list('label', flat=True).distinct()
+        else:
+            entity_types = LayerFile.objects.exclude(
+                entity_type=''
+            ).values_list('entity_type', flat=True).distinct()
         return Response(status=200, data=list(entity_types))
 
 

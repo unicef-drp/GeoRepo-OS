@@ -1,7 +1,4 @@
-import React, {useEffect, useState} from 'react';
-import {useNavigate} from "react-router-dom";
-import axios from "axios";
-import Box from '@mui/material/Box';
+import React, {useState} from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -11,20 +8,12 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Loading from "../../components/Loading";
-import AlertMessage from '../../components/AlertMessage';
-import {postData} from "../../utils/Requests";
-import Scrollable from '../../components/Scrollable';
 import {AddButton} from "../../components/Elements/Buttons";
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
-import EntityEditInterface , {EntityName} from '../../models/entity'
-import {updateMenu} from "../../reducers/breadcrumbMenu";
-import Select, {SelectChangeEvent} from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
+import {EntityName} from '../../models/entity'
 
 
 interface EntityNamesInterface {
@@ -32,17 +21,9 @@ interface EntityNamesInterface {
     onUpdate: (names:EntityName[]) => void;
 }
 
-interface NameType {
-    id: number,
-    name: string
-}
-
 export default function EntityNamesInput(props: EntityNamesInterface) {
-    const [loading, setLoading] = useState(true)
     const names = props.names;
-    const [alertMessage, setAlertMessage] = useState<string>('')
     const [editableIdx, setEditableIdx] = useState<number>(-1)
-    const navigate = useNavigate()
 
     const addNewEntityNames = () => {
         let _data:EntityName[] = names.map((name) => {
@@ -102,24 +83,6 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
         }
     }
 
-    //@ts-ignore
-    const onSelectNameType = (selectedNameType: number, editedName: EntityName) => {
-        let _data:EntityName[] = names.reduce((res, name) => {
-        if (name.id === editedName.id) {
-            res.push({
-                id: editedName.id,
-                default: editedName.default,
-                language_id: selectedNameType,
-                name: editedName.name
-            })
-        } else {
-            res.push(name)
-        }
-        return res
-        }, [] as EntityName[])
-        props.onUpdate(_data)
-    }
-
     return (
         <Grid container flexDirection={'row'}  sx={{alignItems: 'flex-start'}}>
             <Grid item>
@@ -127,8 +90,8 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell sx={{width: '210px'}}>Default</TableCell>
-                                <TableCell sx={{width: '210px'}}>Names</TableCell>
+                                <TableCell>Default</TableCell>
+                                <TableCell>Names</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                         </TableHead>
@@ -191,7 +154,7 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                     </Table>
                 </TableContainer>
             </Grid>
-            <Grid item sx={{paddingTop: '20px'}}>
+            <Grid item sx={{paddingLeft: '20px'}}>
                 <AddButton text={'Add Names'} variant={'secondary'} onClick={addNewEntityNames}/>
             </Grid>
         </Grid>

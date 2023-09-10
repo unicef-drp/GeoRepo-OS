@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useNavigate} from "react-router-dom";
 import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
@@ -16,6 +16,9 @@ import Select, {SelectChangeEvent} from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import {EntityCode, EntityName} from '../../models/entity'
 import Scrollable from '../../components/Scrollable';
+import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
+import axios from "axios";
+import AlertDialog from "../../components/AlertDialog";
 
 interface EntityDetailGeneralInterface {
     entity: EntityEditInterface;
@@ -24,7 +27,6 @@ interface EntityDetailGeneralInterface {
 
 const SAVE_ENTITY_DETAIL_URL = '/api/entity/edit/'
 
-
 const PRIVACY_LEVEL = [
   1,
   2,
@@ -32,26 +34,23 @@ const PRIVACY_LEVEL = [
   4
 ]
 
-const ENTITY_TYPE = [
-  "Country",
-  "Region",
-  "District",
-  "Province",
-  "City",
-  "Municipality"
-]
+const filterEntityTypeList = createFilterOptions<string>();
 
+const LOAD_ENTITY_TYPE_LIST_URL = '/api/entity-type/list/'
 
 export default function EntityEditForm(props: EntityDetailGeneralInterface) {
     const [loading, setLoading] = useState(false)
     const [source, setSource] = useState<string>(props.entity.source)
     const [privacyLevel, setPrivacyLevel] = useState<number>(props.entity.privacy_level)
-    const [entityType, setEntityType] = useState<number>(props.entity.type)
+    const [entityType, setEntityType] = useState<string>(props.entity.type)
+    const [entityTypes, setEntityTypes] = useState<string[]>()
     const [codes, setCodes] = useState<EntityCode[]>(props.entity.codes)
     const [names, setNames] = useState<EntityName[]>(props.entity.names)
     const [alertMessage, setAlertMessage] = useState<string>('')
+    const [alertLoading, setAlertLoading] = useState<boolean>(false)
+    const [alertOpen, setAlertOpen] = useState(false)
+
     const navigate = useNavigate()
-    const [updatedEntityId, setUpdatedEntityId] = useState(0)
 
     const saveEntityDetail = (id: number) => {
         setLoading(true)
@@ -68,8 +67,8 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
         ).then(
             response => {
                 setLoading(false)
-                setUpdatedEntityId(response.data['id'])
                 setAlertMessage('Successfully update Entity!')
+                setAlertOpen(false)
             }
         ).catch(error => {
             setLoading(false)
@@ -82,12 +81,36 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
             } else {
                 alert('Error updating Entity!')
             }
+            setAlertOpen(false)
         })
     }
 
     const handleSaveClick = () => {
+        setAlertOpen(true)
+    }
+
+    const onConfirmationClosed = () => {
+      setAlertOpen(false)
+    }
+
+    const onConfirmedAlert = ()  => {
         saveEntityDetail(props.entity.id)
     }
+
+    useEffect(() => {
+      axios.get(`${LOAD_ENTITY_TYPE_LIST_URL}?mode=all`).then(
+        response => {
+            setEntityTypes(response.data)
+        }
+      ).catch((error) => {
+        if (error.response) {
+          if (error.response.status == 403) {
+            // TODO: use better way to handle 403
+            navigate('/invalid_permission')
+          }
+        }
+      })
+    }, [])
 
     return (
         <Scrollable>
@@ -117,6 +140,43 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                         </Grid>
                         <Grid container columnSpacing={2} rowSpacing={2}>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                <Typography variant={'subtitle1'}>Entity Type</Typography>
+                            </Grid>
+                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                              <FormControl sx={{width: '50%'}}>
+                                <Autocomplete
+                                  className="entity-type-search"
+                                  value={entityType}
+                                  onChange={(event, newValue: string|null) => {
+                                    if (newValue !== null)
+                                      setEntityType(newValue.replace('Add "', '').replace(/"/g,''))
+                                    else
+                                      setEntityType('')
+                                  }}
+                                  filterOptions={(options, params) => {
+                                    const filtered = filterEntityTypeList(options, params)
+                                    if (params.inputValue !== '') {
+                                      filtered.push(`Add "${params.inputValue}"`)
+                                    }
+                                    return filtered
+                                  }}
+                                  options={entityTypes}
+                                  getOptionLabel={(option) => {
+                                    return option
+                                  }}
+                                  selectOnFocus
+                                  clearOnBlur
+                                  handleHomeEndKeys
+                                  renderOption={(props, option) => <li {...props}>{option}</li>}
+                                  freeSolo
+                                  renderInput={(params) => <TextField {...params} placeholder="Entity Type" />}
+                                  disableClearable
+                                />
+                              </FormControl>
+                            </Grid>
+                        </Grid>
+                        <Grid container columnSpacing={2} rowSpacing={2}>
+                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
                                 <Typography variant={'subtitle1'}>Privacy Level</Typography>
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
@@ -130,25 +190,6 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                                 >
                                     { PRIVACY_LEVEL.map((value, index) => {
                                         return <MenuItem key={index} value={value}>{value}</MenuItem>
-                                    })}
-                                </Select>
-                            </Grid>
-                        </Grid>
-                        <Grid container columnSpacing={2} rowSpacing={2}>
-                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                                <Typography variant={'subtitle1'}>Entity Type</Typography>
-                            </Grid>
-                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <Select
-                                    labelId="entity-type-select-label"
-                                    id="entity-type-select"
-                                    value={entityType as unknown as string}
-                                    onChange={(event: SelectChangeEvent) => {
-                                        setPrivacyLevel(event.target.value as unknown as number)
-                                    }}
-                                >
-                                    { ENTITY_TYPE.map((value, index) => {
-                                        return <MenuItem key={index} value={index + 1}>{value}</MenuItem>
                                     })}
                                 </Select>
                             </Grid>
@@ -180,6 +221,13 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                                         { loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { "Save" }</span>
                                     </Button>
                                 </div>
+                            </Grid>
+                            <Grid item>
+                              <AlertDialog open={alertOpen} alertClosed={onConfirmationClosed}
+                                alertConfirmed={onConfirmedAlert}
+                                alertLoading={alertLoading}
+                                alertDialogTitle={`Saving Entity ${names[0].name}`}
+                                alertDialogDescription={'Are you sure all edits have been made?'} />
                             </Grid>
                         </Grid>
                     </FormControl>

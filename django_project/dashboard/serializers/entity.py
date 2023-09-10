@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.db.models import Q
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
-from georepo.models.entity import EntityName, EntityId
+from georepo.models.entity import EntityName, EntityId, EntityType
 from dashboard.models import EntitiesUserConfig
 
 
@@ -401,6 +401,8 @@ class EntityEditSerializer(serializers.ModelSerializer):
     names = serializers.SerializerMethodField(
         source=EntityNameSerializer(many=True)
     )
+    type = serializers.SerializerMethodField()
+
     def validate(self, data):
         data = super().validate(data)
         if 'codes' in self.context:
@@ -417,7 +419,15 @@ class EntityEditSerializer(serializers.ModelSerializer):
             )
             name.is_valid(raise_exception=True)
             data['names'] = name
+        if 'type' in self.context:
+            data['type'] = self.context['type']
         return data
+
+    def validate_type(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                f'Type cannot be NULL'
+            )
 
     def get_names(self, obj):
         names = EntityName.objects.filter(geographical_entity=obj).order_by('-default', 'name')
@@ -427,11 +437,19 @@ class EntityEditSerializer(serializers.ModelSerializer):
         codes = EntityId.objects.filter(geographical_entity=obj).order_by('-default', 'value')
         return EntityCodeSerializer(codes, many=True).data
 
+    def get_type(self, obj):
+        if obj.type:
+            return obj.type.label
+        return ''
+
     def save(self):
+        entity_type, created = EntityType.objects.get_or_create(
+            label=self.validated_data['type']
+        )
         entity = GeographicalEntity.objects.get(id=self.validated_data['id'])
         entity.privacy_level = self.validated_data['privacy_level']
         entity.source = self.validated_data['source']
-        entity.type_id = self.validated_data['type']
+        entity.type = entity_type
         entity.save()
         if 'codes' in self.validated_data:
             self.validated_data['codes'].save(entity)
@@ -442,8 +460,8 @@ class EntityEditSerializer(serializers.ModelSerializer):
         model = GeographicalEntity
         fields = [
             'id',
-            'type',
             'source',
+            'type',
             'privacy_level',
             'names',
             'codes'

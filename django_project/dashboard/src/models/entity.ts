@@ -32,7 +32,7 @@ export const createNewName = (): EntityName => {
 
 export default interface EntityEditInterface {
     id: number,
-    type: number,
+    type: string,
     source: string,
     privacy_level: number,
     names: EntityName[],

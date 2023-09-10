@@ -1,7 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {useNavigate} from "react-router-dom";
 import axios from "axios";
-import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -11,18 +10,12 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Loading from "../../components/Loading";
-import AlertMessage from '../../components/AlertMessage';
-import {postData} from "../../utils/Requests";
-import Scrollable from '../../components/Scrollable';
 import {AddButton} from "../../components/Elements/Buttons";
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
-import EntityEditInterface, {EntityCode} from '../../models/entity'
-import {updateMenu} from "../../reducers/breadcrumbMenu";
+import {EntityCode} from '../../models/entity'
 import Select, {SelectChangeEvent} from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 
@@ -39,9 +32,7 @@ interface CodeType {
 }
 
 export default function EntityCodesInput(props: EntityCodesInterface) {
-    const [loading, setLoading] = useState(true)
     const codes = props.codes;
-    const [alertMessage, setAlertMessage] = useState<string>('')
     const [editableIdx, setEditableIdx] = useState<number>(-1)
     const [codeTypes, setCodeTypes] = useState<CodeType[]>([])
     const navigate = useNavigate()
@@ -152,9 +143,9 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell sx={{width: '210px'}}>Default</TableCell>
-                                <TableCell sx={{width: '210px'}}>Codes Type</TableCell>
-                                <TableCell sx={{width: '210px'}}>Codes</TableCell>
+                                <TableCell>Default</TableCell>
+                                <TableCell>Codes Type</TableCell>
+                                <TableCell>Codes</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                         </TableHead>
@@ -237,7 +228,7 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
                     </Table>
                 </TableContainer>
             </Grid>
-            <Grid item sx={{paddingTop: '20px'}}>
+            <Grid item sx={{paddingLeft: '20px'}}>
                 <AddButton text={'Add Codes'} variant={'secondary'} onClick={addNewEntityCodes}/>
             </Grid>
         </Grid>
