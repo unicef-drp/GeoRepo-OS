@@ -54,6 +54,7 @@ STATICFILES_DIRS = (
     # Don't forget to use absolute paths, not relative paths.
     absolute_path('core', 'static'),
     absolute_path('dashboard', 'bundles'),
+    absolute_path('dashboard', 'static'),
 )
 
 # Every cache key will get prefixed with this value - here we set it to
@@ -162,11 +163,5 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10240  # higher than the count of fields
 SWAGGER_SETTINGS = {
     'TAGS_SORTER': 'alpha',
     'showCommonExtensions': 'true',
-    'SECURITY_DEFINITIONS': {
-        'ApiKey Auth': {
-            'type': 'apiKey',
-            'in': 'header',
-            'name': 'Authorization'
-        }
-    },
+    'SECURITY_DEFINITIONS': {},
 }

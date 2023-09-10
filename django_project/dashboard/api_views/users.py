@@ -343,8 +343,8 @@ class TokenDetail(UserPassesTestMixin, APIView):
         ApiKey.objects.create(
             token=auth_token,
             platform=request.data.get('platform'),
-            owner=request.data.get('owner'),
-            contact=request.data.get('contact'),
+            owner=request.data.get('owner', ''),
+            contact=request.data.get('contact', ''),
         )
         return Response(status=201, data={
             'user_id': user_id,

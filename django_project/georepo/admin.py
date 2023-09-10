@@ -402,6 +402,17 @@ def generate_view_vector_tiles(modeladmin, request, queryset):
                                               export_data=False)
 
 
+def populate_view_default_tile_config(modeladmin, request, queryset):
+    from georepo.utils.tile_configs import populate_view_tile_configs
+    for view in queryset:
+        populate_view_tile_configs(view.id)
+    modeladmin.message_user(
+        request,
+        'Dataset view tile configs has been successfully generated!',
+        messages.SUCCESS
+    )
+
+
 def download_view_size_action(modeladmin, request, queryset):
     import csv
     # Create the HttpResponse object with the appropriate CSV header.
@@ -497,7 +508,8 @@ class DatasetViewAdmin(GuardedModelAdmin):
                generate_view_exported_data,
                fix_view_privacy_level,
                fix_view_entity_count,
-               view_generate_simplified_geometry]
+               view_generate_simplified_geometry,
+               populate_view_default_tile_config]
 
     def tiling_status(self, obj: DatasetView):
         status, _ = get_view_tiling_status(

@@ -253,10 +253,18 @@ class SitePreferences(SingletonModel):
         )
     )
 
+    swagger_ui_info = models.TextField(
+        default='',
+        help_text=_(
+            'Shown as the introduction at the top of '
+            'Swagger UI. HTML and Markdown supported.'
+        )
+    )
+
     class Meta:  # noqa: D106
         verbose_name_plural = "site preferences"
 
-    @staticmethod
+    @staticmethod  # noqa
     def preferences() -> "SitePreferences":
         """Load Site Preference."""
         return SitePreferences.load()

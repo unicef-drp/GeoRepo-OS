@@ -132,7 +132,7 @@ Fill in the [Pull Request Template](../developer/guide/templates/pull-request-te
 
 This project and everyone participating in it is governed by the [Code of
 Conduct](code-of-conduct.md). By participating, you are expected to uphold this
-code. Please report unacceptable behavior to tim@kartoza.com.
+code. Please report unacceptable behavior to our team.
 
 > This guide is based on [atom contributing
 guide](https://github.com/atom/atom/blob/master/CONTRIBUTING.md),

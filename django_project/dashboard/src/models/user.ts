@@ -14,8 +14,6 @@ export interface APIKeyInterface {
     user_id: number,
     api_key?: string,
     created: string,
-    platform?: string,
-    owner?: string,
-    contact?: string,
+    platform?: string
     is_active: boolean
 }

@@ -211,8 +211,6 @@ def run_validation(entity_upload: EntityUploadStatus):
                         'privacy_level': geo_privacy_level
                     }
                 )
-                # update simplify geom
-                geo.do_simplification()
                 # add extra id fields
                 for id_field in layer_file.id_fields:
                     id_field_value = (

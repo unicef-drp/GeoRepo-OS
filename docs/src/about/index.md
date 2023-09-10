@@ -34,9 +34,5 @@ Published under AGPL-3. See the [full license](license.md) text.
 
 
 ## Project Funders/Backers
-This project was conceptualized and initially funded by Unicef.
-
-## Logos
-
-Another fine project contributed to by: [Kartoza.com](https://kartoza.com)
+This project was conceptualized and funded by Unicef.
 
