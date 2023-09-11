@@ -88,7 +88,7 @@ export default function EntityEdit(props: any) {
               </Box>
               )}
               { !loading && (
-                <Grid container sx={{ flexGrow: 1, flexDirection: 'column' }}>
+                <Grid container sx={{ flexGrow: 1, flexDirection: 'column' , overflow: 'auto'}}>
                   <TabPanel key={0} value={tabSelected} index={0} padding={1}>
                       <EntityEditForm entity={entity} onEntityUpdated={fetchEntityDetail} />
                   </TabPanel>
