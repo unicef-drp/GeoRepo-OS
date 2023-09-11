@@ -33,6 +33,11 @@ class Dataset(models.Model):
         DONE = 'DO', _('Done')
         ERROR = 'ER', _('Error')
 
+    class DatasetSyncStatus(models.TextChoices):
+        OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
+        SYNCING = 'Syncing', _('Syncing')
+        SYNCED = 'Synced', _('Synced')
+
     label = models.CharField(
         max_length=255,
         null=False,
@@ -126,6 +131,12 @@ class Dataset(models.Model):
         max_length=2,
         choices=DatasetTilingStatus.choices,
         default=DatasetTilingStatus.PENDING
+    )
+
+    sync_status = models.CharField(
+        max_length=15,
+        choices=DatasetSyncStatus.choices,
+        default=DatasetSyncStatus.SYNCED
     )
 
     tiling_start_date = models.DateTimeField(

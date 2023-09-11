@@ -462,6 +462,10 @@ class EntityEditSerializer(serializers.ModelSerializer):
             self.validated_data['codes'].save(entity)
         if 'names' in self.validated_data:
             self.validated_data['names'].save(entity)
+        entity.dataset.sync_status = (
+            entity.dataset.DatasetSyncStatus.OUT_OF_SYNC
+        )
+        entity.dataset.save()
 
     class Meta:
         model = GeographicalEntity
