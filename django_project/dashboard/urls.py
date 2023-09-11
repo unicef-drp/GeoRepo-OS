@@ -362,9 +362,6 @@ urlpatterns = [
     re_path(r'api/id-type/add/?$',
             AddIdType.as_view(),
             name='add-id-type'),
-    re_path(r'api/id-type/list/?$',
-            IdTypeList.as_view(),
-            name='id-type-list'),
     re_path(
         r'api/ready-to-review/?$',
         ReadyToReview.as_view(),

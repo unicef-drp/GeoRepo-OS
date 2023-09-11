@@ -1,6 +1,5 @@
 import copy
 import uuid
-import mock
 import json
 from dateutil.parser import isoparse
 from django.test import TestCase
@@ -8,16 +7,14 @@ from django.urls import reverse
 from django.contrib.gis.geos import GEOSGeometry
 
 from rest_framework.test import APIRequestFactory
-from rest_framework import versioning
 
 from georepo.utils import absolute_path
-from georepo.models import IdType, GeographicalEntity, EntityType, EntityName, EntityCode
+from georepo.models import IdType
 from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, EntityIdF,
     EntityNameF, LanguageF, UserF
 )
 from dashboard.api_views.entity import EntityEdit
-from georepo.tests.common import EntityResponseChecker
 
 
 class TestApiEntity(TestCase):
@@ -126,8 +123,12 @@ class TestApiEntity(TestCase):
         }
 
     def _convert_response_to_dict(self, response_data):
-        response_data['names'] = [dict(name) for name in response_data['names']]
-        response_data['codes'] = [dict(code) for code in response_data['codes']]
+        response_data['names'] = [
+            dict(name) for name in response_data['names']
+        ]
+        response_data['codes'] = [
+            dict(code) for code in response_data['codes']
+        ]
         return response_data
 
     def test_entity_edit_insufficient_permission_get(self):
@@ -193,7 +194,10 @@ class TestApiEntity(TestCase):
                 }
             ]
         }
-        self.assertEqual(self._convert_response_to_dict(response.data), expected_response)
+        self.assertEqual(
+            self._convert_response_to_dict(response.data),
+            expected_response
+        )
 
     def test_entity_edit_source_type_privacy(self):
         payload = copy.deepcopy(self.payload)
@@ -289,11 +293,15 @@ class TestApiEntity(TestCase):
         list_view = EntityEdit.as_view()
         response = list_view(request, self.geographical_entity.id)
         self.assertEqual(
-            self._convert_response_to_dict(response.data)['codes'][-1]['value'],
+            self._convert_response_to_dict(
+                response.data
+            )['codes'][-1]['value'],
             'some-code'
         )
         self.assertNotEqual(
-            self._convert_response_to_dict(response.data)['codes'][-1]['value'],
+            self._convert_response_to_dict(
+                response.data
+            )['codes'][-1]['value'],
             0
         )
 

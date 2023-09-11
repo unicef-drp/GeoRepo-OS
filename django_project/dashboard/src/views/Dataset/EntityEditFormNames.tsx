@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -13,7 +13,10 @@ import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
-import {EntityName} from '../../models/entity'
+import {EntityCode, EntityName} from '../../models/entity'
+import {fetchLanguages, LanguageOption} from "../../utils/Requests";
+import Select, {SelectChangeEvent} from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 
 
 interface EntityNamesInterface {
@@ -23,7 +26,41 @@ interface EntityNamesInterface {
 
 export default function EntityNamesInput(props: EntityNamesInterface) {
     const names = props.names;
+    const [languageOptions, setLanguageOptions] = useState<[] | LanguageOption[]>([])
     const [editableIdx, setEditableIdx] = useState<number>(-1)
+
+    useEffect(() => {
+    // Get languages
+    fetchLanguages().then(languages => {
+      setLanguageOptions(languages)
+    })
+    }, [])
+
+        //@ts-ignore
+    const onSelectLanguage = (selectedLanguage: number, editedName: EntityName) => {
+        let _data:EntityName[] = names.reduce((res: EntityName[], name: EntityName) => {
+        if (name.id === editedName.id) {
+            res.push({
+                id: editedName.id,
+                default: editedName.default,
+                language_id: selectedLanguage,
+                name: editedName.name
+            })
+        } else {
+            res.push(name)
+        }
+        return res
+        }, [] as EntityName[])
+        props.onUpdate(_data)
+    }
+
+    const getLanguage = (languageId:string) => {
+        for (let i = 0; i < languageOptions.length; i++) {
+            if (languageOptions[i].id === languageId) {
+                return languageOptions[i].name
+            }
+        }
+    }
 
     const addNewEntityNames = () => {
         let _data:EntityName[] = names.map((name) => {
@@ -91,7 +128,8 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                         <TableHead>
                             <TableRow>
                                 <TableCell>Default</TableCell>
-                                <TableCell>Names</TableCell>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Language</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                         </TableHead>
@@ -115,6 +153,26 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                                         ) : name.name}
                                     </TableCell>
                                     <TableCell>
+                                        {index === editableIdx ? (
+                                            <Select
+                                                labelId="language-select-label"
+                                                id="language-select"
+                                                value={name.language_id as unknown as string}
+                                                onChange={(event: SelectChangeEvent) => {
+                                                    onSelectLanguage(event.target.value as unknown as number, name)
+                                                }}
+                                            >
+                                                { languageOptions.map((value, index) => {
+                                                    return <MenuItem
+                                                      key={index}
+                                                      value={value.id}>
+                                                        {value.name}
+                                                    </MenuItem>
+                                                })}
+                                            </Select>
+                                        ) : getLanguage(name.language_id as unknown as string)}
+                                    </TableCell>
+                                    <TableCell>
                                         <Grid container flexDirection={'row'} spacing={1}>
                                             <Grid item>
                                                 { editableIdx===index ? (
@@ -126,7 +184,6 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                                                       aria-label="edit"
                                                       title='edit'
                                                       onClick={() => setEditableIdx(index)}
-                                                      disabled={name.default}
                                                     >
                                                         <EditIcon fontSize='small' />
                                                     </IconButton>
@@ -137,7 +194,6 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                                                   aria-label="delete"
                                                   title='delete'
                                                   onClick={() => deleteEntityNames(name)}
-                                                  disabled={name.default}
                                                 >
                                                     <DeleteIcon fontSize='small' />
                                                 </IconButton>

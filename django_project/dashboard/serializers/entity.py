@@ -224,12 +224,12 @@ class EntityNameListSerializer(serializers.ListSerializer):
 
         if default_set == {False}:
             raise serializers.ValidationError(
-                f'No default name is supplied'
+                'No default name is supplied'
             )
 
         if len(data) == 0:
             raise serializers.ValidationError(
-                f'Entity must have at least 1 name'
+                'Entity must have at least 1 name'
             )
 
         return results
@@ -265,7 +265,7 @@ class EntityNameSerializer(serializers.ModelSerializer):
         if 'default_set' in self.context:
             if value is True and value in self.context['default_set']:
                 raise serializers.ValidationError(
-                    f'Duplicate default'
+                    'Duplicate default'
                 )
         return value
 
@@ -276,7 +276,9 @@ class EntityNameSerializer(serializers.ModelSerializer):
         default = self.validated_data['default']
         if name_id > 0:
             try:
-                entity_name = EntityName.objects.get(geographical_entity=entity, id=name_id)
+                entity_name = EntityName.objects.get(
+                    geographical_entity=entity, id=name_id
+                )
                 entity_name.name = name_value
                 entity_name.default = default
                 entity_name.language_id = language
@@ -318,12 +320,12 @@ class EntityCodeListSerializer(serializers.ListSerializer):
 
         if default_set == {False}:
             raise serializers.ValidationError(
-                f'No default code is supplied'
+                'No default code is supplied'
             )
 
         if len(data) == 0:
             raise serializers.ValidationError(
-                f'Entity must have at least 1 code'
+                'Entity must have at least 1 code'
             )
 
         return results
@@ -359,7 +361,7 @@ class EntityCodeSerializer(serializers.ModelSerializer):
         if 'default_set' in self.context:
             if value is True and value in self.context['default_set']:
                 raise serializers.ValidationError(
-                    f'Duplicate default'
+                    'Duplicate default'
                 )
         return value
 
@@ -370,7 +372,9 @@ class EntityCodeSerializer(serializers.ModelSerializer):
         default = self.validated_data['default']
         if code_id > 0:
             try:
-                entity_code = EntityId.objects.get(geographical_entity=entity, id=code_id)
+                entity_code = EntityId.objects.get(
+                    geographical_entity=entity, id=code_id
+                )
                 entity_code.value = code_value
                 entity_code.save()
             except EntityId.DoesNotExist:
@@ -425,15 +429,19 @@ class EntityEditSerializer(serializers.ModelSerializer):
     def validate_type(self, value):
         if not value:
             raise serializers.ValidationError(
-                f'Type cannot be NULL'
+                'Type cannot be NULL'
             )
 
     def get_names(self, obj):
-        names = EntityName.objects.filter(geographical_entity=obj).order_by('-default', 'name')
+        names = EntityName.objects.filter(
+            geographical_entity=obj
+        ).order_by('-default', 'name')
         return EntityNameSerializer(names, many=True).data
 
     def get_codes(self, obj):
-        codes = EntityId.objects.filter(geographical_entity=obj).order_by('-default', 'value')
+        codes = EntityId.objects.filter(
+            geographical_entity=obj
+        ).order_by('-default', 'value')
         return EntityCodeSerializer(codes, many=True).data
 
     def get_type(self, obj):

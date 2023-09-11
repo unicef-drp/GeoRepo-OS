@@ -144,8 +144,8 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
                         <TableHead>
                             <TableRow>
                                 <TableCell>Default</TableCell>
-                                <TableCell>Codes Type</TableCell>
-                                <TableCell>Codes</TableCell>
+                                <TableCell>Code Type</TableCell>
+                                <TableCell>Code</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                         </TableHead>
