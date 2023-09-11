@@ -62,7 +62,8 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                 'privacy_level': privacyLevel,
                 'source': source,
                 'codes': codes,
-                'names': names
+                'names': names,
+                'label': props.entity.label
             }
         ).then(
             response => {
@@ -226,7 +227,7 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                               <AlertDialog open={alertOpen} alertClosed={onConfirmationClosed}
                                 alertConfirmed={onConfirmedAlert}
                                 alertLoading={alertLoading}
-                                alertDialogTitle={`Saving Entity ${names[0].name}`}
+                                alertDialogTitle={`Saving Entity ${props.entity.label}`}
                                 alertDialogDescription={'Are you sure all edits have been made?'} />
                             </Grid>
                         </Grid>

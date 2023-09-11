@@ -14,6 +14,7 @@ import { EntityEditRoute } from '../routes';
 import EntityEditInterface  from '../../models/entity';
 import EntityEditForm from '../Dataset/EntityEditForm';
 import Scrollable from '../../components/Scrollable';
+import {v4 as uuidv4} from 'uuid';
 import '../../styles/Entity.scss';
 
 const FETCH_ENTITY_DETAIL = '/api/entity/edit/'
@@ -40,6 +41,12 @@ export default function EntityEdit(props: any) {
             response => {
               setLoading(false)
               let _entity: EntityEditInterface = response.data as EntityEditInterface
+              _entity['codes'] = _entity['codes'].map((code) => {
+                return {...code, 'uuid': uuidv4()}
+              })
+              _entity['names'] = _entity['names'].map((name) => {
+                return {...name, 'uuid': uuidv4()}
+              })
               setEntity(_entity)
               dispatch(updateMenu({
                 id: `entity_detail`,

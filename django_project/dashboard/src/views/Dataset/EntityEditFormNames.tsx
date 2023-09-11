@@ -13,10 +13,12 @@ import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
-import {EntityCode, EntityName} from '../../models/entity'
+import {EntityName} from '../../models/entity'
 import {fetchLanguages, LanguageOption} from "../../utils/Requests";
 import Select, {SelectChangeEvent} from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
+import Radio from '@mui/material/Radio';
+import {v4 as uuidv4} from 'uuid';
 
 
 interface EntityNamesInterface {
@@ -36,20 +38,34 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
     })
     }, [])
 
-        //@ts-ignore
+    //@ts-ignore
     const onSelectLanguage = (selectedLanguage: number, editedName: EntityName) => {
         let _data:EntityName[] = names.reduce((res: EntityName[], name: EntityName) => {
-        if (name.id === editedName.id) {
+        if (name.uuid === editedName.uuid) {
             res.push({
-                id: editedName.id,
-                default: editedName.default,
-                language_id: selectedLanguage,
-                name: editedName.name
+                ...editedName,  language_id: selectedLanguage
             })
         } else {
             res.push(name)
         }
         return res
+        }, [] as EntityName[])
+        props.onUpdate(_data)
+    }
+
+        //@ts-ignore
+    const onSetDefault = (editedName: EntityName) => {
+        let _data:EntityName[] = names.reduce((res: EntityName[], name: EntityName) => {
+            if (name.uuid === editedName.uuid) {
+                res.push({
+                    ...editedName, default: true
+                })
+            } else {
+                res.push({
+                    ...name, default: false
+                })
+            }
+            return res
         }, [] as EntityName[])
         props.onUpdate(_data)
     }
@@ -65,17 +81,15 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
     const addNewEntityNames = () => {
         let _data:EntityName[] = names.map((name) => {
             return {
-                id: name.id,
-                default: name.default,
-                language_id: name.language_id,
-                name: name.name
+                ...name
             }
         })
         let _new_item:EntityName = {
             id: 0,
             default: false,
             language_id: 1,
-            name: ''
+            name: '',
+            uuid: uuidv4()
         }
         _data.push(_new_item)
         props.onUpdate(_data)
@@ -85,10 +99,7 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
         let _data:EntityName[] = names.reduce((res, name) => {
             if (name.id !== deletedName.id) {
                 res.push({
-                    id: name.id,
-                    default: name.default,
-                    language_id: 1,
-                    name: name.name
+                    ...name, language_id: 1
                 })
             }
             return res
@@ -100,12 +111,13 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
         if(e.keyCode == 13){
             e.preventDefault()
             let _data:EntityName[] = names.reduce((res, name) => {
-                if (name.id === editedName.id) {
+                if (name.uuid === editedName.uuid) {
                     res.push({
                         id: editedName.id,
-                        default: editedName.default,
+                        default: names.length === 1 ? true : editedName.default,
                         language_id: editedName.language_id,
-                        name: e.target.value
+                        name: e.target.value,
+                        uuid: editedName.uuid
                     })
                 } else {
                     res.push(name)
@@ -137,7 +149,17 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                             {names && names.length ? names.map((name, index) => (
                                 <TableRow key={index}>
                                     <TableCell>
-                                        {name.default ? 'Default': ''}
+                                        {index === editableIdx ? (
+                                          <Radio
+                                              checked={name.default}
+                                              value={name.name}
+                                              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                                                    onSetDefault(name)
+                                                }}
+                                              name="radio-buttons"
+                                              inputProps={{ 'aria-label': name.name }}
+                                            />
+                                        ) : name.default ? 'Default': ''}
                                     </TableCell>
                                     <TableCell>
                                         {index === editableIdx ? (
