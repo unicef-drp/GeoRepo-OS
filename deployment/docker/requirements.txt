@@ -36,3 +36,4 @@ django-rest-knox==4.2.0
 #django storages
 django-storages==1.13.2
 django-storages[azure]
+django-easy-audit

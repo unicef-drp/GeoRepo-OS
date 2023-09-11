@@ -1,5 +1,6 @@
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
+from guardian.core import ObjectPermissionChecker
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -8,14 +9,17 @@ from guardian.shortcuts import get_objects_for_user
 from dashboard.models import EntityUploadStatus
 from georepo.models import (
     GeographicalEntity,
-    DatasetView
+    DatasetView,
 )
 from georepo.utils.permission import (
     EXTERNAL_READ_VIEW_PERMISSION_LIST,
     get_view_permission_privacy_level,
     get_external_view_permission_privacy_level
 )
-from dashboard.serializers.entity import EntityConceptUCodeSerializer
+from dashboard.serializers.entity import (
+    EntityConceptUCodeSerializer,
+    EntityEditSerializer
+)
 
 
 class EntityRevisionSerializer(serializers.ModelSerializer):
@@ -156,3 +160,44 @@ class EntityByConceptUCode(APIView):
                 }
             ).data
         )
+
+
+class EntityEdit(APIView):
+    """
+    Edit Entitiy
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _check_can_edit(self, user, dataset):
+        checker = ObjectPermissionChecker(user)
+        can_edit = checker.has_perm('edit_metadata_dataset', dataset)
+        return can_edit
+
+    def post(self, request, entity_id: int, *args, **kwargs):
+        entity = get_object_or_404(GeographicalEntity, id=entity_id)
+        can_edit = self._check_can_edit(request.user, entity.dataset)
+        if not can_edit:
+            return Response({
+                'detail': 'Insufficient permission'
+            }, 403)
+        serializer = EntityEditSerializer(
+            data=request.data,
+            context={
+                'codes': request.data.get('codes', []),
+                'names': request.data.get('names', []),
+                'type': request.data.get('type', None)
+            }
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        entity.refresh_from_db()
+        return Response(EntityEditSerializer(entity).data, 200)
+
+    def get(self, request, entity_id: int, *args, **kwargs):
+        entity = get_object_or_404(GeographicalEntity, id=entity_id)
+        can_edit = self._check_can_edit(request.user, entity.dataset)
+        if not can_edit:
+            return Response({
+                'detail': 'Insufficient permission'
+            }, 403)
+        return Response(EntityEditSerializer(entity).data, 200)

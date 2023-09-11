@@ -14,6 +14,7 @@ class DatasetSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     source_name = serializers.SerializerMethodField()
     tiling_status = serializers.SerializerMethodField()
+    sync_status = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
     is_empty = serializers.SerializerMethodField()
 
@@ -29,7 +30,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             'uuid', 'source_name',
             'geometry_similarity_threshold_new',
             'geometry_similarity_threshold_old',
-            'tiling_status', 'short_code',
+            'tiling_status', 'sync_status', 'short_code',
             'generate_adm0_default_views',
             'max_privacy_level', 'min_privacy_level',
             'permissions', 'is_empty', 'is_active'
@@ -64,6 +65,9 @@ class DatasetSerializer(serializers.ModelSerializer):
         if obj.tiling_status == Dataset.DatasetTilingStatus.PROCESSING:
             tiling_status = f'{tiling_status} ({obj.tiling_progress:.0f}%)'
         return tiling_status
+
+    def get_sync_status(self, obj: Dataset):
+        return Dataset.DatasetSyncStatus(obj.sync_status).label
 
     def get_permissions(self, obj: Dataset):
         user = self.context['user']

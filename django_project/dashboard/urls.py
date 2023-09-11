@@ -93,7 +93,8 @@ from dashboard.api_views.language import LanguageList, FetchLanguages
 from dashboard.api_views.module import ModuleDashboard
 from dashboard.api_views.entity import (
     EntityRevisionList,
-    EntityByConceptUCode
+    EntityByConceptUCode,
+    EntityEdit
 )
 
 from dashboard.api_views.views import (
@@ -147,6 +148,12 @@ urlpatterns = [
         r'(?P<concept_ucode>#[^/]+)/?$',
         EntityByConceptUCode.as_view(),
         name='entity-by-concept-ucode'
+    ),
+    re_path(
+        r'api/entity/edit/'
+        r'(?P<entity_id>\d+)/?$',
+        EntityEdit.as_view(),
+        name='entity-edit'
     ),
     re_path(
         r'api/language/list/?$',

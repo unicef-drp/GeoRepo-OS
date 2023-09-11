@@ -20,6 +20,7 @@ const COLUMNS = [
   'created_by',
   'type',
   'date',
+  'sync_status',
   'permissions',
   'is_empty',
   'is_active'
