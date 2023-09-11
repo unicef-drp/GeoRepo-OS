@@ -338,4 +338,3 @@ class TestApiEntity(TestCase):
         list_view = EntityEdit.as_view()
         response = list_view(request, self.geographical_entity.id)
         self.assertEqual(len(response.data['codes']), 1)
-
