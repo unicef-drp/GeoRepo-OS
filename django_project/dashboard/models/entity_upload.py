@@ -245,6 +245,13 @@ class EntityUploadChildLv1(models.Model):
 
 
 class EntityUploadStatusLog(models.Model):
+    entity_upload_status = models.ForeignKey(
+        EntityUploadStatus,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
+
     logs = models.JSONField(
         help_text='Logs of upload',
         default=dict,
@@ -256,11 +263,13 @@ class EntityUploadStatusLog(models.Model):
         if log_text in self.logs:
             self.logs[log_text] = {
                 'count': self.logs[log_text]['count'] + 1,
-                'exec_time': (self.logs[log_text]['exec_time'] + exec_time) / 2
+                'avg_time': (self.logs[log_text]['avg_time'] + exec_time) / 2,
+                'total_time': self.logs[log_text]['avg_time'] + exec_time
             }
         else:
             self.logs[log_text] = {
                 'count': 1,
-                'exec_time': exec_time
+                'avg_time': exec_time,
+                'total_time': exec_time
             }
         self.save(update_fields=['logs'])

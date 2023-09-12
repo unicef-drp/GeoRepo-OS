@@ -15,6 +15,7 @@ from dashboard.models.entity_upload import (
 from georepo.models import GeographicalEntity
 from georepo.tasks import validate_ready_uploads
 from dashboard.tasks import layer_upload_preprocessing
+from dashboard.models.entity_upload import EntityUploadStatusLog
 from georepo.utils.module_import import module_function
 
 
@@ -187,6 +188,8 @@ class LayerUploadPreprocess(AzureAuthRequiredMixin, APIView):
             not upload_session.auto_matched_parent_ready and
             not upload_session.is_in_progress()
         ):
+            upload_log = EntityUploadStatusLog.objects.get_or_create(layer_upload_session=upload_session)
+
             pre_validation = module_function(
                 dataset.module.code_name,
                 'upload_preprocessing',

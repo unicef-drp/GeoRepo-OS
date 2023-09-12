@@ -1,3 +1,4 @@
+import time
 from typing import Tuple
 from core.celery import app
 from georepo.models.entity import GeographicalEntity
@@ -17,11 +18,14 @@ def is_valid_upload_session(
     return True, None
 
 
-def prepare_validation(upload_session: LayerUploadSession):
+def prepare_validation(
+    upload_session: LayerUploadSession,
+    **kwargs):
     """
     Prepare validation at step 3
     - Create EntityUploadStatus object
     """
+    start = time.time()
     # remove existing entity uploads
     uploads = upload_session.entityuploadstatus_set.all()
     uploads.delete()
@@ -47,12 +51,18 @@ def prepare_validation(upload_session: LayerUploadSession):
     upload_session.status = PENDING
     upload_session.auto_matched_parent_ready = True
     upload_session.save(update_fields=['status', 'auto_matched_parent_ready'])
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.reset_preprocessing', start - end)
 
 
-def reset_preprocessing(upload_session: LayerUploadSession):
+def reset_preprocessing(
+    upload_session: LayerUploadSession,
+    **kwargs):
     """
     Remove entity uploads
     """
+    start = time.time()
     if upload_session.task_id:
         # if there is task_id then stop it first
         app.control.revoke(
@@ -65,3 +75,6 @@ def reset_preprocessing(upload_session: LayerUploadSession):
     upload_session.auto_matched_parent_ready = False
     upload_session.status = PENDING
     upload_session.save(update_fields=['auto_matched_parent_ready', 'status'])
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.reset_preprocessing', start - end)

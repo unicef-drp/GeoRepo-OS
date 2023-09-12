@@ -3,6 +3,7 @@ import logging
 from django.db import transaction, OperationalError, DatabaseError
 from django.db.models import Q
 from django.utils import timezone
+from dashboard.models.entity_upload import EntityUploadStatusLog
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,13 @@ def validate_ready_uploads(entity_upload_id):
     entity_upload.status = PROCESSING
     entity_upload.started_at = timezone.now()
     entity_upload.save(update_fields=['status'])
-    validate_layer_file(entity_upload)
+
+    upload_log = EntityUploadStatusLog.objects.get_or_create(entity_upload_status=entity_upload)
+    validate_layer_file(
+        entity_upload,
+        **{'log_object': upload_log}
+    )
+
     # send notifications only when all upload have finished
     has_pending_upload = EntityUploadStatus.objects.filter(
         upload_session=entity_upload.upload_session

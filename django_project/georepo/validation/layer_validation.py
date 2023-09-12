@@ -14,7 +14,7 @@ from georepo.utils.fiona_utils import (
 )
 
 
-def validate_layer_file(entity_upload: EntityUploadStatus) -> bool:
+def validate_layer_file(entity_upload: EntityUploadStatus, **kwargs) -> bool:
     """
     Validate all layer_files from upload session against
     original geographical entity,
@@ -27,7 +27,10 @@ def validate_layer_file(entity_upload: EntityUploadStatus) -> bool:
         dataset.module.code_name,
         'qc_validation',
         'run_validation')
-    return module_validation(entity_upload)
+    return module_validation(
+        entity_upload,
+        **{'log_object': kwargs.get('log_object')}
+    )
 
 
 def read_layer_files(layer_files):

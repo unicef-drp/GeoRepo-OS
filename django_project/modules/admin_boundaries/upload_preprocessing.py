@@ -1,3 +1,4 @@
+import time
 from typing import Tuple
 from core.celery import app
 from dashboard.models.layer_upload_session import (
@@ -20,11 +21,13 @@ from dashboard.tools.admin_level_names import (
 
 
 def is_valid_upload_session(
-        upload_session: LayerUploadSession) -> Tuple[bool, str]:
+        upload_session: LayerUploadSession,
+        **kwargs) -> Tuple[bool, str]:
     """
     do pre-validation before layer upload pre-processing/prepare_validation
     Returns: IsValid, ErrorMessage
     """
+    start = time.time()
     is_level0_upload = upload_session.layerfile_set.filter(
         level=0
     ).exists()
@@ -38,10 +41,15 @@ def is_valid_upload_session(
                 'There are duplicate admin level 0 '
                 f'with default code {duplicate}'
             )
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.is_valid_upload_session', start - end)
     return True, None
 
 
-def prepare_validation(upload_session: LayerUploadSession):
+def prepare_validation(
+    upload_session: LayerUploadSession,
+    **kwargs):
     """
     Prepare validation at step 3
     - Pre-process layer file level 0
@@ -49,6 +57,7 @@ def prepare_validation(upload_session: LayerUploadSession):
     - Populate admin level names
     - Populate country max level
     """
+    start = time.time()
     # remove existing entity uploads
     uploads = upload_session.entityuploadstatus_set.all()
     for upload in uploads:
@@ -99,12 +108,19 @@ def prepare_validation(upload_session: LayerUploadSession):
     upload_session.auto_matched_parent_ready = True
     upload_session.status = PENDING
     upload_session.save(update_fields=['auto_matched_parent_ready', 'status'])
+    
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.prepare_validation', start - end)
 
 
-def reset_preprocessing(upload_session: LayerUploadSession):
+def reset_preprocessing(
+    upload_session: LayerUploadSession,
+    **kwargs):
     """
     Remove entity uploads
     """
+    start = time.time()
     if upload_session.task_id:
         # if there is task_id then stop it first
         app.control.revoke(
@@ -125,3 +141,7 @@ def reset_preprocessing(upload_session: LayerUploadSession):
     upload_session.status = PENDING
     upload_session.task_id = ''
     upload_session.save(update_fields=['auto_matched_parent_ready', 'status'])
+    
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.reset_preprocessing', start - end)
