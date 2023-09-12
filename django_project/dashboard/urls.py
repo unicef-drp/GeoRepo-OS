@@ -127,6 +127,7 @@ from dashboard.api_views.access_request import (
 from dashboard.api_views.media import (
     ErrorReportAPIView
 )
+from dashboard.views.flower_proxy_view import FlowerProxyView
 
 urlpatterns = [
     path('tinymce/', include('tinymce.urls')),
@@ -662,5 +663,6 @@ urlpatterns = [
     re_path(r'sign-up/$',
             SignUpView.as_view(),
             name='signup-view'),
+    FlowerProxyView.as_url(),
     re_path(r'', DashboardView.as_view(), name='dashboard-view'),
 ]
