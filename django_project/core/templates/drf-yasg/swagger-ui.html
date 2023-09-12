@@ -43,7 +43,6 @@
     <script src="{% static 'drf-yasg/swagger-ui-dist/swagger-ui-standalone-preset.js' %}"></script>
     <script src="{% static 'drf-yasg/insQ.min.js' %}"></script>
     <script src="{% static 'drf-yasg/immutable.min.js' %}"></script>
-    <script src="{% static 'drf-yasg/swagger-ui-init.js' %}"></script>
 {% endblock %}
 {% block extra_scripts %}
     <script>
@@ -54,6 +53,7 @@
             }
         }, 700);
     </script>
+    <script src="{% static 'drf-yasg-custom/swagger-ui-init.js' %}"></script>
 {% endblock %}
 
 <a id="oauth2-redirect-url" href="{% static 'drf-yasg/swagger-ui-dist/oauth2-redirect.html' %}" class="hidden"></a>
@@ -105,7 +105,12 @@
             buttonTextEl.style = "background-color: #49cc90;color: white; text-decoration: none; margin-bottom: 20px;position: absolute;margin-top: -40px;"
             document.querySelector('.information-container').appendChild(buttonTextEl);
 
-            document.querySelector('hgroup.main').querySelector('a.link').innerHTML = ''
+          {#  let emailDiv = document.createElement('div');#}
+          {#  let form = document.querySelector('.auth-container form');#}
+          {#  form.appendChild(emailDiv)#}
+          {#  document.querySelector('.auth-container form div:nth-child(2)').innerHTML = "<div><div class=\"wrapper\"></div><div class=\"wrapper\"><p>Name: <code>GeoRepo-User-Key</code></p></div>" +#}
+          {#"<div class=\"wrapper\"><p>In: <code>header</code></p></div><div class=\"wrapper\"><label>Email:</label>" +#}
+          {#"<section><input type=\"text\"></section></div></div>";#}
         }
     }, 100);
 </script>
