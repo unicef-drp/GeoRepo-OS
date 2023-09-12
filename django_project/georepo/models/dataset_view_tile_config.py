@@ -47,7 +47,13 @@ class ViewAdminLevelTilingConfig(models.Model):
     )
 
     def __str__(self):
-        return '{0} - Admin Level {1}'.format(
-            self.view_tiling_config,
-            self.level
-        )
+        try:
+            return '{0} - Admin Level {1}'.format(
+                self.view_tiling_config,
+                self.level
+            )
+        except DatasetViewTilingConfig.DoesNotExist:
+            return '{0} - Admin Level {1}'.format(
+                self.view_tiling_config_id,
+                self.level
+            )

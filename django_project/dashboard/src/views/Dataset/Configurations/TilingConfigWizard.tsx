@@ -9,6 +9,7 @@ import Tabs from '@mui/material/Tabs';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import AlertMessage from '../../../components/AlertMessage';
+import AlertDialog from "../../../components/AlertDialog";
 import {postData} from "../../../utils/Requests";
 import TabPanel, {a11yProps} from '../../../components/TabPanel';
 import {DatasetTilingConfigMatrix} from './DatasetTilingConfig';
@@ -30,13 +31,15 @@ const TILING_CONFIGS_STATUS_URL = '/api/tiling-configs/status/'
 
 function TilingConfigConfirm(props: any) {
     const [loading, setLoading] = useState(false)
+    const [alertOpen, setAlertOpen] = useState(false)
 
-    const confirmTilingConfig = () => {
+    const confirmTilingConfig = (overwriteView: boolean = false) => {
         setLoading(true)
         let _data = {
             'object_uuid': props.viewUUID ? props.viewUUID : props.datasetUUID,
             'object_type': props.viewUUID ? 'datasetview' : 'dataset',
-            'session': props.session
+            'session': props.session,
+            'overwrite_view': props.viewUUID ? true : overwriteView
         }
         postData(TILING_CONFIGS_TEMP_CONFIRM_URL, _data).then(
             response => {
@@ -48,6 +51,22 @@ function TilingConfigConfirm(props: any) {
             console.log('error ', error)
             alert('Error saving tiling config...')
         })
+    }
+
+    const handleConfirmClick = () => {
+        if (props.viewUUID) {
+            confirmTilingConfig(true)
+        } else {
+            setAlertOpen(true)
+        }
+    }
+
+    const onConfirmationClosed = () => {
+      confirmTilingConfig(false)
+    }
+
+    const onConfirmedAlert = ()  => {
+        confirmTilingConfig(true)
     }
 
     return (
@@ -64,9 +83,18 @@ function TilingConfigConfirm(props: any) {
                         <Grid item>
                         </Grid>
                         <Grid item>
-                            <Button disabled={loading} onClick={() => confirmTilingConfig()} variant="contained">
+                            <Button disabled={loading} onClick={() => handleConfirmClick()} variant="contained">
                                 Confirm and Save
                             </Button>
+                        </Grid>
+                        <Grid item>
+                          <AlertDialog open={alertOpen} alertClosed={onConfirmationClosed}
+                            alertConfirmed={onConfirmedAlert}
+                            alertDialogTitle={`Saving Tiling Config.`}
+                            alertDialogDescription={'Apply to existing views?'}
+                            cancelButtonText={'No'}
+                            confirmButtonText={'Yes'}
+                          />
                         </Grid>
                     </Grid>
                 </Grid>

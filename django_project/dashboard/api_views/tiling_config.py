@@ -410,7 +410,7 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def apply_to_dataset(self, dataset_uuid, configs):
+    def apply_to_dataset(self, dataset_uuid, configs, overwrite_view=False):
         dataset = get_object_or_404(
             Dataset,
             uuid=dataset_uuid
@@ -429,10 +429,30 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
                     level=level_config['level'],
                     simplify_tolerance=level_config['simplify_tolerance']
                 )
+
+            if overwrite_view:
+                dataset_views = DatasetView.objects.filter(
+                    dataset=dataset
+                )
+                DatasetViewTilingConfig.objects.filter(
+                    dataset_view__in=dataset_views
+                ).delete()
+                for dataset_view in dataset_views:
+                    tiling_config = DatasetViewTilingConfig.objects.create(
+                        dataset_view=dataset_view,
+                        zoom_level=config['zoom_level']
+                    )
+                    for level_config in config['admin_level_tiling_configs']:
+                        ViewAdminLevelTilingConfig.objects.create(
+                            view_tiling_config=tiling_config,
+                            level=level_config['level'],
+                            simplify_tolerance=level_config['simplify_tolerance']
+                        )
         # reset dataset styles because zoom could be changed
         dataset.styles = None
         dataset.style_source_name = ''
-        dataset.save(update_fields=['styles', 'style_source_name'])
+        dataset.sync_status = dataset.DatasetSyncStatus.OUT_OF_SYNC
+        dataset.save(update_fields=['styles', 'style_source_name', 'sync_status'])
         # Trigger simplification
         if dataset.simplification_task_id:
             res = AsyncResult(dataset.simplification_task_id)
@@ -494,9 +514,10 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         # dataset or datasetview
         object_type = request.data.get('object_type')
         session = request.data.get('session')
+        overwrite_view = request.data.get('overwrite_view', False)
         configs = self.get_tiling_configs_from_session(session)
         if object_type == 'dataset':
-            self.apply_to_dataset(object_uuid, configs)
+            self.apply_to_dataset(object_uuid, configs, overwrite_view)
         elif object_type == 'datasetview':
             self.apply_to_datasetview(object_uuid, configs)
         else:
