@@ -13,12 +13,12 @@ from georepo.models.entity import GeographicalEntity, EntityId
 from georepo.models.dataset_view import DatasetView, DatasetViewResource
 from georepo.models.dataset import DatasetAdminLevelName
 from georepo.utils.dataset_view import (
-    generate_view_resource_bbox,
     get_view_resource_from_view
 )
 from georepo.utils.permission import (
     get_view_permission_privacy_level
 )
+from georepo.utils.unique_code import get_unique_code
 
 
 class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
@@ -114,6 +114,16 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
             'tags'
         ]
 
+    def get_accessible_resource(self, view: DatasetView,
+                                user_privacy_level: int):
+        resource_level_for_user = view.get_resource_level_for_user(
+            user_privacy_level
+        )
+        resources = view.datasetviewresource_set.all()
+        filtered = [res for res in resources if
+                    res.privacy_level <= resource_level_for_user]
+        return filtered[0] if filtered else None
+
     def vector_tile_url(self, resource: DatasetViewResource):
         url = None
         if resource is None:
@@ -137,10 +147,9 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
 
     def view_bbox(self, resource: DatasetViewResource):
         bbox = []
-        if resource.bbox == '':
-            _bbox = generate_view_resource_bbox(resource)
-            bbox = _bbox.split(',') if _bbox else []
-        else:
+        if resource is None:
+            return bbox
+        if resource.bbox:
             bbox = resource.bbox.split(',')
         bbox = [float(b) for b in bbox]
         return bbox
@@ -150,13 +159,28 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
 
     def get_root_entity(self, obj: DatasetView):
         if obj.default_ancestor_code:
-            entity = GeographicalEntity.objects.filter(
-                dataset=obj.dataset,
-                unique_code=obj.default_ancestor_code,
-                is_approved=True
-            ).order_by('revision_number').last()
-            if entity and entity.unique_code:
-                return entity.ucode
+            if 'root_entities' not in self.context:
+                root_entity = GeographicalEntity.objects.filter(
+                    dataset=obj.dataset,
+                    level=0,
+                    is_approved=True,
+                    is_latest=True,
+                    unique_code=obj.default_ancestor_code
+                ).order_by('revision_number').values(
+                    'unique_code', 'unique_code_version'
+                ).last()
+                if root_entity:
+                    return get_unique_code(obj.default_ancestor_code,
+                                           root_entity['unique_code_version'])
+                return None
+            root_entities = self.context['root_entities']
+            entity = [
+                a['unique_code_version'] for a in
+                root_entities if
+                a['unique_code'] == obj.default_ancestor_code
+            ]
+            if entity:
+                return get_unique_code(obj.default_ancestor_code, entity[0])
         return None
 
     def get_last_update(self, obj: DatasetView):
@@ -169,7 +193,7 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
         if 'user_privacy_level' not in self.context:
             return None
         user_privacy_level = self.context['user_privacy_level']
-        resource = get_view_resource_from_view(obj, user_privacy_level)
+        resource = self.get_accessible_resource(obj, user_privacy_level)
         return self.vector_tile_url(resource)
 
     def get_bbox(self, obj: DatasetView):
@@ -178,13 +202,8 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
         if 'user_privacy_level' not in self.context:
             return bbox
         user_privacy_level = self.context['user_privacy_level']
-        resource = obj.datasetviewresource_set.filter(
-            privacy_level=obj.get_resource_level_for_user(user_privacy_level)
-        ).first()
-        if resource is None:
-            return bbox
-        bbox = self.view_bbox(resource)
-        return bbox
+        resource = self.get_accessible_resource(obj, user_privacy_level)
+        return self.view_bbox(resource)
 
 
 class DatasetViewItemForUserSerializer(DatasetViewItemSerializer):
@@ -196,7 +215,7 @@ class DatasetViewItemForUserSerializer(DatasetViewItemSerializer):
         )
         if user_privacy_level < obj.min_privacy_level:
             return None
-        resource = get_view_resource_from_view(obj, user_privacy_level)
+        resource = self.get_accessible_resource(obj, user_privacy_level)
         return self.vector_tile_url(resource)
 
     def get_bbox(self, obj: DatasetView):
@@ -207,13 +226,8 @@ class DatasetViewItemForUserSerializer(DatasetViewItemSerializer):
         )
         if user_privacy_level < obj.min_privacy_level:
             return bbox
-        resource = obj.datasetviewresource_set.filter(
-            privacy_level=obj.get_resource_level_for_user(user_privacy_level)
-        ).first()
-        if resource is None:
-            return bbox
-        bbox = self.view_bbox(resource)
-        return bbox
+        resource = self.get_accessible_resource(obj, user_privacy_level)
+        return self.view_bbox(resource)
 
 
 class ViewAdminLevelSerializer(serializers.ModelSerializer):
@@ -448,10 +462,7 @@ class DatasetViewDetailSerializer(TaggitSerializer,
         ).first()
         if resource is None:
             return bbox
-        if resource.bbox == '':
-            _bbox = generate_view_resource_bbox(resource)
-            bbox = _bbox.split(',') if _bbox else []
-        else:
+        if resource.bbox:
             bbox = resource.bbox.split(',')
         bbox = [float(b) for b in bbox]
         return bbox

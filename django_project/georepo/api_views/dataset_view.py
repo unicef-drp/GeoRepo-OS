@@ -1,6 +1,6 @@
 import math
 from django.db.models.expressions import RawSQL
-from django.db.models import FilteredRelation, Q
+from django.db.models import FilteredRelation, Q, Prefetch
 from django.http import (
     Http404
 )
@@ -23,7 +23,8 @@ from georepo.utils.permission import (
 from georepo.api_views.api_cache import ApiCache
 from georepo.models.dataset_view import (
     DatasetView,
-    DATASET_VIEW_DATASET_TAG
+    DATASET_VIEW_DATASET_TAG,
+    DatasetViewResource
 )
 from georepo.models.entity import (
     EntityId,
@@ -144,6 +145,14 @@ class DatasetViewList(ApiCache):
         dataset_views_1 = DatasetView.objects.filter(
             dataset__uuid=dataset_uuid,
             tags__name__in=[DATASET_VIEW_DATASET_TAG]
+        ).select_related('dataset').prefetch_related(
+            'tags',
+            Prefetch(
+                'datasetviewresource_set',
+                queryset=DatasetViewResource.objects.filter(
+                    entity_count__gt=0
+                ),
+            )
         ).order_by('id').distinct()
         dataset_views_1, user_privacy_level = get_dataset_views_for_user(
             self.request.user,
@@ -152,6 +161,14 @@ class DatasetViewList(ApiCache):
         )
         dataset_views_2 = DatasetView.objects.filter(
             dataset__uuid=dataset_uuid
+        ).select_related('dataset').prefetch_related(
+            'tags',
+            Prefetch(
+                'datasetviewresource_set',
+                queryset=DatasetViewResource.objects.filter(
+                    entity_count__gt=0
+                ),
+            )
         ).exclude(
             tags__name__in=[DATASET_VIEW_DATASET_TAG]
         ).order_by('id').distinct()
@@ -161,7 +178,16 @@ class DatasetViewList(ApiCache):
             dataset_views_2
         )
         dataset_views = dataset_views_1.union(dataset_views_2)
-
+        dataset_views = dataset_views.order_by('id')
+        # get dict of unique_code and unique_code_version
+        root_entities = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            level=0,
+            is_approved=True,
+            is_latest=True
+        ).order_by('revision_number').values(
+            'unique_code', 'unique_code_version'
+        )
         # set pagination
         paginator = Paginator(dataset_views, page_size)
         total_page = math.ceil(paginator.count / page_size)
@@ -175,7 +201,8 @@ class DatasetViewList(ApiCache):
                     many=True,
                     context={
                         'request': self.request,
-                        'user_privacy_level': user_privacy_level
+                        'user_privacy_level': user_privacy_level,
+                        'root_entities': root_entities
                     }
                 ).data
             )
@@ -264,6 +291,14 @@ class DatasetViewListForUser(ApiCache):
         views = (
             DatasetView.objects.select_related('dataset').filter(
                 dataset__module__is_active=True
+            ).prefetch_related(
+                'tags',
+                Prefetch(
+                    'datasetviewresource_set',
+                    queryset=DatasetViewResource.objects.filter(
+                        entity_count__gt=0
+                    ),
+                )
             ).order_by(
                 'name'
             )
