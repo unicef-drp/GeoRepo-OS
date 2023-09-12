@@ -48,10 +48,16 @@ class AdminLevelTilingConfig(models.Model):
     )
 
     def __str__(self):
-        return '{0} - Admin Level {1}'.format(
-            self.dataset_tiling_config,
-            self.level
-        )
+        try:
+            return '{0} - Admin Level {1}'.format(
+                self.dataset_tiling_config,
+                self.level
+            )
+        except DatasetTilingConfig.DoesNotExist:
+            return '{0} - Admin Level {1}'.format(
+                self.dataset_tiling_config_id,
+                self.level
+            )
 
 
 class TemporaryTilingConfig(models.Model):
