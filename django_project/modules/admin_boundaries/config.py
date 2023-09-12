@@ -5,7 +5,8 @@ from georepo.utils.dataset_view import (
     generate_default_view_adm0_latest,
     generate_default_view_adm0_all_versions,
     trigger_generate_vector_tile_for_view,
-    init_view_privacy_level
+    init_view_privacy_level,
+    generate_view_bbox
 )
 from dashboard.models.layer_upload_session import (
     LayerUploadSession,
@@ -28,11 +29,13 @@ def generate_adm0_default_views(dataset: Dataset):
     for view in views:
         # update max and min privacy level of entities in view
         init_view_privacy_level(view)
+        generate_view_bbox(view)
         trigger_generate_vector_tile_for_view(view)
     views = generate_default_view_adm0_all_versions(dataset)
     for view in views:
         # update max and min privacy level of entities in view
         init_view_privacy_level(view)
+        generate_view_bbox(view)
         trigger_generate_vector_tile_for_view(view)
 
 

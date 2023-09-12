@@ -32,7 +32,9 @@ from georepo.utils.dataset_view import (
     generate_default_view_dataset_latest,
     generate_default_view_adm0_latest,
     create_sql_view,
-    check_view_exists
+    check_view_exists,
+    generate_view_bbox,
+    calculate_entity_count_in_view
 )
 from georepo.utils.dataset_view import (
     init_view_privacy_level
@@ -105,7 +107,8 @@ class TestApiDatasetView(TestCase):
                 unique_code='PAK',
                 unique_code_version=1,
                 start_date=isoparse('2023-01-01T06:16:13Z'),
-                end_date=isoparse('2023-01-10T06:16:13Z')
+                end_date=isoparse('2023-01-10T06:16:13Z'),
+                privacy_level=4
             )
             EntityIdF.create(
                 code=self.pCode,
@@ -149,7 +152,8 @@ class TestApiDatasetView(TestCase):
         request.user = self.superuser
         scheme = versioning.NamespaceVersioning
         view = DatasetViewList.as_view(versioning_class=scheme)
-        response = view(request, **kwargs)
+        with self.assertNumQueries(7):
+            response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertIn('results', response.data)
         self.assertEqual(
@@ -165,7 +169,11 @@ class TestApiDatasetView(TestCase):
         # insert geom
         self.setup_entities_for_dataset(dataset)
         dataset_view = views[0]
-        response = view(request, **kwargs)
+        init_view_privacy_level(dataset_view)
+        calculate_entity_count_in_view(dataset_view)
+        generate_view_bbox(dataset_view)
+        with self.assertNumQueries(7):
+            response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertIn('results', response.data)
         self.assertEqual(
@@ -362,6 +370,7 @@ class TestApiDatasetView(TestCase):
         dataset_view.default_ancestor_code = geo_1.unique_code
         dataset_view.save(update_fields=['default_type',
                                          'default_ancestor_code'])
+        generate_view_bbox(dataset_view)
         new_adm_levels = [
             DatasetAdminLevelName(
                 dataset=dataset,

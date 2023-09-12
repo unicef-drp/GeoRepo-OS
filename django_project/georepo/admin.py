@@ -457,6 +457,13 @@ def fix_view_privacy_level(modeladmin, request, queryset):
         init_view_privacy_level(dataset_view)
 
 
+@admin.action(description='Fix View BBOX')
+def fix_view_bbox(modeladmin, request, queryset):
+    from georepo.utils.dataset_view import generate_view_bbox
+    for dataset_view in queryset:
+        generate_view_bbox(dataset_view)
+
+
 def view_generate_simplified_geometry(modeladmin, request, queryset):
     from georepo.tasks.simplify_geometry import simplify_geometry_in_view
     from celery.result import AsyncResult
@@ -485,18 +492,9 @@ def view_generate_simplified_geometry(modeladmin, request, queryset):
 
 @admin.action(description='Fix Entity Count in View')
 def fix_view_entity_count(modeladmin, request, queryset):
-    from georepo.utils.dataset_view import get_entities_count_in_view
+    from georepo.utils.dataset_view import calculate_entity_count_in_view
     for dataset_view in queryset:
-        view_resources = DatasetViewResource.objects.filter(
-            dataset_view=dataset_view
-        )
-        for view_resource in view_resources:
-            view_resource.entity_count = (
-                get_entities_count_in_view(
-                    dataset_view, view_resource.privacy_level
-                )
-            )
-            view_resource.save(update_fields=['entity_count'])
+        calculate_entity_count_in_view(dataset_view)
 
 
 class DatasetViewAdmin(GuardedModelAdmin):
@@ -509,7 +507,8 @@ class DatasetViewAdmin(GuardedModelAdmin):
                fix_view_privacy_level,
                fix_view_entity_count,
                view_generate_simplified_geometry,
-               populate_view_default_tile_config]
+               populate_view_default_tile_config,
+               fix_view_bbox]
 
     def tiling_status(self, obj: DatasetView):
         status, _ = get_view_tiling_status(

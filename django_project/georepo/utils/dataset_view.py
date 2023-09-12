@@ -57,6 +57,7 @@ def trigger_generate_dynamic_views(dataset: Dataset,
                 continue
         # update max and min privacy level of entities in view
         init_view_privacy_level(dataset_view)
+        generate_view_bbox(dataset_view)
         trigger_generate_vector_tile_for_view(dataset_view, export_data)
 
 
@@ -435,6 +436,13 @@ def init_view_privacy_level(view: DatasetView):
         view.save(update_fields=['max_privacy_level', 'min_privacy_level'])
 
 
+def generate_view_bbox(view: DatasetView):
+    """Generate view bbox for each resource."""
+    resources = view.datasetviewresource_set.all()
+    for resource in resources:
+        generate_view_resource_bbox(resource)
+
+
 def generate_view_resource_bbox(view_resource: DatasetViewResource):
     """
     Generate bbox from view based on privacy level
@@ -461,7 +469,7 @@ def generate_view_resource_bbox(view_resource: DatasetViewResource):
         for coord in bbox:
             _bbox.append(str(round(float(coord), 3)))
         view_resource.bbox = ','.join(_bbox)
-        view_resource.save()
+        view_resource.save(update_fields=['bbox'])
     return view_resource.bbox
 
 
@@ -517,3 +525,16 @@ def get_view_resource_from_view(
         entity_count__gt=0
     ).order_by('-privacy_level').first()
     return resource
+
+
+def calculate_entity_count_in_view(view: DatasetView):
+    view_resources = DatasetViewResource.objects.filter(
+        dataset_view=view
+    )
+    for view_resource in view_resources:
+        view_resource.entity_count = (
+            get_entities_count_in_view(
+                view, view_resource.privacy_level
+            )
+        )
+        view_resource.save(update_fields=['entity_count'])
