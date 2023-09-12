@@ -55,7 +55,8 @@ logger = logging.getLogger(__name__)
 
 def do_self_intersects_check(geom: GEOSGeometry,
                              internal_code: str,
-                             entity_upload: EntityUploadStatus) -> bool:
+                             entity_upload: EntityUploadStatus,
+                             **kwargs) -> bool:
     is_valid = False
     start = time.time()
     try:
@@ -78,12 +79,16 @@ def do_self_intersects_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'self_intersects_check {(end - start)} seconds')
+
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
     return is_valid
 
 
 def do_self_contact_check(geom: GEOSGeometry,
                           internal_code: str,
-                          entity_upload: EntityUploadStatus) -> bool:
+                          entity_upload: EntityUploadStatus,
+                          **kwargs) -> bool:
     is_valid = False
     start = time.time()
     try:
@@ -104,12 +109,15 @@ def do_self_contact_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'self_contact_check {(end - start)} seconds')
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
     return is_valid
 
 
 def do_duplicate_nodes_check(geom: GEOSGeometry,
                              internal_code: str,
-                             entity_upload: EntityUploadStatus) -> bool:
+                             entity_upload: EntityUploadStatus,
+                             **kwargs) -> bool:
     is_valid = False
     start = time.time()
     try:
@@ -130,13 +138,16 @@ def do_duplicate_nodes_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'duplicate_nodes_check {(end - start)} seconds')
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
     return is_valid
 
 
 def do_duplicate_check(geom: GEOSGeometry,
                        internal_code: str,
                        entity_upload: EntityUploadStatus,
-                       layer_file: LayerFile) -> bool:
+                       layer_file: LayerFile,
+                       **kwargs) -> bool:
     is_valid = False
     start = time.time()
     try:
@@ -158,13 +169,16 @@ def do_duplicate_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'duplicate_check {(end - start)} seconds')
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
     return is_valid
 
 
 def do_hierarchy_check(geom: GEOSGeometry,
                        internal_code: str,
                        entity_upload: EntityUploadStatus,
-                       parent: GeographicalEntity) -> bool:
+                       parent: GeographicalEntity,
+                       **kwargs) -> bool:
     if parent is None:
         return True
     start = time.time()
@@ -188,12 +202,15 @@ def do_hierarchy_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'hierarchy_check {(end - start)} seconds')
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
     return is_valid
 
 
 def do_contained_check(entity: GeographicalEntity,
                        entity_upload: EntityUploadStatus,
-                       layer_file: LayerFile) -> bool:
+                       layer_file: LayerFile,
+                       **kwargs) -> bool:
     is_valid = False
     start = time.time()
     try:
@@ -221,13 +238,16 @@ def do_contained_check(entity: GeographicalEntity,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'contained_check {(end - start)} seconds')
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
     return is_valid
 
 
 def do_overlap_check(geom: GEOSGeometry,
                      internal_code: str,
                      entity_upload: EntityUploadStatus,
-                     layer_file: LayerFile) -> bool:
+                     layer_file: LayerFile,
+                     **kwargs) -> bool:
     is_valid = False
     start = time.time()
     try:
@@ -257,12 +277,15 @@ def do_overlap_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'overlap_check {(end - start)} seconds')
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
     return is_valid
 
 
 def do_gap_check(entity_upload: EntityUploadStatus,
                  layer_file: LayerFile,
-                 level: int):
+                 level: int,
+                 **kwargs):
     is_valid = False
     errors = []
     start = time.time()
@@ -295,23 +318,31 @@ def do_gap_check(entity_upload: EntityUploadStatus,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'gap_check {(end - start)} seconds')
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
     return is_valid, errors
 
 
 def do_valid_nodes_check(geom_str: str,
                          internal_code: str,
-                         entity_upload: EntityUploadStatus):
+                         entity_upload: EntityUploadStatus,
+                         **kwargs):
     geom, error = valid_nodes_check(geom_str, internal_code)
+    start = time.time()
     if error:
         entity_upload.logs += (
             f'\nException on valid_nodes_check'
             f'{internal_code} = {str(error.error)}'
         )
         entity_upload.save(update_fields=['logs'])
+
+    end = time.time()
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
     return geom
 
 
-def run_validation(entity_upload: EntityUploadStatus) -> bool:
+def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
     """
     Validate all layer_files from upload session against
     original geographical entity,
@@ -320,6 +351,7 @@ def run_validation(entity_upload: EntityUploadStatus) -> bool:
     :return: boolean status whether the process is successful or not
     """
     logger.info(f'validate admin_boundaries {entity_upload.id}')
+    start = time.time()
     layer_files = LayerFile.objects.annotate(
         level_int=Cast('level', IntegerField())
     ).filter(
@@ -1006,16 +1038,23 @@ def run_validation(entity_upload: EntityUploadStatus) -> bool:
     # note: error/invalid geometries will be removed
     # if it's not selected to be imported
     logger.info(f'finished validation admin_boundaries {entity_upload.id}')
+
+    end = time.time()
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
+
     return entity_upload.status == VALID
 
 
 def is_validation_result_importable(
-        entity_upload: EntityUploadStatus, user) -> Tuple[bool, bool]:
+        entity_upload: EntityUploadStatus, user, **kwargs) -> Tuple[bool, bool]:
     """
     Return:
      is_importable: whether the validation result can still be imported
      is_warning: whether the errors are considered as non-blocking error
     """
+    start = time.time()
+
     is_warning = False
     is_importable = entity_upload.status == VALID
     if not is_importable and entity_upload.summaries:
@@ -1051,13 +1090,19 @@ def is_validation_result_importable(
                 superadmin_blocking_errors == 0
             ):
                 is_importable = True
+
+    end = time.time()
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
     return is_importable, is_warning
 
 
-def reset_qc_validation(upload_session: LayerUploadSession):
+def reset_qc_validation(upload_session: LayerUploadSession, **kwargs):
     """
     Reset entity uploads in upload_session
     """
+    start = time.time()
+
     uploads = EntityUploadStatus.objects.filter(
         upload_session=upload_session
     )
@@ -1078,6 +1123,10 @@ def reset_qc_validation(upload_session: LayerUploadSession):
         upload.task_id = ''
         upload.revised_geographical_entity = None
         upload.save()
+
+    end = time.time()
+    if 'log_object' in kwargs:
+        kwargs['log_object'].add_log('self_intersects_check', end - start)
 
 
 def get_error_types():

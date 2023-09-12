@@ -242,3 +242,25 @@ class EntityUploadChildLv1(models.Model):
         null=True,
         blank=True
     )
+
+
+class EntityUploadStatusLog(models.Model):
+    logs = models.JSONField(
+        help_text='Logs of upload',
+        default=dict,
+        null=True,
+        blank=True
+    )
+
+    def add_log(self, log_text, exec_time):
+        if log_text in self.logs:
+            self.logs[log_text] = {
+                'count': self.logs[log_text]['count'] + 1,
+                'exec_time': (self.logs[log_text]['exec_time'] + exec_time) / 2
+            }
+        else:
+            self.logs[log_text] = {
+                'count': 1,
+                'exec_time': exec_time
+            }
+        self.save(update_fields=['logs'])
