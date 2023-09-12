@@ -61,11 +61,13 @@ function TilingConfigConfirm(props: any) {
         }
     }
 
-    const onConfirmationClosed = () => {
-      confirmTilingConfig(false)
+    const onConfirmedNo = () => {
+        setAlertOpen(false)
+        confirmTilingConfig(false)
     }
 
-    const onConfirmedAlert = ()  => {
+    const onConfirmedYes = ()  => {
+        setAlertOpen(false)
         confirmTilingConfig(true)
     }
 
@@ -88,8 +90,8 @@ function TilingConfigConfirm(props: any) {
                             </Button>
                         </Grid>
                         <Grid item>
-                          <AlertDialog open={alertOpen} alertClosed={onConfirmationClosed}
-                            alertConfirmed={onConfirmedAlert}
+                          <AlertDialog open={alertOpen} alertClosed={onConfirmedNo}
+                            alertConfirmed={onConfirmedYes}
                             alertDialogTitle={`Saving Tiling Config.`}
                             alertDialogDescription={'Apply to existing views?'}
                             cancelButtonText={'No'}

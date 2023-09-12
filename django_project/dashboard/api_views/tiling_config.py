@@ -446,13 +446,18 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
                         ViewAdminLevelTilingConfig.objects.create(
                             view_tiling_config=tiling_config,
                             level=level_config['level'],
-                            simplify_tolerance=level_config['simplify_tolerance']
+                            simplify_tolerance=level_config[
+                                'simplify_tolerance'
+                            ]
                         )
         # reset dataset styles because zoom could be changed
         dataset.styles = None
         dataset.style_source_name = ''
-        dataset.sync_status = dataset.DatasetSyncStatus.OUT_OF_SYNC
-        dataset.save(update_fields=['styles', 'style_source_name', 'sync_status'])
+        dataset.sync_status = dataset.DatasetSyncStatus.OUT_OF_SYNC if \
+            overwrite_view else dataset.sync_status
+        dataset.save(update_fields=[
+            'styles', 'style_source_name', 'sync_status'
+        ])
         # Trigger simplification
         if dataset.simplification_task_id:
             res = AsyncResult(dataset.simplification_task_id)
