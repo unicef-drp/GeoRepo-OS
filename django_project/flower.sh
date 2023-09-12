@@ -10,7 +10,7 @@ ENV_PYTHON="/usr/local/bin/celery"
 FLOWER_CHDIR="/home/web/django_project"
 
 # How to call "manage.py celery flower" (args...)
-FLOWERCTL="-A core --broker=redis://default:$REDIS_PASSWORD@$REDIS_HOST flower --port=8080 --url_prefix=/flower --auto_refresh=False --broker_api=redis://default:$REDIS_PASSWORD@$REDIS_HOST --basic_auth=$ADMIN_USERNAME:$ADMIN_PASSWORD"
+FLOWERCTL="-A core --broker=redis://default:$REDIS_PASSWORD@$REDIS_HOST flower --port=8080 --url_prefix=/flower --auto_refresh=False --broker_api=redis://default:$REDIS_PASSWORD@$REDIS_HOST"
 DAEMON=$FLOWERCTL
 
 set -e

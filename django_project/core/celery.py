@@ -3,6 +3,8 @@ from __future__ import absolute_import, unicode_literals
 import os
 import logging
 from celery import Celery, signals
+from celery.utils.serialization import strtobool
+from celery.worker.control import inspect_command
 
 
 # set the default Django settings module for the 'celery' program.
@@ -53,3 +55,17 @@ app.conf.broker_url = BASE_REDIS_URL
 
 # this allows you to schedule items in the Django admin.
 app.conf.beat_scheduler = 'django_celery_beat.schedulers.DatabaseScheduler'
+
+
+@inspect_command(
+    alias='dump_conf',
+    signature='[include_defaults=False]',
+    args=[('with_defaults', strtobool)],
+)
+def conf(state, with_defaults=False, **kwargs):
+    """
+    This overrides the `conf` inspect command to effectively disable it.
+    This is to stop sensitive configuration info appearing in e.g. Flower.
+    (Celery makes an attempt to remove sensitive info,but it is not foolproof)
+    """
+    return {'error': 'Config inspection has been disabled.'}
