@@ -98,6 +98,7 @@ class TestApiEntity(TestCase):
             'source': None,
             'type': 'Country',
             'privacy_level': 4,
+            'label': self.geographical_entity_name_1.name,
             'names': [
                 {
                     'id': self.geographical_entity_name_1.id,
@@ -165,6 +166,7 @@ class TestApiEntity(TestCase):
             'source': None,
             'type': 'Country',
             'privacy_level': 4,
+            'label': self.geographical_entity_name_1.name,
             'names': [
                 {
                     'id': self.geographical_entity_name_1.id,

@@ -227,11 +227,6 @@ class EntityNameListSerializer(serializers.ListSerializer):
                 'No default name is supplied'
             )
 
-        if len(data) == 0:
-            raise serializers.ValidationError(
-                'Entity must have at least 1 name'
-            )
-
         return results
 
     def save(self, entity):
@@ -283,6 +278,10 @@ class EntityNameSerializer(serializers.ModelSerializer):
                 entity_name.default = default
                 entity_name.language_id = language
                 entity_name.save()
+
+                if default:
+                    entity.label = name_value
+                    entity.save()
             except EntityId.DoesNotExist:
                 entity_name = None
         else:
@@ -321,11 +320,6 @@ class EntityCodeListSerializer(serializers.ListSerializer):
         if default_set == {False}:
             raise serializers.ValidationError(
                 'No default code is supplied'
-            )
-
-        if len(data) == 0:
-            raise serializers.ValidationError(
-                'Entity must have at least 1 code'
             )
 
         return results
@@ -475,5 +469,6 @@ class EntityEditSerializer(serializers.ModelSerializer):
             'type',
             'privacy_level',
             'names',
-            'codes'
+            'codes',
+            'label'
         ]

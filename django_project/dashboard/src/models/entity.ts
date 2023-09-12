@@ -2,33 +2,18 @@ export interface EntityCode {
     id: number,
     default: boolean,
     code_id: number,
-    value: string
-}
-
-export const createNewEntityCode = (): EntityCode => {
-    return {
-        'id': 0,
-        'default': false,
-        'code_id': 1,
-        'value': ''
-    }
+    value: string,
+    uuid?: string
 }
 
 export interface EntityName {
     id: number,
     default: boolean,
     language_id: number,
-    name: string
+    name: string,
+    uuid?: string
 }
 
-export const createNewName = (): EntityName => {
-    return {
-        'id': 0,
-        'default': false,
-        'language_id': 1,
-        'name': ''
-    }
-}
 
 export default interface EntityEditInterface {
     id: number,
@@ -37,4 +22,5 @@ export default interface EntityEditInterface {
     privacy_level: number,
     names: EntityName[],
     codes: EntityCode[],
+    label: string
 }

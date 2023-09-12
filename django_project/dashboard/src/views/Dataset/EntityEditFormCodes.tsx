@@ -18,6 +18,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import {EntityCode} from '../../models/entity'
 import Select, {SelectChangeEvent} from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
+import {v4 as uuidv4} from 'uuid';
 
 const FETCH_ID_TYPE_URL = '/api/id-type/list/'
 
@@ -55,17 +56,15 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
     const addNewEntityCodes = () => {
         let _data:EntityCode[] = codes.map((code) => {
             return {
-                id: code.id,
-                default: code.default,
-                code_id: code.code_id,
-                value: code.value
+                ...code, uuid: uuidv4()
             }
         })
         let _new_item:EntityCode = {
             id: 0,
             default: false,
             code_id: 1,
-            value: ''
+            value: '',
+            uuid: uuidv4()
         }
         _data.push(_new_item)
         props.onUpdate(_data)
@@ -75,10 +74,7 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
         let _data:EntityCode[] = codes.reduce((res, code) => {
             if (code.id !== deletedCode.id) {
                 res.push({
-                    id: code.id,
-                    default: code.default,
-                    code_id: 1,
-                    value: code.value
+                    ...code, uuid: uuidv4()
                 })
             }
             return res
@@ -90,12 +86,9 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
         if(e.keyCode == 13){
             e.preventDefault()
             let _data:EntityCode[] = codes.reduce((res, code) => {
-                if (code.id === editedCode.id) {
+                if (code.uuid === editedCode.uuid) {
                     res.push({
-                        id: editedCode.id,
-                        default: editedCode.default,
-                        code_id: editedCode.code_id,
-                        value: e.target.value
+                        ...editedCode, value: e.target.value
                     })
                 } else {
                     res.push(code)
@@ -113,12 +106,9 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
     //@ts-ignore
     const onSelectCodeType = (selectedCodeType: number, editedCode: EntityCode) => {
         let _data:EntityCode[] = codes.reduce((res, code) => {
-        if (code.id === editedCode.id) {
+        if (code.uuid === editedCode.uuid) {
             res.push({
-                id: editedCode.id,
-                default: editedCode.default,
-                code_id: selectedCodeType,
-                value: editedCode.value
+                ...editedCode, code_id: selectedCodeType
             })
         } else {
             res.push(code)
