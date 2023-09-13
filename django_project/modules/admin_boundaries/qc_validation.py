@@ -352,8 +352,6 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
     """
     logger.info(f'validate admin_boundaries {entity_upload.id}')
     start = time.time()
-    print('===============')
-    print(kwargs)
     layer_files = LayerFile.objects.annotate(
         level_int=Cast('level', IntegerField())
     ).filter(
@@ -753,7 +751,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
 
                 geom_str = json.dumps(feature['geometry'])
                 geom = do_valid_nodes_check(geom_str, internal_code,
-                                            entity_upload)
+                                            entity_upload, **kwargs)
                 if geom is None:
                     # invalid geom
                     error_found = True
@@ -771,7 +769,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                 # GEOMETRY VALIDITY CHECKS
                 # Check self intersects
                 is_valid_self_intersects = do_self_intersects_check(
-                    geom, internal_code, entity_upload
+                    geom, internal_code, entity_upload, **kwargs
                 )
                 layer_error[ErrorType.SELF_INTERSECTS.value] = (
                     ERROR_CHECK if not is_valid_self_intersects else ''
@@ -798,7 +796,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
 
                 # Check duplicate nodes
                 is_valid_duplicate_nodes = do_duplicate_nodes_check(
-                    geom, internal_code, entity_upload
+                    geom, internal_code, entity_upload, **kwargs
                 )
                 layer_error[ErrorType.DUPLICATE_NODES.value] = (
                     ERROR_CHECK if not is_valid_duplicate_nodes else ''
@@ -812,7 +810,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                 # GEOMETRY TOPOLOGY CHECKS
                 # Check duplicate geometry
                 is_valid_duplicate_geom = do_duplicate_check(
-                    geom, internal_code, entity_upload, layer_file
+                    geom, internal_code, entity_upload, layer_file, **kwargs
                 )
                 layer_error[ErrorType.DUPLICATE_GEOMETRIES.value] = (
                     ERROR_CHECK if not is_valid_duplicate_geom else ''
@@ -825,7 +823,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
 
                 # Check overlaps
                 is_valid_overlaps = do_overlap_check(
-                    geom, internal_code, entity_upload, layer_file
+                    geom, internal_code, entity_upload, layer_file, **kwargs
                 )
                 layer_error[ErrorType.OVERLAPS.value] = (
                     ERROR_CHECK if not is_valid_overlaps else ''
@@ -838,7 +836,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
 
                 # Check hierarchy by geometry
                 is_valid_hierarchy = do_hierarchy_check(
-                    geom, internal_code, entity_upload, parent
+                    geom, internal_code, entity_upload, parent, **kwargs
                 )
                 layer_error[ErrorType.GEOMETRY_HIERARCHY.value] = (
                     ERROR_CHECK if not is_valid_hierarchy else ''
@@ -956,7 +954,8 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                     is_valid = do_contained_check(
                         entity,
                         entity_upload,
-                        layer_file
+                        layer_file,
+                        **kwargs
                     )
                     if is_valid:
                         continue
@@ -983,7 +982,9 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                 entity_upload.save(update_fields=['progress'])
                 # run gaps check for entities at current parent
                 is_valid, errors = do_gap_check(entity_upload,
-                                                layer_file, level)
+                                                layer_file,
+                                                level,
+                                                **kwargs)
                 if not is_valid:
                     # set flag to level_error_report
                     level_error_report[ErrorType.GAPS.value] = len(errors)

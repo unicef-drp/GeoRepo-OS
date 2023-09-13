@@ -87,12 +87,10 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
                     })
         entity_upload_ids = []
         for entity_upload in entities:
-            print(entity_upload)
             max_level = int(entity_upload['max_level'])
             layer0_id = entity_upload['layer0_id']
             country = entity_upload['country']
             if entity_upload['country_entity_id']:
-                print('if')
                 geographical_entity = GeographicalEntity.objects.get(
                     id=entity_upload['country_entity_id']
                 )
@@ -115,7 +113,6 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
                 )
                 entity_upload_ids.append(entity_upload_status.id)
             else:
-                print('else')
                 entity_upload_status, _ = (
                     EntityUploadStatus.objects.update_or_create(
                         revised_entity_id=layer0_id,
@@ -145,17 +142,15 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
                 entity_upload_status=entity_upload_status,
                 parent_log=upload_log
             )
-            print(upload_log_entity)
             # trigger validation task
-            # task = validate_ready_uploads.apply_async(
-            #     (
-            #         entity_upload_status.id,
-            #         upload_log_entity.id
-            #     ),
-            #     queue='validation'
-            # )
-            validate_ready_uploads(entity_upload_status.id, upload_log_entity.id)
-            entity_upload_status.task_id = 5
+            task = validate_ready_uploads.apply_async(
+                (
+                    entity_upload_status.id,
+                    upload_log_entity.id
+                ),
+                queue='validation'
+            )
+            entity_upload_status.task_id = task.id
             entity_upload_status.save(update_fields=['task_id'])
         # delete/reset the other entity uploads
         other_uploads = EntityUploadStatus.objects.filter(
