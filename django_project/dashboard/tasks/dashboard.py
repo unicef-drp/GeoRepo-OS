@@ -1,5 +1,16 @@
 from celery import shared_task
 import logging
+import os
+import shutil
+import csv
+from io import StringIO
+from django.core.files.base import ContentFile
+from django.conf import settings
+from dashboard.models.temp_usage import TempUsage
+from georepo.utils.directory_helper import (
+    get_folder_size,
+    convert_size
+)
 
 
 logger = logging.getLogger(__name__)
@@ -23,3 +34,55 @@ def clear_dashboard_dataset_session():
     datetime_filter = datetime.now() - timedelta(days=7)
     with connection.cursor() as cursor:
         cursor.execute(sql, [datetime_filter])
+
+
+@shared_task(name="calculate_temp_directory")
+def calculate_temp_directory():
+    total_size = 0
+    directory_path = settings.MEDIA_ROOT
+    if not os.path.exists(directory_path):
+        return
+    rows = []
+    for path, dirs, files in os.walk(directory_path):
+        for dir in dirs:
+            fp = os.path.join(path, dir)
+            fp_size = get_folder_size(fp)
+            total_size += fp_size
+            rows.append([dir, convert_size(fp_size)])
+        break
+    row = ["Name", "Size"]
+    csv_buffer = StringIO()
+    csv_writer = csv.writer(csv_buffer)
+    csv_writer.writerow(row)
+    csv_writer.writerows(rows)
+    csv_file = ContentFile(csv_buffer.getvalue().encode('utf-8'))
+    temp_usage = TempUsage()
+    temp_usage.total_size = total_size
+    temp_usage.report_file.save('report_file_usage.csv', csv_file)
+    temp_usage.save()
+
+
+@shared_task(name="clear_temp_directory")
+def clear_temp_directory():
+    if not settings.USE_AZURE:
+        # disable if not in azure env
+        logger.error('This task is for azure environment only')
+        return
+    logger.info('Starting cleaning temp directory on azure env.')
+    export_data_dir = os.path.join(settings.MEDIA_ROOT, 'export_data')
+    tmp_dir = os.path.join(settings.MEDIA_ROOT, 'tmp')
+    shutil.rmtree(export_data_dir)
+    shutil.rmtree(tmp_dir)
+    layer_files = os.path.join(settings.MEDIA_ROOT, 'layer_files')
+    if os.path.exists(layer_files):
+        shutil.rmtree(layer_files)
+    error_reports = os.path.join(settings.MEDIA_ROOT, 'error_reports')
+    if os.path.exists(error_reports):
+        shutil.rmtree(error_reports)
+    # create export data and tmp
+    if not os.path.exists(export_data_dir):
+        os.mkdir(export_data_dir)
+    if not os.path.exists(tmp_dir):
+        os.mkdir(tmp_dir)
+    logger.info('Finished cleaning temp directory on azure env.')
+    calculate_temp_directory()

@@ -1,4 +1,3 @@
-import math
 import os.path
 import shutil
 import tempfile
@@ -56,30 +55,12 @@ from georepo.utils.admin import (
 from georepo.utils.dataset_view import (
     get_view_tiling_status
 )
+from georepo.utils.directory_helper import (
+    convert_size,
+    get_folder_size
+)
 
 User = get_user_model()
-
-
-def convert_size(size_bytes):
-    if size_bytes == 0:
-        return "0B"
-    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(size_bytes / p, 2)
-    return "%s %s" % (s, size_name[i])
-
-
-def get_folder_size(directory_path):
-    if not os.path.exists(directory_path):
-        return '0'
-    folder_size = 0
-    # get size
-    for path, dirs, files in os.walk(directory_path):
-        for f in files:
-            fp = os.path.join(path, f)
-            folder_size += os.stat(fp).st_size
-    return convert_size(folder_size)
 
 
 def move_directory(old_directory, new_directory):
@@ -430,17 +411,17 @@ def download_view_size_action(modeladmin, request, queryset):
             settings.LAYER_TILES_PATH,
             str(dataset_view.uuid)
         )
-        vector_tile_size = get_folder_size(tile_path)
+        vector_tile_size = convert_size(get_folder_size(tile_path))
         geojson_path = os.path.join(
             settings.GEOJSON_FOLDER_OUTPUT,
             str(dataset_view.uuid)
         )
-        geojson_size = get_folder_size(geojson_path)
+        geojson_size = convert_size(get_folder_size(geojson_path))
         shapefile_path = os.path.join(
             settings.SHAPEFILE_FOLDER_OUTPUT,
             str(dataset_view.uuid)
         )
-        shapefile_size = get_folder_size(shapefile_path)
+        shapefile_size = convert_size(get_folder_size(shapefile_path))
         writer.writerow([
             dataset_view.name,
             vector_tile_size,
