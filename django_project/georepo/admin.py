@@ -2,7 +2,6 @@ import math
 import os.path
 import shutil
 import tempfile
-import uuid
 import zipfile
 
 from django import forms
