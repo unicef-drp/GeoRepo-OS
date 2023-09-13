@@ -285,7 +285,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs):
                 entity.save()
 
     end = time.time()
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'boundary_lines.qc_validation.run_validation',
             end - start)
@@ -338,7 +338,7 @@ def is_validation_result_importable(
                 is_importable = True
 
     end = time.time()
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'boundary_lines.qc_validation.is_validation_result_importable',
             end - start)
@@ -378,7 +378,7 @@ def reset_qc_validation(upload_session: LayerUploadSession, **kwargs):
         upload.save()
 
     end = time.time()
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'boundary_lines.qc_validation.reset_qc_validation',
             end - start
@@ -425,7 +425,7 @@ def boundary_lines_upload_unique_code_version(dataset: Dataset,
             ) / 2
 
     end = time.time()
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             (
                 'boundary_lines.qc_validation.'

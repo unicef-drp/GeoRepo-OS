@@ -80,7 +80,7 @@ def do_self_intersects_check(geom: GEOSGeometry,
     end = time.time()
     logger.debug(f'self_intersects_check {(end - start)} seconds')
 
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.do_self_intersects_check',
             end - start)
@@ -111,7 +111,7 @@ def do_self_contact_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'self_contact_check {(end - start)} seconds')
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.do_self_contact_check',
             end - start)
@@ -142,7 +142,7 @@ def do_duplicate_nodes_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'duplicate_nodes_check {(end - start)} seconds')
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.do_duplicate_nodes_check',
             end - start)
@@ -175,7 +175,7 @@ def do_duplicate_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'duplicate_check {(end - start)} seconds')
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.do_duplicate_check',
             end - start)
@@ -210,7 +210,7 @@ def do_hierarchy_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'hierarchy_check {(end - start)} seconds')
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.do_hierarchy_check',
             end - start)
@@ -248,7 +248,7 @@ def do_contained_check(entity: GeographicalEntity,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'contained_check {(end - start)} seconds')
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.do_contained_check',
             end - start)
@@ -289,7 +289,7 @@ def do_overlap_check(geom: GEOSGeometry,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'overlap_check {(end - start)} seconds')
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.do_overlap_check',
             end - start)
@@ -332,7 +332,7 @@ def do_gap_check(entity_upload: EntityUploadStatus,
         entity_upload.save(update_fields=['logs'])
     end = time.time()
     logger.debug(f'gap_check {(end - start)} seconds')
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.do_gap_check',
             end - start)
@@ -353,7 +353,7 @@ def do_valid_nodes_check(geom_str: str,
         entity_upload.save(update_fields=['logs'])
 
     end = time.time()
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.do_valid_nodes_check',
             end - start)
@@ -1061,7 +1061,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
     logger.info(f'finished validation admin_boundaries {entity_upload.id}')
 
     end = time.time()
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.run_validation',
             end - start)
@@ -1117,7 +1117,7 @@ def is_validation_result_importable(
                 is_importable = True
 
     end = time.time()
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.is_validation_result_importable',
             end - start)
@@ -1152,7 +1152,7 @@ def reset_qc_validation(upload_session: LayerUploadSession, **kwargs):
         upload.save()
 
     end = time.time()
-    if 'log_object' in kwargs:
+    if kwargs.get('log_object'):
         kwargs['log_object'].add_log(
             'admin_boundaries.qc_validation.reset_qc_validation',
             end - start)
