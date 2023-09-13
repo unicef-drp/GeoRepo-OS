@@ -1,4 +1,3 @@
-import math
 import os.path
 import shutil
 import tempfile
@@ -57,30 +56,12 @@ from georepo.utils.admin import (
 from georepo.utils.dataset_view import (
     get_view_tiling_status
 )
+from georepo.utils.directory_helper import (
+    convert_size,
+    get_folder_size
+)
 
 User = get_user_model()
-
-
-def convert_size(size_bytes):
-    if size_bytes == 0:
-        return "0B"
-    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(size_bytes / p, 2)
-    return "%s %s" % (s, size_name[i])
-
-
-def get_folder_size(directory_path):
-    if not os.path.exists(directory_path):
-        return '0'
-    folder_size = 0
-    # get size
-    for path, dirs, files in os.walk(directory_path):
-        for f in files:
-            fp = os.path.join(path, f)
-            folder_size += os.stat(fp).st_size
-    return convert_size(folder_size)
 
 
 def move_directory(old_directory, new_directory):
@@ -267,6 +248,17 @@ def patch_entity_names(modeladmin, request, queryset):
         fix_entity_name_encoding.delay(dataset.id)
 
 
+def patch_views_in_dataset(modeladmin, request, queryset):
+    from georepo.tasks.dataset_patch import dataset_patch_views
+    for dataset in queryset:
+        dataset_patch_views.delay(dataset.id)
+    modeladmin.message_user(
+        request,
+        'Dataset patch views will be run in the background!',
+        messages.SUCCESS
+    )
+
+
 class DatasetAdmin(GuardedModelAdmin):
     add_form_template = None
     form = DatasetAdminChangeForm
@@ -289,7 +281,8 @@ class DatasetAdmin(GuardedModelAdmin):
         generate_arcgis_config_action,
         clear_cache, generate_jmeter_script,
         generate_default_views, add_to_public_groups,
-        generate_dataset_concept_ucode, patch_entity_names]
+        generate_dataset_concept_ucode, patch_entity_names,
+        patch_views_in_dataset]
 
     def get_form(self, request, obj=None, **kwargs):
         """
@@ -431,17 +424,17 @@ def download_view_size_action(modeladmin, request, queryset):
             settings.LAYER_TILES_PATH,
             str(dataset_view.uuid)
         )
-        vector_tile_size = get_folder_size(tile_path)
+        vector_tile_size = convert_size(get_folder_size(tile_path))
         geojson_path = os.path.join(
             settings.GEOJSON_FOLDER_OUTPUT,
             str(dataset_view.uuid)
         )
-        geojson_size = get_folder_size(geojson_path)
+        geojson_size = convert_size(get_folder_size(geojson_path))
         shapefile_path = os.path.join(
             settings.SHAPEFILE_FOLDER_OUTPUT,
             str(dataset_view.uuid)
         )
-        shapefile_size = get_folder_size(shapefile_path)
+        shapefile_size = convert_size(get_folder_size(shapefile_path))
         writer.writerow([
             dataset_view.name,
             vector_tile_size,

@@ -7,7 +7,8 @@ from django.conf import settings
 
 from georepo.utils import (
     generate_view_vector_tiles,
-    remove_vector_tiles_dir
+    remove_vector_tiles_dir,
+    generate_view_resource_bbox
 )
 
 logger = logging.getLogger(__name__)
@@ -28,15 +29,23 @@ def generate_view_vector_tiles_task(view_resource_id: str,
     try:
         start = time.time()
         view_resource = DatasetViewResource.objects.get(id=view_resource_id)
-
-        view_resource_log, _ = DatasetViewResourceLog.objects.get_or_create(
-            dataset_view_resource=view_resource,
-            task_id=view_resource.vector_tiles_task_id
-        )
+        try:
+            view_resource_log, _ = DatasetViewResourceLog.objects.get_or_create(
+                dataset_view_resource=view_resource,
+                task_id=view_resource.vector_tiles_task_id
+            )
+        except DatasetViewResourceLog.DoesNotExist:
+            view_resource_log = DatasetViewResourceLog.objects.create(
+                dataset_view_resource=view_resource
+            )
         logger.info(
             f'Generating vector tile from view_resource {view_resource.id} '
             f'- {view_resource.privacy_level} '
             f'- {view_resource.dataset_view.name}'
+        )
+        generate_view_resource_bbox(
+            view_resource,
+            **{'log_object': view_resource_log}
         )
         generate_view_vector_tiles(
             view_resource,

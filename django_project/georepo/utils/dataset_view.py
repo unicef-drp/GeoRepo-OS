@@ -450,10 +450,14 @@ def generate_view_bbox(view: DatasetView):
         generate_view_resource_bbox(resource)
 
 
-def generate_view_resource_bbox(view_resource: DatasetViewResource):
+def generate_view_resource_bbox(
+        view_resource: DatasetViewResource,
+        **kwargs
+    ):
     """
     Generate bbox from view based on privacy level
     """
+    start = time.time()
     sql_view = str(view_resource.dataset_view.uuid)
     if not check_view_exists(sql_view):
         return ''
@@ -477,6 +481,12 @@ def generate_view_resource_bbox(view_resource: DatasetViewResource):
             _bbox.append(str(round(float(coord), 3)))
         view_resource.bbox = ','.join(_bbox)
         view_resource.save(update_fields=['bbox'])
+
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'generate_view_resource_bbox',
+            end - start)
     return view_resource.bbox
 
 
