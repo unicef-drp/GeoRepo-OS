@@ -96,9 +96,12 @@ def dataset_tiling_config_post_create(
     sender, instance: DatasetTilingConfig, created, *args, **kwargs
 ):
     dataset = Dataset.objects.get(id=instance.dataset)
-    dataset.sync_status = dataset.DatasetViewSyncStatus.OUT_OF_SYNC
+    dataset.sync_status = dataset.SyncStatus.OUT_OF_SYNC
     dataset.save(update_fields=['sync_status'])
 
     for view in dataset.datasetview_set.all():
-        view.sync_status = view.DatasetViewSyncStatus.OUT_OF_SYNC
-        view.save(update_fields=['sync_status'])
+        view.set_out_of_sync(
+            tiling_config=True,
+            vector_tile=True,
+            product=True
+        )

@@ -67,7 +67,7 @@ class DatasetSerializer(serializers.ModelSerializer):
         return tiling_status
 
     def get_sync_status(self, obj: Dataset):
-        return Dataset.DatasetSyncStatus(obj.sync_status).label
+        return Dataset.SyncStatus(obj.sync_status).label
 
     def get_permissions(self, obj: Dataset):
         user = self.context['user']

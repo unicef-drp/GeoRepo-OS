@@ -65,5 +65,8 @@ class ViewAdminLevelTilingConfig(models.Model):
 @receiver(post_save, sender=DatasetViewTilingConfig)
 def dataset_view_tiling_config_post_create(sender, instance: DatasetViewTilingConfig, created, *args, **kwargs):
     dataset_view = DatasetView.objects.get(id=instance.dataset_view_id)
-    dataset_view.sync_status = dataset_view.DatasetViewSyncStatus.OUT_OF_SYNC
-    dataset_view.save(update_fields=['sync_status'])
+    dataset_view.set_out_of_sync(
+        tiling_config=True,
+        product=True,
+        vector_tile=True
+    )

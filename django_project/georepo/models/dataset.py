@@ -33,10 +33,10 @@ class Dataset(models.Model):
         DONE = 'DO', _('Done')
         ERROR = 'ER', _('Error')
 
-    class DatasetSyncStatus(models.TextChoices):
+    class SyncStatus(models.TextChoices):
         OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
-        SYNCING = 'Syncing', _('Syncing')
-        SYNCED = 'Synced', _('Synced')
+        SYNCING = 'syncing', _('Syncing')
+        SYNCED = 'synced', _('Synced')
 
     label = models.CharField(
         max_length=255,
@@ -135,8 +135,8 @@ class Dataset(models.Model):
 
     sync_status = models.CharField(
         max_length=15,
-        choices=DatasetSyncStatus.choices,
-        default=DatasetSyncStatus.OUT_OF_SYNC
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
     )
 
     tiling_start_date = models.DateTimeField(
@@ -239,6 +239,22 @@ class Dataset(models.Model):
 
         return super(Dataset, self).save(*args, **kwargs)
 
+    def set_view_out_of_sync(self, tiling_config=False, vector_tile=False, product=False):
+        for view in self.dataset_view.all():
+            view.set_out_of_sync(
+                tiling_config=tiling_config,
+                vector_tile=vector_tile,
+                product=product
+            )
+
+    def set_view_synced(self, tiling_config=False, vector_tile=False, product=False):
+        for view in self.dataset_view.all():
+            view.set_sync(
+                tiling_config=tiling_config,
+                vector_tile=vector_tile,
+                product=product
+            )
+
     def __str__(self):
         return self.label
 
@@ -252,12 +268,16 @@ class DatasetGroupObjectPermission(GroupObjectPermissionBase):
 
 
 @receiver(post_save, sender=Dataset)
-def dataset_post_create(sender, instance: Dataset, created, *args, **kwargs):
+def dataset_post_save(sender, instance: Dataset, created, *args, **kwargs):
     from georepo.utils.permission import (
         grant_dataset_owner
     )
     if created:
         grant_dataset_owner(instance)
+    else:
+        if getattr(instance, 'trigger'):
+            for view in instance.datasetview_set.all():
+                view
 
 
 @receiver(post_delete, sender=Dataset)

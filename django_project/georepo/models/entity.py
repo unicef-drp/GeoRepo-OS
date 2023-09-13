@@ -3,6 +3,8 @@ from uuid import uuid4
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.db import IntegrityError, transaction
+from django.db.models.signals import pre_save, post_save, post_delete
+from django.dispatch import receiver
 
 # revision uuid
 UUID_ENTITY_ID = 'uuid'
@@ -414,3 +416,93 @@ class EntitySimplified(models.Model):
     simplified_geometry = models.GeometryField(
         null=True
     )
+
+
+@receiver(pre_save, sender=GeographicalEntity)
+def entity_name_edit(
+    sender, instance: GeographicalEntity, *args, **kwargs
+):
+    old_instance: GeographicalEntity = GeographicalEntity.objects.get(id=instance.id)
+    if (
+        old_instance.source != instance.source or
+        old_instance.privacy_level != instance.privacy_level or
+        old_instance.type != instance.type
+    ):
+        instance.dataset.set_view_out_of_sync(
+            vector_tile=True,
+            product=True
+        )
+
+
+@receiver(post_save, sender=EntityName)
+def entity_name_post_create(
+    sender, instance: EntityName, created, *args, **kwargs
+):
+    if created:
+        instance.geographical_entity.dataset.set_view_out_of_sync(
+            vector_tile=True,
+            product=True
+        )
+
+
+@receiver(post_delete, sender=EntityName)
+def entity_name_post_delete(
+    sender, instance: EntityName, *args, **kwargs
+):
+    instance.geographical_entity.dataset.set_view_out_of_sync(
+        vector_tile=True,
+        product=True
+    )
+
+
+@receiver(pre_save, sender=EntityName)
+def entity_name_edit(
+    sender, instance: EntityName, *args, **kwargs
+):
+    old_instance: EntityName = EntityName.objects.get(id=instance.id)
+    if (
+        old_instance.name != instance.name or
+        old_instance.language != instance.language or
+        old_instance.default != instance.default
+    ):
+        instance.geographical_entity.dataset.set_view_out_of_sync(
+            vector_tile=True,
+            product=True
+        )
+
+
+@receiver(post_save, sender=EntityId)
+def entity_name_post_create(
+    sender, instance: EntityId, created, *args, **kwargs
+):
+    if created:
+        instance.geographical_entity.dataset.set_view_out_of_sync(
+            vector_tile=True,
+            product=True
+        )
+
+
+@receiver(post_delete, sender=EntityId)
+def entity_name_post_delete(
+    sender, instance: EntityId, *args, **kwargs
+):
+    instance.geographical_entity.dataset.set_view_out_of_sync(
+        vector_tile=True,
+        product=True
+    )
+
+
+@receiver(pre_save, sender=EntityId)
+def entity_name_edit(
+    sender, instance: EntityId, *args, **kwargs
+):
+    old_instance: EntityId = EntityId.objects.get(id=instance.id)
+    if (
+        old_instance.value != instance.value or
+        old_instance.code != instance.code or
+        old_instance.default != instance.default
+    ):
+        instance.geographical_entity.dataset.set_view_out_of_sync(
+            vector_tile=True,
+            product=True
+        )

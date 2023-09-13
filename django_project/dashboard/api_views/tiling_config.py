@@ -458,7 +458,7 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         # reset dataset styles because zoom could be changed
         dataset.styles = None
         dataset.style_source_name = ''
-        dataset.sync_status = dataset.DatasetViewSyncStatus.OUT_OF_SYNC if \
+        dataset.sync_status = dataset.SyncStatus.OUT_OF_SYNC if \
             overwrite_view else dataset.sync_status
         dataset.save(update_fields=[
             'styles', 'style_source_name', 'sync_status'

@@ -29,16 +29,16 @@ class DatasetView(models.Model):
             ('ext_view_datasetview_level_4', 'Read View - Level 4'),
         ]
 
+    class SyncStatus(models.TextChoices):
+        OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
+        SYNCING = 'syncing', _('Syncing')
+        SYNCED = 'synced', _('Synced')
+
     class DatasetViewStatus(models.TextChoices):
         PENDING = 'PE', _('Pending')
         PROCESSING = 'PR', _('Processing')
         DONE = 'DO', _('Done')
         ERROR = 'ER', _('Error')
-
-    class DatasetViewSyncStatus(models.TextChoices):
-        OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
-        SYNCING = 'Syncing', _('Syncing')
-        SYNCED = 'Synced', _('Synced')
 
     class DefaultViewType(models.TextChoices):
         IS_LATEST = 'LATEST', _('Is Latest')
@@ -105,10 +105,20 @@ class DatasetView(models.Model):
         default=DatasetViewStatus.PENDING
     )
 
-    sync_status = models.CharField(
+    is_tiling_config_match = models.BooleanField(
+        default=True
+    )
+
+    vector_tile_sync_status = models.CharField(
         max_length=15,
-        choices=DatasetViewSyncStatus.choices,
-        default=DatasetViewSyncStatus.OUT_OF_SYNC
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    product_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
     )
 
     bbox = models.CharField(
@@ -180,6 +190,32 @@ class DatasetView(models.Model):
             user_privacy_level
         )
         return resource_level
+
+    def set_out_of_sync(self, tiling_config=False, vector_tile=False, product=False):
+        update_fields = []
+        if tiling_config:
+            self.is_tiling_config_match = False
+            update_fields.append('is_tiling_config_match')
+        if vector_tile:
+            self.vector_tile_sync_status = self.SyncStatus.OUT_OF_SYNC
+            update_fields.append('vector_tile_sync_status')
+        if product:
+            self.product_sync_status = self.SyncStatus.OUT_OF_SYNC
+            update_fields.append('product_sync_status')
+        self.save(update_fields=update_fields)
+
+    def set_synced(self, tiling_config=False, vector_tile=False, product=False):
+        update_fields = []
+        if tiling_config:
+            self.is_tiling_config_match = True
+            update_fields.append('is_tiling_config_match')
+        if vector_tile:
+            self.vector_tile_sync_status = self.SyncStatus.SYNCED
+            update_fields.append('vector_tile_sync_status')
+        if product:
+            self.product_sync_status = self.SyncStatus.SYNCED
+            update_fields.append('product_sync_status')
+        self.save(update_fields=update_fields)
 
     def save(self, *args, **kwargs):
         if not self.uuid:
@@ -337,6 +373,11 @@ class DatasetViewResource(models.Model):
     Resource of view for each privacy level
     """
 
+    class SyncStatus(models.TextChoices):
+        OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
+        SYNCING = 'syncing', _('Syncing')
+        SYNCED = 'synced', _('Synced')
+
     dataset_view = models.ForeignKey(
         'georepo.DatasetView',
         null=True,
@@ -354,14 +395,14 @@ class DatasetViewResource(models.Model):
 
     product_sync_status = models.CharField(
         max_length=15,
-        choices=DatasetView.DatasetViewSyncStatus.choices,
-        default=DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
     )
 
     vector_tile_sync_status = models.CharField(
         max_length=15,
-        choices=DatasetView.DatasetViewSyncStatus.choices,
-        default=DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
     )
 
     status = models.CharField(
@@ -489,16 +530,16 @@ def view_res_post_save(sender, instance: DatasetViewResource,
 
     if 'Pending' in all_status:
         view.status = DatasetView.DatasetViewStatus.PENDING
-        view.sync_status = DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+        view.sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
     elif 'Error' in all_status:
         view.status = DatasetView.DatasetViewStatus.ERROR
-        view.sync_status = DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+        view.sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
     elif 'Processing' in all_status:
         view.status = DatasetView.DatasetViewStatus.PROCESSING
-        view.sync_status = DatasetView.DatasetViewSyncStatus.SYNCING
+        view.sync_status = DatasetView.SyncStatus.SYNCING
     elif 'Done' in all_status:
         view.status = DatasetView.DatasetViewStatus.DONE
-        view.sync_status = DatasetView.DatasetViewSyncStatus.SYNCED
+        view.sync_status = SyncStatus.SYNCED
 
     view.save(update_fields=['status', 'sync_status'])
 
@@ -509,9 +550,11 @@ def dataset_view_pre_save(sender, instance: DatasetView, update_fields=None, **k
         old_instance = DatasetView.objects.get(id=instance.id)
         if (
             old_instance.query_string != instance.query_string and
-            old_instance.sync_status != DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+            old_instance.sync_status != DatasetView.SyncStatus.OUT_OF_SYNC
         ):
-            old_instance.sync_status = DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
-            old_instance.save(update_fields=['query_string'])
+            instance.set_out_of_sync(
+                tiling_config=False
+            )
     except DatasetView.DoesNotExist:
         return None
+
