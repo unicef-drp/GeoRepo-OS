@@ -1,4 +1,5 @@
 import re
+import time
 from math import isclose
 from typing import List
 from django.db import connection
@@ -328,12 +329,13 @@ def check_view_exists(view_uuid: str) -> bool:
     return total_count > 0
 
 
-def create_sql_view(view: DatasetView):
+def create_sql_view(view: DatasetView, **kwargs):
     """
     Create a sql view from dataset view
     :param view: dataset view object
     :return: sql view name
     """
+    start = time.time()
     for restricted_command in RESTRICTED_COMMANDS:
         # exclude dataset_id from restricted command
         if restricted_command == 'dataset_id':
@@ -404,6 +406,11 @@ def create_sql_view(view: DatasetView):
                 )
             )
         cursor.execute('''%s''' % sql)
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'create_sql_view',
+            end - start)
     return view_name
 
 
@@ -496,7 +503,11 @@ def get_view_tiling_status(view_resource_queryset):
     return tiling_status, tiling_progress
 
 
-def get_entities_count_in_view(view: DatasetView, privacy_level: int):
+def get_entities_count_in_view(
+    view: DatasetView,
+    privacy_level: int,
+    **kwargs):
+    start = time.time()
     entities = GeographicalEntity.objects.filter(
         dataset=view.dataset,
         is_approved=True
@@ -510,7 +521,13 @@ def get_entities_count_in_view(view: DatasetView, privacy_level: int):
         id__in=RawSQL(raw_sql, []),
         privacy_level=privacy_level
     )
-    return entities.count()
+    entity_count = entities.count()
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'get_entities_count_in_view',
+            end - start)
+    return entity_count
 
 
 def get_view_resource_from_view(

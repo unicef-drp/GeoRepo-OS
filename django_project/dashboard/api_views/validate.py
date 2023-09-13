@@ -70,7 +70,8 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
             id=upload_session
         )
         upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
-            layer_upload_session=upload_session
+            layer_upload_session=upload_session,
+            entity_upload_status__isnull=True
         )
         if upload_session.is_read_only():
             return Response(status=200)
@@ -211,7 +212,8 @@ class LayerUploadPreprocess(AzureAuthRequiredMixin, APIView):
             not upload_session.is_in_progress()
         ):
             upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
-                layer_upload_session=upload_session
+                layer_upload_session=upload_session,
+                entity_upload_status__isnull=True
             )
 
             pre_validation = module_function(
