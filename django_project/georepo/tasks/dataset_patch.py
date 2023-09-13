@@ -1,9 +1,18 @@
 from celery import shared_task
 import uuid
+import logging
 from django.db.models import Q
 from georepo.models.entity import GeographicalEntity
 from georepo.models.dataset import Dataset
+from georepo.models.dataset_view import DatasetView
 from georepo.utils.unique_code import generate_concept_ucode_base
+from georepo.utils.dataset_view import (
+    calculate_entity_count_in_view,
+    init_view_privacy_level,
+    generate_view_bbox
+)
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(name="dataset_patch")
@@ -182,3 +191,18 @@ def generate_concept_ucode(dataset_id):
                     is_approved=True,
                 ).update(concept_ucode=cucode)
                 sequence += 1
+
+
+@shared_task(name='dataset_patch_views')
+def dataset_patch_views(dataset_id):
+    dataset = Dataset.objects.get(id=dataset_id)
+    views = DatasetView.objects.filter(
+        dataset=dataset
+    )
+    for view in views:
+        logger.info(f'Patch view {view}')
+        init_view_privacy_level(view)
+        calculate_entity_count_in_view(view)
+        generate_view_bbox(view)
+        logger.info(f'Patch view {view} is finished')
+    logger.info(f'Patch views in dataset {dataset} is finished')

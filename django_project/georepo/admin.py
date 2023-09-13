@@ -247,6 +247,17 @@ def patch_entity_names(modeladmin, request, queryset):
         fix_entity_name_encoding.delay(dataset.id)
 
 
+def patch_views_in_dataset(modeladmin, request, queryset):
+    from georepo.tasks.dataset_patch import dataset_patch_views
+    for dataset in queryset:
+        dataset_patch_views.delay(dataset.id)
+    modeladmin.message_user(
+        request,
+        'Dataset patch views will be run in the background!',
+        messages.SUCCESS
+    )
+
+
 class DatasetAdmin(GuardedModelAdmin):
     add_form_template = None
     form = DatasetAdminChangeForm
@@ -269,7 +280,8 @@ class DatasetAdmin(GuardedModelAdmin):
         generate_arcgis_config_action,
         clear_cache, generate_jmeter_script,
         generate_default_views, add_to_public_groups,
-        generate_dataset_concept_ucode, patch_entity_names]
+        generate_dataset_concept_ucode, patch_entity_names,
+        patch_views_in_dataset]
 
     def get_form(self, request, obj=None, **kwargs):
         """
