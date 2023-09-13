@@ -30,10 +30,11 @@ def generate_view_vector_tiles_task(view_resource_id: str,
         start = time.time()
         view_resource = DatasetViewResource.objects.get(id=view_resource_id)
         try:
-            view_resource_log, _ = DatasetViewResourceLog.objects.get_or_create(
-                dataset_view_resource=view_resource,
-                task_id=view_resource.vector_tiles_task_id
-            )
+            view_resource_log, _ = \
+                DatasetViewResourceLog.objects.get_or_create(
+                    dataset_view_resource=view_resource,
+                    task_id=view_resource.vector_tiles_task_id
+                )
         except DatasetViewResourceLog.DoesNotExist:
             view_resource_log = DatasetViewResourceLog.objects.create(
                 dataset_view_resource=view_resource

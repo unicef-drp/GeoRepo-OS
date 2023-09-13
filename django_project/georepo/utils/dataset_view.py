@@ -450,10 +450,8 @@ def generate_view_bbox(view: DatasetView):
         generate_view_resource_bbox(resource)
 
 
-def generate_view_resource_bbox(
-        view_resource: DatasetViewResource,
-        **kwargs
-    ):
+def generate_view_resource_bbox(view_resource: DatasetViewResource,
+                                **kwargs):
     """
     Generate bbox from view based on privacy level
     """

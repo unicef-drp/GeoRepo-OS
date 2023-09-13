@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dashboard', '0064_layerfile_attributes'),
+        ('dashboard', '0065_tempusage'),
     ]
 
     operations = [
