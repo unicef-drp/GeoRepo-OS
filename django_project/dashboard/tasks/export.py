@@ -6,7 +6,8 @@ from django.conf import settings
 
 from georepo.utils import (
     generate_view_vector_tiles,
-    remove_vector_tiles_dir
+    remove_vector_tiles_dir,
+    generate_view_resource_bbox
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ def generate_view_vector_tiles_task(view_resource_id: str,
             f'- {view_resource.privacy_level} '
             f'- {view_resource.dataset_view.name}'
         )
+        generate_view_resource_bbox(view_resource)
         generate_view_vector_tiles(view_resource, overwrite=overwrite)
         if export_data:
             view = view_resource.dataset_view
