@@ -291,8 +291,3 @@ class EntityUploadStatusLog(models.Model):
                 'total_time': exec_time
             }
         self.save(update_fields=['logs'])
-
-    # def save(self, **kwargs):
-    #     if self.entity_upload_status and not self.layer_upload_session:
-    #         self.layer_upload_session = self.entity_upload_status.upload_session
-    #     super().save(**kwargs)

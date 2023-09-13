@@ -73,7 +73,9 @@ def run_comparison_boundary(entity_upload_id: int):
     )
     dataset = entity_upload.upload_session.dataset
 
-    upload_log = EntityUploadStatusLog.objects.get_or_create(entity_upload_status=entity_upload)
+    upload_log = EntityUploadStatusLog.objects.get_or_create(
+        entity_upload_status=entity_upload
+    )
     prepare_review = module_function(
         dataset.module.code_name,
         'prepare_review',

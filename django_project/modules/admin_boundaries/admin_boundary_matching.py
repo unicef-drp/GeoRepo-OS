@@ -186,7 +186,9 @@ class AdminBoundaryMatching(object):
 
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.get_allocated_comparison_entities', end - start)
+            self.log_object.add_log(
+                'AdminBoundaryMatching.get_allocated_comparison_entities',
+                end - start)
 
         return comparisons
 
@@ -207,7 +209,7 @@ class AdminBoundaryMatching(object):
         Return entity if both overlaps are greater than thresholds
         """
         start = time.time()
-        
+
         # get existing comparison entities
         comparisons = self.get_allocated_comparison_entities()
         # check in same admin level
@@ -262,11 +264,13 @@ class AdminBoundaryMatching(object):
         if entities.exists():
             entity = entities.first()
             return entity, entity.overlap_new, entity.overlap_old
-        
+
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.find_comparison_boundary', end - start)
-        
+            self.log_object.add_log(
+                'AdminBoundaryMatching.find_comparison_boundary',
+                end - start)
+
         return None, 0, 0
 
     def find_comparison_boundary_for_non_matching(
@@ -274,7 +278,7 @@ class AdminBoundaryMatching(object):
             entity_target: GeographicalEntity) -> Tuple[
                 GeographicalEntity | None, float, float]:
         start = time.time()
-        
+
         # get existing comparison entities
         comparisons = self.get_allocated_comparison_entities()
         # for entities without non-matching boundaries, then find
@@ -294,11 +298,16 @@ class AdminBoundaryMatching(object):
         if entities.exists():
             entity = entities.first()
             return entity, entity.overlap_new, entity.overlap_old
-        
+
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.find_comparison_boundary_for_non_matching', end - start)
-        
+            self.log_object.add_log(
+                (
+                    'AdminBoundaryMatching.'
+                    'find_comparison_boundary_for_non_matching'
+                ),
+                end - start)
+
         return None, 0, 0
 
     def process_comparison_boundary(self,
@@ -358,7 +367,9 @@ class AdminBoundaryMatching(object):
         boundary_comparison.save()
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.process_comparison_boundary', end - start)
+            self.log_object.add_log(
+                'AdminBoundaryMatching.process_comparison_boundary',
+                end - start)
 
     def check_entities(self):
         """
@@ -522,7 +533,9 @@ class AdminBoundaryMatching(object):
         self.generate_unique_code_for_new_entities()
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.check_entities', end - start)
+            self.log_object.add_log(
+                'AdminBoundaryMatching.check_entities',
+                end - start)
 
     def generate_unique_code_for_new_entities(self):
         start = time.time()
@@ -600,7 +613,9 @@ class AdminBoundaryMatching(object):
                                     f'{entity.level}')
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.generate_unique_code_for_new_entities', end - start)
+            self.log_object.add_log(
+                'AdminBoundaryMatching.generate_unique_code_for_new_entities',
+                end - start)
 
     def generate_summary_data(self):
         """
@@ -695,7 +710,9 @@ class AdminBoundaryMatching(object):
             )
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.generate_summary_data', end - start)
+            self.log_object.add_log(
+                'AdminBoundaryMatching.generate_summary_data',
+                end - start)
         return summary_data
 
     def run(self):

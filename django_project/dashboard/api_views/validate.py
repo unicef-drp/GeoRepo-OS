@@ -53,7 +53,9 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
                     return False, f'{country} has upload being reviewed'
         end = time.time()
         if kwargs.get('log_object'):
-            kwargs.get('log_object').add_log('ValidateUploadSession.validate_selected_country', end - start)
+            kwargs.get('log_object').add_log(
+                'ValidateUploadSession.validate_selected_country',
+                end - start)
         return True, ''
 
     def post(self, request, format=None):
@@ -67,7 +69,9 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
         upload_session = LayerUploadSession.objects.get(
             id=upload_session
         )
-        upload_log, _ = EntityUploadStatusLog.objects.get_or_create(layer_upload_session=upload_session)
+        upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+            layer_upload_session=upload_session
+        )
         if upload_session.is_read_only():
             return Response(status=200)
         existing_uploads = upload_session.entityuploadstatus_set.exclude(
@@ -206,7 +210,9 @@ class LayerUploadPreprocess(AzureAuthRequiredMixin, APIView):
             not upload_session.auto_matched_parent_ready and
             not upload_session.is_in_progress()
         ):
-            upload_log, _ = EntityUploadStatusLog.objects.get_or_create(layer_upload_session=upload_session)
+            upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+                layer_upload_session=upload_session
+            )
 
             pre_validation = module_function(
                 dataset.module.code_name,

@@ -43,7 +43,9 @@ def is_valid_upload_session(
             )
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.is_valid_upload_session', end - start)
+        kwargs.get('log_object').add_log(
+            'admin_boundaries.upload_preprocessing.is_valid_upload_session',
+            end - start)
     return True, None
 
 
@@ -108,10 +110,12 @@ def prepare_validation(
     upload_session.auto_matched_parent_ready = True
     upload_session.status = PENDING
     upload_session.save(update_fields=['auto_matched_parent_ready', 'status'])
-    
+
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.prepare_validation', end - start)
+        kwargs.get('log_object').add_log(
+            'admin_boundaries.upload_preprocessing.prepare_validation',
+            end - start)
 
 
 def reset_preprocessing(
@@ -141,7 +145,9 @@ def reset_preprocessing(
     upload_session.status = PENDING
     upload_session.task_id = ''
     upload_session.save(update_fields=['auto_matched_parent_ready', 'status'])
-    
+
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.reset_preprocessing', end - start)
+        kwargs.get('log_object').add_log(
+            'admin_boundaries.upload_preprocessing.reset_preprocessing',
+            end - start)

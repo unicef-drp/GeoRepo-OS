@@ -32,7 +32,6 @@ def find_entity_upload(upload_qs, status, update_status, task_id):
 def validate_ready_uploads(entity_upload_id, log_obj_id=None):
     from dashboard.models.entity_upload import (
         EntityUploadStatus,
-        EntityUploadStatusLog,
         STARTED,
         PROCESSING
     )
@@ -107,4 +106,6 @@ def validate_ready_uploads(entity_upload_id, log_obj_id=None):
 
     end = time.time()
     if upload_log:
-        upload_log.add_log('ValidateUploadSession.validate_selected_country', end - start)
+        upload_log.add_log(
+            'ValidateUploadSession.validate_selected_country',
+            end - start)
