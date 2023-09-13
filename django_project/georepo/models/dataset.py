@@ -136,7 +136,7 @@ class Dataset(models.Model):
     sync_status = models.CharField(
         max_length=15,
         choices=DatasetSyncStatus.choices,
-        default=DatasetSyncStatus.SYNCED
+        default=DatasetSyncStatus.OUT_OF_SYNC
     )
 
     tiling_start_date = models.DateTimeField(

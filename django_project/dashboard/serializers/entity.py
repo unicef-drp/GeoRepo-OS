@@ -457,7 +457,7 @@ class EntityEditSerializer(serializers.ModelSerializer):
         if 'names' in self.validated_data:
             self.validated_data['names'].save(entity)
         entity.dataset.sync_status = (
-            entity.dataset.DatasetSyncStatus.OUT_OF_SYNC
+            entity.dataset.DatasetViewSyncStatus.OUT_OF_SYNC
         )
         entity.dataset.save()
 

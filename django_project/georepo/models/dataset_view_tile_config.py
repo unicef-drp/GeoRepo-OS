@@ -1,4 +1,7 @@
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from georepo.models.dataset_view import DatasetView
 
 
 class DatasetViewTilingConfig(models.Model):
@@ -57,3 +60,10 @@ class ViewAdminLevelTilingConfig(models.Model):
                 self.view_tiling_config_id,
                 self.level
             )
+
+
+@receiver(post_save, sender=DatasetViewTilingConfig)
+def dataset_view_tiling_config_post_create(sender, instance: DatasetViewTilingConfig, created, *args, **kwargs):
+    dataset_view = DatasetView.objects.get(id=instance.dataset_view_id)
+    dataset_view.sync_status = dataset_view.DatasetViewSyncStatus.OUT_OF_SYNC
+    dataset_view.save(update_fields=['sync_status'])

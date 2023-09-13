@@ -1,5 +1,8 @@
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils import timezone
+from georepo.models.dataset import Dataset
 
 
 class DatasetTilingConfig(models.Model):
@@ -86,3 +89,16 @@ class TemporaryTilingConfig(models.Model):
         blank=True,
         default=timezone.now
     )
+
+
+@receiver(post_save, sender=DatasetTilingConfig)
+def dataset_tiling_config_post_create(
+    sender, instance: DatasetTilingConfig, created, *args, **kwargs
+):
+    dataset = Dataset.objects.get(id=instance.dataset)
+    dataset.sync_status = dataset.DatasetViewSyncStatus.OUT_OF_SYNC
+    dataset.save(update_fields=['sync_status'])
+
+    for view in dataset.datasetview_set.all():
+        view.sync_status = view.DatasetViewSyncStatus.OUT_OF_SYNC
+        view.save(update_fields=['sync_status'])

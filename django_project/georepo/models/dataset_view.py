@@ -3,7 +3,7 @@ from django.core.cache import cache
 
 from django.db import models
 from django.conf import settings
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 from django.db import connection
 from django.utils.translation import gettext_lazy as _
@@ -34,6 +34,11 @@ class DatasetView(models.Model):
         PROCESSING = 'PR', _('Processing')
         DONE = 'DO', _('Done')
         ERROR = 'ER', _('Error')
+
+    class DatasetViewSyncStatus(models.TextChoices):
+        OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
+        SYNCING = 'Syncing', _('Syncing')
+        SYNCED = 'Synced', _('Synced')
 
     class DefaultViewType(models.TextChoices):
         IS_LATEST = 'LATEST', _('Is Latest')
@@ -98,6 +103,12 @@ class DatasetView(models.Model):
         max_length=2,
         choices=DatasetViewStatus.choices,
         default=DatasetViewStatus.PENDING
+    )
+
+    sync_status = models.CharField(
+        max_length=15,
+        choices=DatasetViewSyncStatus.choices,
+        default=DatasetViewSyncStatus.OUT_OF_SYNC
     )
 
     bbox = models.CharField(
@@ -341,6 +352,18 @@ class DatasetViewResource(models.Model):
         help_text='UUID'
     )
 
+    product_sync_status = models.CharField(
+        max_length=15,
+        choices=DatasetView.DatasetViewSyncStatus.choices,
+        default=DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+    )
+
+    vector_tile_sync_status = models.CharField(
+        max_length=15,
+        choices=DatasetView.DatasetViewSyncStatus.choices,
+        default=DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+    )
+
     status = models.CharField(
         max_length=2,
         choices=DatasetView.DatasetViewStatus.choices,
@@ -353,12 +376,24 @@ class DatasetViewResource(models.Model):
         max_length=256
     )
 
+    data_product_task_id = models.CharField(
+        blank=True,
+        default='',
+        max_length=256
+    )
+
     vector_tiles_updated_at = models.DateTimeField(
         auto_now_add=True,
         editable=True
     )
 
     vector_tiles_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    data_product_progress = models.FloatField(
         null=True,
         blank=True,
         default=0
@@ -438,19 +473,45 @@ def view_res_post_delete(sender, instance: DatasetViewResource,
 @receiver(post_save, sender=DatasetViewResource)
 def view_res_post_save(sender, instance: DatasetViewResource,
                        *args, **kwargs):
-    from georepo.utils.dataset_view import get_view_tiling_status
+    from georepo.utils.dataset_view import (
+        get_view_tiling_status,
+        get_view_product_status
+    )
     # update dataset view status
-    view = instance.dataset_view
+    view: DatasetView = instance.dataset_view
     view_res_qs = DatasetViewResource.objects.filter(
-        dataset_view=view
+        dataset_view=view,
+        entity_count__gte=0
     )
     tiling_status, _ = get_view_tiling_status(view_res_qs)
-    if tiling_status == 'Pending':
+    product_status, _ = get_view_product_status(view_res_qs)
+    all_status = [tiling_status, product_status]
+
+    if 'Pending' in all_status:
         view.status = DatasetView.DatasetViewStatus.PENDING
-    elif tiling_status == 'Error':
+        view.sync_status = DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+    elif 'Error' in all_status:
         view.status = DatasetView.DatasetViewStatus.ERROR
-    elif tiling_status == 'Processing':
+        view.sync_status = DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+    elif 'Processing' in all_status:
         view.status = DatasetView.DatasetViewStatus.PROCESSING
-    elif tiling_status == 'Done':
+        view.sync_status = DatasetView.DatasetViewSyncStatus.SYNCING
+    elif 'Done' in all_status:
         view.status = DatasetView.DatasetViewStatus.DONE
-    view.save(update_fields=['status'])
+        view.sync_status = DatasetView.DatasetViewSyncStatus.SYNCED
+
+    view.save(update_fields=['status', 'sync_status'])
+
+
+@receiver(pre_save, sender=DatasetView)
+def dataset_view_pre_save(sender, instance: DatasetView, update_fields=None, **kwargs):
+    try:
+        old_instance = DatasetView.objects.get(id=instance.id)
+        if (
+            old_instance.query_string != instance.query_string and
+            old_instance.sync_status != DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+        ):
+            old_instance.sync_status = DatasetView.DatasetViewSyncStatus.OUT_OF_SYNC
+            old_instance.save(update_fields=['query_string'])
+    except DatasetView.DoesNotExist:
+        return None
