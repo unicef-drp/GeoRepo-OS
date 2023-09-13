@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 from django.http import Http404
 from rest_framework.response import Response
@@ -34,7 +35,8 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
     }
     """
 
-    def validate_selected_country(self, upload_session, entities):
+    def validate_selected_country(self, upload_session, entities, **kwargs):
+        start = time.time()
         for entity_upload in entities:
             country = entity_upload['country']
             if entity_upload['country_entity_id']:
@@ -49,9 +51,13 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
                 )
                 if other_uploads.exists():
                     return False, f'{country} has upload being reviewed'
+        end = time.time()
+        if kwargs.get('log_object'):
+            kwargs.get('log_object').add_log('ValidateUploadSession.validate_selected_country', end - start)
         return True, ''
 
     def post(self, request, format=None):
+        start = time.time()
         upload_session = request.data.get('upload_session', None)
         entities = request.data.get('entities', None)
 
@@ -61,6 +67,7 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
         upload_session = LayerUploadSession.objects.get(
             id=upload_session
         )
+        upload_log, _ = EntityUploadStatusLog.objects.get_or_create(layer_upload_session=upload_session)
         if upload_session.is_read_only():
             return Response(status=200)
         existing_uploads = upload_session.entityuploadstatus_set.exclude(
@@ -71,7 +78,8 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
             return Response(status=200)
         is_selected_valid, error = self.validate_selected_country(
             upload_session,
-            entities
+            entities,
+            **{'log_object': upload_log}
         )
         if not is_selected_valid:
             return Response(status=400, data={
@@ -79,10 +87,12 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
                     })
         entity_upload_ids = []
         for entity_upload in entities:
+            print(entity_upload)
             max_level = int(entity_upload['max_level'])
             layer0_id = entity_upload['layer0_id']
             country = entity_upload['country']
             if entity_upload['country_entity_id']:
+                print('if')
                 geographical_entity = GeographicalEntity.objects.get(
                     id=entity_upload['country_entity_id']
                 )
@@ -105,6 +115,7 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
                 )
                 entity_upload_ids.append(entity_upload_status.id)
             else:
+                print('else')
                 entity_upload_status, _ = (
                     EntityUploadStatus.objects.update_or_create(
                         revised_entity_id=layer0_id,
@@ -130,12 +141,21 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
                     terminate=True,
                     signal='SIGKILL'
                 )
-            # trigger validation task
-            task = validate_ready_uploads.apply_async(
-                (entity_upload_status.id,),
-                queue='validation'
+            upload_log_entity, _ = EntityUploadStatusLog.objects.get_or_create(
+                entity_upload_status=entity_upload_status,
+                parent_log=upload_log
             )
-            entity_upload_status.task_id = task.id
+            print(upload_log_entity)
+            # trigger validation task
+            # task = validate_ready_uploads.apply_async(
+            #     (
+            #         entity_upload_status.id,
+            #         upload_log_entity.id
+            #     ),
+            #     queue='validation'
+            # )
+            validate_ready_uploads(entity_upload_status.id, upload_log_entity.id)
+            entity_upload_status.task_id = 5
             entity_upload_status.save(update_fields=['task_id'])
         # delete/reset the other entity uploads
         other_uploads = EntityUploadStatus.objects.filter(
@@ -164,6 +184,9 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
             # this will removed entities from non-selected upload
             if revised:
                 revised.delete()
+
+        end = time.time()
+        upload_log.add_log('ValidateUploadSession.post', end - start)
         return Response(status=200)
 
 
@@ -188,13 +211,16 @@ class LayerUploadPreprocess(AzureAuthRequiredMixin, APIView):
             not upload_session.auto_matched_parent_ready and
             not upload_session.is_in_progress()
         ):
-            upload_log = EntityUploadStatusLog.objects.get_or_create(layer_upload_session=upload_session)
+            upload_log, _ = EntityUploadStatusLog.objects.get_or_create(layer_upload_session=upload_session)
 
             pre_validation = module_function(
                 dataset.module.code_name,
                 'upload_preprocessing',
                 'is_valid_upload_session')
-            is_valid, error_message = pre_validation(upload_session)
+            is_valid, error_message = pre_validation(
+                upload_session,
+                **{'log_object': upload_log}
+            )
             if not is_valid:
                 return Response(status=400, data={
                     'detail': error_message

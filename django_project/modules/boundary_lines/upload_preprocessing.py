@@ -53,7 +53,7 @@ def prepare_validation(
     upload_session.save(update_fields=['status', 'auto_matched_parent_ready'])
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.reset_preprocessing', start - end)
+        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.reset_preprocessing', end - start)
 
 
 def reset_preprocessing(
@@ -77,4 +77,4 @@ def reset_preprocessing(
     upload_session.save(update_fields=['auto_matched_parent_ready', 'status'])
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.reset_preprocessing', start - end)
+        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.reset_preprocessing', end - start)

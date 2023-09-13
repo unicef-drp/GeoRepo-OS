@@ -186,7 +186,7 @@ class AdminBoundaryMatching(object):
 
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.get_allocated_comparison_entities', start - end)
+            self.log_object.add_log('AdminBoundaryMatching.get_allocated_comparison_entities', end - start)
 
         return comparisons
 
@@ -265,7 +265,7 @@ class AdminBoundaryMatching(object):
         
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.find_comparison_boundary', start - end)
+            self.log_object.add_log('AdminBoundaryMatching.find_comparison_boundary', end - start)
         
         return None, 0, 0
 
@@ -297,7 +297,7 @@ class AdminBoundaryMatching(object):
         
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.find_comparison_boundary_for_non_matching', start - end)
+            self.log_object.add_log('AdminBoundaryMatching.find_comparison_boundary_for_non_matching', end - start)
         
         return None, 0, 0
 
@@ -358,7 +358,7 @@ class AdminBoundaryMatching(object):
         boundary_comparison.save()
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.process_comparison_boundary', start - end)
+            self.log_object.add_log('AdminBoundaryMatching.process_comparison_boundary', end - start)
 
     def check_entities(self):
         """
@@ -522,7 +522,7 @@ class AdminBoundaryMatching(object):
         self.generate_unique_code_for_new_entities()
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.check_entities', start - end)
+            self.log_object.add_log('AdminBoundaryMatching.check_entities', end - start)
 
     def generate_unique_code_for_new_entities(self):
         start = time.time()
@@ -600,7 +600,7 @@ class AdminBoundaryMatching(object):
                                     f'{entity.level}')
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.generate_unique_code_for_new_entities', start - end)
+            self.log_object.add_log('AdminBoundaryMatching.generate_unique_code_for_new_entities', end - start)
 
     def generate_summary_data(self):
         """
@@ -695,7 +695,7 @@ class AdminBoundaryMatching(object):
             )
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.generate_summary_data', start - end)
+            self.log_object.add_log('AdminBoundaryMatching.generate_summary_data', end - start)
         return summary_data
 
     def run(self):
@@ -728,7 +728,7 @@ class AdminBoundaryMatching(object):
         self.entity_upload.save()
         end = time.time()
         if self.log_object:
-            self.log_object.add_log('AdminBoundaryMatching.run', start - end)
+            self.log_object.add_log('AdminBoundaryMatching.run', end - start)
 
 
 def check_is_same_entity(
@@ -836,7 +836,7 @@ def get_closest_entities(
 
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('get_closest_entities', start - end)
+        kwargs.get('log_object').add_log('get_closest_entities', end - start)
 
     return old_entities.count(), old_entities.annotate(
         overlap_weight=Case(
@@ -913,7 +913,7 @@ def compare_entities(
 
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('compare_entities', start - end)
+        kwargs.get('log_object').add_log('compare_entities', end - start)
 
     return {
         'geometry_overlap_new': geometry_overlap_new,
@@ -959,4 +959,4 @@ def recalculate_summary(entity_upload: EntityUploadStatus, **kwargs):
 
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('recalculate_summary', start - end)
+        kwargs.get('log_object').add_log('recalculate_summary', end - start)

@@ -352,6 +352,8 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
     """
     logger.info(f'validate admin_boundaries {entity_upload.id}')
     start = time.time()
+    print('===============')
+    print(kwargs)
     layer_files = LayerFile.objects.annotate(
         level_int=Cast('level', IntegerField())
     ).filter(

@@ -140,9 +140,13 @@ class EntityUploadAdmin(admin.ModelAdmin):
 
 
 class EntityUploadStatusAdmin(admin.ModelAdmin):
-    list_display = ('entity_upload_status',)
+    list_display = (
+        'layer_upload_session',
+        'entity_upload_status'
+    )
     raw_id_fields = (
-        'entity_upload_status',
+        'layer_upload_session',
+        'entity_upload_status'
     )
 
 

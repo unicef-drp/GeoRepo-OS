@@ -43,7 +43,7 @@ def is_valid_upload_session(
             )
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.is_valid_upload_session', start - end)
+        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.is_valid_upload_session', end - start)
     return True, None
 
 
@@ -111,7 +111,7 @@ def prepare_validation(
     
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.prepare_validation', start - end)
+        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.prepare_validation', end - start)
 
 
 def reset_preprocessing(
@@ -144,4 +144,4 @@ def reset_preprocessing(
     
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.reset_preprocessing', start - end)
+        kwargs.get('log_object').add_log('admin_boundaries.upload_preprocessing.reset_preprocessing', end - start)

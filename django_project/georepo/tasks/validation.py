@@ -1,3 +1,4 @@
+import time
 from celery import shared_task
 import logging
 from django.db import transaction, OperationalError, DatabaseError
@@ -28,9 +29,10 @@ def find_entity_upload(upload_qs, status, update_status, task_id):
 
 
 @shared_task(name="validate_ready_uploads")
-def validate_ready_uploads(entity_upload_id):
+def validate_ready_uploads(entity_upload_id, log_obj_id=None):
     from dashboard.models.entity_upload import (
         EntityUploadStatus,
+        EntityUploadStatusLog,
         STARTED,
         PROCESSING
     )
@@ -41,6 +43,9 @@ def validate_ready_uploads(entity_upload_id):
         Notification,
         NOTIF_TYPE_LAYER_VALIDATION
     )
+    start = time.time()
+    if entity_upload_id:
+        upload_log = EntityUploadStatusLog.objects.get(id=log_obj_id)
     entity_upload = EntityUploadStatus.objects.get(
         id=entity_upload_id
     )
@@ -60,7 +65,6 @@ def validate_ready_uploads(entity_upload_id):
     entity_upload.started_at = timezone.now()
     entity_upload.save(update_fields=['status'])
 
-    upload_log = EntityUploadStatusLog.objects.get_or_create(entity_upload_status=entity_upload)
     validate_layer_file(
         entity_upload,
         **{'log_object': upload_log}
@@ -100,3 +104,7 @@ def validate_ready_uploads(entity_upload_id):
             recipient=entity_upload.upload_session.uploader,
             payload=payload
         )
+
+    end = time.time()
+    if upload_log:
+        upload_log.add_log('ValidateUploadSession.validate_selected_country', end - start)
