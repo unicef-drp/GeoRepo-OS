@@ -69,7 +69,6 @@ def generate_view_export_data(view_id: str):
     from georepo.utils.shapefile import generate_view_shapefile
     from georepo.utils.kml import generate_view_kml
     from georepo.utils.topojson import generate_view_topojson
-
     try:
         view = DatasetView.objects.get(id=view_id)
         logger.info(f'Extracting geojson from view {view.name}...')

@@ -10,6 +10,7 @@ class BackgroundTask(models.Model):
         STOPPED = 'Stopped', _('Stopped')
         COMPLETED = 'Completed', _('Completed')
         CANCELLED = 'Cancelled', _('Cancelled')
+        INVALIDATED = 'Invalidated', _('Invalidated')
     
     name = models.CharField(
         max_length=255,
@@ -21,11 +22,6 @@ class BackgroundTask(models.Model):
         max_length=255,
         null=True,
         blank=True
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        editable=True
     )
 
     last_update = models.DateTimeField(
@@ -41,18 +37,39 @@ class BackgroundTask(models.Model):
     )
 
     task_id = models.CharField(
-        blank=True,
-        default='',
-        max_length=256
+        max_length=256,
+        unique=True
     )
 
-    started_at = models.DateTimeField(default=timezone.now)
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
     finished_at = models.DateTimeField(
         null=True,
         blank=True
     )
 
     parameters = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    errors = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    celery_retry = models.IntegerField(
+        default=0
+    )
+
+    celery_last_retry_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    celery_retry_reason = models.TextField(
         null=True,
         blank=True
     )

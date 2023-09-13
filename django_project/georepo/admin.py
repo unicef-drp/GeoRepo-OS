@@ -47,7 +47,8 @@ from georepo.models import (
     ViewAdminLevelTilingConfig,
     DatasetViewResource,
     GeorepoRole,
-    UserAccessRequest
+    UserAccessRequest,
+    BackgroundTask
 )
 from georepo.utils.admin import (
     # get_deleted_objects,
@@ -685,6 +686,39 @@ class UserAccessRequestAdmin(admin.ModelAdmin):
                      'type', 'status']
 
 
+@admin.action(description='Cancel Task')
+def cancel_background_task(modeladmin, request, queryset):
+    from celery.result import AsyncResult
+    from core.celery import app
+    for background_task in queryset:
+        if background_task.task_id:
+            res = AsyncResult(background_task.task_id)
+            if not res.ready():
+                # find if there is running task and stop it
+                app.control.revoke(background_task.task_id,
+                                   terminate=True,
+                                   signal='SIGKILL')
+
+
+class BackgroundTaskAdmin(admin.ModelAdmin):
+    list_display = ('name', 'task_id', 'status', 'started_at', 'finished_at',
+                    'last_update', 'current_status')
+    search_fields = ['name', 'status', 'task_id']
+    actions = [cancel_background_task]
+
+    def current_status(self, obj: BackgroundTask):
+        from celery.result import AsyncResult
+        from core.celery import app
+        if (
+            obj.status == BackgroundTask.BackgroundTaskStatus.QUEUED or
+            obj.status == BackgroundTask.BackgroundTaskStatus.RUNNING
+        ):
+            if obj.task_id:
+                res = AsyncResult(obj.task_id)
+                return 'Done' if res.ready() else 'Pending/Running'
+        return '-'
+
+
 admin.site.register(GeographicalEntity, GeographicalEntityAdmin)
 admin.site.register(Language, LanguageAdmin)
 admin.site.register(EntityType)
@@ -703,6 +737,7 @@ admin.site.register(BoundaryType, BoundaryTypeAdmin)
 admin.site.register(TagWithDescription, TagAdmin)
 admin.site.register(DatasetViewResource, DatasetViewResourceAdmin)
 admin.site.register(UserAccessRequest, UserAccessRequestAdmin)
+admin.site.register(BackgroundTask, BackgroundTaskAdmin)
 
 
 # Define inline formset
