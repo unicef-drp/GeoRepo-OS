@@ -39,17 +39,10 @@ class CustomLoginView(LoginView):
         return context
 
 
-try:
-    description = SitePreferences.preferences().swagger_ui_info
-except ProgrammingError:
-    description = ''
-
-
 schema_view_v1 = get_schema_view(
     openapi.Info(
         title="GeoRepo API",
-        default_version='v1.0.0',
-        description=description,
+        default_version='v1.0.0'
     ),
     public=True,
     permission_classes=[permissions.AllowAny],

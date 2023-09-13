@@ -1,0 +1,19 @@
+from typing import Tuple
+from django.core.cache import cache
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from core.models.preferences import SitePreferences
+
+
+class SwaggerInfo(APIView, LimitOffsetPagination):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        return Response(
+            {
+                'info': SitePreferences.preferences().swagger_ui_info
+            },
+            200
+        )

@@ -4,6 +4,7 @@ from django.conf import settings
 from georepo.api_views.module import (
     ModuleList
 )
+from georepo.api_views.swagger import SwaggerInfo
 from georepo.api_views.dataset import (
     DatasetList,
     DatasetDetail,
@@ -309,6 +310,13 @@ if (
     'dev' in os.environ['DJANGO_SETTINGS_MODULE'] or
     'test' in os.environ['DJANGO_SETTINGS_MODULE']
 ):
+    urlpatterns += [
+        re_path(
+            r'swagger-info/?$',
+            SwaggerInfo.as_view(),
+            name='swagger-info'
+        )
+    ]
     urlpatterns += entity_urls
     urlpatterns += operation_entity_urls
     urlpatterns += download_dataset_urls
