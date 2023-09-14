@@ -215,6 +215,7 @@ def simplify_for_dataset(dataset: Dataset):
     dataset.simplification_progress = '0%'
     dataset.save(update_fields=['simplification_progress'])
     for level, values in tolerances.items():
+        input_file = None
         try:
             # clear all existing simplified entities
             existing_entities = EntitySimplified.objects.filter(
