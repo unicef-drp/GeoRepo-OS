@@ -110,14 +110,14 @@
                 const info = await response.json();
                 document.querySelector('hgroup.main a.link').remove()
 
-                let readDoc = document.createElement("p");
-                readDoc.innerText = "Read API Documentation";
-                document.querySelector('hgroup.main').appendChild(readDoc)
+                const br = document.createElement('br')
+                document.querySelector('hgroup.main').appendChild(br)
 
                 let link = document.createElement("a");
-                link.className = "link";
+                link.className = "api-doc";
                 link.href = info.info;
-                link.innerText = info.info;
+                link.innerText = "Read API Documentation";
+                link.style.cssText = 'font-size:medium;margin-top:20px;'
                 document.querySelector('hgroup.main').appendChild(link)
             }
             getSwaggerInfo()
