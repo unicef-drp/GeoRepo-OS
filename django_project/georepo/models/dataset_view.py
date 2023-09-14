@@ -612,8 +612,12 @@ def dataset_view_pre_save(
         old_instance = DatasetView.objects.get(id=instance.id)
         if (
             old_instance.query_string != instance.query_string and
-            old_instance.vector_tile_sync_status != DatasetView.SyncStatus.OUT_OF_SYNC,
-            old_instance.product_sync_status != DatasetView.SyncStatus.OUT_OF_SYNC
+            old_instance.vector_tile_sync_status != (
+                DatasetView.SyncStatus.OUT_OF_SYNC
+            ) and
+            old_instance.product_sync_status != (
+                DatasetView.SyncStatus.OUT_OF_SYNC
+            )
         ):
             instance.set_out_of_sync(
                 tiling_config=False
