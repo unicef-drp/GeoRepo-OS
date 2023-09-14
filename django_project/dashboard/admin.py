@@ -4,14 +4,16 @@ from django.contrib import admin, messages
 from django.contrib.admin.widgets import AdminFileWidget
 from django.db.models.fields.files import FileField
 from django import forms
-from django.urls import path
-from django.http import HttpResponseRedirect
+from django.urls import path, re_path, reverse
+from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 from tinymce.widgets import TinyMCE
 from dashboard.models import (
     LayerFile,
     LayerUploadSession,
     EntityUploadStatus,
+    EntityUploadStatusLog,
     LayerConfig,
     BoundaryComparison,
     Notification,
@@ -19,10 +21,12 @@ from dashboard.models import (
     BatchReview,
     STARTED,
     REVIEWING,
-    EntitiesUserConfig
+    EntitiesUserConfig,
+    TempUsage
 )
 from georepo.models import TemporaryTilingConfig
 from georepo.utils.layers import fetch_layer_file_metadata
+from georepo.utils.directory_helper import convert_size
 
 
 class OverrideURLFileWidget(AdminFileWidget):
@@ -139,6 +143,17 @@ class EntityUploadAdmin(admin.ModelAdmin):
     get_dataset.admin_order_field = 'revised_geographical_entity'
 
 
+class EntityUploadStatusAdmin(admin.ModelAdmin):
+    list_display = (
+        'layer_upload_session',
+        'entity_upload_status'
+    )
+    raw_id_fields = (
+        'layer_upload_session',
+        'entity_upload_status'
+    )
+
+
 class LayerConfigAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'level', 'created_by', 'created_at')
 
@@ -227,9 +242,73 @@ class TemporaryTilingConfigAdmin(admin.ModelAdmin):
                     'simplify_tolerance', 'created_at')
 
 
+@admin.action(description='Clear Temp Directory')
+def clear_temp_directory_action(modeladmin, request, queryset):
+    from dashboard.tasks import clear_temp_directory
+    clear_temp_directory.delay()
+    modeladmin.message_user(
+        request,
+        'Temporary directory will be cleared in background!',
+        messages.SUCCESS
+    )
+
+
+@admin.action(description='Calculate Size Temp Directory')
+def calculate_temp_directory_action(modeladmin, request, queryset):
+    from dashboard.tasks import calculate_temp_directory
+    calculate_temp_directory.delay()
+    modeladmin.message_user(
+        request,
+        'Temporary directory will be calculated in background!',
+        messages.SUCCESS
+    )
+
+
+class TempUsageAdmin(admin.ModelAdmin):
+    list_display = ('report_date', 'get_total_size', 'get_report')
+    readonly_fields = ['report_file']
+    actions = [clear_temp_directory_action, calculate_temp_directory_action]
+
+    def get_urls(self):
+        urls = super(TempUsageAdmin, self).get_urls()
+        urls += [
+            re_path(r'^download-file/(?P<pk>\d+)$', self.download_file,
+                    name='dashboard_tempusage_download-file'),
+        ]
+        return urls
+
+    def get_total_size(self, obj: TempUsage):
+        return convert_size(obj.total_size)
+
+    get_total_size.short_description = 'Directory Size'
+    get_total_size.admin_order_field = 'total_size'
+
+    def get_report(self, obj: TempUsage):
+        if obj.report_file:
+            return format_html(
+                '<a href="{}">Download file</a>',
+                reverse('admin:dashboard_tempusage_download-file',
+                        args=[obj.pk])
+            )
+        return '-'
+
+    get_report.short_description = 'Report'
+    get_report.admin_order_field = 'report_file'
+
+    # add custom view function that downloads the file
+    def download_file(self, request, pk):
+        # generate dynamic file content using object pk
+        temp_usage = TempUsage.objects.get(id=pk)
+        response = HttpResponse(temp_usage.report_file,
+                                content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="report.csv"'
+        return response
+
+
 admin.site.register(LayerFile, LayerFileAdmin)
 admin.site.register(LayerUploadSession, LayerUploadSessionAdmin)
 admin.site.register(EntityUploadStatus, EntityUploadAdmin)
+admin.site.register(EntityUploadStatusLog, EntityUploadStatusAdmin)
 admin.site.register(LayerConfig, LayerConfigAdmin)
 admin.site.register(BoundaryComparison, BoundaryComparisonAdmin)
 admin.site.register(Notification, NotificationAdmin)
@@ -237,3 +316,4 @@ admin.site.register(Maintenance, MaintenanceAdmin)
 admin.site.register(BatchReview, BatchReviewAdmin)
 admin.site.register(EntitiesUserConfig, EntitiesUserConfigAdmin)
 admin.site.register(TemporaryTilingConfig, TemporaryTilingConfigAdmin)
+admin.site.register(TempUsage, TempUsageAdmin)

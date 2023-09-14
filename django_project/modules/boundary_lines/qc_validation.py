@@ -1,3 +1,4 @@
+import time
 from typing import Tuple
 import csv
 import json
@@ -40,8 +41,11 @@ LEVEL = 'Level'
 ERROR_CHECK = '1'
 
 
-def run_validation(entity_upload: EntityUploadStatus):
+def run_validation(entity_upload: EntityUploadStatus, **kwargs):
     logger.info('validate boundary_lines')
+
+    start = time.time()
+
     layer_files = LayerFile.objects.annotate(
         level_int=Cast('level', IntegerField())
     ).filter(
@@ -280,14 +284,23 @@ def run_validation(entity_upload: EntityUploadStatus):
                 entity.unique_code_version = entity_upload.unique_code_version
                 entity.save()
 
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs['log_object'].add_log(
+            'boundary_lines.qc_validation.run_validation',
+            end - start)
+
     return entity_upload.status == VALID
 
 
 def is_validation_result_importable(
-        entity_upload: EntityUploadStatus, user) -> Tuple[bool, bool]:
+        entity_upload: EntityUploadStatus,
+        user, **kwargs) -> Tuple[bool, bool]:
     """
     Return whether the validation result can still be imported
     """
+    start = time.time()
+
     is_warning = False
     is_importable = entity_upload.status == VALID
     if not is_importable and entity_upload.summaries:
@@ -323,15 +336,24 @@ def is_validation_result_importable(
                 superadmin_blocking_errors == 0
             ):
                 is_importable = True
+
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs['log_object'].add_log(
+            'boundary_lines.qc_validation.is_validation_result_importable',
+            end - start)
     return is_importable, is_warning
 
 
-def reset_qc_validation(upload_session: LayerUploadSession):
+def reset_qc_validation(upload_session: LayerUploadSession, **kwargs):
     """
     Return:
      is_importable: whether the validation result can still be imported
      is_warning: whether the errors are considered as non-blocking error
     """
+
+    start = time.time()
+
     layer_files = LayerFile.objects.filter(
         layer_upload_session=upload_session
     )
@@ -355,9 +377,19 @@ def reset_qc_validation(upload_session: LayerUploadSession):
         upload.task_id = ''
         upload.save()
 
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs['log_object'].add_log(
+            'boundary_lines.qc_validation.reset_qc_validation',
+            end - start
+        )
+
 
 def boundary_lines_upload_unique_code_version(dataset: Dataset,
-                                              start_date) -> float:
+                                              start_date, **kwargs) -> float:
+
+    start = time.time()
+
     next_entity = GeographicalEntity.objects.filter(
         dataset=dataset,
         start_date__gt=start_date,
@@ -391,6 +423,16 @@ def boundary_lines_upload_unique_code_version(dataset: Dataset,
                   previous_entity.unique_code_version +
                   next_entity.unique_code_version
             ) / 2
+
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs['log_object'].add_log(
+            (
+                'boundary_lines.qc_validation.'
+                'boundary_lines_upload_unique_code_version'
+            ),
+            end - start
+        )
     return current_version
 
 

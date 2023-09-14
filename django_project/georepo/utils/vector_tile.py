@@ -1,4 +1,3 @@
-import re
 import shutil
 import subprocess
 import logging
@@ -9,7 +8,6 @@ from typing import List
 from datetime import datetime
 
 from django.conf import settings
-from django.db import connection
 from django.db.models import Max
 from django.db.models.expressions import RawSQL
 from celery.result import AsyncResult
@@ -19,7 +17,7 @@ from georepo.models import Dataset, DatasetView, \
     EntityId, EntityName, GeographicalEntity, \
     DatasetViewResource
 from georepo.utils.dataset_view import create_sql_view, \
-    check_view_exists, get_entities_count_in_view
+    check_view_exists, get_entities_count_in_view, generate_view_resource_bbox
 from georepo.utils.module_import import module_function
 from georepo.utils.azure_blob_storage import (
     DirectoryClient,
@@ -40,7 +38,9 @@ TEGOLA_AZURE_BASE_PATH = 'layer_tiles'
 
 def dataset_view_sql_query(dataset_view: DatasetView, level,
                            privacy_level, tolerance=None,
-                           using_view_tiling_config=False):
+                           using_view_tiling_config=False,
+                           **kwargs):
+    start = time.time()
     select_sql = (
         'SELECT ST_AsMVTGeom('
         'GeomTransformMercator(ges.simplified_geometry), '
@@ -168,6 +168,11 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
             privacy_level=privacy_level,
             raw_sql=raw_sql
         ))
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'dataset_view_sql_query',
+            end - start)
     return sql
 
 
@@ -186,7 +191,7 @@ class TilingConfigZoomLevels(object):
         self.items = items
 
 
-def get_view_tiling_configs(dataset_view: DatasetView
+def get_view_tiling_configs(dataset_view: DatasetView, **kwargs
                             ) -> List[TilingConfigZoomLevels]:
     # return list of tiling configs for dataset_view
     from georepo.models.dataset_tile_config import (
@@ -195,6 +200,7 @@ def get_view_tiling_configs(dataset_view: DatasetView
     from georepo.models.dataset_view_tile_config import (
         DatasetViewTilingConfig
     )
+    start = time.time()
     tiling_configs: List[TilingConfigZoomLevels] = []
     view_tiling_conf = DatasetViewTilingConfig.objects.filter(
         dataset_view=dataset_view
@@ -226,16 +232,27 @@ def get_view_tiling_configs(dataset_view: DatasetView
             tiling_configs.append(
                 TilingConfigZoomLevels(conf.zoom_level, items)
             )
+        end = time.time()
+        if kwargs.get('log_object'):
+            kwargs.get('log_object').add_log(
+                'get_view_tiling_configs',
+                end - start)
         return tiling_configs, False
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'get_view_tiling_configs',
+            end - start)
     return tiling_configs, False
 
 
 def create_view_configuration_files(
-        view_resource: DatasetViewResource) -> List[str]:
+        view_resource: DatasetViewResource, **kwargs) -> List[str]:
     """
     Create multiple toml configuration files based on dataset tiling config
     :return: array of output path
     """
+    start = time.time()
     template_config_file = absolute_path(
         'georepo', 'utils', 'config.toml'
     )
@@ -244,6 +261,11 @@ def create_view_configuration_files(
     tiling_configs, using_view_tiling_config = get_view_tiling_configs(
         view_resource.dataset_view)
     if len(tiling_configs) == 0:
+        end = time.time()
+        if kwargs.get('log_object'):
+            kwargs.get('log_object').add_log(
+                'create_view_configuration_files',
+                end - start)
         return []
     # count levels
     entities = GeographicalEntity.objects.filter(
@@ -264,6 +286,11 @@ def create_view_configuration_files(
     ).distinct()
     if len(entity_levels) == 0:
         # means no data for this privacy level
+        end = time.time()
+        if kwargs.get('log_object'):
+            kwargs.get('log_object').add_log(
+                'create_view_configuration_files',
+                end - start)
         return []
 
     # get geometry type from module config
@@ -343,11 +370,17 @@ def create_view_configuration_files(
             'config_file': toml_dataset_filepath
         })
 
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'create_view_configuration_files',
+            end - start)
     return toml_dataset_filepaths
 
 
 def generate_view_vector_tiles(view_resource: DatasetViewResource,
-                               overwrite: bool = False):
+                               overwrite: bool = False,
+                               **kwargs):
     """
     Generate vector tiles for view
     :param view_resource: DatasetViewResource object
@@ -355,17 +388,19 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
 
     :return boolean: True if vector tiles are generated
     """
+    start = time.time()
     view_resource.status = DatasetView.DatasetViewStatus.PROCESSING
     view_resource.vector_tiles_progress = 0
     view_resource.save()
     # Create a sql view
     sql_view = str(view_resource.dataset_view.uuid)
     if not check_view_exists(sql_view):
-        create_sql_view(view_resource.dataset_view)
+        create_sql_view(view_resource.dataset_view, **kwargs)
     # check the number of entity in view_resource
     entity_count = get_entities_count_in_view(
         view_resource.dataset_view,
-        view_resource.privacy_level
+        view_resource.privacy_level,
+        **kwargs
     )
     if entity_count == 0:
         logger.info(
@@ -373,10 +408,18 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
             f'{view_resource.id} - {view_resource.uuid} - '
             f'{view_resource.privacy_level} - Empty Entities'
         )
-        remove_vector_tiles_dir(view_resource.resource_id)
+        remove_vector_tiles_dir(view_resource.resource_id, **kwargs)
         save_view_resource_on_success(view_resource, entity_count)
-        calculate_vector_tiles_size(view_resource)
+        calculate_vector_tiles_size(view_resource, **kwargs)
+        end = time.time()
+        if kwargs.get('log_object'):
+            kwargs.get('log_object').add_log(
+                'generate_view_vector_tiles',
+                end - start)
         return False
+    else:
+        view_resource.entity_count = entity_count
+        view_resource.save(update_fields=['entity_count'])
 
     toml_config_files = create_view_configuration_files(view_resource)
     logger.info(
@@ -385,26 +428,16 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
     )
     if len(toml_config_files) == 0:
         # no need to generate the view tiles
-        remove_vector_tiles_dir(view_resource.resource_id)
+        remove_vector_tiles_dir(view_resource.resource_id, **kwargs)
         save_view_resource_on_success(view_resource, entity_count)
-        calculate_vector_tiles_size(view_resource)
+        calculate_vector_tiles_size(view_resource, **kwargs)
+        end = time.time()
+        if kwargs.get('log_object'):
+            kwargs.get('log_object').add_log(
+                'generate_view_vector_tiles',
+                end - start)
         return False
-    geom_col = 'geometry'
-
-    # Get bbox from sql view
-    bbox = []
-    with connection.cursor() as cursor:
-        cursor.execute(
-            f'SELECT ST_Extent({geom_col}) as bextent FROM "{sql_view}" '
-            f'WHERE privacy_level <= {view_resource.privacy_level} AND '
-            'is_approved=True'
-        )
-        extent = cursor.fetchone()
-        if extent:
-            try:
-                bbox = re.findall(r'[-+]?(?:\d*\.\d+|\d+)', extent[0])
-            except TypeError:
-                pass
+    bbox_str = generate_view_resource_bbox(view_resource)
 
     processed_count = 0
     tegola_concurrency = int(os.getenv('TEGOLA_CONCURRENCY', '2'))
@@ -430,14 +463,10 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 '--concurrency',
                 f'{tegola_concurrency}',
             ])
-        if bbox:
-            _bbox = []
-            for coord in bbox:
-                _bbox.append(str(round(float(coord), 3)))
-            view_resource.bbox = ','.join(_bbox)
+        if bbox_str:
             command_list.extend([
                 '--bounds',
-                ','.join(_bbox)
+                bbox_str
             ])
 
         if 'zoom' in toml_config_file:
@@ -485,13 +514,18 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         f'- {view_resource.vector_tiles_progress}'
     )
 
-    post_process_vector_tiles(view_resource, toml_config_files)
+    post_process_vector_tiles(view_resource, toml_config_files, **kwargs)
 
     logger.info(
         'Finished moving temp vector tiles for '
         f'view_resource {view_resource.id} - {view_resource.uuid}'
     )
     save_view_resource_on_success(view_resource, entity_count)
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'generate_view_vector_tiles',
+            end - start)
     return True
 
 
@@ -578,7 +612,11 @@ def patch_vector_tile_path():
                 logger.error('Error renaming geojson file ', ex)
 
 
-def remove_vector_tiles_dir(resource_id: str, is_temp = False):
+def remove_vector_tiles_dir(
+    resource_id: str,
+    is_temp=False,
+    **kwargs):
+    start = time.time()
     if settings.USE_AZURE:
         client = DirectoryClient(settings.AZURE_STORAGE,
                                  settings.AZURE_STORAGE_CONTAINER)
@@ -599,11 +637,18 @@ def remove_vector_tiles_dir(resource_id: str, is_temp = False):
             )
         if os.path.exists(original_vector_tile_path):
             shutil.rmtree(original_vector_tile_path)
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'remove_vector_tiles_dir',
+            end - start)
 
 
 def post_process_vector_tiles(view_resource: DatasetViewResource,
-                              toml_config_files):
+                              toml_config_files,
+                              **kwargs):
     # remove tegola config files
+    start = time.time()
     if not settings.DEBUG:
         for toml_config_file in toml_config_files:
             if not os.path.exists(toml_config_file['config_file']):
@@ -647,10 +692,18 @@ def post_process_vector_tiles(view_resource: DatasetViewResource,
             view_resource.status = DatasetView.DatasetViewStatus.ERROR
             view_resource.save(update_fields=['status'])
             raise ex
-    calculate_vector_tiles_size(view_resource)
+    calculate_vector_tiles_size(view_resource, **kwargs)
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'post_process_vector_tiles',
+            end - start)
 
 
-def calculate_vector_tiles_size(view_resource: DatasetViewResource):
+def calculate_vector_tiles_size(
+    view_resource: DatasetViewResource,
+    **kwargs):
+    start = time.time()
     total_size = 0
     if settings.USE_AZURE:
         client = DirectoryClient(settings.AZURE_STORAGE,
@@ -669,6 +722,11 @@ def calculate_vector_tiles_size(view_resource: DatasetViewResource):
                     total_size += os.stat(fp).st_size
     view_resource.vector_tiles_size = total_size
     view_resource.save(update_fields=['vector_tiles_size'])
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'calculate_vector_tiles_size',
+            end - start)
 
 
 def clean_tegola_config_files(view_resource: DatasetViewResource):

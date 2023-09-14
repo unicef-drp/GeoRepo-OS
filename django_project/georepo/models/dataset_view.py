@@ -420,6 +420,41 @@ class DatasetViewResource(models.Model):
             pass
 
 
+class DatasetViewResourceLog(models.Model):
+    dataset_view_resource = models.ForeignKey(
+        DatasetViewResource,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
+    task_id = models.CharField(
+        blank=True,
+        default='',
+        max_length=256
+    )
+    logs = models.JSONField(
+        help_text='Logs of upload',
+        default=dict,
+        null=True,
+        blank=True
+    )
+
+    def add_log(self, log_text, exec_time):
+        if log_text in self.logs:
+            self.logs[log_text] = {
+                'count': self.logs[log_text]['count'] + 1,
+                'avg_time': (self.logs[log_text]['avg_time'] + exec_time) / 2,
+                'total_time': self.logs[log_text]['avg_time'] + exec_time
+            }
+        else:
+            self.logs[log_text] = {
+                'count': 1,
+                'avg_time': exec_time,
+                'total_time': exec_time
+            }
+        self.save(update_fields=['logs'])
+
+
 @receiver(post_delete, sender=DatasetViewResource)
 def view_res_post_delete(sender, instance: DatasetViewResource,
                          *args, **kwargs):

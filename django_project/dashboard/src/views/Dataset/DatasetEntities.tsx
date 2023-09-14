@@ -45,6 +45,7 @@ export default function DatasetEntities(props: DatasetEntitiesInterface) {
     const [selectedBbox, setSelectedBbox] = useState<any>(null)
     const [selectedEntityIdOnHover, setSelectedEntityIdOnHover] = useState<EntityItemInterface>({id:0, level:0})
     const [filterLoading, setFilterLoading] = useState<boolean>(true)
+    const [editable, setEditable] = useState<boolean>(false)
 
     const fetchDatasetDetail = (dataset_id:any) => {
         axios.get(`/api/dataset-detail/${dataset_id}`).then(
@@ -80,6 +81,7 @@ export default function DatasetEntities(props: DatasetEntitiesInterface) {
             _dataset_id = props.dataset.id
             setDatasetUuid(props.dataset.uuid)
             setDatasetStyleSourceName(props.dataset.source_name)
+            setEditable(props.dataset.permissions.includes('Manage'))
         } else {
             _dataset_id = searchParams.get('id')
             fetchDatasetDetail(_dataset_id)
@@ -223,7 +225,7 @@ export default function DatasetEntities(props: DatasetEntitiesInterface) {
                       dataset_id={datasetId}
                       filter={filter}
                       session={session}
-                      editable={props.dataset.permissions.includes('Manage')}
+                      editable={editable}
                         onEntitySelected={fetchGeomDetail}
                         onLoadCompleted={onTableLoadCompleted}
                         onFilterUpdated={onFiltersChanged}

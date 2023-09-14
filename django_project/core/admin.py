@@ -90,7 +90,7 @@ class SitePreferencesAdmin(admin.ModelAdmin):
         }),
         ('Swagger UI', {
             'fields': (
-                'swagger_ui_info',
+                'swagger_api_documentation_link',
             )
         })
     )

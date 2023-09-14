@@ -7,6 +7,7 @@ from dashboard.models import (
 from georepo.models import EntityType
 from georepo.utils import load_layer_file
 from georepo.utils.module_import import module_function
+from dashboard.models.entity_upload import EntityUploadStatusLog
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +72,19 @@ def run_comparison_boundary(entity_upload_id: int):
         id=entity_upload_id
     )
     dataset = entity_upload.upload_session.dataset
+
+    upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+        entity_upload_status=entity_upload,
+        layer_upload_session=entity_upload.upload_session
+    )
     prepare_review = module_function(
         dataset.module.code_name,
         'prepare_review',
         'prepare_review')
-    prepare_review(entity_upload)
+    prepare_review(
+        entity_upload,
+        **{'log_object': upload_log}
+    )
     # send notifications only when all upload has been prepared
     has_pending_upload = EntityUploadStatus.objects.filter(
             upload_session=entity_upload.upload_session,
