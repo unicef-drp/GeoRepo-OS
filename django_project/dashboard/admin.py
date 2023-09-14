@@ -120,6 +120,7 @@ class EntityUploadAdmin(admin.ModelAdmin):
     formfield_overrides = {
         FileField: {'widget': OverrideURLFileWidget},
     }
+    list_filter = ["status", "comparison_data_ready", "upload_session__dataset"]
 
     def get_dataset(self, obj):
         return obj.upload_session.dataset

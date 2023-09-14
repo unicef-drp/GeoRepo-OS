@@ -503,6 +503,7 @@ class DatasetViewAdmin(GuardedModelAdmin):
         'name', 'dataset', 'is_static', 'min_privacy_level',
         'max_privacy_level', 'tiling_status', 'uuid')
     search_fields = ['name', 'dataset__label', 'uuid']
+    list_filter = ["dataset"]
     actions = [generate_view_vector_tiles, create_sql_view_action,
                generate_view_exported_data,
                fix_view_privacy_level,
@@ -705,6 +706,7 @@ class BackgroundTaskAdmin(admin.ModelAdmin):
                     'last_update', 'current_status')
     search_fields = ['name', 'status', 'task_id']
     actions = [cancel_background_task]
+    list_filter = ["status", "name"]
 
     def current_status(self, obj: BackgroundTask):
         from celery.result import AsyncResult
