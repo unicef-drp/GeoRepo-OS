@@ -325,7 +325,7 @@ def generate_unique_code_from_comparison(entity: GeographicalEntity,
     else:
         # comparison is in different level, we generate new unique code
         entity.unique_code = ''
-    entity.save()
+    entity.save(update_fields=['unique_code'])
 
 
 def count_max_unique_code(dataset: Dataset, level: int,

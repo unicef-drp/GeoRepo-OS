@@ -429,14 +429,14 @@ class AdminBoundaryMatching(object):
                 entity.unique_code_version = (
                     self.entity_upload.unique_code_version
                 )
-                entity.save()
+                entity.save(update_fields=['unique_code_version'])
 
             if entity.level == 0:
                 # generate ucode for level 0
                 entity.unique_code = generate_unique_code_base(
                     entity, None, None
                 )
-                entity.save()
+                entity.save(update_fields=['unique_code'])
 
             boundary_comparison, _ = BoundaryComparison.objects.get_or_create(
                 main_boundary=entity,
@@ -478,57 +478,62 @@ class AdminBoundaryMatching(object):
         # last iteration to find comparison boundary for
         # entities without matching boundaries above thresholds
         # should use the same order as prev iteration
-        comparisons = BoundaryComparison.objects.filter(
-            main_boundary__in=self.new_entities,
-            comparison_boundary__isnull=True
-        ).order_by(
-            'main_boundary__level',
-            'main_boundary__internal_code'
-        )
-        entity_count = 0
-        total_comparisons = comparisons.count()
-        self.save_progress(
-            'Processing non-matching boundaries '
-            f'{entity_count}/{total_comparisons}'
-        )
-        logger.info(self.entity_upload.progress)
-        for comparison in comparisons.iterator(chunk_size=1):
-            # Update Improvement: only starts searching for revision > 1
-            highest_overlap = None
-            overlap_new = 0
-            overlap_old = 0
-            if (
-                self.entity_upload.revision_number and
-                self.entity_upload.revision_number > 1
-            ):
-                # Find entities comparison for non-matching boundaries:
-                # - Within same level
-                # - across revisions
-                # - regardless above or below thresholds
-                highest_overlap, overlap_new, overlap_old = (
-                    self.find_comparison_boundary_for_non_matching(
-                        comparison.main_boundary
-                    )
-                )
-            self.process_comparison_boundary(
-                dataset, comparison.main_boundary, comparison,
-                highest_overlap, overlap_new, overlap_old
+        # this should be done for revision > 1
+        if (
+            self.entity_upload.revision_number and
+            self.entity_upload.revision_number > 1
+        ):
+            comparisons = BoundaryComparison.objects.filter(
+                main_boundary__in=self.new_entities,
+                comparison_boundary__isnull=True
+            ).select_related('main_boundary').order_by(
+                'main_boundary__level',
+                'main_boundary__internal_code'
             )
-            entity_count += 1
-            if entity_count % 100 == 0:
-                self.save_progress(
-                    'Processing non-matching boundaries '
-                    f'{entity_count}/{total_comparisons}'
-                )
-            if entity_count % 200 == 0:
-                logger.info('Processing non-matching boundaries '
-                            f'{entity_count}/{total_comparisons}')
-        self.save_progress(
-            'Processing non-matching boundaries '
-            f'{entity_count}/{total_comparisons}'
-        )
-        if entity_count % 200 != 0:
+            entity_count = 0
+            total_comparisons = comparisons.count()
+            self.save_progress(
+                'Processing non-matching boundaries '
+                f'{entity_count}/{total_comparisons}'
+            )
             logger.info(self.entity_upload.progress)
+            for comparison in comparisons.iterator(chunk_size=1):
+                # Update Improvement: only starts searching for revision > 1
+                highest_overlap = None
+                overlap_new = 0
+                overlap_old = 0
+                if (
+                    self.entity_upload.revision_number and
+                    self.entity_upload.revision_number > 1
+                ):
+                    # Find entities comparison for non-matching boundaries:
+                    # - Within same level
+                    # - across revisions
+                    # - regardless above or below thresholds
+                    highest_overlap, overlap_new, overlap_old = (
+                        self.find_comparison_boundary_for_non_matching(
+                            comparison.main_boundary
+                        )
+                    )
+                self.process_comparison_boundary(
+                    dataset, comparison.main_boundary, comparison,
+                    highest_overlap, overlap_new, overlap_old
+                )
+                entity_count += 1
+                if entity_count % 100 == 0:
+                    self.save_progress(
+                        'Processing non-matching boundaries '
+                        f'{entity_count}/{total_comparisons}'
+                    )
+                if entity_count % 200 == 0:
+                    logger.info('Processing non-matching boundaries '
+                                f'{entity_count}/{total_comparisons}')
+            self.save_progress(
+                'Processing non-matching boundaries '
+                f'{entity_count}/{total_comparisons}'
+            )
+            if entity_count % 200 != 0:
+                logger.info(self.entity_upload.progress)
         # generate unique code for non-matching boundaries
         self.generate_unique_code_for_new_entities()
         end = time.time()
@@ -544,6 +549,10 @@ class AdminBoundaryMatching(object):
         total_new_entities_unique_code = self.new_entities.filter(
             unique_code=''
         ).count()
+        is_first_revision = (
+            self.entity_upload.revision_number and
+            self.entity_upload.revision_number == 1
+        )
         self.save_progress(
             'Generating new unique code '
             f'for {total_new_entities_unique_code} entities'
@@ -592,20 +601,27 @@ class AdminBoundaryMatching(object):
                         sequence += 1
                         sequence_number = str(sequence).zfill(4)
                         parent_unique_code = (
-                            entity.parent.unique_code if entity.parent else
+                            parent.unique_code if parent else
                             None
                         )
                         unique_code = generate_unique_code_base(
                             entity, parent_unique_code, sequence_number
                         )
-                        unique_code_available = not self.new_entities.filter(
-                            level=level,
-                            unique_code=unique_code
-                        ).exists()
+                        if is_first_revision:
+                            # if first revision,
+                            # then unique code is always available
+                            unique_code_available = True
+                        else:
+                            unique_code_available = (
+                                not self.new_entities.filter(
+                                    level=level,
+                                    unique_code=unique_code
+                                ).exists()
+                            )
                     if unique_code_available:
                         # success finding vacant unique_code
                         entity.unique_code = unique_code
-                        entity.save()
+                        entity.save(update_fields=['unique_code'])
                     else:
                         # failed
                         logger.info('Failed to generate unique code for id '
@@ -669,7 +685,7 @@ class AdminBoundaryMatching(object):
                             prev_entity.geometry.geojson
                         ) / 1e+6 if prev_entity.geometry else 0
                         prev_entity.area = old_area
-                        prev_entity.save()
+                        prev_entity.save(update_fields=['area'])
                         old_total_area += old_area
 
             new_total_area = 0
@@ -683,7 +699,7 @@ class AdminBoundaryMatching(object):
                             new_entity.geometry.geojson
                         ) / 1e+6 if new_entity.geometry else 0
                         new_entity.area = new_area
-                        new_entity.save()
+                        new_entity.save(update_fields=['area'])
                         new_total_area += new_area
 
             summary_data.append(

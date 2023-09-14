@@ -1054,8 +1054,12 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
         entity_upload.status = VALID
 
     entity_upload.save()
-    # do simplification for dataset
-    simplify_for_dataset(dataset)
+    # do simplification for dataset if only 1 upload in session
+    upload_count = EntityUploadStatus.objects.filter(
+        upload_session=entity_upload.upload_session
+    ).count()
+    if upload_count == 1:
+        simplify_for_dataset(dataset)
     # note: error/invalid geometries will be removed
     # if it's not selected to be imported
     logger.info(f'finished validation admin_boundaries {entity_upload.id}')

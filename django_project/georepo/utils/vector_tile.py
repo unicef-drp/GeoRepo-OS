@@ -1,4 +1,3 @@
-import re
 import shutil
 import subprocess
 import logging
@@ -9,7 +8,6 @@ from typing import List
 from datetime import datetime
 
 from django.conf import settings
-from django.db import connection
 from django.db.models import Max
 from django.db.models.expressions import RawSQL
 from celery.result import AsyncResult
@@ -19,7 +17,7 @@ from georepo.models import Dataset, DatasetView, \
     EntityId, EntityName, GeographicalEntity, \
     DatasetViewResource
 from georepo.utils.dataset_view import create_sql_view, \
-    check_view_exists, get_entities_count_in_view
+    check_view_exists, get_entities_count_in_view, generate_view_resource_bbox
 from georepo.utils.module_import import module_function
 from georepo.utils.azure_blob_storage import (
     DirectoryClient,
@@ -419,6 +417,9 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 'generate_view_vector_tiles',
                 end - start)
         return False
+    else:
+        view_resource.entity_count = entity_count
+        view_resource.save(update_fields=['entity_count'])
 
     toml_config_files = create_view_configuration_files(view_resource)
     logger.info(
@@ -436,22 +437,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 'generate_view_vector_tiles',
                 end - start)
         return False
-    geom_col = 'geometry'
-
-    # Get bbox from sql view
-    bbox = []
-    with connection.cursor() as cursor:
-        cursor.execute(
-            f'SELECT ST_Extent({geom_col}) as bextent FROM "{sql_view}" '
-            f'WHERE privacy_level <= {view_resource.privacy_level} AND '
-            'is_approved=True'
-        )
-        extent = cursor.fetchone()
-        if extent:
-            try:
-                bbox = re.findall(r'[-+]?(?:\d*\.\d+|\d+)', extent[0])
-            except TypeError:
-                pass
+    bbox_str = generate_view_resource_bbox(view_resource)
 
     processed_count = 0
     tegola_concurrency = int(os.getenv('TEGOLA_CONCURRENCY', '2'))
@@ -477,14 +463,10 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 '--concurrency',
                 f'{tegola_concurrency}',
             ])
-        if bbox:
-            _bbox = []
-            for coord in bbox:
-                _bbox.append(str(round(float(coord), 3)))
-            view_resource.bbox = ','.join(_bbox)
+        if bbox_str:
             command_list.extend([
                 '--bounds',
-                ','.join(_bbox)
+                bbox_str
             ])
 
         if 'zoom' in toml_config_file:
