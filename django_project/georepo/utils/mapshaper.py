@@ -304,5 +304,5 @@ def simplify_for_dataset(dataset: Dataset):
                          f'level {level}!')
             logger.error(ex)
         finally:
-            if os.path.exists(input_file.name):
+            if input_file and os.path.exists(input_file.name):
                 os.remove(input_file.name)
