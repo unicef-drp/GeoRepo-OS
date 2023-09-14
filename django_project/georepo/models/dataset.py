@@ -245,7 +245,7 @@ class Dataset(models.Model):
         vector_tile=False,
         product=False
     ):
-        for view in self.dataset_view.all():
+        for view in self.datasetview_set.all():
             view.set_out_of_sync(
                 tiling_config=tiling_config,
                 vector_tile=vector_tile,
@@ -258,7 +258,7 @@ class Dataset(models.Model):
         vector_tile=False,
         product=False
     ):
-        for view in self.dataset_view.all():
+        for view in self.datasetview_set.all():
             view.set_sync(
                 tiling_config=tiling_config,
                 vector_tile=vector_tile,
@@ -284,10 +284,6 @@ def dataset_post_save(sender, instance: Dataset, created, *args, **kwargs):
     )
     if created:
         grant_dataset_owner(instance)
-    else:
-        if getattr(instance, 'trigger'):
-            for view in instance.datasetview_set.all():
-                view
 
 
 @receiver(post_delete, sender=Dataset)

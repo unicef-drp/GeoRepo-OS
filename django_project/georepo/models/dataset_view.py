@@ -571,22 +571,34 @@ def view_res_post_save(sender, instance: DatasetViewResource,
     )
     tiling_status, _ = get_view_tiling_status(view_res_qs)
     product_status, _ = get_view_product_status(view_res_qs)
-    all_status = [tiling_status, product_status]
 
-    if 'Pending' in all_status:
-        view.status = DatasetView.DatasetViewStatus.PENDING
-        view.sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
-    elif 'Error' in all_status:
-        view.status = DatasetView.DatasetViewStatus.ERROR
-        view.sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
-    elif 'Processing' in all_status:
-        view.status = DatasetView.DatasetViewStatus.PROCESSING
-        view.sync_status = DatasetView.SyncStatus.SYNCING
-    elif 'Done' in all_status:
-        view.status = DatasetView.DatasetViewStatus.DONE
-        view.sync_status = DatasetView.SyncStatus.SYNCED
+    tiling_status_mapping = {
+        'Pending': DatasetView.DatasetViewStatus.PENDING,
+        'Error': DatasetView.DatasetViewStatus.PENDING,
+        'Processing': DatasetView.DatasetViewStatus.PENDING,
+        'Done': DatasetView.DatasetViewStatus.PENDING,
+    }
 
-    view.save(update_fields=['status', 'sync_status'])
+    sync_status_mapping = {
+        'Pending': DatasetView.SyncStatus.OUT_OF_SYNC,
+        'Error': DatasetView.SyncStatus.OUT_OF_SYNC,
+        'Processing': DatasetView.SyncStatus.SYNCING,
+        'Done': DatasetView.SyncStatus.SYNCED,
+    }
+
+    if tiling_status != 'Ready':
+        view.status = tiling_status_mapping[tiling_status]
+        view.vector_tile_sync_status = sync_status_mapping[tiling_status]
+    if product_status != 'Ready':
+        view.product_sync_status = sync_status_mapping[product_status]
+
+    view.save(
+        update_fields=[
+            'status',
+            'vector_tile_sync_status',
+            'product_sync_status'
+        ]
+    )
 
 
 @receiver(pre_save, sender=DatasetView)
@@ -600,7 +612,8 @@ def dataset_view_pre_save(
         old_instance = DatasetView.objects.get(id=instance.id)
         if (
             old_instance.query_string != instance.query_string and
-            old_instance.sync_status != DatasetView.SyncStatus.OUT_OF_SYNC
+            old_instance.vector_tile_sync_status != DatasetView.SyncStatus.OUT_OF_SYNC,
+            old_instance.product_sync_status != DatasetView.SyncStatus.OUT_OF_SYNC
         ):
             instance.set_out_of_sync(
                 tiling_config=False

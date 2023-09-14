@@ -419,19 +419,31 @@ class EntitySimplified(models.Model):
 
 
 @receiver(pre_save, sender=GeographicalEntity)
-def entity_edit(
+def entity_pre_save(
     sender, instance: GeographicalEntity, *args, **kwargs
 ):
-    old_instance = GeographicalEntity.objects.get(id=instance.id)
-    if (
-        old_instance.source != instance.source or
-        old_instance.privacy_level != instance.privacy_level or
-        old_instance.type != instance.type
-    ):
-        instance.dataset.set_view_out_of_sync(
-            vector_tile=True,
-            product=True
-        )
+    if instance.id:
+        old_instance = GeographicalEntity.objects.get(id=instance.id)
+        if (
+            old_instance.source != instance.source or
+            old_instance.privacy_level != instance.privacy_level or
+            old_instance.type != instance.type
+        ):
+            instance.dataset.set_view_out_of_sync(
+                vector_tile=True,
+                product=True
+            )
+
+
+@receiver(post_save, sender=GeographicalEntity)
+def entity_post_create(
+    sender, instance: GeographicalEntity, created, *args, **kwargs
+):
+    instance.dataset.set_view_out_of_sync(
+        tiling_config=True,
+        vector_tile=True,
+        product=True
+    )
 
 
 @receiver(post_save, sender=EntityName)
@@ -459,16 +471,17 @@ def entity_name_post_delete(
 def entity_name_edit(
     sender, instance: EntityName, *args, **kwargs
 ):
-    old_instance: EntityName = EntityName.objects.get(id=instance.id)
-    if (
-        old_instance.name != instance.name or
-        old_instance.language != instance.language or
-        old_instance.default != instance.default
-    ):
-        instance.geographical_entity.dataset.set_view_out_of_sync(
-            vector_tile=True,
-            product=True
-        )
+    if instance.id:
+        old_instance: EntityName = EntityName.objects.get(id=instance.id)
+        if (
+            old_instance.name != instance.name or
+            old_instance.language != instance.language or
+            old_instance.default != instance.default
+        ):
+            instance.geographical_entity.dataset.set_view_out_of_sync(
+                vector_tile=True,
+                product=True
+            )
 
 
 @receiver(post_save, sender=EntityId)
@@ -496,13 +509,14 @@ def entity_id_post_delete(
 def entity_id_edit(
     sender, instance: EntityId, *args, **kwargs
 ):
-    old_instance: EntityId = EntityId.objects.get(id=instance.id)
-    if (
-        old_instance.value != instance.value or
-        old_instance.code != instance.code or
-        old_instance.default != instance.default
-    ):
-        instance.geographical_entity.dataset.set_view_out_of_sync(
-            vector_tile=True,
-            product=True
-        )
+    if instance.id:
+        old_instance: EntityId = EntityId.objects.get(id=instance.id)
+        if (
+            old_instance.value != instance.value or
+            old_instance.code != instance.code or
+            old_instance.default != instance.default
+        ):
+            instance.geographical_entity.dataset.set_view_out_of_sync(
+                vector_tile=True,
+                product=True
+            )

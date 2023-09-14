@@ -95,7 +95,7 @@ class TemporaryTilingConfig(models.Model):
 def dataset_tiling_config_post_create(
     sender, instance: DatasetTilingConfig, created, *args, **kwargs
 ):
-    dataset = Dataset.objects.get(id=instance.dataset)
+    dataset = Dataset.objects.get(id=instance.dataset_id)
     dataset.sync_status = dataset.SyncStatus.OUT_OF_SYNC
     dataset.save(update_fields=['sync_status'])
 
