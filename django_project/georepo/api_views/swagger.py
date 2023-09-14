@@ -7,13 +7,13 @@ from rest_framework.response import Response
 from core.models.preferences import SitePreferences
 
 
-class SwaggerInfo(APIView, LimitOffsetPagination):
+class GetSwaggerApiDocLink(APIView, LimitOffsetPagination):
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
         return Response(
             {
-                'info': SitePreferences.preferences().swagger_ui_info
+                'info': SitePreferences.preferences().swagger_api_documentation_link
             },
             200
         )

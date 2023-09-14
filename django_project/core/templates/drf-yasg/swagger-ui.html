@@ -106,7 +106,7 @@
             document.querySelector('.information-container').appendChild(buttonTextEl);
 
             async function getSwaggerInfo() {
-                const response = await fetch("/api/v1/swagger-info");
+                const response = await fetch("/api/swagger-docs-link");
                 const info = await response.json();
                 document.querySelector('hgroup.main a.link').remove()
 

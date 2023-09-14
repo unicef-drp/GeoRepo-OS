@@ -253,11 +253,11 @@ class SitePreferences(SingletonModel):
         )
     )
 
-    swagger_ui_info = models.TextField(
+    swagger_api_documentation_link = models.TextField(
         default='',
         help_text=_(
-            'Readme URL shown at the top of Swagger UI.'
-        )
+            'Documentation Link shown at the top of Swagger UI.'
+        ),
     )
 
     class Meta:  # noqa: D106
