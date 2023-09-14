@@ -17,10 +17,13 @@ def ready_to_review(entity_uploads):
     )
 
 
-def prepare_review(entity_upload: EntityUploadStatus):
+def prepare_review(entity_upload: EntityUploadStatus, **kwargs):
     """Run boundary matching."""
     logger.info('prepare for review of admin_boundaries')
     admin_boundary_matching = (
-        AdminBoundaryMatching(entity_upload=entity_upload)
+        AdminBoundaryMatching(
+            entity_upload=entity_upload,
+            **kwargs
+        )
     )
     admin_boundary_matching.run()

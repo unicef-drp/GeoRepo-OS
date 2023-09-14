@@ -1,3 +1,4 @@
+import time
 import os
 from celery import shared_task
 import logging
@@ -17,49 +18,89 @@ logger = logging.getLogger(__name__)
 def generate_view_vector_tiles_task(view_resource_id: str,
                                     export_data: bool = True,
                                     overwrite: bool = True):
-    from georepo.models.dataset_view import DatasetViewResource
+    from georepo.models.dataset_view import (
+        DatasetViewResource, DatasetViewResourceLog
+    )
     from georepo.utils.geojson import generate_view_geojson
     from georepo.utils.shapefile import generate_view_shapefile
     from georepo.utils.kml import generate_view_kml
     from georepo.utils.topojson import generate_view_topojson
 
     try:
+        start = time.time()
         view_resource = DatasetViewResource.objects.get(id=view_resource_id)
+        try:
+            view_resource_log, _ = \
+                DatasetViewResourceLog.objects.get_or_create(
+                    dataset_view_resource=view_resource,
+                    task_id=view_resource.vector_tiles_task_id
+                )
+        except DatasetViewResourceLog.DoesNotExist:
+            view_resource_log = DatasetViewResourceLog.objects.create(
+                dataset_view_resource=view_resource
+            )
         logger.info(
             f'Generating vector tile from view_resource {view_resource.id} '
             f'- {view_resource.privacy_level} '
             f'- {view_resource.dataset_view.name}'
         )
-        generate_view_resource_bbox(view_resource)
-        generate_view_vector_tiles(view_resource, overwrite=overwrite)
+        generate_view_resource_bbox(
+            view_resource,
+            **{'log_object': view_resource_log}
+        )
+        generate_view_vector_tiles(
+            view_resource,
+            overwrite=overwrite,
+            **{'log_object': view_resource_log})
         if export_data:
             view = view_resource.dataset_view
             logger.info(
                 f'Extracting geojson from view {view.name} - '
                 f'{view_resource.privacy_level}...'
             )
-            geojson_exporter = generate_view_geojson(view, view_resource)
+            geojson_exporter = generate_view_geojson(
+                view,
+                view_resource,
+                **{'log_object': view_resource_log}
+            )
             logger.info(
                 f'Extracting shapefile from view {view.name} - '
                 f'{view_resource.privacy_level}...'
             )
-            generate_view_shapefile(view, view_resource)
+            generate_view_shapefile(
+                view,
+                view_resource,
+                **{'log_object': view_resource_log}
+            )
             logger.info(
                 f'Extracting kml from view {view.name} - '
                 f'{view_resource.privacy_level}...'
             )
-            generate_view_kml(view, view_resource)
+            generate_view_kml(
+                view,
+                view_resource,
+                **{'log_object': view_resource_log}
+            )
             logger.info(
                 f'Extracting topojson from view {view.name} - '
                 f'{view_resource.privacy_level}...'
             )
-            generate_view_topojson(view, view_resource)
+            generate_view_topojson(
+                view,
+                view_resource,
+                **{'log_object': view_resource_log}
+            )
             logger.info('Extract view data done')
             if settings.USE_AZURE:
                 logger.info('Removing temporary geojson files...')
                 # cleanup geojson files if using Azure
                 geojson_exporter.do_remove_temp_dirs()
                 logger.info('Removing temporary geojson files done')
+            end = time.time()
+            view_resource_log.add_log(
+                    'generate_view_vector_tiles_task',
+                    end - start
+            )
     except DatasetViewResource.DoesNotExist:
         logger.error(f'DatasetViewResource {view_resource_id} does not exist')
 

@@ -45,6 +45,7 @@ from georepo.models import (
     DatasetViewTilingConfig,
     ViewAdminLevelTilingConfig,
     DatasetViewResource,
+    DatasetViewResourceLog,
     GeorepoRole,
     UserAccessRequest
 )
@@ -563,6 +564,7 @@ def regenerate_resource_vector_tiles(modeladmin, request, queryset):
         )
         view_resource.vector_tiles_task_id = task.id
         view_resource.save(update_fields=['vector_tiles_task_id'])
+        generate_view_vector_tiles_task(view_resource.id, True, True)
 
 
 @admin.action(description='Resume Vector Tiles Generation')
@@ -666,6 +668,10 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
                 layer_preview)
 
 
+class DatasetViewResourceLogAdmin(admin.ModelAdmin):
+    list_display = ('dataset_view_resource', 'task_id')
+
+
 class ModuleAdmin(GuardedModelAdmin):
     list_display = (
         'name', 'uuid', 'created_at')
@@ -695,6 +701,7 @@ admin.site.register(IdType, IdTypeAdmin)
 admin.site.register(BoundaryType, BoundaryTypeAdmin)
 admin.site.register(TagWithDescription, TagAdmin)
 admin.site.register(DatasetViewResource, DatasetViewResourceAdmin)
+admin.site.register(DatasetViewResourceLog, DatasetViewResourceLogAdmin)
 admin.site.register(UserAccessRequest, UserAccessRequestAdmin)
 
 

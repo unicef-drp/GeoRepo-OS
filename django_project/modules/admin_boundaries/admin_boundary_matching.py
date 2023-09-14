@@ -1,5 +1,7 @@
-from typing import Tuple
 import logging
+import time
+
+from typing import Tuple
 from difflib import SequenceMatcher
 from area import area
 from django.contrib.gis.db.models.functions import Intersection, Area
@@ -55,9 +57,11 @@ class AdminSummaryData(object):
 class AdminBoundaryMatching(object):
     entity_upload = None
     new_entities = None
+    log_object = None
 
-    def __init__(self, entity_upload: EntityUploadStatus):
+    def __init__(self, entity_upload: EntityUploadStatus, **kwargs):
         self.entity_upload = entity_upload
+        self.log_object = kwargs.get('log_object')
 
     def save_progress(self, progress: str):
         self.entity_upload.progress = progress
@@ -169,6 +173,7 @@ class AdminBoundaryMatching(object):
         Return concept uuid of entities that has been
         used as comparison boundary
         """
+        start = time.time()
         comparisons = BoundaryComparison.objects.filter(
             main_boundary__in=self.new_entities
         ).exclude(
@@ -178,6 +183,13 @@ class AdminBoundaryMatching(object):
         ).distinct(
             'comparison_boundary__uuid'
         ).values_list('comparison_boundary__uuid', flat=True)
+
+        end = time.time()
+        if self.log_object:
+            self.log_object.add_log(
+                'AdminBoundaryMatching.get_allocated_comparison_entities',
+                end - start)
+
         return comparisons
 
     def find_comparison_boundary(self,
@@ -196,6 +208,8 @@ class AdminBoundaryMatching(object):
 
         Return entity if both overlaps are greater than thresholds
         """
+        start = time.time()
+
         # get existing comparison entities
         comparisons = self.get_allocated_comparison_entities()
         # check in same admin level
@@ -251,12 +265,20 @@ class AdminBoundaryMatching(object):
             entity = entities.first()
             return entity, entity.overlap_new, entity.overlap_old
 
+        end = time.time()
+        if self.log_object:
+            self.log_object.add_log(
+                'AdminBoundaryMatching.find_comparison_boundary',
+                end - start)
+
         return None, 0, 0
 
     def find_comparison_boundary_for_non_matching(
             self,
             entity_target: GeographicalEntity) -> Tuple[
                 GeographicalEntity | None, float, float]:
+        start = time.time()
+
         # get existing comparison entities
         comparisons = self.get_allocated_comparison_entities()
         # for entities without non-matching boundaries, then find
@@ -276,6 +298,16 @@ class AdminBoundaryMatching(object):
         if entities.exists():
             entity = entities.first()
             return entity, entity.overlap_new, entity.overlap_old
+
+        end = time.time()
+        if self.log_object:
+            self.log_object.add_log(
+                (
+                    'AdminBoundaryMatching.'
+                    'find_comparison_boundary_for_non_matching'
+                ),
+                end - start)
+
         return None, 0, 0
 
     def process_comparison_boundary(self,
@@ -284,6 +316,7 @@ class AdminBoundaryMatching(object):
                                     boundary_comparison: BoundaryComparison,
                                     highest_overlap: GeographicalEntity,
                                     overlap_new, overlap_old):
+        start = time.time()
         boundary_comparison.comparison_boundary = highest_overlap
         boundary_comparison.geometry_overlap_new = overlap_new
         boundary_comparison.geometry_overlap_old = overlap_old
@@ -332,6 +365,11 @@ class AdminBoundaryMatching(object):
             ).exists()
         )
         boundary_comparison.save()
+        end = time.time()
+        if self.log_object:
+            self.log_object.add_log(
+                'AdminBoundaryMatching.process_comparison_boundary',
+                end - start)
 
     def check_entities(self):
         """
@@ -343,7 +381,7 @@ class AdminBoundaryMatching(object):
         boundary as a matching one
         :return:
         """
-
+        start = time.time()
         ancestor_entity = self.entity_upload.revised_geographical_entity
         dataset = ancestor_entity.dataset
         upload_session: LayerUploadSession = self.entity_upload.upload_session
@@ -493,8 +531,14 @@ class AdminBoundaryMatching(object):
             logger.info(self.entity_upload.progress)
         # generate unique code for non-matching boundaries
         self.generate_unique_code_for_new_entities()
+        end = time.time()
+        if self.log_object:
+            self.log_object.add_log(
+                'AdminBoundaryMatching.check_entities',
+                end - start)
 
     def generate_unique_code_for_new_entities(self):
+        start = time.time()
         ancestor_entity = self.entity_upload.revised_geographical_entity
         dataset = ancestor_entity.dataset
         total_new_entities_unique_code = self.new_entities.filter(
@@ -567,12 +611,18 @@ class AdminBoundaryMatching(object):
                         logger.info('Failed to generate unique code for id '
                                     f'{entity.id}-{entity.label}-'
                                     f'{entity.level}')
+        end = time.time()
+        if self.log_object:
+            self.log_object.add_log(
+                'AdminBoundaryMatching.generate_unique_code_for_new_entities',
+                end - start)
 
     def generate_summary_data(self):
         """
         Generate summary data
         :return: array of AdminSummaryData
         """
+        start = time.time()
         summary_data = []
         if not self.new_entities:
             return summary_data
@@ -658,9 +708,15 @@ class AdminBoundaryMatching(object):
                         total=Avg(F('geometry_overlap_old')))['total']
                 ))
             )
+        end = time.time()
+        if self.log_object:
+            self.log_object.add_log(
+                'AdminBoundaryMatching.generate_summary_data',
+                end - start)
         return summary_data
 
     def run(self):
+        start = time.time()
         self.entity_upload.comparison_data_ready = False
         self.entity_upload.progress = (
             'Boundary Matching - started...'
@@ -687,6 +743,9 @@ class AdminBoundaryMatching(object):
             summary
         )
         self.entity_upload.save()
+        end = time.time()
+        if self.log_object:
+            self.log_object.add_log('AdminBoundaryMatching.run', end - start)
 
 
 def check_is_same_entity(
@@ -713,11 +772,13 @@ def get_closest_entities(
         search_text: str = None,
         search_same_level: bool = False,
         search_prev_version: bool = False,
-        above_thresholds_only: bool = False):
+        above_thresholds_only: bool = False,
+        **kwargs):
     """
     Find the latest+approved entities that is closest to entity_target
     Return the QuerySet to GeographicalEntity
     """
+    start = time.time()
     if not entity_target.geometry:
         return 0, GeographicalEntity.objects.none()
     old_entities = GeographicalEntity.objects.filter(
@@ -789,6 +850,11 @@ def get_closest_entities(
             Q(overlap_new__gt=threshold_new) &
             Q(overlap_old__gt=threshold_old)
         )
+
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('get_closest_entities', end - start)
+
     return old_entities.count(), old_entities.annotate(
         overlap_weight=Case(
             When(
@@ -803,7 +869,8 @@ def get_closest_entities(
 
 def compare_entities(
         entity_target: GeographicalEntity,
-        entity_source: GeographicalEntity):
+        entity_source: GeographicalEntity,
+        **kwargs):
     """
     entity_target -> mainBoundary: new entity
     entity_source -> comparisonBoundary: selected from user
@@ -827,6 +894,7 @@ def compare_entities(
         }
     }
     """
+    start = time.time()
     if not entity_target.area:
         entity_target.area = area(
             entity_target.geometry.geojson
@@ -859,6 +927,11 @@ def compare_entities(
         geometry_overlap_new,
         geometry_overlap_old
     )
+
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('compare_entities', end - start)
+
     return {
         'geometry_overlap_new': geometry_overlap_new,
         'geometry_overlap_old': geometry_overlap_old,
@@ -882,8 +955,9 @@ def compare_entities(
     }
 
 
-def recalculate_summary(entity_upload: EntityUploadStatus):
+def recalculate_summary(entity_upload: EntityUploadStatus, **kwargs):
     """Recalculate summary data after rematch"""
+    start = time.time()
     admin_boundary_matching = AdminBoundaryMatching(entity_upload)
     ancestor_entity = entity_upload.revised_geographical_entity
     admin_boundary_matching.new_entities = (
@@ -899,3 +973,7 @@ def recalculate_summary(entity_upload: EntityUploadStatus):
         summary
     )
     entity_upload.save()
+
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('recalculate_summary', end - start)

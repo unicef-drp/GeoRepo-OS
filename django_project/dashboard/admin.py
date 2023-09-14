@@ -13,6 +13,7 @@ from dashboard.models import (
     LayerFile,
     LayerUploadSession,
     EntityUploadStatus,
+    EntityUploadStatusLog,
     LayerConfig,
     BoundaryComparison,
     Notification,
@@ -139,6 +140,17 @@ class EntityUploadAdmin(admin.ModelAdmin):
 
     get_entity.short_description = 'Entity'
     get_dataset.admin_order_field = 'revised_geographical_entity'
+
+
+class EntityUploadStatusAdmin(admin.ModelAdmin):
+    list_display = (
+        'layer_upload_session',
+        'entity_upload_status'
+    )
+    raw_id_fields = (
+        'layer_upload_session',
+        'entity_upload_status'
+    )
 
 
 class LayerConfigAdmin(admin.ModelAdmin):
@@ -295,6 +307,7 @@ class TempUsageAdmin(admin.ModelAdmin):
 admin.site.register(LayerFile, LayerFileAdmin)
 admin.site.register(LayerUploadSession, LayerUploadSessionAdmin)
 admin.site.register(EntityUploadStatus, EntityUploadAdmin)
+admin.site.register(EntityUploadStatusLog, EntityUploadStatusAdmin)
 admin.site.register(LayerConfig, LayerConfigAdmin)
 admin.site.register(BoundaryComparison, BoundaryComparisonAdmin)
 admin.site.register(Notification, NotificationAdmin)
