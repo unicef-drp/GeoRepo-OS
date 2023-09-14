@@ -104,6 +104,24 @@
             buttonTextEl.innerText = "Home";
             buttonTextEl.style = "background-color: #49cc90;color: white; text-decoration: none; margin-bottom: 20px;position: absolute;margin-top: -40px;"
             document.querySelector('.information-container').appendChild(buttonTextEl);
+
+            async function getSwaggerInfo() {
+                const response = await fetch("/api/swagger-docs-link");
+                const info = await response.json();
+                document.querySelector('hgroup.main a.link').remove()
+
+                const br = document.createElement('br')
+                document.querySelector('hgroup.main').appendChild(br)
+
+                let link = document.createElement("a");
+                link.className = "api-doc";
+                link.href = info.info;
+                link.innerText = "Read API Documentation";
+                link.style.cssText = 'font-size:medium;margin-top:20px;'
+                document.querySelector('hgroup.main').appendChild(link)
+            }
+            getSwaggerInfo()
+
         }
     }, 100);
 </script>

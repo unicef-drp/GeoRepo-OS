@@ -3,6 +3,7 @@ from django.urls import path, re_path
 from georepo.views.layer_test import LayerTestView
 from georepo.api_views.protected_api import IsDatasetAllowedAPI
 from georepo.api_views.tile import TileAPIView
+from georepo.api_views.swagger import GetSwaggerApiDocLink
 
 urlpatterns = [
     path('layer-test/', LayerTestView.as_view()),
@@ -16,4 +17,9 @@ urlpatterns = [
             r'(?P<z>\d+)/(?P<x>\d+)/(?P<y>\d+)/?$',
             TileAPIView.as_view(),
             name='download-vector-tile'),
+    re_path(
+        r'api/swagger-docs-link/?$',
+        GetSwaggerApiDocLink.as_view(),
+        name='swagger-docs-link'
+    )
 ]

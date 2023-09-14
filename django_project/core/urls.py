@@ -6,14 +6,12 @@ from drf_yasg import openapi
 from drf_yasg.generators import OpenAPISchemaGenerator
 
 from django.conf import settings
-from django.db.utils import ProgrammingError
 from django.urls import re_path, include, path
 from django.views.generic.base import RedirectView
 from django.contrib.auth.views import LoginView
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import HttpResponseNotFound
-from core.models.preferences import SitePreferences
 import json
 
 
@@ -39,17 +37,10 @@ class CustomLoginView(LoginView):
         return context
 
 
-try:
-    description = SitePreferences.preferences().swagger_ui_info
-except ProgrammingError:
-    description = ''
-
-
 schema_view_v1 = get_schema_view(
     openapi.Info(
         title="GeoRepo API",
-        default_version='v1.0.0',
-        description=description,
+        default_version='v1.0.0'
     ),
     public=True,
     permission_classes=[permissions.AllowAny],
