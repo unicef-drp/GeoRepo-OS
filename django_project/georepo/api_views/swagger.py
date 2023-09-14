@@ -1,5 +1,3 @@
-from typing import Tuple
-from django.core.cache import cache
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
@@ -13,7 +11,9 @@ class GetSwaggerApiDocLink(APIView, LimitOffsetPagination):
     def get(self, request, *args, **kwargs):
         return Response(
             {
-                'info': SitePreferences.preferences().swagger_api_documentation_link
+                'info': SitePreferences.
+                preferences().
+                swagger_api_documentation_link
             },
             200
         )
