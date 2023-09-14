@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.dispatch import receiver
 from georepo.models.dataset import Dataset
 from georepo.utils.permission import get_dataset_to_review
+from dashboard.models.layer_upload_session import LayerUploadSession
 
 PROCESSING = 'Processing'
 VALID = 'Valid'
@@ -242,3 +243,63 @@ class EntityUploadChildLv1(models.Model):
         null=True,
         blank=True
     )
+
+
+class EntityUploadStatusLog(models.Model):
+    layer_upload_session = models.ForeignKey(
+        LayerUploadSession,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
+    entity_upload_status = models.ForeignKey(
+        EntityUploadStatus,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
+    logs = models.JSONField(
+        help_text='Logs of upload',
+        default=dict,
+        null=True,
+        blank=True
+    )
+    parent_log = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
+
+    def __str__(self):
+        return "Session: {0} - Upload Status: {1}".format(
+            self.layer_upload_session,
+            self.entity_upload_status
+        )
+
+    def add_log(self, log_text, exec_time):
+        if log_text in self.logs:
+            self.logs[log_text] = {
+                'count': self.logs[log_text]['count'] + 1,
+                'avg_time': (self.logs[log_text]['avg_time'] + exec_time) / 2,
+                'total_time': self.logs[log_text]['avg_time'] + exec_time
+            }
+        else:
+            self.logs[log_text] = {
+                'count': 1,
+                'avg_time': exec_time,
+                'total_time': exec_time
+            }
+        self.save(update_fields=['logs'])
+
+    def save(self, **kwargs):
+        if self.entity_upload_status and not self.layer_upload_session:
+            self.layer_upload_session = (
+                self.entity_upload_status.upload_session
+            )
+        if self.entity_upload_status and not self.parent_log:
+            self.parent_log = EntityUploadStatusLog.objects.get(
+                layer_upload_session=self.entity_upload_status.upload_session,
+                entity_upload_status__isnull=True
+            )
+        super().save(**kwargs)

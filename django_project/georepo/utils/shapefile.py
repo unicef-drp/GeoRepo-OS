@@ -1,3 +1,4 @@
+import time
 import zipfile
 import os
 import subprocess
@@ -161,13 +162,20 @@ class ShapefileViewExporter(DatasetViewExporterBase):
 
 
 def generate_view_shapefile(dataset_view: DatasetView,
-                            view_resource: DatasetViewResource = None):
+                            view_resource: DatasetViewResource = None,
+                            **kwargs):
     """
     Extract shape file from dataset_view and then save it to
     shapefile dataset_view folder
     :param dataset: dataset_view object
     """
+    start = time.time()
     exporter = ShapefileViewExporter(dataset_view,
                                      view_resource=view_resource)
     exporter.init_exporter()
     exporter.run()
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'generate_view_shapefile',
+            end - start)

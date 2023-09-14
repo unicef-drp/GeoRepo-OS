@@ -1,3 +1,4 @@
+import time
 import logging
 import os
 import subprocess
@@ -51,13 +52,20 @@ class KmlViewExporter(DatasetViewExporterBase):
 
 
 def generate_view_kml(dataset_view: DatasetView,
-                      view_resource: DatasetViewResource = None):
+                      view_resource: DatasetViewResource = None,
+                      **kwargs):
     """
     Extract kml file from dataset_view and then save it to
     kml dataset_view folder
     :param dataset: dataset_view object
     """
+    start = time.time()
     exporter = KmlViewExporter(dataset_view,
                                view_resource=view_resource)
     exporter.init_exporter()
     exporter.run()
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'generate_view_kml',
+            end - start)

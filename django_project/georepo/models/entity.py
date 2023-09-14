@@ -419,10 +419,10 @@ class EntitySimplified(models.Model):
 
 
 @receiver(pre_save, sender=GeographicalEntity)
-def entity_name_edit(
+def entity_edit(
     sender, instance: GeographicalEntity, *args, **kwargs
 ):
-    old_instance: GeographicalEntity = GeographicalEntity.objects.get(id=instance.id)
+    old_instance = GeographicalEntity.objects.get(id=instance.id)
     if (
         old_instance.source != instance.source or
         old_instance.privacy_level != instance.privacy_level or
@@ -472,7 +472,7 @@ def entity_name_edit(
 
 
 @receiver(post_save, sender=EntityId)
-def entity_name_post_create(
+def entity_id_post_create(
     sender, instance: EntityId, created, *args, **kwargs
 ):
     if created:
@@ -483,7 +483,7 @@ def entity_name_post_create(
 
 
 @receiver(post_delete, sender=EntityId)
-def entity_name_post_delete(
+def entity_id_post_delete(
     sender, instance: EntityId, *args, **kwargs
 ):
     instance.geographical_entity.dataset.set_view_out_of_sync(
@@ -493,7 +493,7 @@ def entity_name_post_delete(
 
 
 @receiver(pre_save, sender=EntityId)
-def entity_name_edit(
+def entity_id_edit(
     sender, instance: EntityId, *args, **kwargs
 ):
     old_instance: EntityId = EntityId.objects.get(id=instance.id)
