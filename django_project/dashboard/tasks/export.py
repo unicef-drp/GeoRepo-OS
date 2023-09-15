@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @shared_task(name="generate_view_vector_tiles")
 def generate_view_vector_tiles_task(view_resource_id: str,
                                     export_data: bool = True,
+                                    export_vector_tile: bool = True,
                                     overwrite: bool = True):
     from georepo.models.dataset_view import (
         DatasetViewResource, DatasetViewResourceLog
@@ -25,10 +26,15 @@ def generate_view_vector_tiles_task(view_resource_id: str,
     from georepo.utils.shapefile import generate_view_shapefile
     from georepo.utils.kml import generate_view_kml
     from georepo.utils.topojson import generate_view_topojson
+    from georepo.utils.simplification import process_simplification
 
     try:
         start = time.time()
         view_resource = DatasetViewResource.objects.get(id=view_resource_id)
+
+        if not view_resource.dataset_view.dataset.is_simplified:
+            process_simplification(view_resource.dataset_view.dataset_id)
+
         try:
             view_resource_log, _ = \
                 DatasetViewResourceLog.objects.get_or_create(
@@ -39,19 +45,21 @@ def generate_view_vector_tiles_task(view_resource_id: str,
             view_resource_log = DatasetViewResourceLog.objects.create(
                 dataset_view_resource=view_resource
             )
-        logger.info(
-            f'Generating vector tile from view_resource {view_resource.id} '
-            f'- {view_resource.privacy_level} '
-            f'- {view_resource.dataset_view.name}'
-        )
-        generate_view_resource_bbox(
-            view_resource,
-            **{'log_object': view_resource_log}
-        )
-        generate_view_vector_tiles(
-            view_resource,
-            overwrite=overwrite,
-            **{'log_object': view_resource_log})
+
+        if export_vector_tile:
+            logger.info(
+                f'Generating vector tile from view_resource {view_resource.id} '
+                f'- {view_resource.privacy_level} '
+                f'- {view_resource.dataset_view.name}'
+            )
+            generate_view_resource_bbox(
+                view_resource,
+                **{'log_object': view_resource_log}
+            )
+            generate_view_vector_tiles(
+                view_resource,
+                overwrite=overwrite,
+                **{'log_object': view_resource_log})
         if export_data:
             view = view_resource.dataset_view
             logger.info(

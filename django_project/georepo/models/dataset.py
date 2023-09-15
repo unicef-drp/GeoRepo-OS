@@ -205,6 +205,10 @@ class Dataset(models.Model):
         default='Entity simplification finished'
     )
 
+    is_simplified = models.BooleanField(
+        default=False
+    )
+
     def save(self, *args, **kwargs):
         if not self.uuid:
             self.uuid = uuid.uuid4()

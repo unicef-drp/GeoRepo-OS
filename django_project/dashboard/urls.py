@@ -127,6 +127,10 @@ from dashboard.api_views.access_request import (
 from dashboard.api_views.media import (
     ErrorReportAPIView
 )
+from dashboard.api_views.view_sync import (
+    ViewSyncList,
+    ViewResourcesSyncList
+)
 from dashboard.views.flower_proxy_view import FlowerProxyView
 
 urlpatterns = [
@@ -531,6 +535,17 @@ urlpatterns = [
             r'(?P<criteria>\w+)/?$',
             ViewFilterValue.as_view(),
             name='view-filter-value'),
+
+    re_path(r'api/view-sync-list/(?P<dataset_id>\d+)/?$',
+            ViewSyncList.as_view(),
+            name='view-sync-list-per-datasetview'),
+    re_path(r'api/view-sync-list/?$',
+            ViewSyncList.as_view(),
+            name='view-sync-list'),
+    re_path(r'api/view-resource-sync-list/(?P<view_id>\d+)?$',
+            ViewResourcesSyncList.as_view(),
+            name='view-resource-sync-list'),
+
     re_path(r'api/tag-list/?$',
             GetViewTags.as_view(),
             name='get-tag-list'),

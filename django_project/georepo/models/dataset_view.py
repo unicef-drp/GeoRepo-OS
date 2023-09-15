@@ -199,8 +199,13 @@ class DatasetView(models.Model):
     ):
         update_fields = []
         if tiling_config:
-            self.is_tiling_config_match = False
-            update_fields.append('is_tiling_config_match')
+            # Only set tiling config as out of sync if DatasetView
+            # has no tiling config. Meaning it gets the tiling
+            # config directly from Dataset. So, if Dataset tiling
+            # config is updated, DatasetView tiling config just matches.
+            if self.datasetviewtilingconfig_set.all().exist():
+                self.is_tiling_config_match = False
+                update_fields.append('is_tiling_config_match')
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.OUT_OF_SYNC
             update_fields.append('vector_tile_sync_status')
@@ -261,6 +266,42 @@ class DatasetView(models.Model):
             resource.clear_permission_cache()
 
         return super(DatasetView, self).save(*args, **kwargs)
+
+    def match_tiling_config(self):
+        from georepo.models.dataset_view_tile_config import (
+            DatasetViewTilingConfig,
+            ViewAdminLevelTilingConfig
+        )
+        from georepo.models.dataset_tile_config import (
+            DatasetTilingConfig, AdminLevelTilingConfig
+        )
+
+        ds_tiling_configs = DatasetTilingConfig.objects.filter(
+            dataset=self.dataset
+        )
+        deleted_count, count_details = DatasetViewTilingConfig.objects.filter(
+            dataset_view=self
+        ).delete()
+
+        # If deleted_count is 0, it means DatasetView does not have specific
+        # tiling config or use Dataset tiling config. We do not need to
+        # create tiling config for this DatasetView.
+        if deleted_count == 0:
+            return
+        for ds_tiling_config in ds_tiling_configs:
+            tiling_config = DatasetViewTilingConfig.objects.create(
+                dataset_view=self,
+                zoom_level=ds_tiling_config.zoom_level
+            )
+            ds_level_configs = AdminLevelTilingConfig.objects.filter(
+                dataset_tiling_config=ds_tiling_config
+            )
+            for level_config in ds_level_configs:
+                ViewAdminLevelTilingConfig.objects.create(
+                    view_tiling_config=tiling_config,
+                    level=level_config.level,
+                    simplify_tolerance=level_config.simplify_tolerance
+                )
 
     def __str__(self):
         return self.name
@@ -409,6 +450,30 @@ class DatasetViewResource(models.Model):
         default=SyncStatus.OUT_OF_SYNC
     )
 
+    geojson_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    shapefile_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    kml_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    topojson_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
     vector_tile_sync_status = models.CharField(
         max_length=15,
         choices=SyncStatus.choices,
@@ -427,7 +492,7 @@ class DatasetViewResource(models.Model):
         max_length=256
     )
 
-    data_product_task_id = models.CharField(
+    product_task_id = models.CharField(
         blank=True,
         default='',
         max_length=256
@@ -438,13 +503,42 @@ class DatasetViewResource(models.Model):
         editable=True
     )
 
-    vector_tiles_progress = models.FloatField(
+    product_updated_at = models.DateTimeField(
+        auto_now_add=True,
+        editable=True
+    )
+
+    geojson_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    shapefile_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    kml_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    topojson_progress = models.FloatField(
         null=True,
         blank=True,
         default=0
     )
 
     data_product_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    vector_tiles_progress = models.FloatField(
         null=True,
         blank=True,
         default=0

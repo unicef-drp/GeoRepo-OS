@@ -564,7 +564,7 @@ def regenerate_resource_vector_tiles(modeladmin, request, queryset):
         )
         view_resource.vector_tiles_task_id = task.id
         view_resource.save(update_fields=['vector_tiles_task_id'])
-        generate_view_vector_tiles_task(view_resource.id, True, True)
+        generate_view_vector_tiles_task(view_resource.id, True, True, True)
 
 
 @admin.action(description='Resume Vector Tiles Generation')
@@ -585,7 +585,7 @@ def resume_vector_tiles_generation(modeladmin, request, queryset):
         view_resource.vector_tiles_progress = 0
         view_resource.save()
         task = generate_view_vector_tiles_task.apply_async(
-            (view_resource.id, True, False),
+            (view_resource.id, True, True, False),
             queue='tegola'
         )
         view_resource.vector_tiles_task_id = task.id

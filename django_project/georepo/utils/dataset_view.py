@@ -91,6 +91,35 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
         view_resource.save(update_fields=['vector_tiles_task_id'])
 
 
+def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
+                                          export_data: bool = True):
+    """
+    Trigger generate vector tiles for a view
+    """
+    from dashboard.tasks import (
+        generate_view_vector_tiles_task
+    )
+    view_resources = DatasetViewResource.objects.filter(
+        dataset_view=dataset_view
+    )
+    for view_resource in view_resources:
+        if view_resource.vector_tiles_task_id:
+            res = AsyncResult(view_resource.vector_tiles_task_id)
+            if not res.ready():
+                # find if there is running task and stop it
+                app.control.revoke(view_resource.vector_tiles_task_id,
+                                   terminate=True)
+        view_resource.status = DatasetView.DatasetViewStatus.PENDING
+        view_resource.vector_tiles_progress = 0
+        view_resource.save()
+        task = generate_view_vector_tiles_task.apply_async(
+            (view_resource.id, export_data),
+            queue='tegola'
+        )
+        view_resource.vector_tiles_task_id = task.id
+        view_resource.save(update_fields=['vector_tiles_task_id'])
+
+
 def generate_default_view_dataset_latest(
         dataset: Dataset) -> List[DatasetView]:
     # check for existing
@@ -494,6 +523,7 @@ def get_view_tiling_status(view_resource_queryset):
     error_queryset = view_resource_queryset.filter(
         status=DatasetView.DatasetViewStatus.ERROR
     )
+    print(view_resource_queryset)
     view_resources = view_resource_queryset.aggregate(
         Avg('vector_tiles_progress')
     )
@@ -511,18 +541,19 @@ def get_view_tiling_status(view_resource_queryset):
     return tiling_status, tiling_progress
 
 
-def get_view_product_status(view_resource_queryset):
+def get_view_product_status(view_resource_queryset, product=None):
     """Get product status of dataset view."""
     # check for error
     error_queryset = view_resource_queryset.filter(
         status=DatasetView.DatasetViewStatus.ERROR
     )
+    field = f'{product}_progress' if product else 'data_product_progress'
     view_resources = view_resource_queryset.aggregate(
-        Avg('data_product_progress')
+        Avg(field)
     )
     product_progress = (
-        view_resources['data_product_progress__avg'] if
-        view_resources['data_product_progress__avg'] else 0
+        view_resources[f'{field}__avg'] if
+        view_resources[f'{field}__avg'] else 0
     )
     if error_queryset.exists():
         return 'Error', product_progress

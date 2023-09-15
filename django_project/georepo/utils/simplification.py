@@ -12,7 +12,7 @@ def process_simplification(dataset_id):
     """
     dataset = Dataset.objects.get(id=dataset_id)
     dataset.simplification_progress = (
-        f'Entity simplification for {dataset}'
+        'Entity simplification starts'
     )
     dataset.save(update_fields=['simplification_progress'])
     logger.info(dataset.simplification_progress)

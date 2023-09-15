@@ -29,8 +29,8 @@ def simplify_geometry_in_dataset(dataset_id):
         ).exists()
         if tiling_config_exists:
             continue
-        logger.info(f'Triggering vector tile generation for view {view}')
-        trigger_generate_vector_tile_for_view(view, export_data=False)
+        # logger.info(f'Triggering vector tile generation for view {view}')
+        # trigger_generate_vector_tile_for_view(view, export_data=False)
     logger.info(
         f'Simplify geometry for dataset {dataset_id} is finished.')
 

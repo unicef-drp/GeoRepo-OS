@@ -11,7 +11,10 @@ from georepo.utils.permission import (
     PermissionType,
     get_external_view_permission_privacy_level
 )
-from georepo.utils.dataset_view import get_view_tiling_status
+from georepo.utils.dataset_view import (
+    get_view_tiling_status,
+    get_view_product_status
+)
 from rest_framework.authtoken.models import Token
 
 
@@ -208,3 +211,111 @@ class DatasetViewDetailSerializer(TaggitSerializer,
             'dataset_name',
             'module_name'
         ]
+
+
+class DatasetViewSyncSerializer(serializers.ModelSerializer):
+
+    vector_tile_sync_progress = serializers.SerializerMethodField()
+    product_sync_progress = serializers.SerializerMethodField()
+
+    def get_vector_tile_sync_progress(self, obj):
+        if obj.vector_tile_sync_status == obj.SyncStatus.OUT_OF_SYNC:
+            return 0
+        view_resources = DatasetViewResource.objects.filter(
+            entity_count__gte=0
+        )
+        _, tiling_progress = get_view_tiling_status(view_resources)
+        return tiling_progress
+
+    def get_product_sync_progress(self, obj):
+        if obj.product_sync_status == obj.SyncStatus.OUT_OF_SYNC:
+            return 0
+        view_resources = DatasetViewResource.objects.filter(
+            entity_count__gte=0
+        )
+        _, product_progress = get_view_product_status(view_resources)
+        return product_progress
+
+    class Meta:
+        model = DatasetView
+        fields = [
+            'id',
+            'name',
+            'is_tiling_config_match',
+            'vector_tile_sync_status',
+            'product_sync_status',
+            'vector_tile_sync_progress',
+            'product_sync_progress'
+        ]
+
+
+class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
+
+    vector_tile_sync_progress = serializers.SerializerMethodField()
+    geojson_sync_progress = serializers.SerializerMethodField()
+    shapefile_sync_progress = serializers.SerializerMethodField()
+    kml_sync_progress = serializers.SerializerMethodField()
+    topojson_sync_progress = serializers.SerializerMethodField()
+
+    def get_vector_tile_sync_progress(self, obj):
+        if obj.vector_tile_sync_status == DatasetView.SyncStatus.OUT_OF_SYNC:
+            return 0
+        view_resources = DatasetViewResource.objects.filter(
+            entity_count__gte=0
+        )
+        _, tiling_progress = get_view_tiling_status(view_resources)
+        return tiling_progress
+
+    def _get_product_progress(self, obj, product):
+        if obj.product_sync_status == DatasetView.SyncStatus.OUT_OF_SYNC:
+            return 0
+        view_resources = DatasetViewResource.objects.filter(
+            entity_count__gte=0
+        )
+        _, product_progress = get_view_product_status(
+            view_resources,
+            product=product
+        )
+        return product_progress
+
+    def get_geojson_sync_progress(self, obj):
+        return self._get_product_progress(obj, 'geojson')
+
+    def get_shapefile_sync_progress(self, obj):
+        return self._get_product_progress(obj, 'shapefile')
+
+    def get_kml_sync_progress(self, obj):
+        return self._get_product_progress(obj, 'kml')
+
+    def get_topojson_sync_progress(self, obj):
+        return self._get_product_progress(obj, 'topojson')
+
+    class Meta:
+        model = DatasetViewResource
+        fields = [
+            'id',
+            'vector_tile_sync_status',
+            'product_sync_status',
+            'vector_tile_sync_progress',
+            'geojson_sync_progress',
+            'shapefile_sync_progress',
+            'kml_sync_progress',
+            'topojson_sync_progress'
+        ]
+
+
+class ViewSyncSerializer(serializers.Serializer):
+    view_ids = serializers.ListField(child=serializers.IntegerField(), required=True)
+    sync_options = serializers.ListField(child=serializers.CharField(), required=True)
+
+    def validate_sync_options(self, attrs):
+        options = set(attrs)
+        accepted_options = {
+            'tiling_config',
+            'vector_tiles',
+            'products'
+        }
+        if len(options - accepted_options) != 0:
+            raise serializers.ValidationError(
+                'Unknown actions'
+            )
