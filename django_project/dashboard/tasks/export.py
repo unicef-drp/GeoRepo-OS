@@ -51,7 +51,7 @@ def generate_view_vector_tiles_task(view_resource_id: str,
         )
         dataset = view_resource.dataset_view.dataset
         # check if has simplified entities record
-        simplified_entities = EntitySimplified.object.filter(
+        simplified_entities = EntitySimplified.objects.filter(
             geographical_entity__dataset=dataset
         )
         if not simplified_entities.exists():
