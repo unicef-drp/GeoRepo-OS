@@ -973,6 +973,13 @@ class CreateDataset(AzureAuthRequiredMixin,
             return Response(status=400, data={
                 'detail': error
             })
+        if max_privacy_level < min_privacy_level:
+            return Response(status=400, data={
+                'detail': (
+                    'Error! Maximum privacy level cannot be lower '
+                    'than minimum privacy level'
+                )
+            })
 
         dataset = Dataset.objects.create(
             label=name,
