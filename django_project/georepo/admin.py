@@ -61,6 +61,7 @@ from georepo.utils.directory_helper import (
     convert_size,
     get_folder_size
 )
+from georepo.utils.celery_helper import get_task_status
 
 User = get_user_model()
 
@@ -706,17 +707,11 @@ class BackgroundTaskAdmin(admin.ModelAdmin):
     search_fields = ['name', 'status', 'task_id']
     actions = [cancel_background_task]
     list_filter = ["status", "name"]
+    list_per_page = 30
 
     def current_status(self, obj: BackgroundTask):
-        from celery.result import AsyncResult
-        from core.celery import app
-        if (
-            obj.status == BackgroundTask.BackgroundTaskStatus.QUEUED or
-            obj.status == BackgroundTask.BackgroundTaskStatus.RUNNING
-        ):
-            if obj.task_id:
-                res = AsyncResult(obj.task_id)
-                return 'Done' if res.ready() else 'Pending/Running'
+        if obj.is_possible_interrupted() and obj.task_id:
+            return get_task_status(obj.task_id)
         return '-'
 
 

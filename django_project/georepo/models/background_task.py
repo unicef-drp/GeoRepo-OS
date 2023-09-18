@@ -73,3 +73,14 @@ class BackgroundTask(models.Model):
         null=True,
         blank=True
     )
+
+    def is_possible_interrupted(self):
+        if (
+            self.status == BackgroundTask.BackgroundTaskStatus.QUEUED or
+            self.status == BackgroundTask.BackgroundTaskStatus.RUNNING
+        ):
+            # check if last_update is more than 1 hour than current date time
+            if self.last_update:
+                diff_seconds = timezone.now() - self.last_update
+                return diff_seconds.total_seconds() > 3600
+        return False
