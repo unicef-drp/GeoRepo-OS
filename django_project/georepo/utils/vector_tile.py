@@ -531,6 +531,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
 
 def save_view_resource_on_success(view_resource, entity_count):
     view_resource.status = DatasetView.DatasetViewStatus.DONE
+    view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCED
     view_resource.vector_tiles_updated_at = datetime.now()
     view_resource.vector_tiles_progress = 100
     view_resource.entity_count = entity_count

@@ -40,6 +40,10 @@ from georepo.utils.azure_blob_storage import (
     DirectoryClient,
     StorageContainerClient
 )
+from georepo.utils.directory_helper import (
+    convert_size,
+    get_folder_size
+)
 
 PROPERTY_INT_VALUES = ['admin_level']
 PROPERTY_BOOL_VALUES = ['is_latest']
@@ -151,24 +155,12 @@ class DatasetViewExporterBase(object):
         return tmp_output_dir
 
     def update_progress(self, view_resource=None, progress=0):
-        print(progress)
         view_resource = view_resource['resource'] if view_resource else self.view_resource
-        if self.output == 'geojson':
-            view_resource.geojson_progress = progress
-            if math.isclose(progress, 100, abs_tol=1e-4):
-                view_resource.geojson_sync_status = DatasetViewResource.SyncStatus.SYNCED
-        elif self.output == 'shapefile':
-            view_resource.shapefile_progress = progress
-            if math.isclose(progress, 100, abs_tol=1e-4):
-                view_resource.shapefile_sync_status = DatasetViewResource.SyncStatus.SYNCED
-        elif self.output == 'kml':
-            view_resource.kml_progress = progress
-            if math.isclose(progress, 100, abs_tol=1e-4):
-                view_resource.kml_sync_status = DatasetViewResource.SyncStatus.SYNCED
-        elif self.output == 'topojson':
-            view_resource.topojson_progress = progress
-            if math.isclose(progress, 100, abs_tol=1e-4):
-                view_resource.topojson_sync_status = DatasetViewResource.SyncStatus.SYNCED
+        setattr(view_resource, f'{self.output}_progress', progress)
+        if math.isclose(progress, 100, abs_tol=1e-4):
+            setattr(view_resource, f'{self.output}_sync_status', DatasetViewResource.SyncStatus.SYNCED)
+            output_path = self.get_tmp_output_dir(view_resource)
+            setattr(view_resource, f'{self.output}_size', get_folder_size(output_path))
         view_resource.save()
 
     def run(self):
@@ -197,7 +189,7 @@ class DatasetViewExporterBase(object):
                 self.total_exported += 1
                 self.update_progress(
                     res,
-                    math.ceil(self.total_exported / self.total_to_be_exported) * 100
+                    (self.total_exported / self.total_to_be_exported) * 100
                 )
             # export readme
             self.export_readme(tmp_output_dir)

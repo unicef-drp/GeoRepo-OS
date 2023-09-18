@@ -440,7 +440,7 @@ def entity_post_create(
     sender, instance: GeographicalEntity, created, *args, **kwargs
 ):
     instance.dataset.set_view_out_of_sync(
-        tiling_config=True,
+        tiling_config=False,
         vector_tile=True,
         product=True
     )

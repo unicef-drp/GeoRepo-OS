@@ -63,18 +63,23 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
 
     def _filter_dataset(self, request):
         dataset = dict(request.data).get('dataset', [])
+        dataset_ids = dict(request.data).get('dataset', [])
+        dataset_ids = [int(ds_id) for ds_id in dataset_ids if ds_id.isnumeric()]
         if not dataset:
-            return {}
+            return Q()
 
-        return {'dataset__label__in': dataset}
+        return Q(
+            Q(dataset__label__in=dataset) |
+            Q(dataset_id__in=dataset_ids)
+        )
 
     def _filter_queryset(self, queryset, request):
-        filter_kwargs = {}
-        filter_kwargs.update(self._filter_dataset(request))
-        filter_args = self._filter_sync_status(request)
-        print(filter_kwargs)
-        print(filter_args)
-        return queryset.filter(*(filter_args,), **filter_kwargs)
+        dataset_filter = self._filter_dataset(request)
+        sync_status_filter = self._filter_sync_status(request)
+        args = Q()
+        args &= dataset_filter
+        args &= sync_status_filter
+        return queryset.filter(*(args,))
 
     def _search_queryset(self, queryset, request):
         search_text = request.data.get('search_text', '')
@@ -239,9 +244,8 @@ class ViewResourcesSyncList(AzureAuthRequiredMixin, APIView):
             )
         except DatasetView.DoesNotExist:
             return Response([], 404)
-
         resource_level_for_user = view.get_resource_level_for_user(
-            user_privacy_levels[int(view_id)]
+            user_privacy_levels[int(view.dataset_id)]
         )
         view_resources_qs = view.datasetviewresource_set.filter(
             privacy_level__lte=resource_level_for_user,
@@ -260,7 +264,6 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
     def post(self, *args, **kwargs):
         serializer = ViewSyncSerializer(data=self.request.data)
         serializer.is_valid(raise_exception=True)
-        print(serializer.validated_data)
 
         view_ids = serializer.validated_data['view_ids']
         views = DatasetView.objects.filter(id__in=view_ids)
@@ -271,7 +274,7 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
             for view in views:
                 view.match_tiling_config()
         # if sync both vector_tiles and products
-        elif len({'vector_tiles', 'products'} - set(sync_options)) == 0:
+        if len({'vector_tiles', 'products'} - set(sync_options)) == 0:
             for view in views:
                 trigger_generate_vector_tile_for_view(
                     view,
@@ -295,8 +298,8 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
                 )
         elif 'products' in sync_options:
             for view in views:
-                task = generate_view_export_data(view.id)
-                view.task_id = 'deadbeef'
+                task = generate_view_export_data.delay(view.id)
+                view.task_id = task.id
                 view.product_sync_status = DatasetView.SyncStatus.SYNCING
                 view.save(
                     update_fields=['task_id', 'product_sync_status']

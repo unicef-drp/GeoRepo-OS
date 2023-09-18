@@ -19,7 +19,11 @@ import View, {isReadOnlyView} from "../../models/view";
 import DatasetEntities from '../Dataset/DatasetEntities';
 import DatasetTilingConfig from '../Dataset/Configurations/DatasetTilingConfig';
 import ViewPermission from './ViewPermission';
+import ViewSync from './ViewSync';
 import '../../styles/ViewDetail.scss';
+import {useSearchParams} from "react-router-dom";
+import {setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
+import {parseInt} from "lodash";
 
 const QUERY_CHECK_URL = '/api/query-view-preview/'
 const DOWNLOAD_VIEW_URL = '/api/view-download/'
@@ -39,11 +43,14 @@ export default function ViewDetail() {
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const downloadAsOpen = Boolean(anchorEl)
     const [isDownloading, setIsDownloading] = useState(false)
+    const [searchParams, setSearchParams] = useSearchParams()
     
     useEffect(() => {
         if (view) {
             setPreviewSession(view.preview_session)
             if (view.id) {
+                let tab = searchParams.get('tab') ? parseInt(searchParams.get('tab')) : 0
+                setTabSelected(tab as unknown as number)
                 let _isReadOnly = isReadOnlyView(view)
                 if (_isReadOnly) {
                     setTabSelected(1)
@@ -59,7 +66,12 @@ export default function ViewDetail() {
                 }                
             }
         }
-    }, [view])
+    }, [view, searchParams])
+
+    // useEffect(() => {
+    //     let tab = searchParams.get('tab') ? searchParams.get('tab') : 1
+    //     setTabSelected(tab as unknown as number)
+    // }, [searchParams])
 
     const onQueryValidation = (isValid: boolean, query: string) => {
         if (view) {
@@ -168,6 +180,9 @@ export default function ViewDetail() {
                     { view && view.permissions && view.permissions.includes('Manage') && (
                         <Tab label="Tiling Config" {...a11yProps(3)} disabled={view === null} />
                     )}
+                    { view && view.permissions && view.permissions.includes('Manage') && (
+                        <Tab label="Sync Status" {...a11yProps(4)} disabled={view === null} />
+                    )}
                 </Tabs>
                 { tabSelected === 1 && <Box flexDirection={'column'} justifyContent={'center'} display={'flex'} sx={{marginRight: '20px'}}>
                     <Tooltip title='Download view with possible filters: Country, Admin Level'>
@@ -239,6 +254,11 @@ export default function ViewDetail() {
                 { view && view.permissions && view.permissions.includes('Manage') && (
                     <TabPanel value={tabSelected} index={3} padding={1}>
                         <DatasetTilingConfig view={view} isReadOnly={view.is_read_only} />
+                    </TabPanel>
+                )}
+                { view && view.permissions && view.permissions.includes('Manage') && (
+                    <TabPanel value={tabSelected} index={4} noPadding>
+                        <ViewSync view={view} />
                     </TabPanel>
                 )}
             </Grid>

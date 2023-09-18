@@ -1,72 +1,47 @@
 import {createSlice, PayloadAction} from "@reduxjs/toolkit";
-import { ActiveBatchReview } from "../models/review";
+// import { ActiveBatchAction } from "../models/viewSync";
 
 
-export interface ReviewActionState {
-    isBatchReviewAvailable: boolean;
-    isBatchReview: boolean;
-    selectedReviews: number[];
-    pendingReviews: number[];
-    currentReview: ActiveBatchReview;
+export interface ViewSyncActionState {
+    isBatchActionAvailable: boolean;
+    isBatchAction: boolean;
+    selectedViews: number[];
     updatedAt: Date;
 }
 
-const initialState: ReviewActionState = {
-    isBatchReviewAvailable: true,
-    isBatchReview: false,
-    selectedReviews: [],
-    pendingReviews: [],
-    currentReview: {
-        id: 0,
-        submitted_by: '',
-        submitted_at: '',
-        is_approve: false,
-        progress: '',
-        status: ''
-    },
+const initialState: ViewSyncActionState = {
+    isBatchActionAvailable: true,
+    isBatchAction: false,
+    selectedViews: [],
     updatedAt: null
 }
 
-export const reviewActionSlice = createSlice({
-    name: 'reviewAction',
+export const viewSyncActionSlice = createSlice({
+    name: 'viewSyncAction',
     initialState,
     reducers: {
-        toggleIsBatchReview: (state, action: PayloadAction<string>) => {
-            state.isBatchReview = !state.isBatchReview
-            if (!state.isBatchReview) {
-                state.selectedReviews = []
+        toggleIsBatchAction: (state, action: PayloadAction<string>) => {
+            state.isBatchAction = !state.isBatchAction
+            if (!state.isBatchAction) {
+                state.selectedViews = []
             }
         },
-        setIsBatchReviewAvailable: (state, action: PayloadAction<boolean>) => {
-            state.isBatchReviewAvailable = action.payload
+        setIsBatchActionAvailable: (state, action: PayloadAction<boolean>) => {
+            state.isBatchActionAvailable = action.payload
         },
-        setSelectedReviews: (state, action: PayloadAction<number[]>) => {
-            state.selectedReviews = [...action.payload]
+        setSelectedViews: (state, action: PayloadAction<number[]>) => {
+            state.selectedViews = [...action.payload]
         },
-        setPendingReviews: (state, action: PayloadAction<number[]>) => {
-            state.pendingReviews = [...action.payload]
-        },
-        setCurrentReview: (state, action: PayloadAction<ActiveBatchReview>) => {
-            state.currentReview = { ...action.payload }
-            if (state.currentReview.id !== 0) {
-                state.isBatchReviewAvailable = false
-            } else {
-                state.isBatchReviewAvailable = true
-            }
-        },
-        onBatchReviewSubmitted: (state, action: PayloadAction<string>) => {
+        onBatchActionSubmitted: (state, action: PayloadAction<string>) => {
             state.updatedAt = new Date()
         }
     }
 })
 
 export const {
-    toggleIsBatchReview,
-    setIsBatchReviewAvailable,
-    setSelectedReviews,
-    setPendingReviews,
-    setCurrentReview,
-    onBatchReviewSubmitted
-} = reviewActionSlice.actions
+    toggleIsBatchAction,
+    setIsBatchActionAvailable,
+    setSelectedViews
+} = viewSyncActionSlice.actions
 
-export default reviewActionSlice.reducer;
+export default viewSyncActionSlice.reducer;

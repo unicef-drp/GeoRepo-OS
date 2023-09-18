@@ -137,6 +137,7 @@ def generate_view_export_data(view_id: str):
             f'Extracting topojson from view {view.name}...'
         )
         generate_view_topojson(view)
+
         logger.info('Extract view data done')
         if settings.USE_AZURE:
             logger.info('Removing temporary geojson files...')

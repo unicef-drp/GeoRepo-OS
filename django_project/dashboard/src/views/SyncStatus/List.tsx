@@ -5,7 +5,6 @@ import {Button} from '@mui/material';
 import FilterAlt from "@mui/icons-material/FilterAlt";
 import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
 import axios from "axios";
-import toLower from "lodash/toLower";
 
 import Loading from "../../components/Loading";
 import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
@@ -13,22 +12,11 @@ import ResizeTableEvent from "../../components/ResizeTableEvent";
 import {RootState} from "../../app/store";
 import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import {getDefaultFilter, ViewSyncFilterInterface} from "./Filter"
-import {modules} from "../../modules";
-import {setModule} from "../../reducers/module";
-import {setSelectedReviews} from "../../reducers/viewSyncAction";
+import {setSelectedViews} from "../../reducers/viewSyncAction";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
-import {
-  setAvailableFilters,
-  setCurrentFilters as setInitialFilters
-} from "../../reducers/viewSyncTable";
+import {setAvailableFilters, setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
 import Stack from '@mui/material/Stack';
 
-const USER_COLUMNS = [
-  'name',
-  'is_tiling_config_match',
-  'vector_tile_sync_status',
-  'product_sync_status'
-]
 
 interface ViewSyncRowInterface {
   id: number,
@@ -36,8 +24,8 @@ interface ViewSyncRowInterface {
   is_tiling_config_match: boolean,
   vector_tile_sync_status: string,
   product_sync_status: string,
-  vector_tile_sync_progress: number,
-  product_sync_progress: number,
+  vector_tiles_progress: number,
+  product_progress: number,
   permissions: string[]
 }
 
@@ -56,10 +44,8 @@ export default function ViewSyncList() {
   const [data, setData] = useState<any[]>([])
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
-  const isBatchReview = useAppSelector((state: RootState) => state.reviewAction.isBatchReview)
-  const isBatchReviewAvailable = useAppSelector((state: RootState) => state.reviewAction.isBatchReviewAvailable)
-  const pendingReviews = useAppSelector((state: RootState) => state.reviewAction.pendingReviews)
-  const reviewUpdatedAt = useAppSelector((state: RootState) => state.reviewAction.updatedAt)
+  const isBatchAction = useAppSelector((state: RootState) => state.viewSyncAction.isBatchAction)
+  const isBatchActionAvailable = useAppSelector((state: RootState) => state.viewSyncAction.isBatchActionAvailable)
   const [allFinished, setAllFinished] = useState(true)
   const [currentInterval, setCurrentInterval] = useState<any>(null)
 
@@ -76,7 +62,7 @@ export default function ViewSyncList() {
   const ref = useRef(null)
   const [tableHeight, setTableHeight] = useState(0)
 
-  let selectableRowsMode: any = isBatchReview ? 'multiple' : 'none'
+  let selectableRowsMode: any = isBatchAction ? 'multiple' : 'none'
 
   const fetchFilterValues = async () => {
     let filters = []
@@ -109,14 +95,14 @@ export default function ViewSyncList() {
       }
     ).then((response) => {
       const productSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
-          if (!res.includes(row.vector_tile_sync_status)) {
-              res.push(row.vector_tile_sync_status)
+          if (!res.includes(row.product_sync_status)) {
+              res.push(row.product_sync_status)
           }
           return res
       }, [] as string[])
       const vectorTileSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
-          if (!res.includes(row.product_sync_status)) {
-              res.push(row.product_sync_status)
+          if (!res.includes(row.vector_tile_sync_status)) {
+              res.push(row.vector_tile_sync_status)
           }
           return res
       }, [] as string[])
@@ -193,7 +179,7 @@ export default function ViewSyncList() {
         return columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' ')
       }
 
-      let _columns = ['id', 'name', 'permissions'].map((columnName) => {
+      let _columns = ['id', 'name', 'permissions', 'vector_tiles_progress', 'product_progress'].map((columnName) => {
         let _options: any = {
           name: columnName,
           label: getLabel(columnName),
@@ -215,10 +201,10 @@ export default function ViewSyncList() {
             return (
               <Button
                 aria-label={
-                  rowData[3] ? 'Tiling config matches dataset' : 'Click to update tiling config'
+                  rowData[5] ? 'Tiling config matches dataset' : 'Click to update tiling config'
                 }
                 title={
-                  rowData[3] ? 'Tiling config matches dataset' : 'Click to update tiling config'
+                  rowData[5] ? 'Tiling config matches dataset' : 'Click to update tiling config'
                 }
                 key={0}
                 disabled={!rowData[2].includes('Manage')}
@@ -226,10 +212,10 @@ export default function ViewSyncList() {
                   e.stopPropagation()
                   syncView([rowData[0]], ['tiling_config'])
                 }}
-                variant={rowData[3] ? 'outlined' : 'contained'}
+                variant={rowData[5] ? 'outlined' : 'contained'}
               >
                 {
-                  rowData[3] ?
+                  rowData[5] ?
                     'Tiling config matches dataset' :
                     'Update tiling config from dataset'
                 }
@@ -248,34 +234,42 @@ export default function ViewSyncList() {
             let rowData = tableMeta.rowData
             const disabled = () => {
               if (rowData[2].includes('Manage')) {
-                if (!rowData[3]) {
+                if (!rowData[5]) {
                   return true
                 }
                 return false
               }
               return false
             }
+            const getButtonText = () => {
+              if (rowData[6] === 'out_of_sync') {
+                return 'Vector tiles need refresh'
+              } else if (rowData[6] === 'synced') {
+                return 'Vector tiles are synced'
+              } else if (rowData[6] === 'syncing') {
+                return `Syncing (${rowData[3].toFixed(1)}%)`
+              }
+            }
             return (
               <Button
                 aria-label={
-                  rowData[4] ? 'Vector tiles are synced' : 'Click to update vector tiles'
+                  rowData[6] ? 'Vector tiles are synced' : 'Click to update vector tiles'
                 }
                 title={
-                  rowData[4] ? 'Vector tiles are synced' : 'Click to update vector tiles'
+                  rowData[6] ? 'Vector tiles are synced' : 'Click to update vector tiles'
                 }
                 key={0}
                 disabled={disabled()}
                 onClick={(e) => {
                   e.stopPropagation()
+                  if (rowData[6] === 'synced') {
+                    return
+                  }
                   syncView([rowData[0]], ['vector_tiles'])
                 }}
-                variant={rowData[4] === 'out_of_sync' ? 'contained': 'outlined'}
+                variant={rowData[6] === 'out_of_sync' ? 'contained': 'outlined'}
               >
-                {
-                  rowData[4] === 'out_of_sync' ?
-                    'Vector tiles need refresh' :
-                    'Vector tiles are synced'
-                }
+                {getButtonText()}
               </Button>
             )
           },
@@ -291,34 +285,42 @@ export default function ViewSyncList() {
             let rowData = tableMeta.rowData
             const disabled = () => {
               if (rowData[2].includes('Manage')) {
-                if (!rowData[3]) {
+                if (!rowData[5]) {
                   return true
                 }
                 return false
               }
               return false
             }
+            const getButtonText = () => {
+              if (rowData[7] === 'out_of_sync') {
+                return 'Data product needs refresh'
+              } else if (rowData[7] === 'synced') {
+                return 'Data product is synced'
+              } else if (rowData[7] === 'syncing') {
+                return `Syncing (${rowData[4].toFixed(1)}%)`
+              }
+            }
             return (
               <Button
                 aria-label={
-                  rowData[5] ? 'Data products are synced' : 'Click to update data products'
+                  rowData[7] ? 'Data products are synced' : 'Click to update data products'
                 }
                 title={
-                  rowData[5] ? 'Data products are synced' : 'Click to update data products'
+                  rowData[7] ? 'Data products are synced' : 'Click to update data products'
                 }
                 key={0}
                 disabled={disabled()}
                 onClick={(e) => {
                   e.stopPropagation()
+                  if (rowData[7] === 'synced') {
+                    return
+                  }
                   syncView([rowData[0]], ['products'])
                 }}
-                variant={rowData[5] === 'out_of_sync' ? 'contained': 'outlined'}
+                variant={rowData[7] === 'out_of_sync' ? 'contained': 'outlined'}
               >
-                {
-                  rowData[5] === 'out_of_sync' ?
-                    'Data product needs refresh' :
-                    'Data product is synced'
-                }
+                {getButtonText()}
               </Button>
             )
           },
@@ -371,7 +373,7 @@ export default function ViewSyncList() {
                   disabled={!rowData[2].includes('Manage')}
                   onClick={(e) => {
                     e.stopPropagation()
-                    console.log('clicked details')
+                    navigate(`/view_edit?id=${rowData[0]}&tab=4`)
                   }}
                   variant={'contained'}
                 >
@@ -385,13 +387,16 @@ export default function ViewSyncList() {
                   disabled={!rowData[2].includes('Manage') }
                   onClick={(e) => {
                     e.stopPropagation()
+                    if (rowData[6] === 'synced' && rowData[7] === 'synced') {
+                      return
+                    }
                     syncView(
                       [rowData[0]],
-                      ['vector_tiles', 'products']
+                      ['tiling_config', 'vector_tiles', 'products']
                     )
                   }}
                   variant={
-                    !rowData[3] || rowData[4] === 'out_of_sync' || rowData[4] === 'out_of_sync' ?
+                    !rowData[5] || rowData[6] === 'out_of_sync' || rowData[5] === 'out_of_sync' ?
                       'contained' : 'outlined'
                   }
                 >
@@ -425,7 +430,7 @@ export default function ViewSyncList() {
 
   useEffect(() => {
     fetchViewSyncList()
-  }, [pagination, filterValues, currentFilters])
+  }, [pagination, filterValues, currentFilters, initialFilters])
 
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
@@ -487,28 +492,27 @@ export default function ViewSyncList() {
   useEffect(() => {
     let dataset
     try {
-      dataset = searchParams.get('upload') ? [searchParams.get('dataset')] : []
+      dataset = searchParams.get('dataset') ? [searchParams.get('dataset')] : []
     } catch (error: any) {
       dataset = currentFilters['dataset']
     }
     setCurrentFilters({...currentFilters, 'dataset': dataset})
-    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'upload': dataset})))
+    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'dataset': dataset})))
   }, [searchParams])
 
-  // useEffect(() => {
-  //   if (reviewUpdatedAt) {
-  //     fetchViewSyncList()
-  //   }
-  // }, [reviewUpdatedAt])
-
   const canRowBeSelected = (dataIndex: number, rowData: any) => {
-    if (!isBatchReviewAvailable)
+    if (!isBatchActionAvailable)
       return false
-    return !pendingReviews.includes(rowData['id']) && rowData['is_comparison_ready']
+    return !((rowData.is_tiling_config_match &&
+      rowData.product_sync_status === 'synced' &&
+      rowData.vector_tile_sync_status === 'synced') ||
+      (
+        rowData.product_sync_status === 'syncing' || rowData.vector_tile_sync_status === 'syncing'
+      ))
   }
 
   const selectionChanged = (data: any) => {
-    dispatch(setSelectedReviews(data))
+    dispatch(setSelectedViews(data))
   }
 
   return (

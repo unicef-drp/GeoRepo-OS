@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {ThemeButton, AddButton, EditButton, CancelButton, WarningButton} from "./Elements/Buttons";
-import {Link, useNavigate, useSearchParams} from "react-router-dom";
+import {Link, useNavigate, useSearchParams, useLocation} from "react-router-dom";
 import axios from "axios";
 import toLower from "lodash/toLower";
 import Divider from '@mui/material/Divider';
@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography';
 import {postData} from "../utils/Requests";
 import {currentModule, setModule} from "../reducers/module";
 import {toggleIsBatchReview, setPendingReviews, setCurrentReview, onBatchReviewSubmitted} from "../reducers/reviewAction";
+import {toggleIsBatchAction} from "../reducers/viewSyncAction";
 import {RootState} from "../app/store";
 import {useAppDispatch, useAppSelector} from "../app/hooks";
 import {modules} from "../modules";
@@ -31,6 +32,7 @@ import {
 import Dataset from '../models/dataset';
 import { ActiveBatchReview } from '../models/review';
 import {setPollInterval, FETCH_INTERVAL_JOB} from "../reducers/notificationPoll";
+import {setCurrentFilters as setInitialFilters} from "../reducers/viewSyncTable";
 
 interface UploadDataButtonInterface {
   next?: any,
@@ -46,6 +48,7 @@ const ADD_UPLOAD_SESSION_URL = '/api/add-upload-session/'
 const FETCH_PENDING_REVIEWS_URL = '/api/review/batch/uploads/'
 const FETCH_CURRENT_REVIEW_URL = '/api/review/batch/identifier/'
 const SUBMIT_BATCH_REVIEW_URL = '/api/review/batch/'
+const TRIGGER_SYNC_API_URL = '/api/sync-view/'
 const CONFIRM_RESET_SESSION_URL = '/api/reset-upload-session/'
 const LOAD_UPLOAD_SESSION_DETAIL_URL = '/api/upload-session/'
 
@@ -339,6 +342,118 @@ export const ReviewActionButtons = () => {
   )
 }
 
+export const ViewSyncActionButtons = () => {
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const isBatchActionAvailable = useAppSelector((state: RootState) => state.viewSyncAction.isBatchActionAvailable)
+  const isBatchAction = useAppSelector((state: RootState) => state.viewSyncAction.isBatchAction)
+  const selectedViews = useAppSelector((state: RootState) => state.viewSyncAction.selectedViews)
+  const initialFilters = useAppSelector((state: RootState) => state.viewSyncTable.currentFilters)
+  const [alertOpen, setAlertOpen] = useState<boolean>(false)
+  const [alertDialogTitle, setAlertDialogTitle] = useState<string>('')
+  const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
+  const [alertLoading, setAlertLoading] = useState<boolean>(false)
+  const [confirmMessage, setConfirmMessage] = useState<string>('')
+  const [syncOptions, setSyncOptions] = useState<string[]>([])
+
+  const onToggleBatchAction = () => {
+    dispatch(toggleIsBatchAction())
+  }
+
+  const alertConfirmed = () => {
+    const data = {
+      view_ids: selectedViews,
+      sync_options: syncOptions
+    }
+    // setAlertLoading(true)
+    // dispatch(setInitialFilters(JSON.stringify({...initialFilters})))
+    postData(TRIGGER_SYNC_API_URL, data).then(
+        response => {
+          setAlertLoading(false)
+          setAlertOpen(false)
+          setConfirmMessage('Successfully syncing Views. Your request will be processed in the background.')
+          dispatch(setInitialFilters(JSON.stringify({...initialFilters})))
+        }
+      ).catch(error => {
+            setAlertLoading(false)
+            setAlertOpen(false)
+            console.log('error ', error)
+            if (error.response) {
+                if (error.response.status == 403) {
+                  // TODO: use better way to handle 403
+                  navigate('/invalid_permission')
+                }
+            } else {
+                setConfirmMessage('An error occurred. Please try it again later')
+            }
+    })
+  }
+
+  const handleAlertCancel = () => {
+    setAlertOpen(false)
+  }
+
+  const onBatchMatchTilingClick = () => {
+    setSyncOptions(['tiling_config'])
+    setAlertDialogTitle('Batch Match Tiling Config')
+    setAlertDialogDescription(
+      `Are you sure you want to match ${selectedViews.length} tiling config to their dataset?`
+    )
+    setAlertOpen(true)
+  }
+
+  const onBatchSyncClick = () => {
+    setSyncOptions(['tiling_config', 'vector_tiles', 'products'])
+    setAlertDialogTitle('Batch Synchronize')
+    setAlertDialogDescription(`Are you sure you want to synchronize ${selectedViews.length} entities?`)
+    setAlertOpen(true)
+  }
+
+  return (
+    <div style={{display:'flex', flexDirection: 'row', alignItems: 'center'}}>
+      <AlertMessage message={confirmMessage} onClose={() => setConfirmMessage('')} />
+      <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
+                 alertConfirmed={alertConfirmed}
+                 alertLoading={alertLoading}
+                 alertDialogTitle={alertDialogTitle}
+                 alertDialogDescription={alertDialogDescription} />
+      { isBatchActionAvailable && (
+        <div style={{display:'flex', flexDirection: 'row', alignItems: 'center'}}>
+          { !isBatchAction && (
+            <ThemeButton icon={<GradingIcon />} disabled={!isBatchActionAvailable} title={'Batch Action'} variant={'secondary'} onClick={onToggleBatchAction}/>
+          )}
+          { isBatchAction && (
+            <Typography variant={'subtitle2'} >{selectedViews.length} selected</Typography>
+          )}
+          { isBatchAction && (
+            <AddButton
+              disabled={selectedViews.length === 0}
+              text={'Match tiling config with dataset'}
+              variant={'secondary'}
+              useIcon={false}
+              additionalClass={'MuiButtonMedium'}
+              onClick={onBatchMatchTilingClick}
+            />
+          )}
+          { isBatchAction && (
+            <AddButton
+              disabled={selectedViews.length === 0}
+              text={'Synchronize'}
+              variant={'secondary'}
+              useIcon={false}
+              additionalClass={'MuiButtonMedium'}
+              onClick={onBatchSyncClick}
+            />
+          )}
+          { isBatchAction && (
+            <CancelButton onClick={onToggleBatchAction} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export const CancelActiveUploadButton = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -446,6 +561,10 @@ export const headerButtons: HeaderButtonsInterface[] = [
   {
     path: ReviewListRoute.path,
     element: <ReviewActionButtons />
+  },
+  {
+    path: ViewSyncStatusRoute.path,
+    element: <ViewSyncActionButtons />
   },
   {
     path: '/admin_boundaries/upload_wizard',

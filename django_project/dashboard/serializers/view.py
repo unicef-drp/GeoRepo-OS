@@ -15,6 +15,9 @@ from georepo.utils.dataset_view import (
     get_view_tiling_status,
     get_view_product_status
 )
+from georepo.utils.directory_helper import (
+    convert_size
+)
 from rest_framework.authtoken.models import Token
 
 
@@ -216,18 +219,19 @@ class DatasetViewDetailSerializer(TaggitSerializer,
 class DatasetViewSyncSerializer(serializers.ModelSerializer):
 
     dataset = serializers.SerializerMethodField()
-    vector_tile_sync_progress = serializers.SerializerMethodField()
-    product_sync_progress = serializers.SerializerMethodField()
+    # vector_tile_sync_progress = serializers.SerializerMethodField()
+    # product_sync_progress = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
 
     def get_dataset(self, obj):
-        return obj.dataset.label
+        return obj.dataset_id
 
     def get_vector_tile_sync_progress(self, obj):
         if obj.vector_tile_sync_status == obj.SyncStatus.OUT_OF_SYNC:
             return 0
         view_resources = DatasetViewResource.objects.filter(
-            entity_count__gte=0
+            dataset_view=obj,
+            entity_count__gt=0
         )
         _, tiling_progress = get_view_tiling_status(view_resources)
         return tiling_progress
@@ -236,7 +240,8 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
         if obj.product_sync_status == obj.SyncStatus.OUT_OF_SYNC:
             return 0
         view_resources = DatasetViewResource.objects.filter(
-            entity_count__gte=0
+            dataset_view=obj,
+            entity_count__gt=0
         )
         _, product_progress = get_view_product_status(view_resources)
         return product_progress
@@ -254,64 +259,56 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
             'is_tiling_config_match',
             'vector_tile_sync_status',
             'product_sync_status',
-            'vector_tile_sync_progress',
-            'product_sync_progress',
+            'vector_tiles_progress',
+            'product_progress',
             'permissions'
         ]
 
 
 class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
 
-    vector_tile_sync_progress = serializers.SerializerMethodField()
-    geojson_sync_progress = serializers.SerializerMethodField()
-    shapefile_sync_progress = serializers.SerializerMethodField()
-    kml_sync_progress = serializers.SerializerMethodField()
-    topojson_sync_progress = serializers.SerializerMethodField()
+    vector_tiles_size = serializers.SerializerMethodField()
+    geojson_size = serializers.SerializerMethodField()
+    shapefile_size = serializers.SerializerMethodField()
+    kml_size = serializers.SerializerMethodField()
+    topojson_size = serializers.SerializerMethodField()
 
-    def get_vector_tile_sync_progress(self, obj):
-        if obj.vector_tile_sync_status == DatasetView.SyncStatus.OUT_OF_SYNC:
-            return 0
-        view_resources = DatasetViewResource.objects.filter(
-            entity_count__gte=0
-        )
-        _, tiling_progress = get_view_tiling_status(view_resources)
-        return tiling_progress
+    def get_vector_tiles_size(self, obj):
+        return convert_size(obj.vector_tiles_size)
 
-    def _get_product_progress(self, obj, product):
-        if obj.product_sync_status == DatasetView.SyncStatus.OUT_OF_SYNC:
-            return 0
-        view_resources = DatasetViewResource.objects.filter(
-            entity_count__gte=0
-        )
-        _, product_progress = get_view_product_status(
-            view_resources,
-            product=product
-        )
-        return product_progress
+    def get_geojson_size(self, obj):
+        return convert_size(obj.geojson_size)
 
-    def get_geojson_sync_progress(self, obj):
-        return self._get_product_progress(obj, 'geojson')
+    def get_shapefile_size(self, obj):
+        return convert_size(obj.shapefile_size)
 
-    def get_shapefile_sync_progress(self, obj):
-        return self._get_product_progress(obj, 'shapefile')
+    def get_kml_size(self, obj):
+        return convert_size(obj.kml_size)
 
-    def get_kml_sync_progress(self, obj):
-        return self._get_product_progress(obj, 'kml')
-
-    def get_topojson_sync_progress(self, obj):
-        return self._get_product_progress(obj, 'topojson')
+    def get_topojson_size(self, obj):
+        return convert_size(obj.topojson_size)
 
     class Meta:
         model = DatasetViewResource
         fields = [
             'id',
+            'uuid',
+            'privacy_level',
             'vector_tile_sync_status',
-            'product_sync_status',
-            'vector_tile_sync_progress',
-            'geojson_sync_progress',
-            'shapefile_sync_progress',
-            'kml_sync_progress',
-            'topojson_sync_progress'
+            'geojson_sync_status',
+            'shapefile_sync_status',
+            'kml_sync_status',
+            'topojson_sync_status',
+            'vector_tiles_progress',
+            'geojson_progress',
+            'shapefile_progress',
+            'kml_progress',
+            'topojson_progress',
+            'vector_tiles_size',
+            'geojson_size',
+            'shapefile_size',
+            'kml_size',
+            'topojson_size'
         ]
 
 
