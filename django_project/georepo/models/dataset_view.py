@@ -302,6 +302,8 @@ class DatasetView(models.Model):
                     level=level_config.level,
                     simplify_tolerance=level_config.simplify_tolerance
                 )
+        self.is_tiling_config_match = True
+        self.save()
 
     def __str__(self):
         return self.name

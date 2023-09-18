@@ -1,4 +1,5 @@
 import re
+import math
 import os
 import shutil
 import datetime
@@ -149,6 +150,27 @@ class DatasetViewExporterBase(object):
             os.mkdir(tmp_output_dir)
         return tmp_output_dir
 
+    def update_progress(self, view_resource=None, progress=0):
+        print(progress)
+        view_resource = view_resource['resource'] if view_resource else self.view_resource
+        if self.output == 'geojson':
+            view_resource.geojson_progress = progress
+            if math.isclose(progress, 100, abs_tol=1e-4):
+                view_resource.geojson_sync_status = DatasetViewResource.SyncStatus.SYNCED
+        elif self.output == 'shapefile':
+            view_resource.shapefile_progress = progress
+            if math.isclose(progress, 100, abs_tol=1e-4):
+                view_resource.shapefile_sync_status = DatasetViewResource.SyncStatus.SYNCED
+        elif self.output == 'kml':
+            view_resource.kml_progress = progress
+            if math.isclose(progress, 100, abs_tol=1e-4):
+                view_resource.kml_sync_status = DatasetViewResource.SyncStatus.SYNCED
+        elif self.output == 'topojson':
+            view_resource.topojson_progress = progress
+            if math.isclose(progress, 100, abs_tol=1e-4):
+                view_resource.topojson_sync_status = DatasetViewResource.SyncStatus.SYNCED
+        view_resource.save()
+
     def run(self):
         print(
             f'Exporting {self.output} from View {self.dataset_view.name} '
@@ -173,6 +195,10 @@ class DatasetViewExporterBase(object):
                 self.do_export(resource, resource.privacy_level,
                                level, tmp_output_dir)
                 self.total_exported += 1
+                self.update_progress(
+                    res,
+                    math.ceil(self.total_exported / self.total_to_be_exported) * 100
+                )
             # export readme
             self.export_readme(tmp_output_dir)
             self.do_export_post_process(resource)

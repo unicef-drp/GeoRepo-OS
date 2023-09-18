@@ -24,6 +24,7 @@ import {
   GroupDetailRoute,
   ViewCreateRoute,
   ViewListRoute,
+  ViewSyncStatusRoute,
   ReviewListRoute,
   UploadSessionListRoute
 } from "../views/routes";

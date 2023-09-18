@@ -8,6 +8,7 @@ import FactCheckIcon from '@mui/icons-material/FactCheck';
 import PeopleIcon from '@mui/icons-material/People';
 import GroupsIcon from '@mui/icons-material/Groups';
 import ViewCompactAltIcon from '@mui/icons-material/ViewCompactAlt';
+import SyncIcon from '@mui/icons-material/Sync';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
@@ -172,6 +173,14 @@ export const ViewEditTilingConfigRoute: RouteInterface = {
   parent: ViewEditRoute
 }
 
+export const ViewSyncStatusRoute: RouteInterface = {
+  id: 'sync-status',
+  name: 'Sync Status',
+  path: '/sync-status',
+  element: lazy(() => import('./SyncStatus/List' /* webpackChunkName: "views" */)),
+  icon: SyncIcon
+}
+
 export const EntityConceptUCodeRoute: RouteInterface = {
   id: 'entity_by_concept_ucode',
   name: 'Entity Detail By Concept UCode',
@@ -215,6 +224,7 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   HomeRoute,
   DatasetRoute,
   ViewListRoute,
+  ViewSyncStatusRoute,
   UploaderRoute,
   UploadSessionListRoute,
   DatasetCreateRoute,
@@ -239,6 +249,7 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   HomeRoute,
   DatasetRoute,
   ViewListRoute,
+  ViewSyncStatusRoute,
   UploaderRoute,
   UploadSessionListRoute,
   DatasetCreateRoute,

@@ -215,8 +215,13 @@ class DatasetViewDetailSerializer(TaggitSerializer,
 
 class DatasetViewSyncSerializer(serializers.ModelSerializer):
 
+    dataset = serializers.SerializerMethodField()
     vector_tile_sync_progress = serializers.SerializerMethodField()
     product_sync_progress = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
+
+    def get_dataset(self, obj):
+        return obj.dataset.label
 
     def get_vector_tile_sync_progress(self, obj):
         if obj.vector_tile_sync_status == obj.SyncStatus.OUT_OF_SYNC:
@@ -236,16 +241,22 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
         _, product_progress = get_view_product_status(view_resources)
         return product_progress
 
+    def get_permissions(self, obj: DatasetView):
+        user = self.context['user']
+        return PermissionType.get_permissions_for_datasetview(obj, user)
+
     class Meta:
         model = DatasetView
         fields = [
             'id',
+            'dataset',
             'name',
             'is_tiling_config_match',
             'vector_tile_sync_status',
             'product_sync_status',
             'vector_tile_sync_progress',
-            'product_sync_progress'
+            'product_sync_progress',
+            'permissions'
         ]
 
 
@@ -319,3 +330,4 @@ class ViewSyncSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 'Unknown actions'
             )
+        return attrs

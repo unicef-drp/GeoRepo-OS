@@ -5,6 +5,7 @@ import DatasetStyle from "../views/Dataset/Configurations/DatasetStyles";
 import DatasetPermission from "../views/Dataset/Configurations/DatasetPermission";
 import DatasetGeneral from "./Configurations/DatasetGeneral";
 import DatasetTilingConfig from "../views/Dataset/Configurations/DatasetTilingConfig";
+import SyncStatus from "../views/SyncStatus/SyncStatus";
 import DatasetAdminLevelNames from "./Configurations/DatasetAdminLevelNames";
 import DatasetEntities from "../views/Dataset/DatasetEntities";
 
@@ -55,7 +56,12 @@ export default function DatasetDetailWrapper() {
             title: 'VIEWS',
             element: NavigateComponent,
             permissions: ['Manage']
-        }
+        },
+        {
+            title: 'SYNC STATUS',
+            element: DatasetTilingConfig,
+            permissions: ['Manage']
+        },
     ])
     return (
         <DatasetDetail moduleName={'admin_boundaries'} tabs={tabs} />

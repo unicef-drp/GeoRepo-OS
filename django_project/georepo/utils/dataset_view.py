@@ -110,7 +110,11 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
                 app.control.revoke(view_resource.vector_tiles_task_id,
                                    terminate=True)
         view_resource.status = DatasetView.DatasetViewStatus.PENDING
-        view_resource.vector_tiles_progress = 0
+        if export_data:
+            view_resource.geojson_progress = 0
+            view_resource.shapefile_progress = 0
+            view_resource.kml_progress = 0
+            view_resource.topojson_progress = 0
         view_resource.save()
         task = generate_view_vector_tiles_task.apply_async(
             (view_resource.id, export_data),
@@ -523,7 +527,6 @@ def get_view_tiling_status(view_resource_queryset):
     error_queryset = view_resource_queryset.filter(
         status=DatasetView.DatasetViewStatus.ERROR
     )
-    print(view_resource_queryset)
     view_resources = view_resource_queryset.aggregate(
         Avg('vector_tiles_progress')
     )

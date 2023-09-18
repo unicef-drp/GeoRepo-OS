@@ -129,7 +129,9 @@ from dashboard.api_views.media import (
 )
 from dashboard.api_views.view_sync import (
     ViewSyncList,
-    ViewResourcesSyncList
+    ViewSyncFilterValue,
+    ViewResourcesSyncList,
+    SynchronizeView
 )
 from dashboard.views.flower_proxy_view import FlowerProxyView
 
@@ -535,17 +537,22 @@ urlpatterns = [
             r'(?P<criteria>\w+)/?$',
             ViewFilterValue.as_view(),
             name='view-filter-value'),
-
     re_path(r'api/view-sync-list/(?P<dataset_id>\d+)/?$',
             ViewSyncList.as_view(),
             name='view-sync-list-per-datasetview'),
     re_path(r'api/view-sync-list/?$',
             ViewSyncList.as_view(),
             name='view-sync-list'),
+    re_path(r'^api/view-sync-filter/values/'
+            r'(?P<criteria>\w+)/?$',
+            ViewSyncFilterValue.as_view(),
+            name='view-sync-filter-value'),
     re_path(r'api/view-resource-sync-list/(?P<view_id>\d+)?$',
             ViewResourcesSyncList.as_view(),
             name='view-resource-sync-list'),
-
+    re_path(r'api/sync-view/?$',
+            SynchronizeView.as_view(),
+            name='sync-view'),
     re_path(r'api/tag-list/?$',
             GetViewTags.as_view(),
             name='get-tag-list'),
