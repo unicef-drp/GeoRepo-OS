@@ -46,6 +46,21 @@ export default function Dataset() {
         customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
           return value ? 'Active' : 'Deprecated'
         }
+    },
+    'permissions': {
+      filter: false,
+      display: false,
+    },
+    'is_empty': {
+      filter: false,
+      display: false,
+    },
+    'id': {
+      filter: false,
+      display: false,
+    },
+    'dataset': {
+      filter: false
     }
   }
 

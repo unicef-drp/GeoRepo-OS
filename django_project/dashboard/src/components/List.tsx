@@ -282,6 +282,7 @@ export default function List(
                     _columns.push({
                         name: '',
                         options: {
+                            filter: false,
                             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
                                 const rowData: any = data.find(({id}) => id === tableMeta.rowData[0])
                                 if (!rowData) return null
@@ -399,6 +400,7 @@ export default function List(
                 _columns.push({
                     name: '',
                     options: {
+                        filter: false,
                         customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
                             const rowData = tableMeta.rowData
                             return COLUMNS_ACTION(
