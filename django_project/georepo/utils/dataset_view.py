@@ -103,8 +103,10 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
         dataset_view=dataset_view
     )
     dataset_view.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
+    dataset_view.vector_tiles_progress = 0
     if export_data:
         dataset_view.product_sync_status = DatasetView.SyncStatus.SYNCING
+        dataset_view.product_progress = 0
     dataset_view.save()
     for view_resource in view_resources:
         if view_resource.vector_tiles_task_id:

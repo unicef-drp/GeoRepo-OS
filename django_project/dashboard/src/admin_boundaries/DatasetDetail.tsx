@@ -7,6 +7,7 @@ import DatasetGeneral from "./Configurations/DatasetGeneral";
 import DatasetTilingConfig from "../views/Dataset/Configurations/DatasetTilingConfig";
 import DatasetAdminLevelNames from "./Configurations/DatasetAdminLevelNames";
 import DatasetEntities from "../views/Dataset/DatasetEntities";
+import ViewSyncList from "../views/SyncStatus/List";
 
 
 export function NavigateComponent() {
@@ -54,6 +55,11 @@ export default function DatasetDetailWrapper() {
         {
             title: 'VIEWS',
             element: NavigateComponent,
+            permissions: ['Manage']
+        },
+        {
+            title: 'SYNC STATUS',
+            element: ViewSyncList,
             permissions: ['Manage']
         }
     ])

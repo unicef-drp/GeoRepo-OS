@@ -47,7 +47,7 @@ function TilingConfigConfirm(props: any) {
                 props.onTilingConfigConfirmed()
                 if (props.datasetUUID && redirect) {
                     if (redirect) {
-                        navigate(`/dataset?dataset=${props.datasetUUID}&tab=1`)
+                        navigate(`/admin_boundaries/dataset_entities?id=${props.datasetId}&tab=8`)
                     }
                 }
             }
@@ -124,6 +124,7 @@ export default function TilingConfigWizard(props: any) {
     const [session, setSession] = useState(null)
     const [datasetUUID, setDatasetUUID] = useState(null)
     const [viewUUID, setViewUUID] = useState(null)
+    const [datasetId, setDatasetId] = useState(null)
     const [alertMessage, setAlertMessage] = useState<string>('')
     const navigate = useNavigate()
     const dispatch = useAppDispatch();
@@ -138,6 +139,7 @@ export default function TilingConfigWizard(props: any) {
             setViewUUID(_view_uuid)
             setDatasetUUID(_dataset_uuid)
             if (_view_uuid) {
+                setDatasetId(response.data.dataset)
                 // append view name to View Breadcrumbs
                 let _name = response.data.name
                 dispatch(updateMenu({
@@ -146,6 +148,7 @@ export default function TilingConfigWizard(props: any) {
                     link: `/view_edit?id=${response.data.id}`
                 }))
             } else {
+                setDatasetId(response.data.id)
                 // append dataset name to Dataset Breadcrumbs
                 let _name = response.data.dataset
                 if (response.data.type) {
@@ -228,7 +231,14 @@ export default function TilingConfigWizard(props: any) {
                     </TabPanel>
                     <TabPanel value={tabSelected} index={2}>
                         <Scrollable>
-                            <TilingConfigConfirm session={session} viewUUID={viewUUID} datasetUUID={datasetUUID} onBack={onBack} onTilingConfigConfirmed={onTilingConfigConfirmed} />
+                            <TilingConfigConfirm
+                              session={session}
+                              viewUUID={viewUUID}
+                              datasetUUID={datasetUUID}
+                              onBack={onBack}
+                              datasetId={datasetId}
+                              onTilingConfigConfirmed={onTilingConfigConfirmed}
+                            />
                         </Scrollable>
                     </TabPanel>
                 </Grid>

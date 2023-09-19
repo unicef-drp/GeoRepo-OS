@@ -1,26 +1,16 @@
 import React, {Fragment, useCallback, useEffect, useRef, useState} from 'react';
-import PermissionDetail from '../Permissions/PermissionDetail';
 import View from "../../models/view";
-import {useAppDispatch, useAppSelector} from "../../app/hooks";
-import {RootState} from "../../app/store";
-import {useNavigate, useSearchParams} from "react-router-dom";
-import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
-import {ViewSyncFilterInterface} from "../SyncStatus/Filter";
+import {useAppDispatch} from "../../app/hooks";
+import {useNavigate} from "react-router-dom";
+import {rowsPerPageOptions} from "../../models/pagination";
 import axios from "axios";
 import Loading from "../../components/Loading";
 import ResizeTableEvent from "../../components/ResizeTableEvent";
 import {TABLE_OFFSET_HEIGHT} from "../../components/List";
-import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
-import {Button} from "@mui/material";
+import MUIDataTable, {debounceSearchRender} from "mui-datatables";
 import Box from "@mui/material/Box";
-import {AddButton, CancelButton, ThemeButton} from "../../components/Elements/Buttons";
-import {toggleIsBatchAction} from "../../reducers/viewSyncAction";
-import {postData} from "../../utils/Requests";
-import {setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
-import AlertMessage from "../../components/AlertMessage";
-import AlertDialog from "../../components/AlertDialog";
-import GradingIcon from "@mui/icons-material/Grading";
-import Typography from "@mui/material/Typography";
+import {ThemeButton} from "../../components/Elements/Buttons";
+import CircularProgress from "@mui/material/CircularProgress";
 
 
 interface ViewResourceInterface {
@@ -102,7 +92,12 @@ export default function ViewSync(props: ViewResourceInterface) {
             if (rowData[i] === 'out_of_sync') {
               return 'Out of sync'
             } else if (rowData[i] === 'syncing') {
-              return `Syncing (${rowData[i+5]}%)`
+              return (
+                <span style={{display:'flex'}}>
+                    <CircularProgress size={18} />
+                    <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[i+5]}%)`}</span>
+                </span>
+              )
             } else {
               return `Synced (${rowData[i+10]})`
             }
@@ -121,8 +116,8 @@ export default function ViewSync(props: ViewResourceInterface) {
         let allStatus: string[] = []
         let products: string[] = ['vector_tile', 'geojson', 'shapefile', 'kml', 'topojson']
         //@ts-ignore
-        products.each(function(product: string, idx: number){
-          response.data.each(function (row: any, idxRow: number) {
+        products.forEach(function(product: string, idx: number){
+          response.data.forEach(function (row: any, idxRow: number) {
             if (!allStatus.includes(row[`${product}_sync_status`])) {
               allStatus.push(row[`${product}_sync_status`])
             }
@@ -153,19 +148,19 @@ export default function ViewSync(props: ViewResourceInterface) {
       getColumnDef()
     }, [])
 
-    // useEffect(() => {
-  //   if (!allFinished) {
-  //       if (currentInterval) {
-  //           clearInterval(currentInterval)
-  //           setCurrentInterval(null)
-  //       }
-  //       const interval = setInterval(() => {
-  //           fetchViewSyncList()
-  //       }, 10000);
-  //       setCurrentInterval(interval)
-  //       return () => clearInterval(interval);
-  //   }
-  // }, [allFinished])
+    useEffect(() => {
+    if (!allFinished) {
+        if (currentInterval) {
+            clearInterval(currentInterval)
+            setCurrentInterval(null)
+        }
+        const interval = setInterval(() => {
+            fetchViewResource()
+        }, 5000);
+        setCurrentInterval(interval)
+        return () => clearInterval(interval);
+    }
+  }, [allFinished])
 
     const syncView = (viewIds: number[], syncOptions: string[]) => {
       axios.post(
@@ -176,7 +171,7 @@ export default function ViewSync(props: ViewResourceInterface) {
         }
       ).then((response) => {
         setLoading(false)
-        // fetchViewResource()
+        fetchViewResource()
       }).catch(error => {
         if (!axios.isCancel(error)) {
           console.log(error)

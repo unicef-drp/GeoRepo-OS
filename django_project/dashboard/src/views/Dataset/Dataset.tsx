@@ -63,7 +63,7 @@ export default function Dataset() {
         customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
           const onClick = (e: any) => {
             e.stopPropagation();
-            navigate(`/dataset?dataset=${tableMeta.rowData[0]}&tab=1`)
+            navigate(`/admin_boundaries/dataset_entities?id=${tableMeta.rowData[0]}&tab=8`)
           }
           if (value != 'Synced') {
             return (
@@ -176,10 +176,6 @@ export default function Dataset() {
     setConfirmationOpen(false)
   }
 
-  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-      setTabSelected(newValue)
-  }
-
   return (
     <div className="AdminContentMain main-data-list">
       <AlertDialog open={confirmationOpen} alertClosed={handleClose}
@@ -190,32 +186,19 @@ export default function Dataset() {
           confirmButtonText='Delete'
           confirmButtonProps={{color: 'error', autoFocus: true}}
       />
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabSelected} onChange={handleChange} aria-label="Dataset Tab">
-              <Tab key={'tab-0'} label={'DATASET'} {...a11yProps(0)} />
-              <Tab key={'tab-1'} label={'SYNC STATUS'} {...a11yProps(1)} />
-          </Tabs>
-      </Box>
-      <Grid container sx={{ flexGrow: 1, flexDirection: 'column' , overflow: 'auto'}}>
-        <TabPanel key={0} value={tabSelected} index={0} padding={1}>
-          {!loading ?
-            <List
-              pageName={pageName}
-              listUrl={''}
-              initData={dataset}
-              selectionChanged={null}
-              onRowClick={handleRowClick}
-              actionData={[actionDeleteButton]}
-              excludedColumns={['permissions', 'is_empty']}
-              customOptions={customColumnOptions}
-              customColumnHeaderRender={customColumnHeaderRender}
-            /> : <Loading/>
-          }
-        </TabPanel>
-        <TabPanel key={1} value={tabSelected} index={1} padding={1}>
-            <ViewSyncList/>
-        </TabPanel>
-      </Grid>
+      {!loading ?
+        <List
+          pageName={pageName}
+          listUrl={''}
+          initData={dataset}
+          selectionChanged={null}
+          onRowClick={handleRowClick}
+          actionData={[actionDeleteButton]}
+          excludedColumns={['permissions', 'is_empty']}
+          customOptions={customColumnOptions}
+          customColumnHeaderRender={customColumnHeaderRender}
+        /> : <Loading/>
+      }
     </div>
   )
 }

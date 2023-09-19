@@ -299,4 +299,4 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
                     update_fields=['task_id', 'product_sync_status']
                 )
 
-        return Response({})
+        return Response({'status': 'OK'})

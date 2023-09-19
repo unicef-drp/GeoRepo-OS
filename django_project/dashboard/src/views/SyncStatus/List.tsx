@@ -23,6 +23,7 @@ import {AddButton, CancelButton, ThemeButton} from "../../components/Elements/Bu
 import GradingIcon from "@mui/icons-material/Grading";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
 
 
 export function ViewSyncActionButtons() {
@@ -193,11 +194,9 @@ export default function ViewSyncList() {
   const fetchFilterValues = async () => {
     let filters = []
     filters.push(axios.get(`${FILTER_VALUES_API_URL}sync_status/`))
-    filters.push(axios.get(`${FILTER_VALUES_API_URL}dataset/`))
     let resultData = await Promise.all(filters)
     let filterVals = {
       'sync_status': resultData[0].data,
-      'dataset': resultData[1].data,
       'search_text': ''
     }
     setFilterValues(filterVals)
@@ -211,7 +210,8 @@ export default function ViewSyncList() {
     setLoading(true)
     let sortBy = pagination.sortOrder.name ? pagination.sortOrder.name : ''
     let sortDirection = pagination.sortOrder.direction ? pagination.sortOrder.direction : ''
-    const url = `${VIEW_LIST_URL}?` + `page=${pagination.page + 1}&page_size=${pagination.rowsPerPage}` +
+    const datasetId = searchParams.get('id')
+    const url = `${VIEW_LIST_URL}${datasetId}?` + `page=${pagination.page + 1}&page_size=${pagination.rowsPerPage}` +
       `&sort_by=${sortBy}&sort_direction=${sortDirection}`
     axios.post(
       url,
@@ -283,9 +283,6 @@ export default function ViewSyncList() {
     switch (colName) {
       case 'sync_status':
         values = currentFilters.sync_status
-        break;
-      case 'dataset':
-        values = currentFilters.dataset
         break;
       default:
         break;
@@ -373,7 +370,12 @@ export default function ViewSyncList() {
               } else if (rowData[6] === 'synced') {
                 return 'Vector tiles are synced'
               } else if (rowData[6] === 'syncing') {
-                return `Syncing (${rowData[3].toFixed(1)}%)`
+                return (
+                  <span style={{display:'flex'}}>
+                      <CircularProgress size={18} />
+                      <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[3].toFixed(1)}%)`}</span>
+                  </span>
+                )
               }
             }
             return (
@@ -424,7 +426,12 @@ export default function ViewSyncList() {
               } else if (rowData[7] === 'synced') {
                 return 'Data product is synced'
               } else if (rowData[7] === 'syncing') {
-                return `Syncing (${rowData[4].toFixed(1)}%)`
+                return (
+                  <span style={{display:'flex'}}>
+                      <CircularProgress size={18} />
+                      <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[4].toFixed(1)}%)`}</span>
+                  </span>
+                )
               }
             }
             return (
@@ -466,21 +473,6 @@ export default function ViewSyncList() {
               names: filterVals['sync_status']
             },
             filterList: getExistingFilterValue('sync_status')
-          }
-        }
-      )
-      _columns.push(
-        {
-          name: 'dataset',
-          label: 'Dataset',
-          options: {
-            display: false,
-            sort: false,
-            filter: true,
-            filterOptions: {
-              names: filterVals['dataset']
-            },
-            filterList: getExistingFilterValue('dataset')
           }
         }
       )
@@ -540,23 +532,23 @@ export default function ViewSyncList() {
     fetchFilterValuesData()
   }, [pagination, currentFilters])
 
-  // useEffect(() => {
-  //   if (!allFinished) {
-  //       if (currentInterval) {
-  //           clearInterval(currentInterval)
-  //           setCurrentInterval(null)
-  //       }
-  //       const interval = setInterval(() => {
-  //           fetchViewSyncList()
-  //       }, 10000);
-  //       setCurrentInterval(interval)
-  //       return () => clearInterval(interval);
-  //   }
-  // }, [allFinished])
+  useEffect(() => {
+    if (!allFinished) {
+        if (currentInterval) {
+            clearInterval(currentInterval)
+            setCurrentInterval(null)
+        }
+        const interval = setInterval(() => {
+            fetchViewSyncList()
+        }, 5000);
+        setCurrentInterval(interval)
+        return () => clearInterval(interval);
+    }
+  }, [allFinished])
 
   useEffect(() => {
     fetchViewSyncList()
-  }, [pagination, filterValues, currentFilters, initialFilters])
+  }, [pagination, filterValues, currentFilters, initialFilters, searchParams])
 
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
@@ -614,17 +606,6 @@ export default function ViewSyncList() {
     setCurrentFilters({...currentFilters, 'search_text': search_text})
     dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'search_text': search_text})))
   }
-
-  useEffect(() => {
-    let dataset
-    try {
-      dataset = searchParams.get('dataset') ? [searchParams.get('dataset')] : []
-    } catch (error: any) {
-      dataset = currentFilters['dataset']
-    }
-    setCurrentFilters({...currentFilters, 'dataset': dataset})
-    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'dataset': dataset})))
-  }, [searchParams])
 
   const canRowBeSelected = (dataIndex: number, rowData: any) => {
     if (!isBatchActionAvailable)

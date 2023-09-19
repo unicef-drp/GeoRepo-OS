@@ -21,7 +21,7 @@ import DatasetTilingConfig from '../Dataset/Configurations/DatasetTilingConfig';
 import ViewPermission from './ViewPermission';
 import ViewSync from './ViewSync';
 import '../../styles/ViewDetail.scss';
-import {useSearchParams} from "react-router-dom";
+import {useNavigate, useSearchParams} from "react-router-dom";
 import {setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
 import {parseInt} from "lodash";
 
@@ -44,6 +44,7 @@ export default function ViewDetail() {
     const downloadAsOpen = Boolean(anchorEl)
     const [isDownloading, setIsDownloading] = useState(false)
     const [searchParams, setSearchParams] = useSearchParams()
+    const navigate = useNavigate()
     
     useEffect(() => {
         if (view) {
@@ -68,11 +69,6 @@ export default function ViewDetail() {
         }
     }, [view, searchParams])
 
-    // useEffect(() => {
-    //     let tab = searchParams.get('tab') ? searchParams.get('tab') : 1
-    //     setTabSelected(tab as unknown as number)
-    // }, [searchParams])
-
     const onQueryValidation = (isValid: boolean, query: string) => {
         if (view) {
             // detail page, check if query is changed
@@ -88,7 +84,9 @@ export default function ViewDetail() {
     }
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-        setTabSelected(newValue)
+        '/view_edit?id=672'
+        let viewId = searchParams.get('id') ? parseInt(searchParams.get('id')) : 0
+        navigate(`/view_edit?id=${viewId}&tab=${newValue}`)
     }
 
     const onPreviewClicked = (tempData: TempQueryCreateInterface) => {
