@@ -168,7 +168,7 @@ class DatasetViewDetailSerializer(TaggitSerializer,
         # remove dataset_id from original query_string
         query = obj.query_string if obj.query_string else ''
         # dataset_id after where
-        pattern = r'dataset_id=[\d]+'
+        pattern = r'(gg\.)?dataset_id=[\d]+'
         query = re.sub(pattern, ' ', query, flags=re.IGNORECASE)
         pattern_1 = r'where[ ]+and'
         query = re.sub(pattern_1, 'where ', query, flags=re.IGNORECASE)

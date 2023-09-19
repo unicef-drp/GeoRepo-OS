@@ -1461,6 +1461,11 @@ class TestApiViews(TestCase):
         dataset_view = DatasetViewF.create(
             is_static=False,
         )
+        dataset_view.query_string = (
+            'SELECT * from georepo_geographicalentity where dataset_id='
+            f'{dataset_view.dataset.id}'
+        )
+        dataset_view.save()
         request = self.factory.get(
             reverse('view-detail', kwargs={
                 'id': str(dataset_view.id)
@@ -1472,6 +1477,9 @@ class TestApiViews(TestCase):
             'id': str(dataset_view.id)
         })
         self.assertEqual(response.status_code, 200)
+        query_string = response.data['query_string']
+        self.assertNotIn('gg.dataset_id', query_string)
+        self.assertNotIn('dataset_id', query_string)
 
     def test_get_closest_entities(self):
         user = UserF.create(is_superuser=True)
