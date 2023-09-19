@@ -173,14 +173,6 @@ export const ViewEditTilingConfigRoute: RouteInterface = {
   parent: ViewEditRoute
 }
 
-export const ViewSyncStatusRoute: RouteInterface = {
-  id: 'sync-status',
-  name: 'Sync Status',
-  path: '/sync-status',
-  element: lazy(() => import('./SyncStatus/List' /* webpackChunkName: "views" */)),
-  icon: SyncIcon
-}
-
 export const EntityConceptUCodeRoute: RouteInterface = {
   id: 'entity_by_concept_ucode',
   name: 'Entity Detail By Concept UCode',
@@ -224,7 +216,6 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   HomeRoute,
   DatasetRoute,
   ViewListRoute,
-  ViewSyncStatusRoute,
   UploaderRoute,
   UploadSessionListRoute,
   DatasetCreateRoute,
@@ -249,7 +240,6 @@ export const routes: Array<RouteInterface> = (window as any).is_admin ? [
   HomeRoute,
   DatasetRoute,
   ViewListRoute,
-  ViewSyncStatusRoute,
   UploaderRoute,
   UploadSessionListRoute,
   DatasetCreateRoute,

@@ -11,6 +11,14 @@ import {postData} from "../../utils/Requests";
 import Loading from "../../components/Loading";
 import AlertDialog from '../../components/AlertDialog'
 import Dataset from '../../models/dataset';
+import Box from "@mui/material/Box";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import TabPanel, {a11yProps} from "../../components/TabPanel";
+import Grid from "@mui/material/Grid";
+import ViewSyncList from "../SyncStatus/List";
+import {parseInt} from "lodash";
+import {ThemeButton} from "../../components/Elements/Buttons";
 
 const DELETE_DATASET_URL = '/api/delete-dataset'
 
@@ -36,6 +44,7 @@ export default function Dataset() {
   const [confirmationOpen, setConfirmationOpen] = useState<boolean>(false)
   const [confirmationText, setConfirmationText] = useState<string>('')
   const [deleteButtonDisabled, setDeleteButtonDisabled] = useState<boolean>(false)
+  const [tabSelected, setTabSelected] = useState(0)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const customColumnOptions = {
@@ -45,6 +54,28 @@ export default function Dataset() {
         display: true,
         customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
           return value ? 'Active' : 'Deprecated'
+        }
+    },
+    'sync_status': {
+        filter: true,
+        sort: true,
+        display: true,
+        customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+          const onClick = (e: any) => {
+            e.stopPropagation();
+            navigate(`/dataset?dataset=${tableMeta.rowData[0]}&tab=1`)
+          }
+          if (value != 'Synced') {
+            return (
+              <ThemeButton
+                icon={null}
+                title={'Out of Sync'}
+                variant={'secondary'}
+                onClick={onClick}
+              />
+            )
+          }
+          return 'Synced'
         }
     }
   }
@@ -74,8 +105,18 @@ export default function Dataset() {
   }
 
   useEffect(() => {
-    fetchDataset()
+    let tab = searchParams.get('tab') ? parseInt(searchParams.get('tab')) : 0
+    if (tab === 0) {
+      fetchDataset()
+    }
+    setTabSelected(tab as unknown as number)
   }, [searchParams])
+
+  useEffect(() => {
+    if (tabSelected === 0) {
+      fetchDataset()
+    }
+  }, [tabSelected])
 
   const actionDeleteButton: ActionDataInterface = {
     field: '',
@@ -135,6 +176,10 @@ export default function Dataset() {
     setConfirmationOpen(false)
   }
 
+  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+      setTabSelected(newValue)
+  }
+
   return (
     <div className="AdminContentMain main-data-list">
       <AlertDialog open={confirmationOpen} alertClosed={handleClose}
@@ -145,19 +190,32 @@ export default function Dataset() {
           confirmButtonText='Delete'
           confirmButtonProps={{color: 'error', autoFocus: true}}
       />
-      {!loading ?
-        <List
-          pageName={pageName}
-          listUrl={''}
-          initData={dataset}
-          selectionChanged={null}
-          onRowClick={handleRowClick}
-          actionData={[actionDeleteButton]}
-          excludedColumns={['permissions', 'is_empty']}
-          customOptions={customColumnOptions}
-          customColumnHeaderRender={customColumnHeaderRender}
-        /> : <Loading/>
-      }
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={tabSelected} onChange={handleChange} aria-label="Dataset Tab">
+              <Tab key={'tab-0'} label={'DATASET'} {...a11yProps(0)} />
+              <Tab key={'tab-1'} label={'SYNC STATUS'} {...a11yProps(1)} />
+          </Tabs>
+      </Box>
+      <Grid container sx={{ flexGrow: 1, flexDirection: 'column' , overflow: 'auto'}}>
+        <TabPanel key={0} value={tabSelected} index={0} padding={1}>
+          {!loading ?
+            <List
+              pageName={pageName}
+              listUrl={''}
+              initData={dataset}
+              selectionChanged={null}
+              onRowClick={handleRowClick}
+              actionData={[actionDeleteButton]}
+              excludedColumns={['permissions', 'is_empty']}
+              customOptions={customColumnOptions}
+              customColumnHeaderRender={customColumnHeaderRender}
+            /> : <Loading/>
+          }
+        </TabPanel>
+        <TabPanel key={1} value={tabSelected} index={1} padding={1}>
+            <ViewSyncList/>
+        </TabPanel>
+      </Grid>
     </div>
   )
 }

@@ -32,19 +32,24 @@ const TILING_CONFIGS_STATUS_URL = '/api/tiling-configs/status/'
 function TilingConfigConfirm(props: any) {
     const [loading, setLoading] = useState(false)
     const [alertOpen, setAlertOpen] = useState(false)
+    const navigate = useNavigate()
 
-    const confirmTilingConfig = (overwriteView: boolean = false) => {
+    const confirmTilingConfig = (redirect: boolean=true) => {
         setLoading(true)
         let _data = {
             'object_uuid': props.viewUUID ? props.viewUUID : props.datasetUUID,
             'object_type': props.viewUUID ? 'datasetview' : 'dataset',
             'session': props.session,
-            'overwrite_view': props.viewUUID ? true : overwriteView
         }
         postData(TILING_CONFIGS_TEMP_CONFIRM_URL, _data).then(
             response => {
                 setLoading(false)
                 props.onTilingConfigConfirmed()
+                if (props.datasetUUID && redirect) {
+                    if (redirect) {
+                        navigate(`/dataset?dataset=${props.datasetUUID}&tab=1`)
+                    }
+                }
             }
         ).catch(error => {
             setLoading(false)
@@ -93,7 +98,11 @@ function TilingConfigConfirm(props: any) {
                           <AlertDialog open={alertOpen} alertClosed={onConfirmedNo}
                             alertConfirmed={onConfirmedYes}
                             alertDialogTitle={`Saving Tiling Config.`}
-                            alertDialogDescription={'Apply to existing views?'}
+                            alertDialogDescription={
+                              'There are views that derive from this dataset. ' +
+                              'Would you like to manage which affected views will inherit your changes to the ' +
+                              'tiling matrix now? You can always view them later by going to the Sync Status Tab.'
+                            }
                             cancelButtonText={'No'}
                             confirmButtonText={'Yes'}
                           />
@@ -172,7 +181,7 @@ export default function TilingConfigWizard(props: any) {
 
     const onTilingConfigConfirmed = () => {
         // display message, then navigate to dataset/view tiling config tab
-        setAlertMessage('Successfully updating tiling config! Simplification and vector tiles generation will be run in the background.')
+        setAlertMessage('Successfully updating tiling config!')
     }
 
     const onRedirectToTilingConfig = () => {

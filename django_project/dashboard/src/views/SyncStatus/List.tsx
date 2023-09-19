@@ -12,11 +12,137 @@ import ResizeTableEvent from "../../components/ResizeTableEvent";
 import {RootState} from "../../app/store";
 import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import {getDefaultFilter, ViewSyncFilterInterface} from "./Filter"
-import {setSelectedViews} from "../../reducers/viewSyncAction";
+import {setSelectedViews, toggleIsBatchAction} from "../../reducers/viewSyncAction";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {setAvailableFilters, setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
 import Stack from '@mui/material/Stack';
+import {postData} from "../../utils/Requests";
+import AlertMessage from "../../components/AlertMessage";
+import AlertDialog from "../../components/AlertDialog";
+import {AddButton, CancelButton, ThemeButton} from "../../components/Elements/Buttons";
+import GradingIcon from "@mui/icons-material/Grading";
+import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
 
+
+export function ViewSyncActionButtons() {
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const isBatchActionAvailable = useAppSelector((state: RootState) => state.viewSyncAction.isBatchActionAvailable)
+  const isBatchAction = useAppSelector((state: RootState) => state.viewSyncAction.isBatchAction)
+  const selectedViews = useAppSelector((state: RootState) => state.viewSyncAction.selectedViews)
+  const initialFilters = useAppSelector((state: RootState) => state.viewSyncTable.currentFilters)
+  const [alertOpen, setAlertOpen] = useState<boolean>(false)
+  const [alertDialogTitle, setAlertDialogTitle] = useState<string>('')
+  const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
+  const [alertLoading, setAlertLoading] = useState<boolean>(false)
+  const [confirmMessage, setConfirmMessage] = useState<string>('')
+  const [syncOptions, setSyncOptions] = useState<string[]>([])
+
+  const onToggleBatchAction = () => {
+    dispatch(toggleIsBatchAction())
+  }
+
+  const alertConfirmed = () => {
+    const data = {
+      view_ids: selectedViews,
+      sync_options: syncOptions
+    }
+    postData(TRIGGER_SYNC_API_URL, data).then(
+        response => {
+          setAlertLoading(false)
+          setAlertOpen(false)
+          setConfirmMessage('Successfully syncing Views. Your request will be processed in the background.')
+          dispatch(setInitialFilters(JSON.stringify({...initialFilters})))
+        }
+      ).catch(error => {
+            setAlertLoading(false)
+            setAlertOpen(false)
+            console.log('error ', error)
+            if (error.response) {
+                if (error.response.status == 403) {
+                  // TODO: use better way to handle 403
+                  navigate('/invalid_permission')
+                }
+            } else {
+                setConfirmMessage('An error occurred. Please try it again later')
+            }
+    })
+  }
+
+  const handleAlertCancel = () => {
+    setAlertOpen(false)
+  }
+
+  const onBatchMatchTilingClick = () => {
+    setSyncOptions(['tiling_config'])
+    setAlertDialogTitle('Batch Match Tiling Config')
+    setAlertDialogDescription(
+      `Are you sure you want to match ${selectedViews.length} tiling config to their dataset?`
+    )
+    setAlertOpen(true)
+  }
+
+  const onBatchSyncClick = () => {
+    setSyncOptions(['tiling_config', 'vector_tiles', 'products'])
+    setAlertDialogTitle('Batch Synchronize')
+    setAlertDialogDescription(`Are you sure you want to synchronize ${selectedViews.length} entities?`)
+    setAlertOpen(true)
+  }
+
+  return (
+    <div style={{display:'flex', flexDirection: 'row', alignItems: 'center'}}>
+      <AlertMessage message={confirmMessage} onClose={() => setConfirmMessage('')} />
+      <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
+                 alertConfirmed={alertConfirmed}
+                 alertLoading={alertLoading}
+                 alertDialogTitle={alertDialogTitle}
+                 alertDialogDescription={alertDialogDescription} />
+      { isBatchActionAvailable && (
+        <div style={{display:'flex', flexDirection: 'row', alignItems: 'center'}}>
+          { !isBatchAction && (
+            <ThemeButton
+              icon={<GradingIcon />}
+              disabled={!isBatchActionAvailable}
+              title={'Batch Action'}
+              variant={'secondary'}
+              onClick={onToggleBatchAction}
+              sx={{marginLeft:'10px'}}
+            />
+          )}
+          { isBatchAction && (
+            <Typography variant={'subtitle2'} >{selectedViews.length} selected</Typography>
+          )}
+          { isBatchAction && (
+            <AddButton
+              disabled={selectedViews.length === 0}
+              text={'Match tiling config with dataset'}
+              variant={'secondary'}
+              useIcon={false}
+              additionalClass={'MuiButtonMedium'}
+              onClick={onBatchMatchTilingClick}
+              sx={{marginLeft:'10px'}}
+            />
+          )}
+          { isBatchAction && (
+            <AddButton
+              disabled={selectedViews.length === 0}
+              text={'Synchronize'}
+              variant={'secondary'}
+              useIcon={false}
+              additionalClass={'MuiButtonMedium'}
+              onClick={onBatchSyncClick}
+              sx={{marginLeft:'10px', marginRight:'10px'}}
+            />
+          )}
+          { isBatchAction && (
+            <CancelButton onClick={onToggleBatchAction} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface ViewSyncRowInterface {
   id: number,
@@ -525,7 +651,11 @@ export default function ViewSyncList() {
                                 onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
             <div className='AdminTable'>
               <MUIDataTable
-                title=''
+                title={
+                    <Box sx={{textAlign:'left ', marginLeft:'-20px'}}>
+                      <ViewSyncActionButtons/>
+                    </Box>
+                  }
                 data={data}
                 columns={columns}
                 options={{

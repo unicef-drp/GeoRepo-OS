@@ -766,3 +766,17 @@ def dataset_view_pre_save(
             )
     except DatasetView.DoesNotExist:
         return None
+
+
+@receiver(pre_save, sender=DatasetView)
+def dataset_view_post_save(
+    sender,
+    instance: DatasetView,
+    created: bool,
+    **kwargs
+):
+    if instance.product_sync_status == DatasetView.SyncStatus.OUT_OF_SYNC \
+            or instance.vector_tile_sync_status == DatasetView.SyncStatus.OUT_OF_SYNC \
+            or instance.is_tiling_config_match is False:
+        instance.dataset.sync_status = instance.dataset.SyncStatus.OUT_OF_SYNC
+        instance.dataset.save()

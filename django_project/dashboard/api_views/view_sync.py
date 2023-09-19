@@ -21,6 +21,7 @@ from georepo.utils.dataset_view import (
 from georepo.utils.permission import (
     get_views_for_user
 )
+from georepo.utils.uuid_helper import is_valid_uuid
 
 
 class ViewSyncList(AzureAuthRequiredMixin, APIView):
@@ -65,12 +66,14 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
         dataset = dict(request.data).get('dataset', [])
         dataset_ids = dict(request.data).get('dataset', [])
         dataset_ids = [int(ds_id) for ds_id in dataset_ids if ds_id.isnumeric()]
+        dataset_uuids = [ds_uuid for ds_uuid in dataset if is_valid_uuid(ds_uuid, 4)]
         if not dataset:
             return Q()
 
         return Q(
             Q(dataset__label__in=dataset) |
-            Q(dataset_id__in=dataset_ids)
+            Q(dataset_id__in=dataset_ids) |
+            Q(dataset__uuid__in=dataset_uuids)
         )
 
     def _filter_queryset(self, queryset, request):

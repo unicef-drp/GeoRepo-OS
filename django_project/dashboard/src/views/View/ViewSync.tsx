@@ -13,7 +13,14 @@ import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
 import {Button} from "@mui/material";
 import Box from "@mui/material/Box";
-import {ThemeButton} from "../../components/Elements/Buttons";
+import {AddButton, CancelButton, ThemeButton} from "../../components/Elements/Buttons";
+import {toggleIsBatchAction} from "../../reducers/viewSyncAction";
+import {postData} from "../../utils/Requests";
+import {setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
+import AlertMessage from "../../components/AlertMessage";
+import AlertDialog from "../../components/AlertDialog";
+import GradingIcon from "@mui/icons-material/Grading";
+import Typography from "@mui/material/Typography";
 
 
 interface ViewResourceInterface {
