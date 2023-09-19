@@ -22,6 +22,8 @@ def generate_view_vector_tiles_task(view_resource_id: str,
     from georepo.models.dataset_view import (
         DatasetViewResource, DatasetViewResourceLog
     )
+    from georepo.models.entity import EntitySimplified
+    from georepo.utils.mapshaper import simplify_for_dataset
     from georepo.utils.geojson import generate_view_geojson
     from georepo.utils.shapefile import generate_view_shapefile
     from georepo.utils.kml import generate_view_kml
@@ -56,6 +58,14 @@ def generate_view_vector_tiles_task(view_resource_id: str,
                 view_resource,
                 **{'log_object': view_resource_log}
             )
+            dataset = view_resource.dataset_view.dataset
+            # check if has simplified entities record
+            simplified_entities = EntitySimplified.objects.filter(
+                geographical_entity__dataset=dataset
+            )
+            if not simplified_entities.exists():
+                # trigger simplification process
+                simplify_for_dataset(dataset)
             generate_view_vector_tiles(
                 view_resource,
                 overwrite=overwrite,
