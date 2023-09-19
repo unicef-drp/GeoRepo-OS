@@ -8,6 +8,9 @@
     <script src="https://unpkg.com/maplibre-gl@2.1.9/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@2.1.9/dist/maplibre-gl.css"
           rel="stylesheet"/>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
     <style>
         body {
             margin: 0;
@@ -29,47 +32,89 @@
     </style>
 </head>
 <body>
-<div id="map"></div>
-<div class="dataset">
-    Dataset : {{ label }} <div id="zoom"></div>
-</div>
-<script>
-    var map = new maplibregl.Map({
-        container: 'map',
-        style:
-            'https://api.maptiler.com/maps/hybrid/style.json?key={{ maptiler_api_key }}',
-        zoom: 5,
-        center: {% if center %} {{ center.coordinates }} {% else %} [0, 0] {% endif %}
-    });
-
-    var nav = new maplibregl.NavigationControl();
-    map.addControl(nav, 'top-right');
-
-    document.getElementById('zoom').innerHTML = 'Zoom : ' + map.getZoom();
-
-    map.on('zoom', () => {
-      document.getElementById('zoom').innerHTML = 'Zoom : ' + map.getZoom().toFixed(2);
-    });
-
-    map.on('load', function () {
-        map.addSource('{{ label }}', {
-          'type': 'vector',
-          "tiles": ["{{ layer_tiles_base_url }}{{ vector_tiles_path }}&token={{ auth_token }}"],
-          "tolerance": 0
+  <div id="map"></div>
+  <div class="dataset">
+      Dataset : {{ label }} <div id="zoom"></div>
+  </div>
+  <script>
+    $(function() {
+      var dialog, form,
+        apiKey = $( "#apikey" );
+      
+      function initMap(apiKeyVal) {
+        var map = new maplibregl.Map({
+            container: 'map',
+            style:
+                'https://api.maptiler.com/maps/hybrid/style.json?key={{ maptiler_api_key }}',
+            zoom: 5,
+            center: {% if center %} {{ center.coordinates }} {% else %} [0, 0] {% endif %}
         });
 
-      {% if bbox %}
-        map.fitBounds([
-          [{{ bbox.0 }}, {{ bbox.1 }}],
-          [{{ bbox.2 }}, {{ bbox.3 }}]
-        ])
-      {% endif %}
+        var nav = new maplibregl.NavigationControl();
+        map.addControl(nav, 'top-right');
 
-      {% for layer_config in layers_configs %}
-        map.addLayer({{ layer_config | safe }})
-      {% endfor %}
+        document.getElementById('zoom').innerHTML = 'Zoom : ' + map.getZoom();
+
+        map.on('zoom', () => {
+          document.getElementById('zoom').innerHTML = 'Zoom : ' + map.getZoom().toFixed(2);
+        });
+
+        map.on('load', function () {
+            map.addSource('{{ label }}', {
+              'type': 'vector',
+              "tiles": ["{{ layer_tiles_base_url }}{{ vector_tiles_path }}&token="+apiKeyVal+"&georepo_user_key={{ user.email }}"],
+              "tolerance": 0
+            });
+
+          {% if bbox %}
+            map.fitBounds([
+              [{{ bbox.0 }}, {{ bbox.1 }}],
+              [{{ bbox.2 }}, {{ bbox.3 }}]
+            ])
+          {% endif %}
+
+          {% for layer_config in layers_configs %}
+            map.addLayer({{ layer_config | safe }})
+          {% endfor %}
+        });
+      }
+      
+      dialog = $( "#dialog-form" ).dialog({
+        autoOpen: true,
+        height: 200,
+        width: 500,
+        modal: true,
+        buttons: {
+          "Submit": function() {
+            initMap(apiKey.val());
+            dialog.dialog( "close" );
+          },
+          Cancel: function() {
+            dialog.dialog( "close" );
+          }
+        },
+        close: function() {}
+      });
+
+      form = dialog.find( "form" ).on( "submit", function( event ) {
+        event.preventDefault();
+        initMap(apiKey.val());
+        dialog.dialog( "close" );
+      });
+
     });
-</script>
-
+      
+  </script>
+  <div id="dialog-form" title="Input API Key">  
+    <form>
+      <fieldset>
+        <label for="apikey">API Key</label>
+        <input type="password" name="apikey" id="apikey" value="" class="text ui-widget-content ui-corner-all">
+  
+        <!-- Allow form submission with keyboard without duplicating the dialog button -->
+        <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
+      </fieldset>
+    </form>
+  </div>
 </body>
 </html>

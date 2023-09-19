@@ -12,7 +12,6 @@ from georepo.utils.permission import (
     get_external_view_permission_privacy_level
 )
 from georepo.utils.dataset_view import get_view_tiling_status
-from rest_framework.authtoken.models import Token
 
 
 class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
@@ -25,6 +24,7 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
     min_privacy = serializers.SerializerMethodField()
     max_privacy = serializers.SerializerMethodField()
+    layer_preview = serializers.SerializerMethodField()
 
     def get_mode(self, obj: DatasetView):
         if obj.is_static is None:
@@ -53,9 +53,6 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
 
     def get_layer_tiles(self, obj: DatasetView):
         user = self.context.get('user', None)
-        token = ''
-        if user and Token.objects.filter(user=user).exists():
-            token = str(user.auth_token)
         user_privacy_levels = self.context.get('user_privacy_levels', {})
         privacy_level = user_privacy_levels.get(obj.dataset.id, 0)
         if privacy_level == 0:
@@ -76,9 +73,27 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
                     f'{settings.LAYER_TILES_BASE_URL}'
                     f'/layer_tiles/{str(resource.uuid)}/{{z}}/{{x}}/{{y}}'
                     f'?t={updated_at}&'
-                    f'token={token}'
+                    'token={{YOUR_TOKEN}}&georepo_user_key={{YOUR_EMAIL}}'
                 )
         return '-'
+
+    def get_layer_preview(self, obj: DatasetView):
+        user = self.context.get('user', None)
+        user_privacy_levels = self.context.get('user_privacy_levels', {})
+        privacy_level = user_privacy_levels.get(obj.dataset.id, 0)
+        if privacy_level == 0:
+            # could be from external view
+            privacy_level = (
+                get_external_view_permission_privacy_level(user, obj)
+            )
+        if privacy_level > 0:
+            resource = DatasetViewResource.objects.filter(
+                dataset_view=obj,
+                privacy_level=privacy_level
+            ).first()
+            if resource:
+                return f'/layer-test/?dataset_view_resource={str(resource.id)}'
+        return None
 
     def get_permissions(self, obj: DatasetView):
         user = self.context['user']
@@ -99,7 +114,8 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
             'layer_tiles',
             'status',
             'uuid',
-            'permissions'
+            'permissions',
+            'layer_preview'
         ]
 
 

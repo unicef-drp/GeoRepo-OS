@@ -3,7 +3,6 @@ from enum import Enum
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from rest_framework.permissions import BasePermission
-from rest_framework.authtoken.models import Token
 from guardian.shortcuts import get_objects_for_user, assign_perm,\
     remove_perm
 from guardian.core import ObjectPermissionChecker
@@ -458,13 +457,7 @@ def grant_dataset_owner(dataset, user_or_group=None):
 def reset_datasetview_cache(dataset_view, user_or_group):
     # clear permission cache for this dataset view resources+user
     for resource in dataset_view.datasetviewresource_set.all():
-        if isinstance(user_or_group, Group):
-            resource.clear_permission_cache()
-        else:
-            if Token.objects.filter(user=user_or_group).exists():
-                resource.clear_permission_cache(
-                    token=user_or_group.auth_token
-                )
+        resource.clear_permission_cache()
 
 
 def grant_dataset_manager(dataset, user_or_group, permissions=None):
