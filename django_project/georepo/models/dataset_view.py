@@ -237,19 +237,22 @@ class DatasetView(models.Model):
         vector_tile=False,
         product=False
     ):
+        dsv_resources = self.datasetviewresource_set.all()
         update_fields = []
         if tiling_config:
             self.is_tiling_config_match = True
             update_fields.append('is_tiling_config_match')
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.SYNCED
+            for dsv_resource in dsv_resources:
+                dsv_resource.set_synced(vector_tiles=True, product=False)
             update_fields.append('vector_tile_sync_status')
         if product:
             self.product_sync_status = self.SyncStatus.SYNCED
+            for dsv_resource in dsv_resources:
+                dsv_resource.set_synced(vector_tiles=True, product=False)
             update_fields.append('product_sync_status')
         self.save(update_fields=update_fields)
-
-    # def set_resource_out_of_sync
 
     def save(self, *args, **kwargs):
         if not self.uuid:
@@ -655,7 +658,6 @@ class DatasetViewResource(models.Model):
             for field in fields:
                 setattr(self, field, self.SyncStatus.OUT_OF_SYNC)
             fields = [
-                'vector_tiles',
                 'geojson',
                 'shapefile',
                 'kml',
@@ -663,6 +665,34 @@ class DatasetViewResource(models.Model):
             ]
             for field in fields:
                 setattr(self, f'{field}_progress', 0)
+        self.save()
+
+    def set_synced(self, vector_tiles=True, product=True):
+        if vector_tiles:
+            setattr(
+                self,
+                'vector_tile_sync_status',
+                self.SyncStatus.SYNCED
+            )
+            setattr(self, 'vector_tile_progress', 100)
+
+        if product:
+            fields = [
+                'geojson_sync_status',
+                'shapefile_sync_status',
+                'kml_sync_status',
+                'topojson_sync_status'
+            ]
+            for field in fields:
+                setattr(self, field, self.SyncStatus.SYNCED)
+            fields = [
+                'geojson',
+                'shapefile',
+                'kml',
+                'topojson'
+            ]
+            for field in fields:
+                setattr(self, f'{field}_progress', 100)
         self.save()
 
 
