@@ -2,7 +2,6 @@ import re
 import uuid
 import math
 from django.db.models.expressions import RawSQL, Q
-from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import connection
 from django.http import Http404, HttpResponseForbidden, HttpResponse
@@ -13,8 +12,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from azure_auth.backends import AzureAuthRequiredMixin
-from celery.result import AsyncResult
-from core.celery import app
 from dashboard.serializers.view import (
     DatasetViewSerializer, DatasetViewDetailSerializer
 )
@@ -38,7 +35,6 @@ from georepo.utils.dataset_view import (
     init_view_privacy_level,
     get_view_resource_from_view
 )
-from georepo.tasks.simplify_geometry import simplify_geometry_in_view
 from georepo.utils.permission import (
     check_user_has_view_permission,
     get_views_for_user,
@@ -197,7 +193,7 @@ class ViewDetail(AzureAuthRequiredMixin,
         )
 
 
-class ViewSyncList(AzureAuthRequiredMixin, APIView):
+class ViewList(AzureAuthRequiredMixin, APIView):
     """
     API view to list views
     """
@@ -474,10 +470,8 @@ class UpdateView(AzureAuthRequiredMixin,
         if not query_valid:
             raise Http404('Query invalid')
 
-        should_generate_vector_tiles = False
         if self.query_string != dataset_view.query_string:
             dataset_view.query_string = self.query_string
-            should_generate_vector_tiles = True
 
         dataset_view.save()
 

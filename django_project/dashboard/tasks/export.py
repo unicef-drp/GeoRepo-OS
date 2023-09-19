@@ -50,7 +50,8 @@ def generate_view_vector_tiles_task(view_resource_id: str,
 
         if export_vector_tile:
             logger.info(
-                f'Generating vector tile from view_resource {view_resource.id} '
+                f'Generating vector tile from '
+                f'view_resource {view_resource.id} '
                 f'- {view_resource.privacy_level} '
                 f'- {view_resource.dataset_view.name}'
             )

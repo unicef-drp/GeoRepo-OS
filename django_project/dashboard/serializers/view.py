@@ -313,8 +313,12 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
 
 
 class ViewSyncSerializer(serializers.Serializer):
-    view_ids = serializers.ListField(child=serializers.IntegerField(), required=True)
-    sync_options = serializers.ListField(child=serializers.CharField(), required=True)
+    view_ids = serializers.ListField(
+        child=serializers.IntegerField(), required=True
+    )
+    sync_options = serializers.ListField(
+        child=serializers.CharField(), required=True
+    )
 
     def validate_sync_options(self, attrs):
         options = set(attrs)

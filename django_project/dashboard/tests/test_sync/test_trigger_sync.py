@@ -2,7 +2,6 @@ __author__ = 'zakki@kartoza.com'
 __date__ = '19/09/23'
 __copyright__ = ('Copyright 2023, Unicef')
 
-from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIRequestFactory
@@ -14,8 +13,6 @@ from georepo.tests.model_factories import (
 from georepo.utils.permission import (
     grant_dataset_manager
 )
-from georepo.models.dataset_tile_config import AdminLevelTilingConfig
-from georepo.models.dataset_view_tile_config import ViewAdminLevelTilingConfig
 from georepo.models.dataset_view import DatasetView, DatasetViewResource
 
 

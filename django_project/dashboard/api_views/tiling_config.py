@@ -33,10 +33,6 @@ from dashboard.serializers.tiling_config import (
 from georepo.utils.dataset_view import (
     get_view_tiling_status
 )
-from georepo.tasks.simplify_geometry import (
-    simplify_geometry_in_dataset,
-    simplify_geometry_in_view
-)
 from dashboard.api_views.common import (
     DatasetManagePermission
 )
@@ -479,7 +475,9 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         dataset.styles = None
         dataset.style_source_name = ''
         dataset.is_simplified = False
-        dataset.save(update_fields=['styles', 'style_source_name', 'is_simplified'])
+        dataset.save(
+            update_fields=['styles', 'style_source_name', 'is_simplified']
+        )
         # Trigger simplification
         if dataset_view.simplification_task_id:
             res = AsyncResult(dataset_view.simplification_task_id)

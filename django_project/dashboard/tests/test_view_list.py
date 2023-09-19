@@ -9,7 +9,7 @@ from django.urls import reverse
 from rest_framework.test import APIRequestFactory
 
 from dashboard.api_views.views import (
-    ViewSyncList
+    ViewList
 )
 from georepo.tests.model_factories import (
     UserF, DatasetF, DatasetViewF, ModuleF
@@ -42,7 +42,7 @@ class TestViewList(TestCase):
             reverse('view-list')
         )
         request.user = self.superuser
-        list_view = ViewSyncList.as_view()
+        list_view = ViewList.as_view()
         response = list_view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 1)
@@ -58,7 +58,7 @@ class TestViewList(TestCase):
         )
 
         request.user = self.creator
-        list_view = ViewSyncList.as_view()
+        list_view = ViewList.as_view()
         response = list_view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 1)
@@ -82,7 +82,7 @@ class TestViewList(TestCase):
             f"{reverse('view-list')}?{urllib.parse.urlencode(query_params)}"
         )
         request.user = self.superuser
-        list_view = ViewSyncList.as_view()
+        list_view = ViewList.as_view()
         response = list_view(request)
         self.assertEqual(response.data['count'], 2)
         self.assertEqual(response.data['page'], 1)
@@ -109,7 +109,7 @@ class TestViewList(TestCase):
             f"{reverse('view-list')}?{urllib.parse.urlencode(query_params)}"
         )
         request.user = self.superuser
-        list_view = ViewSyncList.as_view()
+        list_view = ViewList.as_view()
         response = list_view(request)
         self.assertEqual(response.data['page'], 2)
         self.assertEqual(response.data['total_page'], 2)
@@ -131,7 +131,7 @@ class TestViewList(TestCase):
             }
         )
         request.user = self.superuser
-        list_view = ViewSyncList.as_view()
+        list_view = ViewList.as_view()
         response = list_view(request)
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['page'], 1)
@@ -154,7 +154,7 @@ class TestViewList(TestCase):
             }
         )
         request.user = self.superuser
-        list_view = ViewSyncList.as_view()
+        list_view = ViewList.as_view()
         response = list_view(request)
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['page'], 1)

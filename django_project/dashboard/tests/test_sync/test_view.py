@@ -88,7 +88,8 @@ class TestViewSyncList(TestCase):
             'sort_direction': 'desc'
         }
         request = self.factory.post(
-            f"{reverse('view-sync-list-per-dataset', args=[self.dataset.id])}?{urllib.parse.urlencode(query_params)}"
+            f"{reverse('view-sync-list-per-dataset', args=[self.dataset.id])}?"
+            f"{urllib.parse.urlencode(query_params)}"
         )
         request.user = self.superuser
         list_view = ViewSyncList.as_view()
@@ -115,7 +116,8 @@ class TestViewSyncList(TestCase):
             'page_size': 1
         }
         request = self.factory.post(
-            f"{reverse('view-sync-list-per-dataset', args=[self.dataset.id])}?{urllib.parse.urlencode(query_params)}"
+            f"{reverse('view-sync-list-per-dataset', args=[self.dataset.id])}"
+            f"?{urllib.parse.urlencode(query_params)}"
         )
         request.user = self.superuser
         list_view = ViewSyncList.as_view()

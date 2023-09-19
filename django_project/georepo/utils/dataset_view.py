@@ -73,35 +73,6 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
     view_resources = DatasetViewResource.objects.filter(
         dataset_view=dataset_view
     )
-    for view_resource in view_resources:
-        if view_resource.vector_tiles_task_id:
-            res = AsyncResult(view_resource.vector_tiles_task_id)
-            if not res.ready():
-                # find if there is running task and stop it
-                app.control.revoke(view_resource.vector_tiles_task_id,
-                                   terminate=True)
-        view_resource.status = DatasetView.DatasetViewStatus.PENDING
-        view_resource.vector_tiles_progress = 0
-        view_resource.save()
-        task = generate_view_vector_tiles_task.apply_async(
-            (view_resource.id, export_data),
-            queue='tegola'
-        )
-        view_resource.vector_tiles_task_id = task.id
-        view_resource.save(update_fields=['vector_tiles_task_id'])
-
-
-def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
-                                          export_data: bool = True):
-    """
-    Trigger generate vector tiles for a view
-    """
-    from dashboard.tasks import (
-        generate_view_vector_tiles_task
-    )
-    view_resources = DatasetViewResource.objects.filter(
-        dataset_view=dataset_view
-    )
     dataset_view.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
     dataset_view.vector_tiles_progress = 0
     if export_data:
@@ -123,7 +94,9 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
             view_resource.kml_progress = 0
             view_resource.topojson_progress = 0
             view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCING
-            view_resource.shapefile_sync_status = DatasetView.SyncStatus.SYNCING
+            view_resource.shapefile_sync_status = (
+                DatasetView.SyncStatus.SYNCING
+            )
             view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
             view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
         view_resource.save()

@@ -154,12 +154,22 @@ class DatasetViewExporterBase(object):
         return tmp_output_dir
 
     def update_progress(self, view_resource=None, progress=0):
-        view_resource = view_resource['resource'] if view_resource else self.view_resource
+        view_resource = view_resource['resource'] if \
+            view_resource else \
+            self.view_resource
         setattr(view_resource, f'{self.output}_progress', progress)
         if math.isclose(progress, 100, abs_tol=1e-4):
-            setattr(view_resource, f'{self.output}_sync_status', DatasetViewResource.SyncStatus.SYNCED)
+            setattr(
+                view_resource,
+                f'{self.output}_sync_status',
+                DatasetViewResource.SyncStatus.SYNCED
+            )
             output_path = self.get_tmp_output_dir(view_resource)
-            setattr(view_resource, f'{self.output}_size', get_folder_size(output_path))
+            setattr(
+                view_resource,
+                f'{self.output}_size',
+                get_folder_size(output_path)
+            )
         view_resource.save()
 
     def run(self):

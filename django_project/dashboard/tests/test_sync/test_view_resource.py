@@ -8,8 +8,8 @@ from rest_framework.test import APIRequestFactory
 
 from dashboard.api_views.view_sync import ViewResourcesSyncList
 from georepo.tests.model_factories import (
-    UserF, DatasetF, DatasetViewF, 
-    DatasetViewResourceF, ModuleF
+    UserF, DatasetF, DatasetViewF,
+    ModuleF
 )
 from georepo.models.dataset_view import DatasetViewResource
 from georepo.utils.permission import (

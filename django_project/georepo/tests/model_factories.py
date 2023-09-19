@@ -82,8 +82,10 @@ class DatasetViewF(BaseFactory[DatasetView],
     created_by = factory.SubFactory(UserF)
 
 
-class DatasetViewResourceF(BaseFactory[DatasetViewResource],
-                   metaclass=BaseMetaFactory[DatasetViewResource]):
+class DatasetViewResourceF(
+    BaseFactory[DatasetViewResource],
+    metaclass=BaseMetaFactory[DatasetViewResource]
+):
     class Meta:
         model = DatasetViewResource
 

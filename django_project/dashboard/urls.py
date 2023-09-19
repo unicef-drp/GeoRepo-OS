@@ -98,7 +98,7 @@ from dashboard.api_views.entity import (
 )
 
 from dashboard.api_views.views import (
-    CreateNewView, ViewSyncList, DeleteView, ViewDetail,
+    CreateNewView, ViewList, DeleteView, ViewDetail,
     UpdateView, QueryViewCheck, SQLColumnsTablesList,
     QueryViewPreview, GetViewTags,
     DownloadView, ViewFilterValue
@@ -531,7 +531,7 @@ urlpatterns = [
             CreateNewView.as_view(),
             name='create-new-view'),
     re_path(r'api/view-list/?$',
-            ViewSyncList.as_view(),
+            ViewList.as_view(),
             name='view-list'),
     re_path(r'^api/view-filter/values/'
             r'(?P<criteria>\w+)/?$',

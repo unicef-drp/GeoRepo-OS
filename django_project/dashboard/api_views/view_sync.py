@@ -65,8 +65,12 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
     def _filter_dataset(self, request):
         dataset = dict(request.data).get('dataset', [])
         dataset_ids = dict(request.data).get('dataset', [])
-        dataset_ids = [int(ds_id) for ds_id in dataset_ids if ds_id.isnumeric()]
-        dataset_uuids = [ds_uuid for ds_uuid in dataset if is_valid_uuid(ds_uuid, 4)]
+        dataset_ids = [
+            int(ds_id) for ds_id in dataset_ids if ds_id.isnumeric()
+        ]
+        dataset_uuids = [
+            ds_uuid for ds_uuid in dataset if is_valid_uuid(ds_uuid, 4)
+        ]
         if not dataset:
             return Q()
 

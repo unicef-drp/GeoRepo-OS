@@ -638,7 +638,11 @@ class DatasetViewResource(models.Model):
 
     def set_out_of_sync(self, vector_tiles=True, product=True):
         if vector_tiles:
-            setattr(self, 'vector_tile_sync_status', self.SyncStatus.OUT_OF_SYNC)
+            setattr(
+                self,
+                'vector_tile_sync_status',
+                self.SyncStatus.OUT_OF_SYNC
+            )
             setattr(self, 'vector_tile_progress', 0)
 
         if product:
@@ -726,11 +730,23 @@ def view_res_post_save(sender, instance: DatasetViewResource,
         entity_count__gt=0
     )
 
-    tiling_status, vt_progresss = get_view_tiling_status(view_res_qs)
-    geojson_status, geojson_progress = get_view_product_status(view_res_qs, 'geojson')
-    shapefile_status, shapefile_progress = get_view_product_status(view_res_qs, 'shapefile')
+    (
+        tiling_status,
+        vt_progresss
+    ) = get_view_tiling_status(view_res_qs)
+    (
+        geojson_status,
+        geojson_progress
+    ) = get_view_product_status(view_res_qs, 'geojson')
+    (
+        shapefile_status,
+        shapefile_progress
+    ) = get_view_product_status(view_res_qs, 'shapefile')
     kml_status, kml_progress = get_view_product_status(view_res_qs, 'kml')
-    topojson_status, topojson_progress = get_view_product_status(view_res_qs, 'topojson')
+    (
+        topojson_status,
+        topojson_progress
+    ) = get_view_product_status(view_res_qs, 'topojson')
     product_status = [
         geojson_status,
         shapefile_status,
@@ -806,8 +822,12 @@ def dataset_view_post_save(
     *args,
     **kwargs
 ):
-    if instance.product_sync_status == DatasetView.SyncStatus.OUT_OF_SYNC \
-            or instance.vector_tile_sync_status == DatasetView.SyncStatus.OUT_OF_SYNC \
-            or instance.is_tiling_config_match is False:
+    if instance.product_sync_status == (
+        DatasetView.SyncStatus.OUT_OF_SYNC
+    ) \
+        or instance.vector_tile_sync_status == (
+        DatasetView.SyncStatus.OUT_OF_SYNC
+    ) \
+        or instance.is_tiling_config_match is False:
         instance.dataset.sync_status = instance.dataset.SyncStatus.OUT_OF_SYNC
         instance.dataset.save()
