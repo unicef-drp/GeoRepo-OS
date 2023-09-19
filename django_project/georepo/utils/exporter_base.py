@@ -41,7 +41,6 @@ from georepo.utils.azure_blob_storage import (
     StorageContainerClient
 )
 from georepo.utils.directory_helper import (
-    convert_size,
     get_folder_size
 )
 
