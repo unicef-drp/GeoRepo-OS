@@ -210,7 +210,6 @@ class DatasetView(models.Model):
         product=False
     ):
         dsv_resources = self.datasetviewresource_set.all()
-        update_fields = []
         if tiling_config:
             # Only set tiling config as out of sync if DatasetView
             # has no tiling config. Meaning it gets the tiling
@@ -218,18 +217,15 @@ class DatasetView(models.Model):
             # config is updated, DatasetView tiling config just matches.
             if self.datasetviewtilingconfig_set.all().exists():
                 self.is_tiling_config_match = False
-                update_fields.append('is_tiling_config_match')
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.OUT_OF_SYNC
             for dsv_resource in dsv_resources:
                 dsv_resource.set_out_of_sync(vector_tiles=True, product=False)
-            update_fields.append('vector_tile_sync_status')
         if product:
             self.product_sync_status = self.SyncStatus.OUT_OF_SYNC
             for dsv_resource in dsv_resources:
                 dsv_resource.set_out_of_sync(vector_tiles=False, product=True)
-            update_fields.append('product_sync_status')
-        self.save(update_fields=update_fields)
+        self.save()
 
     def set_synced(
         self,
@@ -238,21 +234,16 @@ class DatasetView(models.Model):
         product=False
     ):
         dsv_resources = self.datasetviewresource_set.all()
-        update_fields = []
         if tiling_config:
             self.is_tiling_config_match = True
-            update_fields.append('is_tiling_config_match')
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.SYNCED
             for dsv_resource in dsv_resources:
                 dsv_resource.set_synced(vector_tiles=True, product=False)
-            update_fields.append('vector_tile_sync_status')
         if product:
             self.product_sync_status = self.SyncStatus.SYNCED
             for dsv_resource in dsv_resources:
                 dsv_resource.set_synced(vector_tiles=True, product=False)
-            update_fields.append('product_sync_status')
-        self.save(update_fields=update_fields)
 
     def save(self, *args, **kwargs):
         if not self.uuid:
