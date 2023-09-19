@@ -63,7 +63,8 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
         if privacy_level > 0:
             resource = DatasetViewResource.objects.filter(
                 dataset_view=obj,
-                privacy_level=privacy_level
+                privacy_level__lte=privacy_level,
+                entity_count__gt=0
             ).first()
             if resource:
                 updated_at = (
@@ -89,7 +90,8 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
         if privacy_level > 0:
             resource = DatasetViewResource.objects.filter(
                 dataset_view=obj,
-                privacy_level=privacy_level
+                privacy_level__lte=privacy_level,
+                entity_count__gt=0
             ).first()
             if resource:
                 return f'/layer-test/?dataset_view_resource={str(resource.id)}'
