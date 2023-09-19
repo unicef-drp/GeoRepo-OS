@@ -217,14 +217,13 @@ class DatasetView(models.Model):
             # config is updated, DatasetView tiling config just matches.
             if self.datasetviewtilingconfig_set.all().exists():
                 self.is_tiling_config_match = False
+
+        for dsv_resource in dsv_resources:
+            dsv_resource.set_out_of_sync(vector_tiles=vector_tile, product=product)
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.OUT_OF_SYNC
-            for dsv_resource in dsv_resources:
-                dsv_resource.set_out_of_sync(vector_tiles=True, product=False)
         if product:
             self.product_sync_status = self.SyncStatus.OUT_OF_SYNC
-            for dsv_resource in dsv_resources:
-                dsv_resource.set_out_of_sync(vector_tiles=False, product=True)
         self.save()
 
     def set_synced(
@@ -236,14 +235,14 @@ class DatasetView(models.Model):
         dsv_resources = self.datasetviewresource_set.all()
         if tiling_config:
             self.is_tiling_config_match = True
+
+        for dsv_resource in dsv_resources:
+            dsv_resource.set_synced(vector_tiles=vector_tile, product=product)
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.SYNCED
-            for dsv_resource in dsv_resources:
-                dsv_resource.set_synced(vector_tiles=True, product=False)
         if product:
             self.product_sync_status = self.SyncStatus.SYNCED
-            for dsv_resource in dsv_resources:
-                dsv_resource.set_synced(vector_tiles=True, product=False)
+        self.save()
 
     def save(self, *args, **kwargs):
         if not self.uuid:
@@ -744,100 +743,90 @@ def view_res_post_save(sender, instance: DatasetViewResource,
         get_view_tiling_status,
         get_view_product_status
     )
-    # update dataset view status
-    view: DatasetView = instance.dataset_view
-    view_res_qs = DatasetViewResource.objects.filter(
-        dataset_view=view,
-        entity_count__gt=0
-    )
+    if not getattr(instance, 'skip_trigger', False):
+        # update dataset view status
+        view: DatasetView = instance.dataset_view
+        view_res_qs = DatasetViewResource.objects.filter(
+            dataset_view=view,
+            entity_count__gt=0
+        )
 
-    (
-        tiling_status,
-        vt_progresss
-    ) = get_view_tiling_status(view_res_qs)
-    (
-        geojson_status,
-        geojson_progress
-    ) = get_view_product_status(view_res_qs, 'geojson')
-    (
-        shapefile_status,
-        shapefile_progress
-    ) = get_view_product_status(view_res_qs, 'shapefile')
-    kml_status, kml_progress = get_view_product_status(view_res_qs, 'kml')
-    (
-        topojson_status,
-        topojson_progress
-    ) = get_view_product_status(view_res_qs, 'topojson')
-    product_status = [
-        geojson_status,
-        shapefile_status,
-        kml_status,
-        topojson_status
-    ]
+        (
+            tiling_status,
+            vt_progresss
+        ) = get_view_tiling_status(view_res_qs)
+        (
+            geojson_status,
+            geojson_progress
+        ) = get_view_product_status(view_res_qs, 'geojson')
+        (
+            shapefile_status,
+            shapefile_progress
+        ) = get_view_product_status(view_res_qs, 'shapefile')
+        kml_status, kml_progress = get_view_product_status(view_res_qs, 'kml')
+        (
+            topojson_status,
+            topojson_progress
+        ) = get_view_product_status(view_res_qs, 'topojson')
+        product_status = [
+            geojson_status,
+            shapefile_status,
+            kml_status,
+            topojson_status
+        ]
 
-    product_progress = [
-        geojson_progress,
-        shapefile_progress,
-        kml_progress,
-        topojson_progress
-    ]
+        product_progress = [
+            geojson_progress,
+            shapefile_progress,
+            kml_progress,
+            topojson_progress
+        ]
 
-    tiling_status_mapping = {
-        'Pending': DatasetView.DatasetViewStatus.PENDING,
-        'Error': DatasetView.DatasetViewStatus.ERROR,
-        'Processing': DatasetView.DatasetViewStatus.PROCESSING,
-        'Done': DatasetView.DatasetViewStatus.DONE,
-    }
+        tiling_status_mapping = {
+            'Pending': DatasetView.DatasetViewStatus.PENDING,
+            'Error': DatasetView.DatasetViewStatus.ERROR,
+            'Processing': DatasetView.DatasetViewStatus.PROCESSING,
+            'Done': DatasetView.DatasetViewStatus.DONE,
+        }
 
-    sync_status_mapping = {
-        'Pending': DatasetView.SyncStatus.OUT_OF_SYNC,
-        'Error': DatasetView.SyncStatus.OUT_OF_SYNC,
-        'Processing': DatasetView.SyncStatus.SYNCING,
-        'Done': DatasetView.SyncStatus.SYNCED,
-    }
+        sync_status_mapping = {
+            'Pending': DatasetView.SyncStatus.OUT_OF_SYNC,
+            'Error': DatasetView.SyncStatus.OUT_OF_SYNC,
+            'Processing': DatasetView.SyncStatus.SYNCING,
+            'Done': DatasetView.SyncStatus.SYNCED,
+        }
 
-    if tiling_status != 'Ready':
-        view.status = tiling_status_mapping[tiling_status]
-        view.vector_tile_sync_status = sync_status_mapping[tiling_status]
-        view.vector_tiles_progress = vt_progresss
+        if tiling_status != 'Ready':
+            view.status = tiling_status_mapping[tiling_status]
+            view.vector_tile_sync_status = sync_status_mapping[tiling_status]
+            view.vector_tiles_progress = vt_progresss
 
-    if 'Processing' in product_status:
-        view.product_sync_status = sync_status_mapping['Processing']
-    elif 'Pending' in product_status or 'Error' in product_status:
-        view.product_sync_status = sync_status_mapping['Pending']
-    elif 'Done' in product_status:
-        view.product_sync_status = sync_status_mapping['Done']
-    view.product_progress = sum(product_progress) / len(product_progress)
-    view.save()
-
-
-@receiver(pre_save, sender=DatasetView)
-def dataset_view_pre_save(
-    sender,
-    instance: DatasetView,
-    update_fields=None,
-    **kwargs
-):
-    try:
-        old_instance = DatasetView.objects.get(id=instance.id)
-        if (
-            old_instance.query_string != instance.query_string
-        ):
-            instance.set_out_of_sync(
-                tiling_config=False
-            )
-            instance.refresh_from_db()
-    except DatasetView.DoesNotExist:
-        return None
+        if 'Processing' in product_status:
+            view.product_sync_status = sync_status_mapping['Processing']
+        elif 'Pending' in product_status or 'Error' in product_status:
+            view.product_sync_status = sync_status_mapping['Pending']
+        elif 'Done' in product_status:
+            view.product_sync_status = sync_status_mapping['Done']
+        view.product_progress = sum(product_progress) / len(product_progress)
+        view.save()
 
 
-@receiver(pre_save, sender=DatasetView)
+@receiver(post_save, sender=DatasetView)
 def dataset_view_post_save(
     sender,
     instance: DatasetView,
+    update_fields,
     *args,
     **kwargs
 ):
+    if update_fields:
+        if 'query_string' in set(update_fields):
+            instance.set_out_of_sync(
+                tiling_config=False,
+                vector_tile=True,
+                product=True
+            )
+
     if instance.product_sync_status == (
         DatasetView.SyncStatus.OUT_OF_SYNC
     ) \

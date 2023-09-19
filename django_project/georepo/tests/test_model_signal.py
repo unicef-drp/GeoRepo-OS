@@ -281,7 +281,7 @@ class TestModelSignal(TestCase):
         """
         self.check_precondition()
 
-        self.view_latest.query_string = 'select * from geographical_entity'
-        self.view_latest.save()
+        self.view_latest.query_string = 'select * from geographical_entity;'
+        self.view_latest.save(update_fields=['query_string'])
 
         self.check_post_condition()

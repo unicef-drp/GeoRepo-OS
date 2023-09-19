@@ -95,13 +95,14 @@ class TemporaryTilingConfig(models.Model):
 def dataset_tiling_config_post_create(
     sender, instance: DatasetTilingConfig, created, *args, **kwargs
 ):
-    dataset = Dataset.objects.get(id=instance.dataset_id)
-    dataset.sync_status = dataset.SyncStatus.OUT_OF_SYNC
-    dataset.save(update_fields=['sync_status'])
+    if not getattr(instance, 'skip_trigger', False):
+        dataset = Dataset.objects.get(id=instance.dataset_id)
+        dataset.sync_status = dataset.SyncStatus.OUT_OF_SYNC
+        dataset.save(update_fields=['sync_status'])
 
-    for view in dataset.datasetview_set.all():
-        view.set_out_of_sync(
-            tiling_config=True,
-            vector_tile=True,
-            product=True
-        )
+        for view in dataset.datasetview_set.all():
+            view.set_out_of_sync(
+                tiling_config=True,
+                vector_tile=True,
+                product=True
+            )

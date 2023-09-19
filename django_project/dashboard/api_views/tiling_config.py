@@ -7,9 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from azure_auth.backends import AzureAuthRequiredMixin
-from celery.result import AsyncResult
 from django.utils import timezone
-from core.celery import app
 from georepo.models import (
     Dataset,
     DatasetView,
@@ -414,11 +412,14 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         DatasetTilingConfig.objects.filter(
             dataset=dataset
         ).delete()
-        for config in configs:
-            tiling_config = DatasetTilingConfig.objects.create(
+        for idx, config in enumerate(configs):
+            tiling_config = DatasetTilingConfig(
                 dataset=dataset,
                 zoom_level=config['zoom_level']
             )
+            if idx > 0:
+                tiling_config.skip_trigger = True
+            tiling_config.save()
             for level_config in config['admin_level_tiling_configs']:
                 AdminLevelTilingConfig.objects.create(
                     dataset_tiling_config=tiling_config,
@@ -429,27 +430,10 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         # reset dataset styles because zoom could be changed
         dataset.styles = None
         dataset.style_source_name = ''
-        # dataset.sync_status = dataset.SyncStatus.OUT_OF_SYNC if \
-        #     overwrite_view else dataset.sync_status
         dataset.is_simplified = False
         dataset.save(update_fields=[
             'styles', 'style_source_name', 'is_simplified'
         ])
-        # Trigger simplification
-        if dataset.simplification_task_id:
-            res = AsyncResult(dataset.simplification_task_id)
-            if not res.ready():
-                app.control.revoke(
-                    dataset.simplification_task_id,
-                    terminate=True
-                )
-        # task_simplify = simplify_geometry_in_dataset.delay(dataset.id)
-        # dataset.simplification_task_id = task_simplify.id
-        # dataset.simplification_progress = 'Started'
-        # dataset.save(
-        #     update_fields=['simplification_task_id',
-        #                    'simplification_progress']
-        # )
 
     def apply_to_datasetview(self, dataset_view_uuid, configs):
         dataset_view = get_object_or_404(
@@ -459,11 +443,14 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         DatasetViewTilingConfig.objects.filter(
             dataset_view=dataset_view
         ).delete()
-        for config in configs:
-            tiling_config = DatasetViewTilingConfig.objects.create(
+        for idx, config in enumerate(configs):
+            tiling_config = DatasetViewTilingConfig(
                 dataset_view=dataset_view,
                 zoom_level=config['zoom_level']
             )
+            if idx > 0:
+                tiling_config.skip_trigger = True
+            tiling_config.save()
             for level_config in config['admin_level_tiling_configs']:
                 ViewAdminLevelTilingConfig.objects.create(
                     view_tiling_config=tiling_config,
@@ -478,14 +465,6 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         dataset.save(
             update_fields=['styles', 'style_source_name', 'is_simplified']
         )
-        # Trigger simplification
-        if dataset_view.simplification_task_id:
-            res = AsyncResult(dataset_view.simplification_task_id)
-            if not res.ready():
-                app.control.revoke(
-                    dataset_view.simplification_task_id,
-                    terminate=True
-                )
 
     def post(self, request, *args, **kwargs):
         object_uuid = request.data.get('object_uuid')

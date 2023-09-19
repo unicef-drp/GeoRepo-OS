@@ -477,29 +477,7 @@ class UpdateView(AzureAuthRequiredMixin,
         if self.query_string != dataset_view.query_string:
             dataset_view.query_string = self.query_string
 
-        dataset_view.save()
-        if should_generate_vector_tiles:
-            create_sql_view(dataset_view)
-            init_view_privacy_level(dataset_view)
-            if not settings.DEBUG:
-                # Trigger simplification
-                if dataset_view.simplification_task_id:
-                    res = AsyncResult(dataset_view.simplification_task_id)
-                    if not res.ready():
-                        app.control.revoke(
-                            dataset_view.simplification_task_id,
-                            terminate=True
-                        )
-                task_simplify = (
-                    simplify_geometry_in_view.delay(dataset_view.id)
-                )
-                dataset_view.simplification_task_id = task_simplify.id
-                dataset_view.simplification_progress = 'Started'
-                dataset_view.save(
-                    update_fields=['simplification_task_id',
-                                   'simplification_progress']
-                )
-                trigger_generate_vector_tile_for_view(dataset_view)
+        dataset_view.save(update_fields=['query_string'])
         return Response(status=200)
 
         return Response(status=200)
@@ -551,7 +529,6 @@ class CreateNewView(AzureAuthRequiredMixin,
         dataset_view.save()
         create_sql_view(dataset_view)
         init_view_privacy_level(dataset_view)
-        trigger_generate_vector_tile_for_view(dataset_view)
 
         return Response(status=201)
 

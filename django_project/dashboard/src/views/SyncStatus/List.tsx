@@ -79,15 +79,20 @@ export function ViewSyncActionButtons() {
     setSyncOptions(['tiling_config'])
     setAlertDialogTitle('Batch Match Tiling Config')
     setAlertDialogDescription(
-      `Are you sure you want to match ${selectedViews.length} tiling config to their dataset?`
+      `Are you sure you want to match ${selectedViews.length} tiling config with their dataset? 
+      This would also override your view's custom tiling config.`
     )
     setAlertOpen(true)
   }
 
   const onBatchSyncClick = () => {
-    setSyncOptions(['tiling_config', 'vector_tiles', 'products'])
+    setSyncOptions(['vector_tiles', 'products'])
     setAlertDialogTitle('Batch Synchronize')
-    setAlertDialogDescription(`Are you sure you want to synchronize ${selectedViews.length} views?`)
+    setAlertDialogDescription(
+      `Are you sure you want to synchronize ${selectedViews.length} views?
+      Both Vector Tiles and Data Products will be synchronized. To force match Tiling Config, use 
+      "Match Tiling Config With Dataset".`
+    )
     setAlertOpen(true)
   }
 
@@ -117,7 +122,7 @@ export function ViewSyncActionButtons() {
           { isBatchAction && (
             <AddButton
               disabled={selectedViews.length === 0}
-              text={'Match tiling config with dataset'}
+              text={'Match Tiling Config With Dataset'}
               variant={'secondary'}
               useIcon={false}
               additionalClass={'MuiButtonMedium'}
@@ -333,14 +338,13 @@ export default function ViewSyncList() {
                 disabled={!rowData[2].includes('Manage')}
                 onClick={(e) => {
                   e.stopPropagation()
-                  syncView([rowData[0]], ['tiling_config'])
                 }}
-                variant={rowData[5] ? 'outlined' : 'contained'}
+                variant={'outlined'}
               >
                 {
                   rowData[5] ?
                     'Tiling config matches dataset' :
-                    'Update tiling config from dataset'
+                    'View uses custom tiling config'
                 }
               </Button>
             )
@@ -355,15 +359,6 @@ export default function ViewSyncList() {
         options: {
           customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
             let rowData = tableMeta.rowData
-            const disabled = () => {
-              if (rowData[2].includes('Manage')) {
-                if (!rowData[5]) {
-                  return true
-                }
-                return false
-              }
-              return false
-            }
             const getButtonText = () => {
               if (rowData[6] === 'out_of_sync') {
                 return 'Vector tiles need refresh'
@@ -387,7 +382,7 @@ export default function ViewSyncList() {
                   rowData[6] ? 'Vector tiles are synced' : 'Click to update vector tiles'
                 }
                 key={0}
-                disabled={disabled()}
+                disabled={!rowData[2].includes('Manage')}
                 onClick={(e) => {
                   e.stopPropagation()
                   if (rowData[6] === 'synced') {
@@ -411,15 +406,6 @@ export default function ViewSyncList() {
         options: {
           customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
             let rowData = tableMeta.rowData
-            const disabled = () => {
-              if (rowData[2].includes('Manage')) {
-                if (!rowData[5]) {
-                  return true
-                }
-                return false
-              }
-              return false
-            }
             const getButtonText = () => {
               if (rowData[7] === 'out_of_sync') {
                 return 'Data product needs refresh'
@@ -443,7 +429,7 @@ export default function ViewSyncList() {
                   rowData[7] ? 'Data products are synced' : 'Click to update data products'
                 }
                 key={0}
-                disabled={disabled()}
+                disabled={!rowData[2].includes('Manage')}
                 onClick={(e) => {
                   e.stopPropagation()
                   if (rowData[7] === 'synced') {
@@ -510,11 +496,11 @@ export default function ViewSyncList() {
                     }
                     syncView(
                       [rowData[0]],
-                      ['tiling_config', 'vector_tiles', 'products']
+                      ['vector_tiles', 'products']
                     )
                   }}
                   variant={
-                    !rowData[5] || rowData[6] === 'out_of_sync' || rowData[5] === 'out_of_sync' ?
+                    rowData[6] === 'out_of_sync' || rowData[5] === 'out_of_sync' ?
                       'contained' : 'outlined'
                   }
                 >

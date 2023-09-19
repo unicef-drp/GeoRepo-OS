@@ -95,7 +95,7 @@ export default function ViewSync(props: ViewResourceInterface) {
               return (
                 <span style={{display:'flex'}}>
                     <CircularProgress size={18} />
-                    <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[i+5]}%)`}</span>
+                    <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[i+5].toFixed(1)}%)`}</span>
                 </span>
               )
             } else {
@@ -189,7 +189,7 @@ export default function ViewSync(props: ViewResourceInterface) {
     const regenerateVectorTiles = () => {
       syncView(
         [props.view.id],
-        ['tiling_config', 'vector_tiles']
+        ['vector_tiles']
       )
     }
 
@@ -203,7 +203,7 @@ export default function ViewSync(props: ViewResourceInterface) {
     const regenerateAll = () => {
       syncView(
         [props.view.id],
-        ['tiling_config', 'vector_tiles', 'products']
+        ['vector_tiles', 'products']
       )
     }
 

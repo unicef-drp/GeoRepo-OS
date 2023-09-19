@@ -308,7 +308,8 @@ export default function Views() {
                   key={2}
                   disabled={!rowData[12].includes('Own') || rowData[6] === 'Yes'}
                   color='error'
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     setSelectedView(rowData)
                     setConfirmationText(
                       `Are you sure you want to delete ${rowData[1]}?`)

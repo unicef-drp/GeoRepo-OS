@@ -68,9 +68,10 @@ def dataset_view_tiling_config_post_create(
     instance: DatasetViewTilingConfig,
     created, *args, **kwargs
 ):
-    dataset_view = DatasetView.objects.get(id=instance.dataset_view_id)
-    dataset_view.set_out_of_sync(
-        tiling_config=True,
-        product=True,
-        vector_tile=True
-    )
+    if not getattr(instance, 'skip_trigger', False):
+        dataset_view = DatasetView.objects.get(id=instance.dataset_view_id)
+        dataset_view.set_out_of_sync(
+            tiling_config=True,
+            product=True,
+            vector_tile=True
+        )
