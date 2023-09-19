@@ -1,5 +1,5 @@
 __author__ = 'zakki@kartoza.com'
-__date__ = '31/07/23'
+__date__ = '19/09/23'
 __copyright__ = ('Copyright 2023, Unicef')
 
 import urllib.parse
@@ -8,9 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIRequestFactory
 
-from dashboard.api_views.views import (
-    ViewSyncList
-)
+from dashboard.api_views.view_sync import ViewSyncList
 from georepo.tests.model_factories import (
     UserF, DatasetF, DatasetViewF, ModuleF
 )
@@ -19,7 +17,7 @@ from georepo.utils.permission import (
 )
 
 
-class TestViewList(TestCase):
+class TestViewSyncList(TestCase):
 
     def setUp(self) -> None:
         self.factory = APIRequestFactory()
@@ -39,7 +37,7 @@ class TestViewList(TestCase):
 
     def test_list_views(self):
         request = self.factory.post(
-            reverse('view-list')
+            reverse('view-sync-list-per-dataset', args=[self.dataset.id])
         )
         request.user = self.superuser
         list_view = ViewSyncList.as_view()
@@ -54,7 +52,7 @@ class TestViewList(TestCase):
         )
 
         request = self.factory.post(
-            reverse('view-list')
+            reverse('view-sync-list-per-dataset', args=[self.dataset.id])
         )
 
         request.user = self.creator
@@ -64,9 +62,20 @@ class TestViewList(TestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['page'], 1)
         self.assertEqual(response.data['total_page'], 1)
+        expected_result = {
+            'id': self.dataset_view_1.id,
+            'dataset': self.dataset_view_1.dataset_id,
+            'name': self.dataset_view_1.name,
+            'is_tiling_config_match': True,
+            'vector_tile_sync_status': 'out_of_sync',
+            'product_sync_status': 'out_of_sync',
+            'vector_tiles_progress': 0.0,
+            'product_progress': 0.0,
+            'permissions': ['Manage', 'Read']
+        }
         self.assertEqual(
-            response.data['results'][0].get('id'),
-            self.dataset_view_1.id
+            dict(response.data['results'][0]),
+            expected_result
         )
 
     def test_sort(self):
@@ -79,7 +88,7 @@ class TestViewList(TestCase):
             'sort_direction': 'desc'
         }
         request = self.factory.post(
-            f"{reverse('view-list')}?{urllib.parse.urlencode(query_params)}"
+            f"{reverse('view-sync-list-per-dataset', args=[self.dataset.id])}?{urllib.parse.urlencode(query_params)}"
         )
         request.user = self.superuser
         list_view = ViewSyncList.as_view()
@@ -106,7 +115,7 @@ class TestViewList(TestCase):
             'page_size': 1
         }
         request = self.factory.post(
-            f"{reverse('view-list')}?{urllib.parse.urlencode(query_params)}"
+            f"{reverse('view-sync-list-per-dataset', args=[self.dataset.id])}?{urllib.parse.urlencode(query_params)}"
         )
         request.user = self.superuser
         list_view = ViewSyncList.as_view()
@@ -125,7 +134,7 @@ class TestViewList(TestCase):
         )
         grant_dataset_manager(dataset_view_2.dataset, self.creator)
         request = self.factory.post(
-            reverse('view-list'),
+            reverse('view-sync-list-per-dataset', args=[self.dataset.id]),
             {
                 'search_text': dataset_view_2.description
             }
@@ -147,9 +156,13 @@ class TestViewList(TestCase):
         )
         grant_dataset_manager(dataset_view_2.dataset, self.creator)
         request = self.factory.post(
-            reverse('view-list'),
+            reverse('view-sync-list-per-dataset', args=[self.dataset.id]),
             {
-                'dataset': [dataset_view_2.dataset.label],
+                'dataset': [
+                    dataset_view_2.dataset.label,
+                    dataset_view_2.dataset.uuid,
+                    dataset_view_2.dataset_id,
+                ],
                 'min_privacy': [4],
             }
         )

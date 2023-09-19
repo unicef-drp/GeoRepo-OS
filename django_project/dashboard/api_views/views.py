@@ -197,7 +197,7 @@ class ViewDetail(AzureAuthRequiredMixin,
         )
 
 
-class ViewList(AzureAuthRequiredMixin, APIView):
+class ViewSyncList(AzureAuthRequiredMixin, APIView):
     """
     API view to list views
     """

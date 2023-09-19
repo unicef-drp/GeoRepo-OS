@@ -232,8 +232,7 @@ class ViewResourcesSyncList(AzureAuthRequiredMixin, APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def get(self, *args, **kwargs):
-        view_id = kwargs.get('view_id', None)
+    def get(self, request, view_id, **kwargs):
         (
             user_privacy_levels,
             views_querysets
