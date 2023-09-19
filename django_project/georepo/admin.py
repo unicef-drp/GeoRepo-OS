@@ -15,8 +15,8 @@ from django.http import HttpResponse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from guardian.admin import GuardedModelAdmin
-from rest_framework.authtoken.models import Token
 
+from core.models.token_detail import ApiKey
 from core.settings.utils import absolute_path
 from georepo.forms import (
     AzureAdminUserCreationForm,
@@ -47,7 +47,7 @@ from georepo.models import (
     DatasetViewResource,
     DatasetViewResourceLog,
     GeorepoRole,
-    UserAccessRequest
+    UserAccessRequest,
 )
 from georepo.utils.admin import (
     # get_deleted_objects,
@@ -180,7 +180,7 @@ def refresh_dynamic_views(modeladmin, request, queryset):
 def generate_arcgis_config_action(modeladmin, request, queryset):
     from georepo.utils.arcgis import generate_arcgis_config
     # check if user has API key
-    if not Token.objects.filter(user=request.user).exists():
+    if not ApiKey.objects.filter(token__user=request.user).exists():
         modeladmin.message_user(
             request,
             'Please generate API Key for your user account!',
@@ -649,10 +649,6 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
 
     def get_list_display(self, request):
         def layer_preview(obj: DatasetViewResource):
-            # check if user has API key
-            if not settings.USE_AZURE:
-                if not Token.objects.filter(user=request.user).exists():
-                    return 'Require User API Key!'
             if obj.vector_tiles_exist:
                 return format_html(
                     '<a href="/layer-test/'

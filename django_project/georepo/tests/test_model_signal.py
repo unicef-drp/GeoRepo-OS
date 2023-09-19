@@ -126,7 +126,7 @@ class TestModelSignal(TestCase):
     def test_create_entity_id(self):
         """
         Test create entity ID which will mark
-        Dataset, View, and Resource as out of sync
+        Dataset and View as out of sync
         """
         self.check_precondition()
 
@@ -143,7 +143,7 @@ class TestModelSignal(TestCase):
     def test_edit_entity_id(self):
         """
         Test edit entity ID which will mark
-        Dataset, View, and Resource as out of sync
+        Dataset and View as out of sync
         """
         self.check_precondition()
 
@@ -156,7 +156,7 @@ class TestModelSignal(TestCase):
     def test_delete_entity_id(self):
         """
         Test edit entity ID which will mark
-        Dataset, View, and Resource as out of sync
+        Dataset and View as out of sync
         """
         self.check_precondition()
 
@@ -168,7 +168,7 @@ class TestModelSignal(TestCase):
     def test_create_entity_name(self):
         """
         Test create entity name which will mark
-        Dataset, View, and Resource as out of sync
+        Dataset and View as out of sync
         """
         self.check_precondition()
 
@@ -184,7 +184,7 @@ class TestModelSignal(TestCase):
     def test_edit_entity_name(self):
         """
         Test edit entity name which will mark
-        Dataset, View, and Resource as out of sync
+        Dataset and View as out of sync
         """
         self.check_precondition()
 
@@ -197,7 +197,7 @@ class TestModelSignal(TestCase):
     def test_delete_entity_name(self):
         """
         Test edit entity name which will mark
-        Dataset, View, and Resource as out of sync
+        Dataset and View as out of sync
         """
         self.check_precondition()
 
@@ -209,7 +209,7 @@ class TestModelSignal(TestCase):
     def test_edit_entity(self):
         """
         Test edit entity which will mark
-        Dataset, View, and Resource as out of sync
+        Dataset and View as out of sync
         """
         self.check_precondition()
 
@@ -222,7 +222,7 @@ class TestModelSignal(TestCase):
     def test_create_entity(self):
         """
         Test edit entity which will mark
-        Dataset, View, and Resource as out of sync
+        Dataset and View as out of sync
         """
         self.check_precondition()
 
@@ -249,7 +249,7 @@ class TestModelSignal(TestCase):
     def test_dataset_tiling_config_post_create(self):
         """
         Test create Dataset Tiling Config mark
-        Dataset, View, and Resource as out of sync
+        Dataset and View as out of sync
         """
         self.check_precondition()
 
@@ -263,7 +263,7 @@ class TestModelSignal(TestCase):
     def test_dataset_view_tiling_config_post_create(self):
         """
         Test create Dataset View Tiling Config mark
-        Dataset, View, and Resource as out of sync
+        Dataset and View as out of sync
         """
         self.check_precondition()
 
@@ -271,5 +271,17 @@ class TestModelSignal(TestCase):
             dataset_view=self.view_latest,
             zoom_level=5
         )
+
+        self.check_post_condition()
+
+    def test_dataset_view_sql_change(self):
+        """
+        Test edit Dataset View query string will mark
+        Dataset and View as out of sync
+        """
+        self.check_precondition()
+
+        self.view_latest.query_string = 'select * from geographical_entity'
+        self.view_latest.save()
 
         self.check_post_condition()

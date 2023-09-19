@@ -116,6 +116,7 @@
                 let link = document.createElement("a");
                 link.className = "api-doc";
                 link.href = info.info;
+                link.target = '_blank';
                 link.innerText = "Read API Documentation";
                 link.style.cssText = 'font-size:medium;margin-top:20px;'
                 document.querySelector('hgroup.main').appendChild(link)

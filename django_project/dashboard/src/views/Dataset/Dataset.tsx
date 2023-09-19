@@ -56,6 +56,21 @@ export default function Dataset() {
           return value ? 'Active' : 'Deprecated'
         }
     },
+    'permissions': {
+      filter: false,
+      display: false,
+    },
+    'is_empty': {
+      filter: false,
+      display: false,
+    },
+    'id': {
+      filter: false,
+      display: false,
+    },
+    'dataset': {
+      filter: false
+    },
     'sync_status': {
         filter: true,
         sort: true,
@@ -105,18 +120,8 @@ export default function Dataset() {
   }
 
   useEffect(() => {
-    let tab = searchParams.get('tab') ? parseInt(searchParams.get('tab')) : 0
-    if (tab === 0) {
-      fetchDataset()
-    }
-    setTabSelected(tab as unknown as number)
+    fetchDataset()
   }, [searchParams])
-
-  useEffect(() => {
-    if (tabSelected === 0) {
-      fetchDataset()
-    }
-  }, [tabSelected])
 
   const actionDeleteButton: ActionDataInterface = {
     field: '',

@@ -22,7 +22,8 @@ from dashboard.models import (
     STARTED,
     REVIEWING,
     EntitiesUserConfig,
-    TempUsage
+    TempUsage,
+    PrivacyLevel
 )
 from georepo.models import TemporaryTilingConfig
 from georepo.utils.layers import fetch_layer_file_metadata
@@ -316,3 +317,4 @@ admin.site.register(BatchReview, BatchReviewAdmin)
 admin.site.register(EntitiesUserConfig, EntitiesUserConfigAdmin)
 admin.site.register(TemporaryTilingConfig, TemporaryTilingConfigAdmin)
 admin.site.register(TempUsage, TempUsageAdmin)
+admin.site.register(PrivacyLevel, PrivacyLevelAdmin)

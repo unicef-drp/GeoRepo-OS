@@ -26,6 +26,7 @@ import Loading from "../../components/Loading";
 import AttributeSelect from "../../components/Uploads/AttributeSelect"
 import IdFieldFormControl from "../../components/Uploads/IdFieldFormControl";
 import AddIdType, {NewIdTypeInterface} from "../../components/Uploads/AddIdType";
+import PrivacyLevel from "../../models/privacy";
 
 
 interface LevelUploadInterface {
@@ -39,6 +40,7 @@ interface LevelUploadInterface {
 }
 
 const LOAD_ID_TYPE_LIST_URL = '/api/id-type/list/'
+const FETCH_PRIVACY_LEVEL_LABELS = '/api/permission/privacy-levels/'
 
 
 export default function Step2LevelUpload(props: LevelUploadInterface) {
@@ -66,6 +68,7 @@ export default function Step2LevelUpload(props: LevelUploadInterface) {
       useState<string>(props.uploadData.privacy_level_field || "")
     const [privacyLevel, setPrivacyLevel] =
       useState<string>(props.uploadData.privacy_level || "")
+    const [privacyLevelLabels, setPrivacyLevelLabels] = useState<PrivacyLevel>({})
 
     const setIsDirty = (val:boolean) => {
       if (props.setFormIsDirty) {
@@ -116,10 +119,14 @@ export default function Step2LevelUpload(props: LevelUploadInterface) {
       fetch_apis.push(
         axios.get(LOAD_ID_TYPE_LIST_URL)
       )
+      fetch_apis.push(
+        axios.get(FETCH_PRIVACY_LEVEL_LABELS)
+      )
       Promise.all(fetch_apis).then((responses) => {
         setFormLoading(false)
         setAttributes(responses[0].data)
         setIdTypes(responses[1].data)
+        setPrivacyLevelLabels(responses[2].data as PrivacyLevel)
       }).catch(error => {
         setFormLoading(false)
       })
@@ -339,10 +346,10 @@ export default function Step2LevelUpload(props: LevelUploadInterface) {
                                                     setIsDirty(true)
                                                   }}
                                                 >
-                                                  <MenuItem value={'1'}>1</MenuItem>
-                                                  <MenuItem value={'2'}>2</MenuItem>
-                                                  <MenuItem value={'3'}>3</MenuItem>
-                                                  <MenuItem value={'4'}>4</MenuItem>
+                                                  <MenuItem value={'1'}>{`1${privacyLevelLabels[1] ? ' - ' + privacyLevelLabels[1] : ''}`}</MenuItem>
+                                                  <MenuItem value={'2'}>{`2${privacyLevelLabels[2] ? ' - ' + privacyLevelLabels[2] : ''}`}</MenuItem>
+                                                  <MenuItem value={'3'}>{`3${privacyLevelLabels[3] ? ' - ' + privacyLevelLabels[3] : ''}`}</MenuItem>
+                                                  <MenuItem value={'4'}>{`4${privacyLevelLabels[4] ? ' - ' + privacyLevelLabels[4] : ''}`}</MenuItem>
                                                 </Select>
                                               </FormControl>)}
                                             </Grid>

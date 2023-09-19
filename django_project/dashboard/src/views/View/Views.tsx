@@ -43,7 +43,8 @@ const USER_COLUMNS = [
   'layer_tiles',
   'status',
   'uuid',
-  'permissions'
+  'permissions',
+  'layer_preview'
 ]
 
 interface ViewTableRowInterface {
@@ -59,7 +60,8 @@ interface ViewTableRowInterface {
   layer_tiles: string,
   status: string,
   uuid: string,
-  permissions: string[]
+  permissions: string[],
+  layer_preview: string,
 }
 
 
@@ -90,7 +92,14 @@ function ViewPopover(props: any) {
         <Typography sx={{pb: 1}}>Layer Tiles:</Typography>
       </Grid>
       <Grid item>
-        <Button variant={'outlined'} onClick={() => copyToClipboard(props.view.layer_tiles)}>Copy Link</Button>
+        <Grid container flexDirection={'row'} justifyContent={'space-between'} spacing={2}>
+          <Grid item>
+            <Button variant={'outlined'} onClick={() => copyToClipboard(props.view.layer_tiles)}>Copy Vector Tile URL</Button>
+          </Grid>
+          <Grid item>
+            <Button variant={'outlined'} href={props.view.layer_preview} target='_blank'>Preview</Button>
+          </Grid>
+        </Grid>
       </Grid>
     </Grid>
   )
