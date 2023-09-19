@@ -31,9 +31,11 @@ import AttributeSelect from "../../components/Uploads/AttributeSelect"
 import NameFieldFormControl from "../../components/Uploads/NameFieldFormControl";
 import IdFieldFormControl from "../../components/Uploads/IdFieldFormControl";
 import AddIdType, {NewIdTypeInterface} from "../../components/Uploads/AddIdType";
+import PrivacyLevel from "../../models/privacy";
 
 const LOAD_ID_TYPE_LIST_URL = '/api/id-type/list/'
 const LOAD_ENTITY_TYPE_LIST_URL = '/api/entity-type/list/'
+const FETCH_PRIVACY_LEVEL_LABELS = '/api/permission/privacy-levels/'
 
 interface LevelUploadInterface {
     languageOptions: LanguageOption[],
@@ -85,6 +87,7 @@ function Step2LevelUpload(props: LevelUploadInterface) {
       useState<string>(props.uploadData.privacy_level_field || "")
     const [privacyLevel, setPrivacyLevel] =
       useState<string>(props.uploadData.privacy_level || "")
+    const [privacyLevelLabels, setPrivacyLevelLabels] = useState<PrivacyLevel>({})
 
     const setIsDirty = (val:boolean) => {
       if (props.setFormIsDirty) {
@@ -149,11 +152,15 @@ function Step2LevelUpload(props: LevelUploadInterface) {
       fetch_apis.push(
         axios.get(LOAD_ENTITY_TYPE_LIST_URL)
       )
+      fetch_apis.push(
+        axios.get(FETCH_PRIVACY_LEVEL_LABELS)
+      )
       Promise.all(fetch_apis).then((responses) => {
         setFormLoading(false)
         setAttributes(responses[0].data)
         setIdTypes(responses[1].data)
         setEntityTypes(responses[2].data)
+        setPrivacyLevelLabels(responses[3].data as PrivacyLevel)
       }).catch(error => {
         setFormLoading(false)
       })
@@ -559,84 +566,84 @@ function Step2LevelUpload(props: LevelUploadInterface) {
                                     </Grid>
                                 </Grid> : null }
                               <Grid container className='field-container' columnSpacing={1}>
-      <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-        {locationTypeSelection==='location_type_field' && (<Typography variant={'subtitle1'}>Location Type Field</Typography>)}
-        {locationTypeSelection==='user_input' && (<Typography variant={'subtitle1'}>Location Type</Typography>)}
-      </Grid>
-      <Grid item md={8} xl={8} xs={12}>
-          <Grid container>
-            <Grid item md={11} xl={11} xs={12}>
-              <Grid container flexDirection={'row'} sx={{alignItems: 'center'}}>
-                <Grid item>
-                  <FormControl sx={{width: '100%', marginBottom:  '20px'}} disabled={props.isReadOnly}>
-                    <FormLabel id="location-type-radio-buttons-group-label" className='form-sublabel'>Select From</FormLabel>
-                    <RadioGroup
-                        row
-                        aria-labelledby="location-type-radio-buttons-group-label"
-                        name="location-type-radio-buttons-group"
-                        value={locationTypeSelection}
-                        onChange={handleLocationTypeSelectionOnChange}
-                      >
-                      <FormControlLabel value="location_type_field" control={<Radio />} label="Fields" />
-                      <FormControlLabel value="user_input" control={<Radio />} label="User Input" />
-                    </RadioGroup>
-                  </FormControl>
-                </Grid>
-                <Grid item sx={{flex: 1}}>
-                  { locationTypeSelection==='location_type_field' && (<FormControl sx={{width: '100%'}}>
-                      <AttributeSelect
-                        id='location-type-field'
-                        name={'Location Type Field'}
-                        value={locationTypeField}
-                        attributes={attributes}
-                        selectionChanged={(value: any) => {
-                          setLocationTypeField(value as string)
-                          setIsDirty(true)
-                        }}
-                        required
-                        isReadOnly={props.isReadOnly}
-                      />
-                  </FormControl>)}
-                  { locationTypeSelection==='user_input' && (<FormControl sx={{width: '100%'}}>
-                    <Autocomplete
-                      className="location-type-search"
-                      value={entityType}
-                      onChange={(event, newValue) => {
-                        if (newValue !== null)
-                          setEntityType(newValue.replace('Add "', '').replace(/"/g,''))
-                        else
-                          setEntityType('')
-                        setIsDirty(true)
-                      }}
-                      filterOptions={(options, params) => {
-                        const filtered = filterEntityTypeList(options, params)
-                        if (params.inputValue !== '') {
-                          filtered.push(`Add "${params.inputValue}"`)
-                        }
-                        return filtered
-                      }}
-                      options={entityTypes}
-                      getOptionLabel={(option) => {
-                        return option
-                      }}
-                      selectOnFocus
-                      clearOnBlur
-                      handleHomeEndKeys
-                      renderOption={(props, option) => <li {...props}>{option}</li>}
-                      freeSolo
-                      renderInput={(params) => <TextField {...params} label="Location Type" />}
-                      disableClearable
-                      disabled={props.isReadOnly}
-                    />
-                  </FormControl>)}
-                </Grid>
-              </Grid>
-            </Grid>
-            <Grid item md={1} xs={12} textAlign="left"></Grid>
-          </Grid>
+                                <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                  {locationTypeSelection==='location_type_field' && (<Typography variant={'subtitle1'}>Location Type Field</Typography>)}
+                                  {locationTypeSelection==='user_input' && (<Typography variant={'subtitle1'}>Location Type</Typography>)}
+                                </Grid>
+                                <Grid item md={8} xl={8} xs={12}>
+                                    <Grid container>
+                                      <Grid item md={11} xl={11} xs={12}>
+                                        <Grid container flexDirection={'row'} sx={{alignItems: 'center'}}>
+                                          <Grid item>
+                                            <FormControl sx={{width: '100%', marginBottom:  '20px'}} disabled={props.isReadOnly}>
+                                              <FormLabel id="location-type-radio-buttons-group-label" className='form-sublabel'>Select From</FormLabel>
+                                              <RadioGroup
+                                                  row
+                                                  aria-labelledby="location-type-radio-buttons-group-label"
+                                                  name="location-type-radio-buttons-group"
+                                                  value={locationTypeSelection}
+                                                  onChange={handleLocationTypeSelectionOnChange}
+                                                >
+                                                <FormControlLabel value="location_type_field" control={<Radio />} label="Fields" />
+                                                <FormControlLabel value="user_input" control={<Radio />} label="User Input" />
+                                              </RadioGroup>
+                                            </FormControl>
+                                          </Grid>
+                                          <Grid item sx={{flex: 1}}>
+                                            { locationTypeSelection==='location_type_field' && (<FormControl sx={{width: '100%'}}>
+                                                <AttributeSelect
+                                                  id='location-type-field'
+                                                  name={'Location Type Field'}
+                                                  value={locationTypeField}
+                                                  attributes={attributes}
+                                                  selectionChanged={(value: any) => {
+                                                    setLocationTypeField(value as string)
+                                                    setIsDirty(true)
+                                                  }}
+                                                  required
+                                                  isReadOnly={props.isReadOnly}
+                                                />
+                                            </FormControl>)}
+                                            { locationTypeSelection==='user_input' && (<FormControl sx={{width: '100%'}}>
+                                              <Autocomplete
+                                                className="location-type-search"
+                                                value={entityType}
+                                                onChange={(event, newValue) => {
+                                                  if (newValue !== null)
+                                                    setEntityType(newValue.replace('Add "', '').replace(/"/g,''))
+                                                  else
+                                                    setEntityType('')
+                                                  setIsDirty(true)
+                                                }}
+                                                filterOptions={(options, params) => {
+                                                  const filtered = filterEntityTypeList(options, params)
+                                                  if (params.inputValue !== '') {
+                                                    filtered.push(`Add "${params.inputValue}"`)
+                                                  }
+                                                  return filtered
+                                                }}
+                                                options={entityTypes}
+                                                getOptionLabel={(option) => {
+                                                  return option
+                                                }}
+                                                selectOnFocus
+                                                clearOnBlur
+                                                handleHomeEndKeys
+                                                renderOption={(props, option) => <li {...props}>{option}</li>}
+                                                freeSolo
+                                                renderInput={(params) => <TextField {...params} label="Location Type" />}
+                                                disableClearable
+                                                disabled={props.isReadOnly}
+                                              />
+                                            </FormControl>)}
+                                          </Grid>
+                                        </Grid>
+                                      </Grid>
+                                      <Grid item md={1} xs={12} textAlign="left"></Grid>
+                                    </Grid>
 
-      </Grid>
-  </Grid>
+                                </Grid>
+                              </Grid>
                               <Grid container className='field-container' columnSpacing={1}>
                                   <Grid className={'form-label'} item md={4} xl={4} xs={12}>
                                     {privacyLevelSelection==='privacy_level_field' && (<Typography variant={'subtitle1'}>Privacy Level Field</Typography>)}
@@ -688,10 +695,10 @@ function Step2LevelUpload(props: LevelUploadInterface) {
                                                     setIsDirty(true)
                                                   }}
                                                 >
-                                                  <MenuItem value={'1'}>1</MenuItem>
-                                                  <MenuItem value={'2'}>2</MenuItem>
-                                                  <MenuItem value={'3'}>3</MenuItem>
-                                                  <MenuItem value={'4'}>4</MenuItem>
+                                                  <MenuItem value={'1'}>{`1${privacyLevelLabels[1] ? ' - ' + privacyLevelLabels[1] : ''}`}</MenuItem>
+                                                  <MenuItem value={'2'}>{`2${privacyLevelLabels[2] ? ' - ' + privacyLevelLabels[2] : ''}`}</MenuItem>
+                                                  <MenuItem value={'3'}>{`3${privacyLevelLabels[3] ? ' - ' + privacyLevelLabels[3] : ''}`}</MenuItem>
+                                                  <MenuItem value={'4'}>{`4${privacyLevelLabels[4] ? ' - ' + privacyLevelLabels[4] : ''}`}</MenuItem>
                                                 </Select>
                                               </FormControl>)}
                                             </Grid>

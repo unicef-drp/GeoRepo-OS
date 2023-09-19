@@ -4,10 +4,9 @@ import time
 
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models.expressions import RawSQL
-from django.core.exceptions import PermissionDenied
 from django.views.generic import TemplateView
 from django.conf import settings
-from rest_framework.authtoken.models import Token
+from core.models.token_detail import ApiKey
 from core.models.preferences import SitePreferences
 from azure_auth.handlers import AzureAuthHandler
 
@@ -53,7 +52,10 @@ class LayerTestView(UserPassesTestMixin, TemplateView):
             if token is None:
                 return False
         else:
-            if not Token.objects.filter(user=self.request.user).exists():
+            if (
+                not ApiKey.objects.filter(
+                    token__user=self.request.user).exists()
+            ):
                 return False
         return True
 
@@ -126,6 +128,11 @@ class LayerTestView(UserPassesTestMixin, TemplateView):
             ).distinct()
 
         ctx['layer_tiles_base_url'] = settings.LAYER_TILES_BASE_URL
+        if settings.DEBUG:
+            ctx['layer_tiles_base_url'] = (
+                'http://localhost:8000' if
+                not settings.USE_AZURE else 'https://localhost:51102'
+            )
         ctx['layers_configs'] = []
         for level in levels:
             color = "#" + (
@@ -172,13 +179,4 @@ class LayerTestView(UserPassesTestMixin, TemplateView):
         ctx['maptiler_api_key'] = (
             SitePreferences.preferences().maptiler_api_key
         )
-        # add auth_token
-        if settings.USE_AZURE:
-            token = AzureAuthHandler(self.request).get_token_from_cache()
-            if token and 'access_token' in token:
-                ctx['auth_token'] = token['access_token']
-            else:
-                raise PermissionDenied()
-        else:
-            ctx['auth_token'] = self.request.user.auth_token
         return ctx

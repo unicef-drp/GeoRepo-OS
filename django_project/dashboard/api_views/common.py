@@ -170,7 +170,7 @@ class IsSuperUser(IsAdminUser):
 
 
 def get_privacy_level_labels():
-    privacy_levels = PrivacyLevel.objects.all()
+    privacy_levels = PrivacyLevel.objects.all().order_by('privacy_level')
     results = {}
     for level in privacy_levels:
         results[level.privacy_level] = level.label

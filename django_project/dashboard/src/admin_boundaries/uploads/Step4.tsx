@@ -8,6 +8,8 @@ import Modal from '@mui/material/Modal';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
 import { DataGrid, GridColDef, GridColumnGroupingModel, GridColumnHeaderParams, GridCellParams } from '@mui/x-data-grid';
 import CircularProgress from '@mui/material/CircularProgress';
 import {postData} from "../../utils/Requests";
@@ -346,7 +348,17 @@ export default function Step4(props: WizardStepInterface) {
           { viewOverlapError && <Step4OverlapsError upload_id={viewOverlapId} onBackClicked={() => setViewOverlapError(false)} /> }
           { !viewOverlapError && (
             <Grid container flexDirection={'column'} sx={{height: '100%', flex: 1}}>
-              <h2>Error</h2>
+              <Grid container flexDirection={'row'} justifyContent={'flex-end'}>
+                <Grid item>
+                  <IconButton aria-label="close" title='close' onClick={() => {
+                    setOpenErrorModal(false)
+                    setViewOverlapError(false)
+                  }}>
+                      <CloseIcon fontSize='medium' />
+                  </IconButton>
+                </Grid>
+              </Grid>
+              <h2 className="error-modal-title">Error</h2>
               <Box  sx={{width: '100%', overflowX: 'auto', height: '450px'}}>
                 <DataGrid
                   getRowId={(row) => row['Level']}
