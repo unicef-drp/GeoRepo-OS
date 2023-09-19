@@ -86,12 +86,12 @@ export function ViewSyncActionButtons() {
   const onBatchSyncClick = () => {
     setSyncOptions(['tiling_config', 'vector_tiles', 'products'])
     setAlertDialogTitle('Batch Synchronize')
-    setAlertDialogDescription(`Are you sure you want to synchronize ${selectedViews.length} entities?`)
+    setAlertDialogDescription(`Are you sure you want to synchronize ${selectedViews.length} views?`)
     setAlertOpen(true)
   }
 
   return (
-    <div style={{display:'flex', flexDirection: 'row', alignItems: 'center'}}>
+    <div style={{display:'flex', flexDirection: 'row-reverse', alignItems: 'center'}}>
       <AlertMessage message={confirmMessage} onClose={() => setConfirmMessage('')} />
       <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
                  alertConfirmed={alertConfirmed}
@@ -127,7 +127,7 @@ export function ViewSyncActionButtons() {
           { isBatchAction && (
             <AddButton
               disabled={selectedViews.length === 0}
-              text={'Synchronize'}
+              text={'Synchronize All'}
               variant={'secondary'}
               useIcon={false}
               additionalClass={'MuiButtonMedium'}
@@ -646,16 +646,15 @@ export default function ViewSyncList() {
       <div className={"loading-container"}><Loading/></div> :
       <div className="AdminContentMain view-sync-list main-data-list">
         <Fragment>
+          <Box sx={{textAlign:'right'}}>
+            <ViewSyncActionButtons/>
+          </Box>
           <div className='AdminList' ref={ref}>
             <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
                                 onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
             <div className='AdminTable'>
               <MUIDataTable
-                title={
-                    <Box sx={{textAlign:'left ', marginLeft:'-20px'}}>
-                      <ViewSyncActionButtons/>
-                    </Box>
-                  }
+                title={''}
                 data={data}
                 columns={columns}
                 options={{

@@ -209,6 +209,7 @@ class DatasetView(models.Model):
         vector_tile=False,
         product=False
     ):
+        dsv_resources = self.datasetviewresource_set.all()
         update_fields = []
         if tiling_config:
             # Only set tiling config as out of sync if DatasetView
@@ -220,9 +221,13 @@ class DatasetView(models.Model):
                 update_fields.append('is_tiling_config_match')
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.OUT_OF_SYNC
+            for dsv_resource in dsv_resources:
+                dsv_resource.set_out_of_sync(vector_tiles=True, product=False)
             update_fields.append('vector_tile_sync_status')
         if product:
             self.product_sync_status = self.SyncStatus.OUT_OF_SYNC
+            for dsv_resource in dsv_resources:
+                dsv_resource.set_out_of_sync(vector_tiles=False, product=True)
             update_fields.append('product_sync_status')
         self.save(update_fields=update_fields)
 
@@ -631,6 +636,31 @@ class DatasetViewResource(models.Model):
         except AttributeError:
             pass
 
+    def set_out_of_sync(self, vector_tiles=True, product=True):
+        if vector_tiles:
+            setattr(self, 'vector_tile_sync_status', self.SyncStatus.OUT_OF_SYNC)
+            setattr(self, 'vector_tile_progress', 0)
+
+        if product:
+            fields = [
+                'geojson_sync_status',
+                'shapefile_sync_status',
+                'kml_sync_status',
+                'topojson_sync_status'
+            ]
+            for field in fields:
+                setattr(self, field, self.SyncStatus.OUT_OF_SYNC)
+            fields = [
+                'vector_tiles',
+                'geojson',
+                'shapefile',
+                'kml',
+                'topojson'
+            ]
+            for field in fields:
+                setattr(self, f'{field}_progress', 0)
+        self.save()
+
 
 class DatasetViewResourceLog(models.Model):
     dataset_view_resource = models.ForeignKey(
@@ -741,6 +771,7 @@ def view_res_post_save(sender, instance: DatasetViewResource,
     elif 'Done' in product_status:
         view.product_sync_status = sync_status_mapping['Done']
     view.product_progress = sum(product_progress) / len(product_progress)
+    view.save()
 
 
 @receiver(pre_save, sender=DatasetView)
@@ -772,7 +803,7 @@ def dataset_view_pre_save(
 def dataset_view_post_save(
     sender,
     instance: DatasetView,
-    created: bool,
+    *args,
     **kwargs
 ):
     if instance.product_sync_status == DatasetView.SyncStatus.OUT_OF_SYNC \

@@ -114,11 +114,11 @@ def generate_view_vector_tiles_task(view_resource_id: str,
                 # cleanup geojson files if using Azure
                 geojson_exporter.do_remove_temp_dirs()
                 logger.info('Removing temporary geojson files done')
-            end = time.time()
-            view_resource_log.add_log(
-                    'generate_view_vector_tiles_task',
-                    end - start
-            )
+        end = time.time()
+        view_resource_log.add_log(
+                'generate_view_vector_tiles_task',
+                end - start
+        )
     except DatasetViewResource.DoesNotExist:
         logger.error(f'DatasetViewResource {view_resource_id} does not exist')
 

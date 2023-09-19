@@ -212,7 +212,7 @@ class ViewSyncFilterValue(
         return [
             'Tiling config does not match dataset',
             'Vector tiles not up to date',
-            'Data products tiles not up to date',
+            'Data products not up to date',
             'Syncing',
             'Synced'
         ]
@@ -283,21 +283,12 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
                     view,
                     export_data=True
                 )
-                view.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
-                view.product_sync_status = DatasetView.SyncStatus.SYNCING
-                view.save(
-                    update_fields=['vector_tile_sync_status', 'product_sync_status']
-                )
         # if sync only vector tiles
         elif 'vector_tiles' in sync_options:
             for view in views:
                 trigger_generate_vector_tile_for_view(
                     view,
                     export_data=False
-                )
-                view.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
-                view.save(
-                    update_fields=['vector_tile_sync_status']
                 )
         elif 'products' in sync_options:
             for view in views:

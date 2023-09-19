@@ -55,12 +55,7 @@ export default function DatasetDetailWrapper() {
             title: 'VIEWS',
             element: NavigateComponent,
             permissions: ['Manage']
-        },
-        {
-            title: 'SYNC STATUS',
-            element: DatasetTilingConfig,
-            permissions: ['Manage']
-        },
+        }
     ])
     return (
         <DatasetDetail moduleName={'admin_boundaries'} tabs={tabs} />
