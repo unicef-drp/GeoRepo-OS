@@ -1,13 +1,15 @@
+import mock
 from django.test import TestCase, override_settings
 from rest_framework.test import APIRequestFactory
 
 from core.settings.utils import absolute_path
 from georepo.models.id_type import IdType
 from dashboard.models.layer_upload_session import (
-    LayerUploadSession, PENDING
+    LayerUploadSession, PENDING, UPLOAD_PROCESS_COUNTRIES_SELECTION,
+    LayerUploadSessionActionLog, LayerUploadSessionMetadata, DONE
 )
 from dashboard.models.entity_upload import (
-    EntityUploadStatus
+    EntityUploadStatus, STARTED, REVIEWING
 )
 from georepo.tests.model_factories import (
     LanguageF, GeographicalEntityF, ModuleF, DatasetF
@@ -15,9 +17,13 @@ from georepo.tests.model_factories import (
 from dashboard.tests.model_factories import (
     LayerFileF,
     LayerUploadSessionF,
-    EntityUploadF
+    EntityUploadF,
+    EntityUploadChildLv1F
 )
-from dashboard.tasks import layer_upload_preprocessing
+from dashboard.tasks import (
+    layer_upload_preprocessing,
+    process_country_selection
+)
 
 
 def mocked_load_geojson_error(*args, **kwargs):
@@ -26,6 +32,19 @@ def mocked_load_geojson_error(*args, **kwargs):
 
 def mocked_load_geojson_success(*args, **kwargs):
     return True, ''
+
+
+def mocked_revoke_running_task(*args, **kwargs):
+    return True
+
+
+class DummyTask:
+    def __init__(self, id):
+        self.id = id
+
+
+def mocked_run_task(*args, **kwargs):
+    return DummyTask('1')
 
 
 class TestTasks(TestCase):
@@ -133,105 +152,143 @@ class TestTasks(TestCase):
         self.assertEqual(updated_session.status, PENDING)
         uploads = updated_session.entityuploadstatus_set.all()
         self.assertEqual(len(uploads), 1)
+        metadata = LayerUploadSessionMetadata.objects.filter(
+            session=upload_session
+        ).first()
+        self.assertTrue(metadata)
+        self.assertEqual(len(metadata.adm0_default_codes), 1)
 
-    # @mock.patch(
-    #     'dashboard.api_views.layer_upload.process_layer_upload_session.delay',
-    #     mock.Mock(side_effect=mocked_process_layer_upload_session))
-    # @mock.patch('dashboard.tasks.load_geojson',
-    #             mock.Mock(side_effect=mocked_load_geojson_success))
-    # def test_process_layer_upload_session_task_success(self):
-    #     uploader = UserF.create(username='uploader')
-    #     layer_file_1 = LayerFileF.create(
-    #         meta_id='test_1',
-    #         uploader=uploader)
-    #     layer_file_2 = LayerFileF.create(meta_id='test_2', uploader=uploader)
-    #     post_data = {
-    #         'entity_types': {
-    #             layer_file_1.meta_id: 'Country',
-    #             layer_file_2.meta_id: 'Region'
-    #         },
-    #         'levels': {
-    #             layer_file_1.meta_id: '0',
-    #             layer_file_2.meta_id: '1'
-    #         },
-    #         'all_files': [
-    #             {
-    #                 'id': layer_file_1.meta_id,
-    #             },
-    #             {
-    #                 'id': layer_file_2.meta_id,
-    #             }
-    #         ],
-    #         'dataset': 'dataset_name',
-    #         'code_format': 'code_{level}',
-    #         'label_format': 'admin_{level}'
-    #     }
-    #     request = self.factory.post(
-    #         reverse('layers-process'), post_data,
-    #         format='json'
-    #     )
-    #     request.user = UserF.create(username='test')
-    #     view = LayersProcessView.as_view()
-    #     response = view(request)
-    #     self.assertEqual(response.status_code, 200)
-    #
-    #     upload_session = LayerUploadSession.objects.get(
-    #         dataset='dataset_name',
-    #     )
-    #     process_layer_upload_session(upload_session.id)
-    #     self.assertTrue(
-    #         LayerUploadSession.objects.get(
-    #             dataset='dataset_name'
-    #         ).status == DONE
-    #     )
-    #
-    # @mock.patch(
-    #     'dashboard.api_views.layer_upload.process_layer_upload_session.delay',
-    #     mock.Mock(side_effect=mocked_process_layer_upload_session))
-    # @mock.patch('dashboard.tasks.load_geojson',
-    #             mock.Mock(side_effect=mocked_load_geojson_error))
-    # def test_process_layer_upload_session_task_error(self):
-    #     uploader = UserF.create(username='uploader')
-    #     layer_file_1 = LayerFileF.create(
-    #         meta_id='test_1',
-    #         uploader=uploader)
-    #     layer_file_2 = LayerFileF.create(meta_id='test_2', uploader=uploader)
-    #     post_data = {
-    #         'entity_types': {
-    #             layer_file_1.meta_id: 'Country',
-    #             layer_file_2.meta_id: 'Region'
-    #         },
-    #         'levels': {
-    #             layer_file_1.meta_id: '0',
-    #             layer_file_2.meta_id: '1'
-    #         },
-    #         'all_files': [
-    #             {
-    #                 'id': layer_file_1.meta_id,
-    #             },
-    #             {
-    #                 'id': layer_file_2.meta_id,
-    #             }
-    #         ],
-    #         'dataset': 'dataset_name',
-    #         'code_format': 'code_{level}',
-    #         'label_format': 'admin_{level}'
-    #     }
-    #     request = self.factory.post(
-    #         reverse('layers-process'), post_data,
-    #         format='json'
-    #     )
-    #     request.user = UserF.create(username='test')
-    #     view = LayersProcessView.as_view()
-    #     response = view(request)
-    #     self.assertEqual(response.status_code, 200)
-    #
-    #     upload_session = LayerUploadSession.objects.get(
-    #         dataset='dataset_name',
-    #     )
-    #     process_layer_upload_session(upload_session.id)
-    #     self.assertTrue(
-    #         LayerUploadSession.objects.get(
-    #             dataset='dataset_name'
-    #         ).status == ERROR
-    #     )
+
+    @mock.patch('dashboard.tasks.upload.app.control.revoke',
+                mock.Mock(side_effect=mocked_revoke_running_task))
+    @mock.patch(
+        'dashboard.tasks.upload.validate_ready_uploads.apply_async',
+        mock.Mock(side_effect=mocked_run_task)
+    )
+    def test_process_country_selection(self):
+        dataset = DatasetF.create(
+            module=self.module
+        )
+        upload_session_0 = LayerUploadSessionF.create(
+            dataset=dataset
+        )
+        entity_upload_0 = EntityUploadF.create(
+            upload_session=upload_session_0,
+            original_geographical_entity=None,
+            status='',
+            revised_entity_id='PAK',
+            revised_entity_name='Pakistan'
+        )
+        data = {
+            'entities': [{
+                'id': 'random',
+                'layer0_id': entity_upload_0.revised_entity_id,
+                'country_entity_id': None,
+                'max_level': 2,
+                'country': entity_upload_0.revised_entity_name,
+                'upload_id': entity_upload_0.id,
+                'admin_level_names': {}
+            }]
+        }
+        session_action = LayerUploadSessionActionLog.objects.create(
+            session=upload_session_0,
+            action=UPLOAD_PROCESS_COUNTRIES_SELECTION,
+            data=data
+        )
+        process_country_selection(session_action.id)
+        updated_upload_0 = EntityUploadStatus.objects.get(
+            id=entity_upload_0.id
+        )
+        self.assertEqual(updated_upload_0.status, STARTED)
+        self.assertEqual(updated_upload_0.max_level, '2')
+        session_action = LayerUploadSessionActionLog.objects.get(
+            id=session_action.id
+        )
+        self.assertEqual(session_action.status, DONE)
+        self.assertIn('is_valid', session_action.result)
+        self.assertTrue(session_action.result['is_valid'])
+        # upload admin level 1, has existing country, rematched
+        upload_session_1 = LayerUploadSessionF.create(
+            dataset=dataset
+        )
+        entity_upload_1 = EntityUploadF.create(
+            upload_session=upload_session_1,
+            status=''
+        )
+        EntityUploadChildLv1F.create(
+            entity_upload=entity_upload_1,
+            entity_id='PAK001',
+            entity_name='PAK_001',
+            parent_entity_id='PAQ',
+            is_parent_rematched=True
+        )
+        ori_entity_1 = entity_upload_1.original_geographical_entity
+        ori_entity_1.internal_code = 'PAK'
+        ori_entity_1.save()
+        data = {
+            'entities': [{
+                'id': ori_entity_1.id,
+                'layer0_id': ori_entity_1.internal_code,
+                'country_entity_id': ori_entity_1.id,
+                'max_level': 1,
+                'country': ori_entity_1.label,
+                'upload_id': entity_upload_1.id,
+                'admin_level_names': {}
+            }]
+        }
+        session_action = LayerUploadSessionActionLog.objects.create(
+            session=upload_session_1,
+            action=UPLOAD_PROCESS_COUNTRIES_SELECTION,
+            data=data
+        )
+        process_country_selection(session_action.id)
+        updated_upload_1 = EntityUploadStatus.objects.get(
+            id=entity_upload_1.id
+        )
+        self.assertEqual(updated_upload_1.status, STARTED)
+        self.assertEqual(updated_upload_1.max_level, '1')
+        session_action = LayerUploadSessionActionLog.objects.get(
+            id=session_action.id
+        )
+        self.assertEqual(session_action.status, DONE)
+        self.assertIn('is_valid', session_action.result)
+        self.assertTrue(session_action.result['is_valid'])
+        # upload admin level 1, but the country has review in progress
+        upload_session_2 = LayerUploadSessionF.create(
+            dataset=upload_session_1.dataset
+        )
+        # reset prev status
+        entity_upload_1.status = ''
+        entity_upload_1.save()
+        entity_upload_2 = EntityUploadF.create(
+            status=REVIEWING,
+            original_geographical_entity=ori_entity_1,
+            upload_session=upload_session_2
+        )
+        data = {
+            'entities': [{
+                'id': ori_entity_1.id,
+                'layer0_id': ori_entity_1.internal_code,
+                'country_entity_id': ori_entity_1.id,
+                'max_level': 1,
+                'country': ori_entity_1.label,
+                'upload_id': entity_upload_1.id,
+                'admin_level_names': {}
+            }]
+        }
+        session_action = LayerUploadSessionActionLog.objects.create(
+            session=upload_session_1,
+            action=UPLOAD_PROCESS_COUNTRIES_SELECTION,
+            data=data
+        )
+        process_country_selection(session_action.id)
+        updated_upload_2 = EntityUploadStatus.objects.get(
+            id=entity_upload_2.id
+        )
+        self.assertEqual(updated_upload_2.status, REVIEWING)
+        session_action = LayerUploadSessionActionLog.objects.get(
+            id=session_action.id
+        )
+        self.assertEqual(session_action.status, DONE)
+        self.assertIn('is_valid', session_action.result)
+        self.assertFalse(session_action.result['is_valid'])

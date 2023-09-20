@@ -66,7 +66,8 @@ def preprocess_layer_file_0(
     """
     Read layer files level 0 and create entity uploads object
     """
-    level_0_data = retrieve_layer0_default_codes(upload_session)
+    level_0_data = retrieve_layer0_default_codes(upload_session,
+                                                 overwrite=True)
     max_revision_number = get_latest_revision_number(upload_session.dataset)
     entities = GeographicalEntity.objects.filter(
         dataset=upload_session.dataset,
