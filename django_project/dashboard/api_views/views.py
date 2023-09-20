@@ -2,7 +2,6 @@ import re
 import uuid
 import math
 from django.db.models.expressions import RawSQL, Q
-from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import connection
 from django.http import Http404, HttpResponseForbidden, HttpResponse
@@ -13,8 +12,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from azure_auth.backends import AzureAuthRequiredMixin
-from celery.result import AsyncResult
-from core.celery import app
 from dashboard.serializers.view import (
     DatasetViewSerializer, DatasetViewDetailSerializer
 )
@@ -33,12 +30,10 @@ from georepo.models.dataset_view import (
     DATASET_VIEW_SUBSET_TAG
 )
 from georepo.utils.dataset_view import (
-    trigger_generate_vector_tile_for_view,
     create_sql_view,
     init_view_privacy_level,
     get_view_resource_from_view
 )
-from georepo.tasks.simplify_geometry import simplify_geometry_in_view
 from georepo.utils.permission import (
     check_user_has_view_permission,
     get_views_for_user,

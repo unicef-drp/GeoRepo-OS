@@ -3,7 +3,7 @@ from django.core.cache import cache
 
 from django.db import models
 from django.conf import settings
-from django.db.models.signals import post_delete, post_save, pre_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.db import connection
 from django.utils.translation import gettext_lazy as _
@@ -219,7 +219,10 @@ class DatasetView(models.Model):
                 self.is_tiling_config_match = False
 
         for dsv_resource in dsv_resources:
-            dsv_resource.set_out_of_sync(vector_tiles=vector_tile, product=product)
+            dsv_resource.set_out_of_sync(
+                vector_tiles=vector_tile,
+                product=product
+            )
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.OUT_OF_SYNC
         if product:
