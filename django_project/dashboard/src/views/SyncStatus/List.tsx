@@ -24,6 +24,7 @@ import GradingIcon from "@mui/icons-material/Grading";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
+import Grid from "@mui/material/Grid";
 
 
 export function ViewSyncActionButtons() {
@@ -90,8 +91,7 @@ export function ViewSyncActionButtons() {
     setAlertDialogTitle('Batch Synchronize')
     setAlertDialogDescription(
       `Are you sure you want to synchronize ${selectedViews.length} views?
-      Both Vector Tiles and Data Products will be synchronized. To force match Tiling Config, use 
-      "Match Tiling Config With Dataset".`
+      Both Vector Tiles and Data Products will be synchronized.`
     )
     setAlertOpen(true)
   }
@@ -122,7 +122,7 @@ export function ViewSyncActionButtons() {
           { isBatchAction && (
             <AddButton
               disabled={selectedViews.length === 0}
-              text={'Match Tiling Config With Dataset'}
+              text={'Match Tiling Config with Dataset'}
               variant={'secondary'}
               useIcon={false}
               additionalClass={'MuiButtonMedium'}
@@ -682,6 +682,16 @@ export default function ViewSyncList() {
               />
             </div>
           </div>
+          <Box>
+            <Grid container flexDirection={'column'} alignItems={'flex-start'} sx={{marginTop: '10px'}}>
+              <Grid item>
+                Match Tiling Config with Dataset will also override view's custom tiling config.
+              </Grid>
+              <Grid item>
+                Synchronize and Synchronize All will regenerate vector tiles and data products.
+              </Grid>
+            </Grid>
+          </Box>
         </Fragment>
       </div>
   )
