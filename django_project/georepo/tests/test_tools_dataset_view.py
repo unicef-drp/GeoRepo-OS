@@ -290,7 +290,7 @@ class TestToolsDatasetView(TestCase):
         )
 
     @mock.patch(
-        'dashboard.tasks.generate_view_vector_tiles_task.apply_async'
+        'dashboard.tasks.view_vector_tiles_task.delay'
     )
     @mock.patch('georepo.utils.dataset_view.app.control.revoke')
     def test_trigger_generate_dynamic_views(self, mocked_revoke, mocked_task):
@@ -316,7 +316,7 @@ class TestToolsDatasetView(TestCase):
             default_ancestor_code__isnull=True
         )
         self.assertEqual(views.count(), 1)
-        # generate_view_vector_tiles_task should be called once
+        # view_vector_tiles_task should be called once
         mocked_task.side_effect = mocked_run_generate_vector_tiles
         trigger_generate_dynamic_views(dataset, export_data=False)
         mocked_task.assert_called()
@@ -330,12 +330,12 @@ class TestToolsDatasetView(TestCase):
         )
         generate_default_view_adm0_latest(dataset)
         self.assertEqual(views.count(), 2)
-        # generate_view_vector_tiles_task should be called twice
+        # view_vector_tiles_task should be called twice
         mocked_task.reset_mock()
         mocked_task.side_effect = mocked_run_generate_vector_tiles
         trigger_generate_dynamic_views(dataset, export_data=False)
         mocked_task.assert_called()
-        # generate_view_vector_tiles_task should be called once
+        # view_vector_tiles_task should be called once
         mocked_task.reset_mock()
         mocked_task.side_effect = mocked_run_generate_vector_tiles
         trigger_generate_dynamic_views(dataset, adm0, export_data=False)

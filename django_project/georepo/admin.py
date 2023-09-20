@@ -272,6 +272,7 @@ class DatasetAdmin(GuardedModelAdmin):
     )
     list_display = (
         'label', 'short_code', 'max_privacy_level', 'min_privacy_level',
+        'is_simplified', 'sync_status',
         'uuid', 'arcgis_config')
     actions = [
         delete_selected,
@@ -546,25 +547,38 @@ def regenerate_resource_vector_tiles(modeladmin, request, queryset):
     from celery.result import AsyncResult
     from core.celery import app
     from dashboard.tasks import (
-        generate_view_vector_tiles_task
+        generate_view_resource_vector_tiles_task
     )
     for view_resource in queryset:
         if view_resource.vector_tiles_task_id:
             res = AsyncResult(view_resource.vector_tiles_task_id)
             if not res.ready():
                 # find if there is running task and stop it
-                app.control.revoke(view_resource.vector_tiles_task_id,
-                                   terminate=True)
+                app.control.revoke(
+                    view_resource.vector_tiles_task_id,
+                    terminate=True,
+                    signal='SIGKILL'
+                )
         view_resource.status = DatasetView.DatasetViewStatus.PENDING
+        view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
+        view_resource.geojson_progress = 0
+        view_resource.shapefile_progress = 0
+        view_resource.kml_progress = 0
+        view_resource.topojson_progress = 0
+        view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCING
+        view_resource.shapefile_sync_status = (
+            DatasetView.SyncStatus.SYNCING
+        )
+        view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
+        view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
         view_resource.vector_tiles_progress = 0
         view_resource.save()
-        task = generate_view_vector_tiles_task.apply_async(
+        task = generate_view_resource_vector_tiles_task.apply_async(
             (view_resource.id, True, True),
             queue='tegola'
         )
         view_resource.vector_tiles_task_id = task.id
         view_resource.save(update_fields=['vector_tiles_task_id'])
-        generate_view_vector_tiles_task(view_resource.id, True, True, True)
 
 
 @admin.action(description='Resume Vector Tiles Generation')
@@ -572,19 +586,33 @@ def resume_vector_tiles_generation(modeladmin, request, queryset):
     from celery.result import AsyncResult
     from core.celery import app
     from dashboard.tasks import (
-        generate_view_vector_tiles_task
+        generate_view_resource_vector_tiles_task
     )
     for view_resource in queryset:
         if view_resource.vector_tiles_task_id:
             res = AsyncResult(view_resource.vector_tiles_task_id)
             if not res.ready():
                 # find if there is running task and stop it
-                app.control.revoke(view_resource.vector_tiles_task_id,
-                                   terminate=True)
+                app.control.revoke(
+                    view_resource.vector_tiles_task_id,
+                    terminate=True,
+                    signal='SIGKILL'
+                )
         view_resource.status = DatasetView.DatasetViewStatus.PENDING
+        view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
+        view_resource.geojson_progress = 0
+        view_resource.shapefile_progress = 0
+        view_resource.kml_progress = 0
+        view_resource.topojson_progress = 0
+        view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCING
+        view_resource.shapefile_sync_status = (
+            DatasetView.SyncStatus.SYNCING
+        )
+        view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
+        view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
         view_resource.vector_tiles_progress = 0
         view_resource.save()
-        task = generate_view_vector_tiles_task.apply_async(
+        task = generate_view_resource_vector_tiles_task.apply_async(
             (view_resource.id, True, True, False),
             queue='tegola'
         )

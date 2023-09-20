@@ -932,9 +932,6 @@ class TestApiViews(TestCase):
             '1'
         )
 
-    @mock.patch(
-        'dashboard.api_views.views.trigger_generate_vector_tile_for_view',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
     def test_create_new_view(self):
         user = UserF.create(username='creator')
         dataset = DatasetF.create()
@@ -1374,12 +1371,6 @@ class TestApiViews(TestCase):
         })
         self.assertEqual(response.status_code, 200)
 
-    @mock.patch(
-        'dashboard.api_views.views.trigger_generate_vector_tile_for_view',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
-    @mock.patch(
-        'dashboard.api_views.views.simplify_geometry_in_view.delay',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
     @mock.patch('django.core.cache.cache.get',
                 mock.Mock(side_effect=mocked_cache_get))
     def test_update_view(self):

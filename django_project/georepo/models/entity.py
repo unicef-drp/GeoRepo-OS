@@ -417,6 +417,13 @@ class EntitySimplified(models.Model):
         null=True
     )
 
+    dataset_view = models.ForeignKey(
+        'georepo.DatasetView',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
+
 
 @receiver(pre_save, sender=GeographicalEntity)
 def entity_pre_save(

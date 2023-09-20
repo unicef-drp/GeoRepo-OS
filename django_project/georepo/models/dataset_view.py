@@ -39,6 +39,7 @@ class DatasetView(models.Model):
         PROCESSING = 'PR', _('Processing')
         DONE = 'DO', _('Done')
         ERROR = 'ER', _('Error')
+        EMPTY = 'EM', _('Empty')
 
     class DefaultViewType(models.TextChoices):
         IS_LATEST = 'LATEST', _('Is Latest')
