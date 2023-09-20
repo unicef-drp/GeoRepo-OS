@@ -144,8 +144,11 @@ def reset_preprocessing(
     upload_session.auto_matched_parent_ready = False
     upload_session.status = PENDING
     upload_session.task_id = ''
-    upload_session.save(update_fields=['auto_matched_parent_ready', 'status'])
-
+    upload_session.current_process = None
+    upload_session.current_process_uuid = None
+    upload_session.save(update_fields=['auto_matched_parent_ready', 'status',
+                                       'current_process', 'task_id',
+                                       'current_process_uuid'])
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(

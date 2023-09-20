@@ -2,7 +2,10 @@ from celery import shared_task
 import logging
 from datetime import datetime
 from django.contrib.auth import get_user_model
-from dashboard.models.entity_upload import EntityUploadStatus, REVIEWING
+from dashboard.models.entity_upload import (
+    EntityUploadStatus,
+    REVIEWING
+)
 from dashboard.models.batch_review import BatchReview, PROCESSING, DONE
 from georepo.models.dataset import Dataset
 from georepo.utils.module_import import module_function

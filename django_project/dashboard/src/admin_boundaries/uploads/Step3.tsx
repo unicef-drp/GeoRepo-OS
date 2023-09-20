@@ -36,7 +36,8 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import TextField from '@mui/material/TextField';
 import { WizardStepInterface } from "../../models/upload";
 import { VariableSizeList as List, ListChildComponentProps } from 'react-window';
-import ResizeTableEvent from "../../components/ResizeTableEvent"
+import ResizeTableEvent from "../../components/ResizeTableEvent";
+import UploadActionStatus from "../../components/UploadActionStatus";
 
 interface AdminLevelName {
   [key: string]: string
@@ -84,6 +85,7 @@ export default function Step3(props: WizardStepInterface) {
   const [progress, setProgress] = useState('')
   const listRef = useRef({} as any);
   const rowHeights = useRef({} as any);
+  const [actionUuid, setActionUuid] = useState('')
 
   const fetchEntityList = () => {
     axios.get((window as any).datasetEntityList + `?session=${props.uploadSession}`).then(
@@ -107,8 +109,14 @@ export default function Step3(props: WizardStepInterface) {
           }
           setFetchTrigger(null)
           setProgress('')
-          if (props.onCheckProgress) {
-            props.onCheckProgress()
+          let _actionUuid = response.data['action_uuid']
+          let _currentProcess = response.data['current_process']
+          if (_currentProcess === 'Processing Countries Selection' && _actionUuid) {
+            setActionUuid(_actionUuid)
+          } else {
+            if (props.onCheckProgress) {
+              props.onCheckProgress()
+            }
           }
         } else if (response.data['status'] === 'Canceled') {
           setIsFetchingData(false)
@@ -165,7 +173,18 @@ export default function Step3(props: WizardStepInterface) {
     setLoading(true)
     setAlertMessage('')
     let entities = selectedEntities.reduce((acc:any, current: string) => {
-      acc.push(datasetData.find((entity: any) => entity.id == current))
+      let _entity = datasetData.find((entity: any) => entity.id == current)
+      if (_entity) {
+        acc.push({
+          'id': _entity.id,
+          'country': _entity.country,
+          'layer0_id': _entity.layer0_id,
+          'country_entity_id': _entity.country_entity_id,
+          'max_level': _entity.max_level,
+          'upload_id': _entity.upload_id,
+          'admin_level_names': _entity.admin_level_names
+        })
+      }
       return acc
     }, [])
 
@@ -176,10 +195,16 @@ export default function Step3(props: WizardStepInterface) {
         'entities': entities
       }).then(response => {
         setAlertMessage('')
+        setLoading(false)
         if (response.status === 200) {
-          // trigger to fetch notification frequently
-          dispatch(setPollInterval(FETCH_INTERVAL_JOB))
-          props.onClickNext()
+          let _data = response.data
+          if (_data['action_uuid']) {
+            setActionUuid(_data['action_uuid'])
+          } else {
+            // trigger to fetch notification frequently
+            dispatch(setPollInterval(FETCH_INTERVAL_JOB))
+            props.onClickNext()
+          }
         }
       }).catch(
         error => {
@@ -193,6 +218,33 @@ export default function Step3(props: WizardStepInterface) {
             alert('Error validating the data, please try again later')
           }
         })
+  }
+
+  const onSessionActionError = (error: string) => {
+    setActionUuid('')
+    // show error to User
+    setAlertMessage(error)
+  }
+
+  const onSessionActionSuccess = (result?: any) => {
+    setActionUuid('')
+    let _defaultError = 'There is an unxpected error from validation of selected countries! Please try again or retry from previous step!'
+    // check if success validation
+    let _isValid = result?.is_valid
+    let _error = result?.error
+    if (result) {
+      if (_isValid) {
+        // go to next step
+        // trigger to fetch notification frequently
+        dispatch(setPollInterval(FETCH_INTERVAL_JOB))
+        props.onClickNext()
+      } else {
+        _error = _error || _defaultError
+        setAlertMessage(_error)
+      }
+    } else {
+      setAlertMessage(_defaultError)
+    }
   }
 
   const maxLevelSelectionChanged = (idx: any, selectedLevel: any) => {
@@ -438,7 +490,7 @@ export default function Step3(props: WizardStepInterface) {
                 disableRipple
                 inputProps={{ "aria-labelledby": labelId }}
                 onChange={(event: any) =>  selectionChanged(value.id, event.target.checked)}
-                disabled={props.isReadOnly || !value.is_available}
+                disabled={props.isReadOnly || !value.is_available || loading}
               />
             </ListItemIcon>
           </Grid>
@@ -482,7 +534,10 @@ export default function Step3(props: WizardStepInterface) {
                 onResize={(clientHeight:number) => {
                   setListViewHeight(clientHeight - 100)
                 }} />}
-      
+      <Grid item>
+        <UploadActionStatus actionUuid={actionUuid} sessionId={props.uploadSession}
+          title="Processing selected countries" onError={onSessionActionError} onSuccess={onSessionActionSuccess} />
+      </Grid>
       <Grid item style={{ width: '100%' }}>
         <h3 style={{ textAlign: 'left' }}>Import Data</h3>
       </Grid>
@@ -512,7 +567,7 @@ export default function Step3(props: WizardStepInterface) {
                             checked={isCheckAll}
                             disableRipple
                             onChange={(event: any) =>  setCheckAll(event.target.checked)}
-                            disabled={props.isReadOnly}
+                            disabled={props.isReadOnly || loading}
                             indeterminate={selectedEntities.length !== datasetData.length && selectedEntities.length !== 0}
                           />
                         }

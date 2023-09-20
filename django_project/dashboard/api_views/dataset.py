@@ -939,7 +939,9 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 'results': results,
                 'available_levels': available_levels,
                 'is_read_only': self.upload_session.is_read_only(),
-                'progress': self.upload_session.progress
+                'progress': self.upload_session.progress,
+                'action_uuid': self.upload_session.current_process_uuid,
+                'current_process': self.upload_session.current_process
             }
         )
 

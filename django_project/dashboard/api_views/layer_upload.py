@@ -14,12 +14,10 @@ from azure_auth.backends import AzureAuthRequiredMixin
 
 from dashboard.models import (
     LayerFile,
-    LayerUploadSession, PENDING, PROCESSING,
-    GEOJSON, SHAPEFILE, GEOPACKAGE
+    LayerUploadSession, GEOJSON, SHAPEFILE, GEOPACKAGE
 )
-from dashboard.tasks import process_layer_upload_session
 from dashboard.serializers.layer_uploads import LayerUploadSerializer
-from georepo.models import Dataset, EntityType
+from georepo.models import EntityType
 from georepo.utils.shapefile import (
     validate_shapefile_zip
 )
@@ -192,98 +190,6 @@ class LayerRemoveView(AzureAuthRequiredMixin, APIView):
             level += 1
         layer_file_obj.delete()
         return Response(status=200)
-
-
-class LayersProcessView(AzureAuthRequiredMixin, APIView):
-    """
-    Example of POST request payload :
-    {
-         'entity_types': {
-              'id-file-1': 'Country',
-              'id-file-2': 'Region'
-         },
-         'levels': {
-             'id-file-1': '0',
-             'id-file-2': '1'
-         },
-         'all_files': [
-         {
-               'name': 'file_name',
-               'size': 74823,
-               'type': 'image/png',
-               'lastModifiedDate': '2019-09-26T08:16:22.706Z',
-               'uploadedDate': '2022-07-12T03:07:58.077Z',
-               'percent': 100,
-               'id': 'id-file-1',
-               'status': 'done',
-               'previewUrl': 'blob:...',
-               'width': 1043,
-               'height': 521
-         },...
-         ],
-         'dataset': 'dataset_name',
-         'code_format': 'code_{level}',
-         'label_format': 'admin_{level}'
-    }
-    """
-
-    def post(self, request, format=None):
-        entity_types = request.data.get('entity_types', {})
-        levels = request.data.get('levels', {})
-        all_files = request.data.get('all_files', [])
-        dataset, dataset_created = Dataset.objects.get_or_create(
-            label=request.data.get('dataset', '')
-        )
-        upload_session = request.data.get('upload_session', '')
-
-        if not upload_session:
-            layer_upload_session, _ = LayerUploadSession.objects.get_or_create(
-                dataset=dataset,
-                status=PENDING
-            )
-        else:
-            layer_upload_session = LayerUploadSession.objects.get(
-                id=upload_session
-            )
-        if layer_upload_session.is_read_only():
-            return Response(
-                status=400,
-                data={
-                    'detail': 'Invalid Upload Session'
-                }
-            )
-
-        for layer_file in all_files:
-            layer_file_obj = LayerFile.objects.get(
-                meta_id=layer_file['id']
-            )
-            level = levels.get(layer_file_obj.meta_id, '')
-            layer_file_obj.layer_upload_session = layer_upload_session
-            entity_type = entity_types.get(layer_file_obj.meta_id, '')
-            if entity_type:
-                layer_file_obj.entity_type = entity_type
-            layer_file_obj.level = level
-            layer_file_obj.name_fields = {
-                'format': request.data.get('label_format', '')
-            }
-            layer_file_obj.id_fields = {
-                'format': request.data.get('code_format', '')
-            }
-            layer_file_obj.save()
-
-        layer_upload_session.status = PROCESSING
-        layer_upload_session.progress = ''
-        layer_upload_session.message = ''
-
-        task = process_layer_upload_session.delay(layer_upload_session.id)
-
-        layer_upload_session.task_id = task.id
-        layer_upload_session.save()
-
-        return Response(status=200, data={
-            'message': layer_upload_session.message,
-            'layer_upload_session_id': layer_upload_session.id
-        })
 
 
 class LayerUploadList(AzureAuthRequiredMixin, APIView):

@@ -1,4 +1,4 @@
-import datetime
+from django.utils import timezone
 from georepo.models.entity import GeographicalEntity
 from georepo.models.dataset import Dataset
 from dashboard.models.entity_upload import (
@@ -109,7 +109,7 @@ def approve_new_revision_upload(entity_upload: EntityUploadStatus, user):
     new_entities.update(
         is_latest=True,
         is_approved=True,
-        approved_date=datetime.datetime.now(),
+        approved_date=timezone.now(),
         approved_by=user
     )
 
@@ -145,7 +145,7 @@ def approve_historical_upload(entity_upload: EntityUploadStatus, user):
     )
     new_entities.update(
         is_approved=True,
-        approved_date=datetime.datetime.now(),
+        approved_date=timezone.now(),
         approved_by=user
     )
 
