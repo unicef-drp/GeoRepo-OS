@@ -1397,6 +1397,14 @@ class TestApiViews(TestCase):
         self.assertEqual(response.status_code, 200)
         dataset_view = DatasetView.objects.get(id=view_1.id)
         self.assertEqual(dataset_view.name, 'update')
+        self.assertEqual(
+            dataset_view.product_sync_status,
+            DatasetView.SyncStatus.OUT_OF_SYNC
+        )
+        self.assertEqual(
+            dataset_view.vector_tile_sync_status,
+            DatasetView.SyncStatus.OUT_OF_SYNC
+        )
         self.assertTrue(dataset_view.tags.all().filter(name='test').exists())
 
     def test_detail_view(self):

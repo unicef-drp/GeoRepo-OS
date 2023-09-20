@@ -64,6 +64,9 @@ def approve_revision(entity_upload: EntityUploadStatus, user, is_batch=False):
 
     entity_upload.upload_session.status = DONE
     entity_upload.upload_session.save()
+
+    dataset.is_simplified = False
+    dataset.save()
     if not is_batch:
         # trigger refresh views
         trigger_generate_dynamic_views(

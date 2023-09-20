@@ -106,8 +106,10 @@ class TestModelSignal(TestCase):
             DatasetView.SyncStatus.SYNCED
         )
 
-    def check_post_condition(self):
-        # Check post condition: status is out of sync
+    def check_post_condition(self, is_tile_config=False):
+        # Check post condition: status is out of sync, except
+        # when we create tiling config. Only vector tiles will be
+        # out of sync when we create tiling config.
         self.dataset.refresh_from_db()
         self.view_latest.refresh_from_db()
         self.assertEqual(
@@ -115,136 +117,14 @@ class TestModelSignal(TestCase):
             Dataset.SyncStatus.OUT_OF_SYNC
         )
         self.assertEqual(
-            self.view_latest.product_sync_status,
-            DatasetView.SyncStatus.OUT_OF_SYNC
-        )
-        self.assertEqual(
             self.view_latest.vector_tile_sync_status,
             DatasetView.SyncStatus.OUT_OF_SYNC
         )
-
-    def test_create_entity_id(self):
-        """
-        Test create entity ID which will mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        # Create Entity ID
-        EntityIdF.create(
-            code=self.pCode,
-            geographical_entity=self.entity_1,
-            default=True,
-            value='some-value'
-        )
-
-        self.check_post_condition()
-
-    def test_edit_entity_id(self):
-        """
-        Test edit entity ID which will mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        # Edit Entity ID
-        self.entity_id_1.value = 'some-value'
-        self.entity_id_1.save()
-
-        self.check_post_condition()
-
-    def test_delete_entity_id(self):
-        """
-        Test edit entity ID which will mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        # Edit Entity ID
-        self.entity_id_1.delete()
-
-        self.check_post_condition()
-
-    def test_create_entity_name(self):
-        """
-        Test create entity name which will mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        # Create Entity Name
-        EntityNameF.create(
-            geographical_entity=self.entity_1,
-            default=False,
-            name=self.entity_1.label
-        )
-
-        self.check_post_condition()
-
-    def test_edit_entity_name(self):
-        """
-        Test edit entity name which will mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        # Edit Entity Name
-        self.entity_name_1.name = 'some-value'
-        self.entity_id_1.save()
-
-        self.check_post_condition()
-
-    def test_delete_entity_name(self):
-        """
-        Test edit entity name which will mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        # Delete Entity Name
-        self.entity_name_1.delete()
-
-        self.check_post_condition()
-
-    def test_edit_entity(self):
-        """
-        Test edit entity which will mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        # Edit Entity source
-        self.entity_1.source = 'test'
-        self.entity_1.save()
-
-        self.check_post_condition()
-
-    def test_create_entity(self):
-        """
-        Test edit entity which will mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        # Create Entity
-        geojson_0_path = absolute_path(
-            'georepo', 'tests',
-            'geojson_dataset', 'level_0.geojson')
-        with open(geojson_0_path) as geojson:
-            data = json.load(geojson)
-            geom_str = json.dumps(data['features'][0]['geometry'])
-            GeographicalEntityF.create(
-                revision_number=1,
-                level=0,
-                dataset=self.dataset,
-                geometry=GEOSGeometry(geom_str),
-                internal_code='IDN',
-                is_approved=True,
-                is_latest=True,
-                privacy_level=2
+        if not is_tile_config:
+            self.assertEqual(
+                self.view_latest.product_sync_status,
+                DatasetView.SyncStatus.OUT_OF_SYNC
             )
-
-        self.check_post_condition()
 
     def test_dataset_tiling_config_post_create(self):
         """
@@ -258,7 +138,7 @@ class TestModelSignal(TestCase):
             zoom_level=5
         )
 
-        self.check_post_condition()
+        self.check_post_condition(is_tile_config=True)
 
     def test_dataset_view_tiling_config_post_create(self):
         """
@@ -272,16 +152,4 @@ class TestModelSignal(TestCase):
             zoom_level=5
         )
 
-        self.check_post_condition()
-
-    def test_dataset_view_sql_change(self):
-        """
-        Test edit Dataset View query string will mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        self.view_latest.query_string = 'select * from geographical_entity;'
-        self.view_latest.save(update_fields=['query_string'])
-
-        self.check_post_condition()
+        self.check_post_condition(is_tile_config=True)

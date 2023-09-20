@@ -59,7 +59,6 @@ def trigger_generate_dynamic_views(dataset: Dataset,
         # update max and min privacy level of entities in view
         init_view_privacy_level(dataset_view)
         generate_view_bbox(dataset_view)
-        trigger_generate_vector_tile_for_view(dataset_view, export_data)
 
 
 def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,

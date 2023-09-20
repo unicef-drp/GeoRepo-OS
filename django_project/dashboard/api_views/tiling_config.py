@@ -417,8 +417,9 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
                 dataset=dataset,
                 zoom_level=config['zoom_level']
             )
+            # only trigger
             if idx > 0:
-                tiling_config.skip_trigger = True
+                tiling_config.skip_signal = True
             tiling_config.save()
             for level_config in config['admin_level_tiling_configs']:
                 AdminLevelTilingConfig.objects.create(
@@ -449,7 +450,7 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
                 zoom_level=config['zoom_level']
             )
             if idx > 0:
-                tiling_config.skip_trigger = True
+                tiling_config.skip_signal = True
             tiling_config.save()
             for level_config in config['admin_level_tiling_configs']:
                 ViewAdminLevelTilingConfig.objects.create(

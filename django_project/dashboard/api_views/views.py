@@ -471,10 +471,15 @@ class UpdateView(AzureAuthRequiredMixin,
 
         if self.query_string != dataset_view.query_string:
             dataset_view.query_string = self.query_string
-
-        dataset_view.save(update_fields=['query_string'])
-        return Response(status=200)
-
+            dataset_view = dataset_view.set_out_of_sync(
+                tiling_config=False,
+                vector_tile=True,
+                product=True,
+                save=False
+            )
+        dataset_view.save()
+        create_sql_view(dataset_view)
+        init_view_privacy_level(dataset_view)
         return Response(status=200)
 
 
@@ -514,6 +519,12 @@ class CreateNewView(AzureAuthRequiredMixin,
             is_static=mode == 'static',
             query_string=self.query_string,
             created_by=self.request.user
+        )
+        dataset_view = dataset_view.set_out_of_sync(
+            tiling_config=False,
+            vector_tile=True,
+            product=True,
+            save=False
         )
 
         if len(tags) > 0:
