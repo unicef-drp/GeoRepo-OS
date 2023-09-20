@@ -23,7 +23,6 @@ from dashboard.api_views.language import LanguageList, FetchLanguages
 from dashboard.api_views.layer_upload import (
     LayerUploadView,
     LayerRemoveView,
-    LayersProcessView,
     LayerProcessStatusView,
     UpdateLayerUpload,
     LayerFileEntityTypeList,
@@ -55,7 +54,6 @@ from dashboard.api_views.views import (
 from dashboard.models import (
     LayerFile,
     LayerUploadSession,
-    PROCESSING,
     LayerConfig,
     PENDING,
     REVIEWING, EntityUploadStatus,
@@ -288,52 +286,6 @@ class TestApiViews(TestCase):
             LayerFile.objects.get(meta_id='test_2').level, '1')
         self.assertEqual(
             LayerFile.objects.get(meta_id='test_3').level, '2')
-
-    @mock.patch(
-        'dashboard.api_views.layer_upload.process_layer_upload_session.delay',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
-    def test_process_layers(self):
-        uploader = UserF.create(username='uploader')
-        dataset = DatasetF.create()
-        layer_file_1 = LayerFileF.create(
-            meta_id='test_1',
-            uploader=uploader)
-        layer_file_2 = LayerFileF.create(meta_id='test_2', uploader=uploader)
-        post_data = {
-            'entity_types': {
-                layer_file_1.meta_id: 'Country',
-                layer_file_2.meta_id: 'Region'
-            },
-            'levels': {
-                layer_file_1.meta_id: '0',
-                layer_file_2.meta_id: '1'
-            },
-            'all_files': [
-                {
-                    'id': layer_file_1.meta_id,
-                },
-                {
-                    'id': layer_file_2.meta_id,
-                }
-            ],
-            'dataset': dataset.label,
-            'code_format': 'code_{level}',
-            'label_format': 'admin_{level}'
-        }
-        request = self.factory.post(
-            reverse('layers-process'), post_data,
-            format='json'
-        )
-        request.user = UserF.create(username='test')
-        view = LayersProcessView.as_view()
-        response = view(request)
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(
-            LayerUploadSession.objects.filter(
-                dataset=dataset,
-                status=PROCESSING
-            ).exists()
-        )
 
     def test_layer_config(self):
         created_by = UserF.create(username='test_user')

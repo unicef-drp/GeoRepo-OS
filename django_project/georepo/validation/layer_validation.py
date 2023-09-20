@@ -4,7 +4,11 @@ import uuid
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
 
-from dashboard.models import LayerUploadSession, CANCELED
+from dashboard.models import (
+    LayerUploadSession,
+    CANCELED,
+    LayerUploadSessionMetadata
+)
 from dashboard.models.entity_upload import EntityUploadStatus
 from georepo.utils.module_import import module_function
 from georepo.utils.layers import get_feature_value
@@ -178,7 +182,8 @@ def validate_level_admin_1(
 
 def retrieve_layer0_default_codes(
         upload_session: LayerUploadSession,
-        default_max_level=None):
+        default_max_level=None,
+        overwrite=False):
     """Retrieve a list of default codes from layer_file level 0"""
     layer0_default_codes = []
     layer_files = upload_session.layerfile_set.filter(level=0)
@@ -186,6 +191,12 @@ def retrieve_layer0_default_codes(
         return layer0_default_codes
     if upload_session.status == CANCELED:
         return layer0_default_codes
+    if not overwrite:
+        session_metadata = LayerUploadSessionMetadata.objects.filter(
+            session=upload_session
+        ).first()
+        if session_metadata and session_metadata.adm0_default_codes:
+            return session_metadata.adm0_default_codes
     layer_file = layer_files.first()
     id_field = (
         [id_field['field'] for id_field in layer_file.id_fields
@@ -211,4 +222,10 @@ def retrieve_layer0_default_codes(
                 'max_level': default_max_level
             })
         delete_tmp_shapefile(features.path)
+    session_metadata, _ = LayerUploadSessionMetadata.objects.get_or_create(
+        session=upload_session
+    )
+    session_metadata.adm0_default_codes = layer0_default_codes
+    session_metadata.total_adm0 = len(layer0_default_codes)
+    session_metadata.save()
     return layer0_default_codes

@@ -80,7 +80,19 @@ DJANGO_EASY_AUDIT_UNREGISTERED_CLASSES_EXTRA = [
     'django_celery_beat.ClockedSchedule',
     'django_celery_beat.CrontabSchedule',
     'django_celery_beat.PeriodicTasks',
-    'django_celery_beat.PeriodicTask'
+    'django_celery_beat.PeriodicTask',
+    'dashboard.LayerUploadSession',
+    'dashboard.LayerUploadSessionMetadata',
+    'dashboard.LayerUploadSessionActionLog',
+    'dashboard.EntityUploadStatus',
+    'dashboard.EntityUploadChildLv1',
+    'dashboard.EntityUploadStatusLog',
+    'dashboard.BoundaryComparison',
+    'dashboard.EntitiesUserConfig',
+    'dashboard.TempUsage'
 ]
 DJANGO_EASY_AUDIT_WATCH_AUTH_EVENTS = False
 DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False
+
+# watchman settings
+WATCHMAN_AUTH_DECORATOR = 'georepo.views.decorators.superuser_required'

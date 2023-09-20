@@ -1155,6 +1155,10 @@ def reset_qc_validation(upload_session: LayerUploadSession, **kwargs):
         upload.revised_geographical_entity = None
         upload.save()
 
+    upload_session.current_process = None
+    upload_session.current_process_uuid = None
+    upload_session.save(update_fields=['current_process',
+                                       'current_process_uuid'])
     end = time.time()
     if kwargs.get('log_object'):
         kwargs['log_object'].add_log(

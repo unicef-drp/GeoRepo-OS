@@ -23,7 +23,8 @@ from dashboard.models import (
     REVIEWING,
     EntitiesUserConfig,
     TempUsage,
-    PrivacyLevel
+    PrivacyLevel,
+    LayerUploadSessionActionLog
 )
 from georepo.models import TemporaryTilingConfig
 from georepo.utils.layers import fetch_layer_file_metadata
@@ -89,16 +90,8 @@ def run_comparison_boundary_action(modeladmin, request, queryset):
         )
 
 
-@admin.action(description='Load layer files to database')
-def load_layer_files(modeladmin, request, queryset):
-    from dashboard.tasks import process_layer_upload_session
-    for upload_session in queryset:
-        process_layer_upload_session.delay(upload_session.id)
-
-
 class LayerUploadSessionAdmin(admin.ModelAdmin):
     list_display = ('id', 'source', 'status', 'started_at', 'modified_at')
-    actions = [load_layer_files]
 
 
 class EntityUploadAdmin(admin.ModelAdmin):
@@ -305,6 +298,12 @@ class TempUsageAdmin(admin.ModelAdmin):
         return response
 
 
+class LayerUploadSessionActionLogAdmin(admin.ModelAdmin):
+    list_display = ('session', 'action', 'status', 'started_at',
+                    'finished_at')
+    list_filter = ('session', 'action', 'status')
+
+
 admin.site.register(LayerFile, LayerFileAdmin)
 admin.site.register(LayerUploadSession, LayerUploadSessionAdmin)
 admin.site.register(EntityUploadStatus, EntityUploadAdmin)
@@ -318,3 +317,5 @@ admin.site.register(EntitiesUserConfig, EntitiesUserConfigAdmin)
 admin.site.register(TemporaryTilingConfig, TemporaryTilingConfigAdmin)
 admin.site.register(TempUsage, TempUsageAdmin)
 admin.site.register(PrivacyLevel, PrivacyLevelAdmin)
+admin.site.register(LayerUploadSessionActionLog,
+                    LayerUploadSessionActionLogAdmin)

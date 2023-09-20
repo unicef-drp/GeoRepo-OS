@@ -1,11 +1,5 @@
-from django.db.models import Q
 from georepo.models.dataset import Dataset
 from dashboard.models.layer_upload_session import LayerUploadSession
-from dashboard.models.entity_upload import (
-    EntityUploadStatus,
-    STARTED,
-    PROCESSING
-)
 
 
 def vector_tile_geometry_type():
@@ -19,21 +13,20 @@ def generate_adm0_default_views(dataset: Dataset):
     pass
 
 
-def check_ongoing_step(upload_session: LayerUploadSession):
-    ongoing_uploads = EntityUploadStatus.objects.filter(
-        upload_session=upload_session
-    ).filter(Q(status=STARTED) | Q(status=PROCESSING))
+def check_ongoing_step(upload_session: LayerUploadSession,
+                       session_state: dict):
     ongoing_step = -1
-    if ongoing_uploads.exists():
+    if session_state['is_in_progress']:
         ongoing_step = 3
     return ongoing_step
 
 
-def check_can_update_step(upload_session: LayerUploadSession, step: int):
+def check_can_update_step(upload_session: LayerUploadSession, step: int,
+                          session_state: dict):
     if step == 3:
-        return not upload_session.is_read_only()
+        return not session_state['is_read_only']
     return (
-        not upload_session.is_read_only() and
-        not upload_session.is_in_progress() and
-        not upload_session.has_any_result()
+        not session_state['is_read_only'] and
+        not session_state['is_in_progress'] and
+        not session_state['has_any_result']
     )

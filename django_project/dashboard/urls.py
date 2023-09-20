@@ -14,7 +14,6 @@ from dashboard.views.uploader import UploaderView
 from dashboard.views.signup import SignUpView
 from dashboard.api_views.layer_upload import (
     LayerUploadView,
-    LayersProcessView,
     LayerProcessStatusView,
     LayerRemoveView,
     LayerUploadList,
@@ -32,7 +31,8 @@ from dashboard.api_views.upload_session import (
     UploadSessionSummary,
     UploadSessionUpdateStep, CanAddUpload, UpdateUploadSession,
     DeleteUploadSession,
-    ResetUploadSession
+    ResetUploadSession,
+    CheckUploadSessionActionStatus
 )
 from dashboard.api_views.entity_upload_status import (
     EntityUploadStatusDetail,
@@ -223,6 +223,11 @@ urlpatterns = [
         name='reset-upload-session'
     ),
     re_path(
+        r'api/upload-session/action/(?P<id>\d+)/status/?$',
+        CheckUploadSessionActionStatus.as_view(),
+        name='check-upload-session-action-status'
+    ),
+    re_path(
         r'api/upload-sessions/?$',
         UploadSessionList.as_view(),
         name='upload-session-list'
@@ -261,11 +266,6 @@ urlpatterns = [
         r'api/layer-remove/?$',
         LayerRemoveView.as_view(),
         name='layer-remove'
-    ),
-    re_path(
-        r'api/layers-process/?$',
-        LayersProcessView.as_view(),
-        name='layers-process'
     ),
     re_path(
         r'api/layers-process-status/?$',
