@@ -11,6 +11,7 @@ from georepo.models import (
     GeographicalEntity,
     DatasetView,
 )
+from georepo.tasks.dataset_view import check_affected_dataset_views
 from georepo.utils.permission import (
     EXTERNAL_READ_VIEW_PERMISSION_LIST,
     get_view_permission_privacy_level,
@@ -189,8 +190,9 @@ class EntityEdit(APIView):
             }
         )
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        entity.refresh_from_db()
+        if request.data.get('is_dirty', False):
+            entity = serializer.save()
+            check_affected_dataset_views.delay(entity.id)
         return Response(EntityEditSerializer(entity).data, 200)
 
     def get(self, request, entity_id: int, *args, **kwargs):

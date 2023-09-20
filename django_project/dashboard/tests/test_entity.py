@@ -99,6 +99,7 @@ class TestApiEntity(TestCase):
             'type': 'Country',
             'privacy_level': 4,
             'label': self.geographical_entity_name_1.name,
+            'is_dirty': True,
             'names': [
                 {
                     'id': self.geographical_entity_name_1.id,
@@ -166,6 +167,7 @@ class TestApiEntity(TestCase):
             'source': None,
             'type': 'Country',
             'privacy_level': 4,
+            'is_dirty': False,
             'label': self.geographical_entity_name_1.name,
             'names': [
                 {
@@ -206,6 +208,7 @@ class TestApiEntity(TestCase):
         payload['source'] = 'Source_1'
         payload['privacy_level'] = 3
         payload['type'] = 'Province'
+        payload['is_dirty'] = True
         request = self.factory.post(
             f"{reverse('entity-edit', args=[self.geographical_entity.id])}/",
             json.dumps(payload),
@@ -214,6 +217,7 @@ class TestApiEntity(TestCase):
         request.user = self.superuser
         list_view = EntityEdit.as_view()
         response = list_view(request, self.geographical_entity.id)
+        payload['is_dirty'] = False
         self.assertEqual(
             self._convert_response_to_dict(response.data),
             payload
@@ -294,16 +298,15 @@ class TestApiEntity(TestCase):
         request.user = self.superuser
         list_view = EntityEdit.as_view()
         response = list_view(request, self.geographical_entity.id)
+        response_data = self._convert_response_to_dict(
+            response.data
+        )
         self.assertEqual(
-            self._convert_response_to_dict(
-                response.data
-            )['codes'][-1]['value'],
+            response_data['codes'][-1]['value'],
             'some-code'
         )
         self.assertNotEqual(
-            self._convert_response_to_dict(
-                response.data
-            )['codes'][-1]['value'],
+            response_data['codes'][-1]['value'],
             0
         )
 

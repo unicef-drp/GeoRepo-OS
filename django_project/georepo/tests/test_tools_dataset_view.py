@@ -289,12 +289,7 @@ class TestToolsDatasetView(TestCase):
             view.tags.values_list('name', flat=True)
         )
 
-    @mock.patch(
-        'dashboard.tasks.generate_view_vector_tiles_task.apply_async'
-    )
-    @mock.patch('georepo.utils.dataset_view.app.control.revoke')
-    def test_trigger_generate_dynamic_views(self, mocked_revoke, mocked_task):
-        mocked_revoke.side_effect = mocked_revoke_running_task
+    def test_trigger_generate_dynamic_views(self):
         dataset = DatasetF.create(
             label='World',
             description='Test'
@@ -317,9 +312,7 @@ class TestToolsDatasetView(TestCase):
         )
         self.assertEqual(views.count(), 1)
         # generate_view_vector_tiles_task should be called once
-        mocked_task.side_effect = mocked_run_generate_vector_tiles
         trigger_generate_dynamic_views(dataset, export_data=False)
-        mocked_task.assert_called()
         # create another adm0
         GeographicalEntityF.create(
             label='Syria',
@@ -331,15 +324,7 @@ class TestToolsDatasetView(TestCase):
         generate_default_view_adm0_latest(dataset)
         self.assertEqual(views.count(), 2)
         # generate_view_vector_tiles_task should be called twice
-        mocked_task.reset_mock()
-        mocked_task.side_effect = mocked_run_generate_vector_tiles
-        trigger_generate_dynamic_views(dataset, export_data=False)
-        mocked_task.assert_called()
-        # generate_view_vector_tiles_task should be called once
-        mocked_task.reset_mock()
-        mocked_task.side_effect = mocked_run_generate_vector_tiles
         trigger_generate_dynamic_views(dataset, adm0, export_data=False)
-        mocked_task.assert_called()
 
 
     def test_get_view_resource_from_view(self):

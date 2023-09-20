@@ -11,6 +11,7 @@ from dashboard.models.notification import (
     Notification,
     NOTIF_TYPE_BATCH_REVIEW
 )
+from georepo.tasks.dataset_view import check_affected_dataset_views
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
@@ -29,6 +30,9 @@ def review_approval(entity_upload_id, user_id):
         'approve_revision'
     )
     approve_revision(entity_upload, user)
+    check_affected_dataset_views(
+        entity_id=entity_upload.revised_geographical_entity.id
+    )
     # remove task id
     entity_upload = EntityUploadStatus.objects.get(id=entity_upload_id)
     entity_upload.task_id = ''
@@ -102,7 +106,7 @@ def process_batch_review(batch_review_id):
         batch_review.processed_ids.append(upload_id)
         batch_review.save(update_fields=['progress', 'processed_ids'])
     if batch_review.is_approve:
-        # trigger generate vector tiles for dataset in upload_ids
+        # trigger generate dynamic views for dataset in upload_ids
         logger.info(
             f'Trigger vector tiles from batch_review {batch_review_id} - '
             f'with total dataset {len(dataset_list)}'
@@ -112,8 +116,11 @@ def process_batch_review(batch_review_id):
             dataset = Dataset.objects.filter(id=dataset_id).first()
             if not dataset:
                 continue
-            trigger_generate_dynamic_views(dataset, adm0_list=adm0_list)
 
+            dataset.is_simplified = False
+            dataset.save()
+            trigger_generate_dynamic_views(dataset, adm0_list=adm0_list)
+            check_affected_dataset_views(entity_ids=adm0_list)
     # finished processing
     logger.info(f'Finished process_batch_review {batch_review_id}')
     batch_review.finished_at = datetime.now()

@@ -243,32 +243,6 @@ class Dataset(models.Model):
 
         return super(Dataset, self).save(*args, **kwargs)
 
-    def set_view_out_of_sync(
-        self,
-        tiling_config=False,
-        vector_tile=False,
-        product=False
-    ):
-        for view in self.datasetview_set.all():
-            view.set_out_of_sync(
-                tiling_config=tiling_config,
-                vector_tile=vector_tile,
-                product=product
-            )
-
-    def set_view_synced(
-        self,
-        tiling_config=False,
-        vector_tile=False,
-        product=False
-    ):
-        for view in self.datasetview_set.all():
-            view.set_sync(
-                tiling_config=tiling_config,
-                vector_tile=vector_tile,
-                product=product
-            )
-
     def __str__(self):
         return self.label
 

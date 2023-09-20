@@ -42,6 +42,7 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
     const [loading, setLoading] = useState(false)
     const [source, setSource] = useState<string>(props.entity.source)
     const [privacyLevel, setPrivacyLevel] = useState<number>(props.entity.privacy_level)
+    const [isDirty, setIsDirty] = useState<boolean>(props.entity.is_dirty)
     const [entityType, setEntityType] = useState<string>(props.entity.type)
     const [entityTypes, setEntityTypes] = useState<string[]>()
     const [codes, setCodes] = useState<EntityCode[]>(props.entity.codes)
@@ -63,7 +64,8 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                 'source': source,
                 'codes': codes,
                 'names': names,
-                'label': props.entity.label
+                'label': props.entity.label,
+                'is_dirty': isDirty
             }
         ).then(
             response => {
@@ -132,7 +134,10 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                                     id="input_source"
                                     hiddenLabel={true}
                                     type={"text"}
-                                    onChange={val => setSource(val.target.value)}
+                                    onChange={val => {
+                                      setIsDirty(true)
+                                      setSource(val.target.value)
+                                    }}
                                     value={source}
                                     inputProps={{ maxLength: 150}}
                                     sx={{ width: '50%' }}
@@ -149,6 +154,7 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                                   className="entity-type-search"
                                   value={entityType}
                                   onChange={(event, newValue: string|null) => {
+                                    setIsDirty(true)
                                     if (newValue !== null)
                                       setEntityType(newValue.replace('Add "', '').replace(/"/g,''))
                                     else
@@ -186,6 +192,7 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                                     id="privacy-level-select"
                                     value={privacyLevel as unknown as string}
                                     onChange={(event: SelectChangeEvent) => {
+                                        setIsDirty(true)
                                         setPrivacyLevel(event.target.value as unknown as number)
                                     }}
                                 >
@@ -200,7 +207,10 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                                 <Typography variant={'subtitle1'}>Codes</Typography>
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                              <EntityCodesInput codes={codes} onUpdate={setCodes} />
+                              <EntityCodesInput codes={codes} onUpdate={(val) =>{
+                                setIsDirty(true)
+                                setCodes(val)
+                              }} />
                             </Grid>
                         </Grid>
                         <Grid container columnSpacing={2} rowSpacing={2}>
@@ -208,7 +218,10 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                                 <Typography variant={'subtitle1'}>Names</Typography>
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                              <EntityNamesInput names={names} onUpdate={setNames} />
+                              <EntityNamesInput names={names} onUpdate={(val) => {
+                                setIsDirty(true)
+                                setNames(val)
+                              }} />
                             </Grid>
                         </Grid>
                         <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}} flexDirection={'row'} justifyContent={'space-between'}>
