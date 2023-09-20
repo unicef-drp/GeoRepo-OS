@@ -166,7 +166,7 @@ class DirectoryClient:
                     if start < blobs_length and end > blobs_length:
                         self.client.delete_blobs(*blobs[start:blobs_length])
 
-    def movedir(self, source_path, dest_path):
+    def movedir(self, source_path, dest_path, is_copy=False):
         blobs = self.ls_files(source_path, recursive=True)
         if not blobs:
             return
@@ -204,7 +204,8 @@ class DirectoryClient:
                     "Unable to copy blob %s with status %s"
                     % (source_path + blob, copy_properties.status)
                 )
-            source_blob.delete_blob()
+            if not is_copy:
+                source_blob.delete_blob()
 
     def dir_size(self, path):
         if not path == '' and not path.endswith('/'):
@@ -214,6 +215,17 @@ class DirectoryClient:
         for blob in blob_iter:
             total_size += blob.size
         return total_size
+
+    def dir_info(self, path):
+        if not path == '' and not path.endswith('/'):
+            path += '/'
+        total_size = 0
+        total_files = 0
+        blob_iter = self.client.list_blobs(name_starts_with=path)
+        for blob in blob_iter:
+            total_size += blob.size
+            total_files += 1
+        return total_size, total_files
 
 
 def get_tegola_cache_config(connection_string, container_name):

@@ -447,7 +447,33 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         f'- {view_resource.privacy_level} - overwrite '
         f'- {overwrite}'
     )
+    # generate detail log of vector tile
+    detail_logs = {}
     for toml_config_file in toml_config_files:
+        current_zoom = toml_config_file['zoom']
+        if current_zoom == -1:
+            continue
+        detail_logs[current_zoom] = {
+            'zoom': current_zoom,
+            'command_list': '',
+            'return_code': -1,
+            'time': 0,
+            'status': 'pending',
+            'error': '',
+            'size': 0,
+            'total_files': 0,
+            'cp_time': 0
+        }
+    view_resource.vector_tile_detail_logs = detail_logs
+    view_resource.save(update_fields=['vector_tile_detail_logs'])
+    for toml_config_file in toml_config_files:
+        current_zoom = toml_config_file['zoom']
+        view_resource.vector_tile_detail_logs[current_zoom]['status'] = (
+            'processing'
+        )
+        view_resource.save(update_fields=[
+            'vector_tile_detail_logs'
+        ])
         command_list = (
             [
                 '/opt/tegola',
@@ -469,35 +495,63 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 bbox_str
             ])
 
-        if 'zoom' in toml_config_file:
-            command_list.extend([
-                '--min-zoom',
-                str(toml_config_file['zoom']),
-                '--max-zoom',
-                str(toml_config_file['zoom'])
-            ])
-        else:
-            command_list.extend([
-                '--min-zoom',
-                '1',
-                '--max-zoom',
-                '8'
-            ])
+        command_list.extend([
+            '--min-zoom',
+            str(toml_config_file['zoom']),
+            '--max-zoom',
+            str(toml_config_file['zoom'])
+        ])
         logger.info('Tegola commands:')
         logger.info(command_list)
+        subprocess_started = time.time()
         result = subprocess.run(command_list, capture_output=True)
+        tegola_time_per_zoom = time.time() - subprocess_started
         logger.info(
             'Vector tile generation for '
             f'view_resource {view_resource.id} '
             f'- {processed_count} '
             f'finished with exit_code {result.returncode}'
         )
+        tegola_log_per_zoom = {
+            'zoom': current_zoom,
+            'command_list': ' '.join(command_list),
+            'return_code': result.returncode,
+            'time': tegola_time_per_zoom
+        }
         if result.returncode != 0:
             logger.error(result.stderr)
             view_resource.status = DatasetView.DatasetViewStatus.ERROR
             view_resource.vector_tiles_log = result.stderr.decode()
-            view_resource.save()
+            tegola_log_per_zoom['error'] = view_resource.vector_tiles_log
+            tegola_log_per_zoom['status'] = 'error'
+            view_resource.vector_tile_detail_logs[current_zoom] = (
+                tegola_log_per_zoom
+            )
+            view_resource.save(update_fields=[
+                'status', 'vector_tiles_log', 'vector_tile_detail_logs'
+            ])
             raise RuntimeError(view_resource.vector_tiles_log)
+        tegola_log_per_zoom['status'] = 'copying temp directory'
+        dir_size, dir_files = get_current_zoom_level_dir_info(
+            view_resource, current_zoom
+        )
+        tegola_log_per_zoom['size'] = dir_size
+        tegola_log_per_zoom['total_files'] = dir_files
+        view_resource.vector_tile_detail_logs[current_zoom] = (
+            tegola_log_per_zoom
+        )
+        view_resource.save(update_fields=[
+            'vector_tile_detail_logs'
+        ])
+        cp_started = time.time()
+        # do move directory
+        on_zoom_level_ends(view_resource, current_zoom)
+        cp_time = time.time() - cp_started
+        tegola_log_per_zoom['status'] = 'done'
+        tegola_log_per_zoom['cp_time'] = cp_time
+        view_resource.vector_tile_detail_logs[current_zoom] = (
+            tegola_log_per_zoom
+        )
         processed_count += 1
         view_resource.vector_tiles_progress = (
             (100 * processed_count) / len(toml_config_files)
@@ -645,60 +699,139 @@ def remove_vector_tiles_dir(
             end - start)
 
 
-def post_process_vector_tiles(view_resource: DatasetViewResource,
-                              toml_config_files,
-                              **kwargs):
-    # remove tegola config files
-    start = time.time()
-    if not settings.DEBUG:
-        for toml_config_file in toml_config_files:
-            if not os.path.exists(toml_config_file['config_file']):
-                continue
-            try:
-                os.remove(toml_config_file['config_file'])
-            except Exception as ex:
-                logger.error('Unable to remove config file ', ex)
-    if settings.USE_AZURE:
-        client = DirectoryClient(settings.AZURE_STORAGE,
-                                 settings.AZURE_STORAGE_CONTAINER)
-        layer_tiles_source = f'layer_tiles/temp_{view_resource.resource_id}'
-        layer_tiles_dest = f'layer_tiles/{view_resource.resource_id}'
-        try:
-            # clear existing directory
-            client.rmdir(layer_tiles_dest)
-            # move directory
-            client.movedir(layer_tiles_source, layer_tiles_dest)
-        except Exception as ex:
-            logger.error('Unable to move directories ', ex)
-            view_resource.status = DatasetView.DatasetViewStatus.ERROR
-            view_resource.save(update_fields=['status'])
-            raise ex
-    else:
-        original_vector_tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            view_resource.resource_id
-        )
-        if os.path.exists(original_vector_tile_path):
-            shutil.rmtree(original_vector_tile_path)
-        try:
-            shutil.move(
+def on_zoom_level_ends(view_resource: DatasetViewResource,
+                       current_zoom: int):
+    """Copy over the current zoom directory to live cache."""
+    try:
+        if settings.USE_AZURE:
+            client = DirectoryClient(settings.AZURE_STORAGE,
+                                     settings.AZURE_STORAGE_CONTAINER)
+            layer_tiles_source = (
+                f'layer_tiles/temp_{view_resource.resource_id}/{current_zoom}'
+            )
+            # copy zoom level
+            layer_tiles_dest = (
+                f'layer_tiles/{view_resource.resource_id}/{current_zoom}'
+            )
+            directory_to_be_cleared = layer_tiles_dest
+            if current_zoom == 0:
+                # clear all directories in live cache
+                directory_to_be_cleared = (
+                    f'layer_tiles/{view_resource.resource_id}'
+                )
+            client.rmdir(directory_to_be_cleared)
+            client.movedir(layer_tiles_source, layer_tiles_dest, is_copy=True)
+        else:
+            original_vector_tile_path = os.path.join(
+                settings.LAYER_TILES_PATH,
+                view_resource.resource_id,
+                f'{current_zoom}'
+            )
+            directory_to_be_cleared = original_vector_tile_path
+            if current_zoom == 0:
+                # clear all directories in live cache
+                directory_to_be_cleared = os.path.join(
+                    settings.LAYER_TILES_PATH,
+                    view_resource.resource_id
+                )
+            if os.path.exists(directory_to_be_cleared):
+                shutil.rmtree(directory_to_be_cleared)
+            if not os.path.exists(original_vector_tile_path):
+                os.makedirs(original_vector_tile_path)
+            shutil.copy(
                 os.path.join(
                     settings.LAYER_TILES_PATH,
-                    f'temp_{view_resource.resource_id}'
+                    f'temp_{view_resource.resource_id}',
+                    f'{current_zoom}'
                 ),
                 original_vector_tile_path
             )
-        except FileNotFoundError as ex:
-            logger.error('Unable to move temporary vector tiles!')
-            view_resource.status = DatasetView.DatasetViewStatus.ERROR
-            view_resource.save(update_fields=['status'])
-            raise ex
-    calculate_vector_tiles_size(view_resource, **kwargs)
-    end = time.time()
-    if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log(
-            'post_process_vector_tiles',
-            end - start)
+    except Exception as ex:
+        logger.error(f'Unable to copy zoom {current_zoom} directories ', ex)
+        view_resource.status = DatasetView.DatasetViewStatus.ERROR
+        view_resource.vector_tiles_log = (
+            f'Failed to process Zoom Level {current_zoom} directory'
+        )
+        view_resource.vector_tile_detail_logs[current_zoom]['status'] = (
+            view_resource.vector_tiles_log
+        )
+        view_resource.save(update_fields=[
+            'status', 'vector_tiles_log', 'vector_tile_detail_logs'
+        ])
+        raise ex
+
+
+def post_process_vector_tiles(view_resource: DatasetViewResource,
+                              toml_config_files,
+                              **kwargs):
+    try:
+        # remove tegola config files
+        start = time.time()
+        if not settings.DEBUG:
+            for toml_config_file in toml_config_files:
+                if not os.path.exists(toml_config_file['config_file']):
+                    continue
+                try:
+                    os.remove(toml_config_file['config_file'])
+                except Exception as ex:
+                    logger.error('Unable to remove config file ', ex)
+        if settings.USE_AZURE:
+            client = DirectoryClient(settings.AZURE_STORAGE,
+                                     settings.AZURE_STORAGE_CONTAINER)
+            layer_tiles_tmp = f'layer_tiles/temp_{view_resource.resource_id}'
+            # clear tmp directory
+            client.rmdir(layer_tiles_tmp)
+        else:
+            layer_tiles_tmp = os.path.join(
+                settings.LAYER_TILES_PATH,
+                f'temp_{view_resource.resource_id}'
+            )
+            if os.path.exists(layer_tiles_tmp):
+                shutil.rmtree(layer_tiles_tmp)
+        calculate_vector_tiles_size(view_resource, **kwargs)
+        end = time.time()
+        if kwargs.get('log_object'):
+            kwargs.get('log_object').add_log(
+                'post_process_vector_tiles',
+                end - start)
+    except Exception as ex:
+        logger.error('Unable to clear temp directories ', ex)
+        view_resource.status = DatasetView.DatasetViewStatus.ERROR
+        view_resource.vector_tiles_log = (
+            f'Failed to clear temp directories: {str(ex)}'
+        )
+        view_resource.save(update_fields=['status', 'vector_tiles_log'])
+        raise ex
+
+
+def get_current_zoom_level_dir_info(view_resource: DatasetViewResource,
+                                    current_zoom: int):
+    """Return directory size and file count."""
+    dir_size = 0
+    file_count = 0
+    try:
+        if settings.USE_AZURE:
+            client = DirectoryClient(settings.AZURE_STORAGE,
+                                     settings.AZURE_STORAGE_CONTAINER)
+            layer_tiles_source = (
+                f'layer_tiles/temp_{view_resource.resource_id}/{current_zoom}'
+            )
+            dir_size, file_count = client.dir_info(layer_tiles_source)
+        else:
+            original_vector_tile_path = os.path.join(
+                settings.LAYER_TILES_PATH,
+                f'temp_{view_resource.resource_id}',
+                f'{current_zoom}'
+            )
+            if os.path.exists(original_vector_tile_path):
+                for path, dirs, files in os.walk(original_vector_tile_path):
+                    for f in files:
+                        fp = os.path.join(path, f)
+                        dir_size += os.stat(fp).st_size
+                        file_count += 1
+    except Exception as ex:
+        logger.error('Unable to get current zoom directory info ', ex)
+    return dir_size, file_count
 
 
 def calculate_vector_tiles_size(

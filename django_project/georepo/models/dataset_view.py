@@ -615,6 +615,12 @@ class DatasetViewResource(models.Model):
         default=0
     )
 
+    vector_tile_detail_logs = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True
+    )
+
     @property
     def resource_id(self):
         return str(self.uuid)
