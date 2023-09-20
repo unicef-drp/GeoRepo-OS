@@ -8,12 +8,10 @@ from georepo.tests.model_factories import (
     LanguageF, ModuleF, DatasetF
 )
 from dashboard.models import (
-    LayerUploadSession, EntityUploadStatus,
-    STARTED, REVIEWING
+    LayerUploadSession, UPLOAD_PROCESS_COUNTRIES_SELECTION
 )
 from dashboard.tests.model_factories import (
-    LayerUploadSessionF, LayerFileF, EntityUploadF,
-    EntityUploadChildLv1F
+    LayerUploadSessionF, LayerFileF, EntityUploadF
 )
 from dashboard.api_views.validate import (
     ValidateUploadSession,
@@ -167,10 +165,8 @@ class TestValidateApiViews(TestCase):
         )
         self.assertEqual(updated_session_1.auto_matched_parent_ready, True)
 
-    @mock.patch('dashboard.api_views.validate.app.control.revoke',
-                mock.Mock(side_effect=mocked_revoke_running_task))
     @mock.patch(
-        'dashboard.api_views.validate.validate_ready_uploads.apply_async',
+        'dashboard.api_views.validate.process_country_selection.delay',
         mock.Mock(side_effect=mocked_run_task)
     )
     def test_validate_upload_session(self):
@@ -208,84 +204,11 @@ class TestValidateApiViews(TestCase):
         view = ValidateUploadSession.as_view()
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        updated_upload_0 = EntityUploadStatus.objects.get(
-            id=entity_upload_0.id
+        updated_session_0 = LayerUploadSession.objects.get(
+            id=upload_session_0.id
         )
-        self.assertEqual(updated_upload_0.status, STARTED)
-        self.assertEqual(updated_upload_0.max_level, '2')
-        # upload admin level 1, has existing country, rematched
-        upload_session_1 = LayerUploadSessionF.create(
-            dataset=dataset
-        )
-        entity_upload_1 = EntityUploadF.create(
-            upload_session=upload_session_1,
-            status=''
-        )
-        EntityUploadChildLv1F.create(
-            entity_upload=entity_upload_1,
-            entity_id='PAK001',
-            entity_name='PAK_001',
-            parent_entity_id='PAQ',
-            is_parent_rematched=True
-        )
-        ori_entity_1 = entity_upload_1.original_geographical_entity
-        ori_entity_1.internal_code = 'PAK'
-        ori_entity_1.save()
-        post_data = {
-            'upload_session': upload_session_1.id,
-            'entities': [{
-                'id': ori_entity_1.id,
-                'layer0_id': ori_entity_1.internal_code,
-                'country_entity_id': ori_entity_1.id,
-                'max_level': 1,
-                'country': ori_entity_1.label,
-                'upload_id': entity_upload_1.id,
-                'admin_level_names': {}
-            }]
-        }
-        request = self.factory.post(
-            reverse('validate-upload-session'), post_data,
-            format='json'
-        )
-        request.user = upload_session_1.uploader
-        view = ValidateUploadSession.as_view()
-        response = view(request)
-        self.assertEqual(response.status_code, 200)
-        updated_upload_1 = EntityUploadStatus.objects.get(
-            id=entity_upload_1.id
-        )
-        self.assertEqual(updated_upload_1.status, STARTED)
-        self.assertEqual(updated_upload_1.max_level, '1')
-        # upload admin level 1, but the country has review in progress
-        upload_session_2 = LayerUploadSessionF.create(
-            dataset=upload_session_1.dataset
-        )
-        # reset prev status
-        entity_upload_1.status = ''
-        entity_upload_1.save()
-        EntityUploadF.create(
-            status=REVIEWING,
-            original_geographical_entity=ori_entity_1,
-            upload_session=upload_session_2
-        )
-        post_data = {
-            'upload_session': upload_session_1.id,
-            'entities': [{
-                'id': ori_entity_1.id,
-                'layer0_id': ori_entity_1.internal_code,
-                'country_entity_id': ori_entity_1.id,
-                'max_level': 1,
-                'country': ori_entity_1.label,
-                'upload_id': entity_upload_1.id,
-                'admin_level_names': {}
-            }]
-        }
-        request = self.factory.post(
-            reverse('validate-upload-session'), post_data,
-            format='json'
-        )
-        request.user = upload_session_1.uploader
-        view = ValidateUploadSession.as_view()
-        response = view(request)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('detail', response.data)
+        self.assertEqual(updated_session_0.current_process,
+                         UPLOAD_PROCESS_COUNTRIES_SELECTION)
+        self.assertTrue(updated_session_0.current_process_uuid)
+        self.assertEqual(updated_session_0.current_process_uuid,
+                         response.data['action_uuid'])

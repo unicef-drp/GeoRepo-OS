@@ -13,7 +13,8 @@ from azure_auth.backends import AzureAuthRequiredMixin
 from dashboard.models.layer_upload_session import (
     LayerUploadSession,
     PENDING, DONE, CANCELED, ERROR,
-    VALIDATING, REVIEWING
+    VALIDATING, REVIEWING,
+    LayerUploadSessionActionLog
 )
 from dashboard.serializers.upload_session import (
     UploadSessionSerializer,
@@ -301,12 +302,13 @@ class UploadSessionUpdateStep(AzureAuthRequiredMixin, APIView):
             LayerUploadSession,
             id=upload_session_id
         )
+        session_state = upload_session.session_state()
         check_can_update_step = module_function(
             upload_session.dataset.module.code_name,
             'config',
             'check_can_update_step')
         can_update = (
-            check_can_update_step(upload_session, step)
+            check_can_update_step(upload_session, step, session_state)
         )
         ongoing_step = -1
         if can_update:
@@ -319,7 +321,7 @@ class UploadSessionUpdateStep(AzureAuthRequiredMixin, APIView):
             upload_session.dataset.module.code_name,
             'config',
             'check_ongoing_step')
-        ongoing_step = get_ongoing_step(upload_session)
+        ongoing_step = get_ongoing_step(upload_session, session_state)
         dataset_name = upload_session.dataset.label
         module_name = upload_session.dataset.module.name
         # return dataset name
@@ -645,3 +647,41 @@ class ResetUploadSession(AzureAuthRequiredMixin,
             upload_session.status = CANCELED
             upload_session.save(update_fields=['status'])
         return Response(status=200)
+
+
+class CheckUploadSessionActionStatus(AzureAuthRequiredMixin,
+                                     UserPassesTestMixin, APIView):
+    """Check action status."""
+    permission_classes = (
+        permissions.IsAuthenticated,
+    )
+
+    def handle_no_permission(self):
+        return HttpResponseForbidden('No permission')
+
+    def test_func(self):
+        if self.request.user.is_superuser:
+            return True
+        upload_session = LayerUploadSession.objects.get(
+            id=self.kwargs.get('id'))
+        if upload_session.uploader == self.request.user:
+            return True
+        return False
+
+    def get(self, request, *args, **kwargs):
+        upload_session = get_object_or_404(
+            LayerUploadSession, id=kwargs.get('id')
+        )
+        action_uuid = request.GET.get('action', '')
+        action = LayerUploadSessionActionLog.objects.filter(
+            session=upload_session,
+            uuid=action_uuid
+        ).first()
+        return Response(
+            status=200,
+            data={
+                'has_action': action is not None,
+                'status': action.status if action else 'None',
+                'result': action.result if action else None
+            }
+        )

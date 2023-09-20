@@ -1,5 +1,3 @@
-import time
-from datetime import datetime
 from django.http import Http404
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,15 +5,13 @@ from core.celery import app
 from azure_auth.backends import AzureAuthRequiredMixin
 
 from dashboard.models import (
-    LayerUploadSession, STARTED,
-    EntityUploadStatus
+    LayerUploadSession, LayerUploadSessionActionLog,
+    UPLOAD_PROCESS_COUNTRIES_SELECTION
 )
-from dashboard.models.entity_upload import (
-    REVIEWING as UPLOAD_REVIEWING
+from dashboard.tasks import (
+    layer_upload_preprocessing,
+    process_country_selection
 )
-from georepo.models import GeographicalEntity
-from georepo.tasks import validate_ready_uploads
-from dashboard.tasks import layer_upload_preprocessing
 from dashboard.models.entity_upload import EntityUploadStatusLog
 from georepo.utils.module_import import module_function
 
@@ -30,36 +26,14 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
             'layer0_id': <default_code>,
             'country_entity_id': <geographicalEntity.id>,
             'max_level': <selected max level to be imported>,
-            'country': <geographicalEntity.label|name_field>
+            'country': <geographicalEntity.label|name_field>,
+            'upload_id': <entity upload id (if exists)>,
+            'admin_level_names': [dict of level+admin level name]
         }]
     }
     """
 
-    def validate_selected_country(self, upload_session, entities, **kwargs):
-        start = time.time()
-        for entity_upload in entities:
-            country = entity_upload['country']
-            if entity_upload['country_entity_id']:
-                other_uploads = EntityUploadStatus.objects.filter(
-                    original_geographical_entity__id=(
-                        entity_upload['country_entity_id']
-                    ),
-                    upload_session__dataset=upload_session.dataset,
-                    status=UPLOAD_REVIEWING
-                ).exclude(
-                    upload_session=upload_session
-                )
-                if other_uploads.exists():
-                    return False, f'{country} has upload being reviewed'
-        end = time.time()
-        if kwargs.get('log_object'):
-            kwargs.get('log_object').add_log(
-                'ValidateUploadSession.validate_selected_country',
-                end - start)
-        return True, ''
-
     def post(self, request, format=None):
-        start = time.time()
         upload_session = request.data.get('upload_session', None)
         entities = request.data.get('entities', None)
 
@@ -69,125 +43,37 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
         upload_session = LayerUploadSession.objects.get(
             id=upload_session
         )
-        upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
-            layer_upload_session=upload_session,
-            entity_upload_status__isnull=True
-        )
         if upload_session.is_read_only():
-            return Response(status=200)
+            return Response(status=200, data={
+                'action_uuid': None
+            })
         existing_uploads = upload_session.entityuploadstatus_set.exclude(
             status=''
         )
         # skip if already has existing_uploads
         if existing_uploads.exists():
-            return Response(status=200)
-        is_selected_valid, error = self.validate_selected_country(
-            upload_session,
-            entities,
-            **{'log_object': upload_log}
+            return Response(status=200, data={
+                'action_uuid': None
+            })
+        action_data = {
+            'entities': entities
+        }
+        session_action = LayerUploadSessionActionLog.objects.create(
+            session=upload_session,
+            action=UPLOAD_PROCESS_COUNTRIES_SELECTION,
+            data=action_data
         )
-        if not is_selected_valid:
-            return Response(status=400, data={
-                        'detail': error
-                    })
-        entity_upload_ids = []
-        for entity_upload in entities:
-            max_level = int(entity_upload['max_level'])
-            layer0_id = entity_upload['layer0_id']
-            country = entity_upload['country']
-            if entity_upload['country_entity_id']:
-                geographical_entity = GeographicalEntity.objects.get(
-                    id=entity_upload['country_entity_id']
-                )
-                entity_upload_status, _ = (
-                    EntityUploadStatus.objects.update_or_create(
-                        original_geographical_entity=geographical_entity,
-                        upload_session=upload_session,
-                        defaults={
-                            'status': STARTED,
-                            'logs': '',
-                            'max_level': max_level,
-                            'started_at': datetime.now(),
-                            'summaries': None,
-                            'error_report': None,
-                            'admin_level_names': (
-                                entity_upload['admin_level_names']
-                            )
-                        }
-                    )
-                )
-                entity_upload_ids.append(entity_upload_status.id)
-            else:
-                entity_upload_status, _ = (
-                    EntityUploadStatus.objects.update_or_create(
-                        revised_entity_id=layer0_id,
-                        revised_entity_name=country,
-                        upload_session=upload_session,
-                        defaults={
-                            'status': STARTED,
-                            'logs': '',
-                            'max_level': max_level,
-                            'started_at': datetime.now(),
-                            'summaries': None,
-                            'error_report': None,
-                            'admin_level_names': (
-                                entity_upload['admin_level_names']
-                            )
-                        }
-                    )
-                )
-                entity_upload_ids.append(entity_upload_status.id)
-            if entity_upload_status.task_id:
-                app.control.revoke(
-                    entity_upload_status.task_id,
-                    terminate=True,
-                    signal='SIGKILL'
-                )
-            upload_log_entity, _ = EntityUploadStatusLog.objects.get_or_create(
-                entity_upload_status=entity_upload_status,
-                parent_log=upload_log
-            )
-            # trigger validation task
-            task = validate_ready_uploads.apply_async(
-                (
-                    entity_upload_status.id,
-                    upload_log_entity.id
-                ),
-                queue='validation'
-            )
-            entity_upload_status.task_id = task.id
-            entity_upload_status.save(update_fields=['task_id'])
-        # delete/reset the other entity uploads
-        other_uploads = EntityUploadStatus.objects.filter(
-            upload_session=upload_session
-        ).exclude(id__in=entity_upload_ids)
-        for upload in other_uploads:
-            upload.status = ''
-            upload.logs = ''
-            upload.max_level = ''
-            upload.summaries = None
-            revised = None
-            if upload.revised_geographical_entity:
-                revised = upload.revised_geographical_entity
-                upload.revised_geographical_entity = None
-            if upload.error_report:
-                upload.error_report.delete(save=False)
-                upload.error_report = None
-            if upload.task_id:
-                app.control.revoke(
-                    upload.task_id,
-                    terminate=True,
-                    signal='SIGKILL'
-                )
-                upload.task_id = ''
-            upload.save()
-            # this will removed entities from non-selected upload
-            if revised:
-                revised.delete()
-
-        end = time.time()
-        upload_log.add_log('ValidateUploadSession.post', end - start)
-        return Response(status=200)
+        upload_session.current_process = UPLOAD_PROCESS_COUNTRIES_SELECTION
+        upload_session.current_process_uuid = session_action.uuid
+        upload_session.save(update_fields=['current_process',
+                                           'current_process_uuid'])
+        # trigger task
+        task_obj = process_country_selection.delay(session_action.id)
+        session_action.task_id = task_obj.id
+        session_action.save(update_fields=['task_id'])
+        return Response(status=200, data={
+            'action_uuid': str(session_action.uuid)
+        })
 
 
 class LayerUploadPreprocess(AzureAuthRequiredMixin, APIView):
