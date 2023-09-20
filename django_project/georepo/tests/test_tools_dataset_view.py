@@ -294,7 +294,7 @@ class TestToolsDatasetView(TestCase):
             label='World',
             description='Test'
         )
-        adm0 = GeographicalEntityF.create(
+        GeographicalEntityF.create(
             label='Pakistan',
             unique_code='PAK',
             dataset=dataset,
