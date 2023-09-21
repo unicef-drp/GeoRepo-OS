@@ -11,6 +11,7 @@ from georepo.models import (
 
 @shared_task(name="check_affected_views")
 def check_affected_dataset_views(
+    dataset_id: int,
     entity_id: int = None,
     unique_codes=[]
 ):
@@ -19,6 +20,7 @@ def check_affected_dataset_views(
     """
     # Query Views that are synced and dynamic
     views_to_check = DatasetView.objects.filter(
+        dataset_id=dataset_id,
         is_static=False
     ).filter(
         Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED) |
@@ -27,6 +29,7 @@ def check_affected_dataset_views(
     if unique_codes:
         unique_codes = tuple(
             GeographicalEntity.objects.filter(
+                dataset_id=dataset_id,
                 unique_code__in=unique_codes
             ).values_list('id', flat=True)
         )

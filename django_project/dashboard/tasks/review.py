@@ -34,6 +34,7 @@ def review_approval(entity_upload_id, user_id):
     )
     approve_revision(entity_upload, user)
     check_affected_dataset_views.delay(
+        dataset.id,
         entity_id=entity_upload.revised_geographical_entity.id
     )
     # remove task id
@@ -123,7 +124,7 @@ def process_batch_review(batch_review_id):
             dataset.is_simplified = False
             dataset.save()
             trigger_generate_dynamic_views(dataset, adm0_list=adm0_list)
-            check_affected_dataset_views.delay(unique_codes=adm0_list)
+            check_affected_dataset_views.delay(dataset.id, unique_codes=adm0_list)
     # finished processing
     logger.info(f'Finished process_batch_review {batch_review_id}')
     batch_review.finished_at = datetime.now()
