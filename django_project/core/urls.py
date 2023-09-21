@@ -68,7 +68,6 @@ urlpatterns = [
         name='site-preferences'
     ),
     re_path(r'^admin/', admin.site.urls),
-    re_path(r'^watchman/', include('watchman.urls')),
 ]
 
 if settings.DEBUG:
