@@ -11,6 +11,7 @@ import MUIDataTable, {debounceSearchRender} from "mui-datatables";
 import Box from "@mui/material/Box";
 import {ThemeButton} from "../../components/Elements/Buttons";
 import CircularProgress from "@mui/material/CircularProgress";
+import AlertMessage from "../../components/AlertMessage";
 
 
 interface ViewResourceInterface {
@@ -58,6 +59,7 @@ export default function ViewSync(props: ViewResourceInterface) {
     const [allFinished, setAllFinished] = useState(true)
     const [currentInterval, setCurrentInterval] = useState<any>(null)
     const [columns, setColumns] = useState<any>([])
+    const [confirmMessage, setConfirmMessage] = useState<string>('')
 
     const axiosSource = useRef(null)
     const newCancelToken = useCallback(() => {
@@ -171,6 +173,7 @@ export default function ViewSync(props: ViewResourceInterface) {
         }
       ).then((response) => {
         setLoading(false)
+        setConfirmMessage('Successfully submitting data regeneration. Your request will be processed in the background.')
         fetchViewResource()
       }).catch(error => {
         if (!axios.isCancel(error)) {
@@ -212,6 +215,7 @@ export default function ViewSync(props: ViewResourceInterface) {
       <div className={"loading-container"}><Loading/></div> :
       <div className="AdminContentMain view-sync-list main-data-list">
           <Fragment>
+            <AlertMessage message={confirmMessage} onClose={() => setConfirmMessage('')} />
             <div className='AdminList' ref={ref}>
               <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
                                   onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>

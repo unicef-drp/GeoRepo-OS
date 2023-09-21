@@ -53,7 +53,6 @@ export function ViewSyncActionButtons() {
     postData(TRIGGER_SYNC_API_URL, data).then(
         response => {
           setAlertLoading(false)
-          setAlertOpen(false)
           setConfirmMessage('Successfully syncing Views. Your request will be processed in the background.')
           dispatch(setInitialFilters(JSON.stringify({...initialFilters})))
         }
@@ -180,6 +179,7 @@ export default function ViewSyncList() {
   const isBatchActionAvailable = useAppSelector((state: RootState) => state.viewSyncAction.isBatchActionAvailable)
   const [allFinished, setAllFinished] = useState(true)
   const [currentInterval, setCurrentInterval] = useState<any>(null)
+  const [confirmMessage, setConfirmMessage] = useState<string>('')
 
   const [columns, setColumns] = useState<any>([])
   const [totalCount, setTotalCount] = useState<number>(0)
@@ -268,6 +268,7 @@ export default function ViewSyncList() {
       }
     ).then((response) => {
       setLoading(false)
+      setConfirmMessage('Successfully submitting data regeneration. Your request will be processed in the background.')
       fetchViewSyncList()
     }).catch(error => {
       if (!axios.isCancel(error)) {
@@ -612,6 +613,7 @@ export default function ViewSyncList() {
     loading ?
       <div className={"loading-container"}><Loading/></div> :
       <div className="AdminContentMain view-sync-list main-data-list">
+        <AlertMessage message={confirmMessage} onClose={() => setConfirmMessage('')} />
         <Fragment>
           <Box sx={{textAlign:'right'}}>
             <ViewSyncActionButtons/>

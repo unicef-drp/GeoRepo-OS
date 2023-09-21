@@ -98,13 +98,14 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
             )
             view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
             view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
-        view_resource.save()
+            view_resource.save()
+
+
         task = generate_view_vector_tiles_task.apply_async(
             (view_resource.id, export_data),
             queue='tegola'
         )
         view_resource.vector_tiles_task_id = task.id
-
         view_resource.save(update_fields=['vector_tiles_task_id'])
 
 
