@@ -134,7 +134,6 @@ INSTALLED_APPS = (
     'django.contrib.gis',
     'django.contrib.messages',
     'core.staticfiles_config.MyStaticFilesConfig',
-    'sysmon',
 )
 
 SITE_ID = 1
