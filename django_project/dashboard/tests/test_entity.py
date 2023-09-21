@@ -2,7 +2,7 @@ import copy
 import uuid
 import json
 from dateutil.parser import isoparse
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.gis.geos import GEOSGeometry
 
@@ -17,6 +17,11 @@ from georepo.tests.model_factories import (
 from dashboard.api_views.entity import EntityEdit
 
 
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    BROKER_BACKEND='memory',
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
+)
 class TestApiEntity(TestCase):
 
     def setUp(self) -> None:
