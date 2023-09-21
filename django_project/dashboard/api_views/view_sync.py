@@ -300,7 +300,7 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
                 generate_view_export_data.delay(view.id)
                 view.product_sync_status = DatasetView.SyncStatus.SYNCING
                 view.save(
-                    update_fields=['product_task_id', 'product_sync_status']
+                    update_fields=['product_sync_status']
                 )
 
         return Response({'status': 'OK'})
