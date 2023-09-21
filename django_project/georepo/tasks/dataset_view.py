@@ -4,7 +4,6 @@ from django.db.models import Q
 from georepo.models.entity import GeographicalEntity
 
 from georepo.models import (
-    Dataset,
     DatasetView
 )
 

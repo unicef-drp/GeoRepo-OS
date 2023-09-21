@@ -124,7 +124,10 @@ def process_batch_review(batch_review_id):
             dataset.is_simplified = False
             dataset.save()
             trigger_generate_dynamic_views(dataset, adm0_list=adm0_list)
-            check_affected_dataset_views.delay(dataset.id, unique_codes=adm0_list)
+            check_affected_dataset_views.delay(
+                dataset.id,
+                unique_codes=adm0_list
+            )
     # finished processing
     logger.info(f'Finished process_batch_review {batch_review_id}')
     batch_review.finished_at = datetime.now()

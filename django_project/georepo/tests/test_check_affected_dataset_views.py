@@ -1,7 +1,3 @@
-_author__ = 'zakki@kartoza.com'
-__date__ = '21/09/23'
-__copyright__ = ('Copyright 2023, Unicef')
-
 import json
 
 from django.contrib.gis.geos import GEOSGeometry
@@ -9,7 +5,6 @@ from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 
 from georepo.models import (
-    Dataset,
     DatasetView
 )
 from georepo.tasks.dataset_view import check_affected_dataset_views

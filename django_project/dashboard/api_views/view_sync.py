@@ -282,7 +282,9 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
         if 'tiling_config' in sync_options:
             for view in views:
                 view.match_tiling_config()
-        if len({'vector_tiles', 'products'}.difference(set(sync_options))) == 0:
+        if len({'vector_tiles', 'products'}.difference(
+            set(sync_options))
+        ) == 0:
             for view in views:
                 trigger_generate_vector_tile_for_view(
                     view,
