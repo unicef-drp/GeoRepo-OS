@@ -223,7 +223,11 @@ def copy_entities(dataset: Dataset, level: int, view: DatasetView = None):
         EntitySimplified.objects.bulk_create(data)
 
 
-def simplify_for_dataset(dataset: Dataset):
+def simplify_for_dataset(
+    dataset: Dataset,
+    **kwargs
+):
+    start = time.time()
     logger.info(f'Simplification config for dataset {dataset}')
     dataset.simplification_progress = (
         'Entity simplification starts'
@@ -358,10 +362,17 @@ def simplify_for_dataset(dataset: Dataset):
         dataset.is_simplified = False
         dataset.save(update_fields=[
             'simplification_progress', 'is_simplified'])
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('simplify_for_dataset', end - start)
     return processed_count == total_simplification
 
 
-def simplify_for_dataset_view(view: DatasetView):
+def simplify_for_dataset_view(
+    view: DatasetView,
+    **kwargs
+):
+    start = time.time()
     logger.info(f'Simplification config for view {view}')
     view.simplification_progress = (
         'Entity simplification starts'
@@ -501,4 +512,7 @@ def simplify_for_dataset_view(view: DatasetView):
             f'at {view.simplification_progress}'
         )
         view.save(update_fields=['simplification_progress'])
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('simplify_for_dataset_view', end - start)
     return processed_count == total_simplification

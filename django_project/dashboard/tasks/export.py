@@ -12,6 +12,7 @@ from georepo.utils import (
     remove_vector_tiles_dir,
     generate_view_resource_bbox
 )
+from georepo.models.dataset_view import DatasetViewResourceLog
 
 logger = logging.getLogger(__name__)
 
@@ -32,19 +33,27 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
         get_entities_count_in_view
     )
     view = DatasetView.objects.get(id=view_id)
+    obj_log, _ = DatasetViewResourceLog.objects.get_or_create(
+        dataset_view=view
+    )
+    kwargs = {
+        'log_object': obj_log
+    }
     # NOTE: need to handle on how to scale the simplification
     # before vector tile because right now tile queue is only set
     # to 1 concurrency.
     if not view.dataset.is_simplified:
         # simplification for dataset if tiling config is updated
         is_simplification_success = simplify_for_dataset(
-            view.dataset
+            view.dataset,
+            **kwargs
         )
         if not is_simplification_success:
             raise RuntimeError('Dataset Simplification Failed!')
-    # trigger simplificatin for view
+    # trigger simplification for view
     is_simplification_success = simplify_for_dataset_view(
-        view
+        view,
+        **kwargs
     )
     if not is_simplification_success:
         raise RuntimeError('View Simplification Failed!')
@@ -64,7 +73,8 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
                 )
         entity_count = get_entities_count_in_view(
             view_resource.dataset_view,
-            view_resource.privacy_level
+            view_resource.privacy_level,
+            **kwargs
         )
         view_resource.entity_count = entity_count
         view_resource.vector_tiles_progress = 0
@@ -106,8 +116,13 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
         view_resource.save()
         if entity_count > 0:
             task = generate_view_resource_vector_tiles_task.apply_async(
-                (view_resource.id, export_data,
-                 export_vector_tile, overwrite),
+                (
+                    view_resource.id,
+                    export_data,
+                    export_vector_tile,
+                    overwrite,
+                    obj_log.id
+                ),
                 queue='tegola'
             )
             view_resource.vector_tiles_task_id = task.id
@@ -118,7 +133,8 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
 def generate_view_resource_vector_tiles_task(view_resource_id: str,
                                              export_data: bool = True,
                                              export_vector_tile: bool = True,
-                                             overwrite: bool = True):
+                                             overwrite: bool = True,
+                                             log_object_id=None):
     """
     Trigger vector tile generation only for view resource.
 
@@ -136,15 +152,15 @@ def generate_view_resource_vector_tiles_task(view_resource_id: str,
     try:
         start = time.time()
         view_resource = DatasetViewResource.objects.get(id=view_resource_id)
-        try:
-            view_resource_log, _ = \
+        if log_object_id:
+            view_resource_log = DatasetViewResourceLog.objects.get(
+                id=log_object_id
+            )
+        else:
+            view_resource_log, _ = (
                 DatasetViewResourceLog.objects.get_or_create(
-                    dataset_view_resource=view_resource,
-                    task_id=view_resource.vector_tiles_task_id
+                    dataset_view=view_resource.dataset_view
                 )
-        except DatasetViewResourceLog.DoesNotExist:
-            view_resource_log = DatasetViewResourceLog.objects.create(
-                dataset_view_resource=view_resource
             )
 
         if export_vector_tile:

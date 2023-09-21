@@ -133,6 +133,9 @@ from dashboard.api_views.view_sync import (
     ViewResourcesSyncList,
     SynchronizeView
 )
+from dashboard.api_views.logs import (
+    ExportLogs
+)
 from dashboard.views.flower_proxy_view import FlowerProxyView
 
 urlpatterns = [
@@ -682,6 +685,9 @@ urlpatterns = [
     re_path(r'api/access/request/permission/submit/?$',
             SubmitPermissionAccessRequest.as_view(),
             name='create-permission-access-request'),
+    re_path(r'api/logs/(?P<log_type>\w+)/(?P<obj_id>\d+)?$',
+            ExportLogs.as_view(),
+            name='export-log-csv'),
     re_path(r'sign-up/$',
             SignUpView.as_view(),
             name='signup-view'),

@@ -1,4 +1,6 @@
 import datetime
+import time
+
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from dashboard.models.entity_upload import (
@@ -37,12 +39,18 @@ def reject_revision(entity_upload: EntityUploadStatus):
     ).delete()
 
 
-def approve_revision(entity_upload: EntityUploadStatus, user, is_batch=False):
+def approve_revision(
+    entity_upload: EntityUploadStatus,
+    user,
+    is_batch=False,
+    **kwargs
+):
     """
     Approve revision.
 
     This will be run as background task.
     """
+    start = time.time()
     # generate concept unique code
     ancestor_entity = entity_upload.revised_geographical_entity
     new_entities = GeographicalEntity.objects.filter(
@@ -66,7 +74,9 @@ def approve_revision(entity_upload: EntityUploadStatus, user, is_batch=False):
     if not is_batch:
         # trigger refresh views
         trigger_generate_dynamic_views(dataset)
-
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('approve_revision', end - start)
 
 def generate_default_views(dataset: Dataset):
     generate_default_view_dataset_latest(dataset)

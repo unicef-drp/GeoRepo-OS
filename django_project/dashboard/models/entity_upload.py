@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import F
 from django.db.models.signals import pre_delete
 from django.utils import timezone
 from django.dispatch import receiver
@@ -278,6 +279,7 @@ class EntityUploadStatusLog(models.Model):
         )
 
     def add_log(self, log_text, exec_time):
+        self.refresh_from_db()
         if log_text in self.logs:
             self.logs[log_text] = {
                 'count': self.logs[log_text]['count'] + 1,

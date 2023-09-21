@@ -1,11 +1,15 @@
+import time
+
 from celery import shared_task
 import logging
 from datetime import datetime
 from django.contrib.auth import get_user_model
 from dashboard.models.entity_upload import (
     EntityUploadStatus,
+    EntityUploadStatusLog,
     REVIEWING
 )
+from dashboard.models.entity_upload import EntityUploadStatusLog
 from dashboard.models.batch_review import BatchReview, PROCESSING, DONE
 from georepo.models.dataset import Dataset
 from georepo.utils.module_import import module_function
@@ -21,8 +25,19 @@ UserModel = get_user_model()
 
 
 @shared_task(name="review_approval")
-def review_approval(entity_upload_id, user_id):
+def review_approval(
+    entity_upload_id,
+    user_id,
+    upload_log_id
+):
+    start = time.time()
     """Run approval process for entity upload."""
+    upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+        id=upload_log_id
+    )
+    kwargs = {
+        'log_object': upload_log
+    }
     logger.info(f'Running review_approval {entity_upload_id}')
     entity_upload = EntityUploadStatus.objects.get(id=entity_upload_id)
     user = UserModel.objects.get(id=user_id)
@@ -32,7 +47,7 @@ def review_approval(entity_upload_id, user_id):
         'review',
         'approve_revision'
     )
-    approve_revision(entity_upload, user)
+    approve_revision(entity_upload, user, **kwargs)
     check_affected_dataset_views.delay(
         dataset.id,
         entity_id=entity_upload.revised_geographical_entity.id
@@ -43,6 +58,11 @@ def review_approval(entity_upload_id, user_id):
     entity_upload.save(update_fields=['task_id'])
     logger.info(
         f'Review approval for {entity_upload_id} is finished.')
+    end = time.time()
+    upload_log.add_log(
+        'review_approval',
+        end - start
+    )
 
 
 @shared_task(name="process_batch_review")
@@ -64,6 +84,12 @@ def process_batch_review(batch_review_id):
     item_processed = 0
     for upload_id in batch_review.upload_ids:
         upload = EntityUploadStatus.objects.filter(id=upload_id).first()
+        upload_log = EntityUploadStatus.objects.get_or_create(
+            id=upload.id
+        )
+        kwargs = {
+            'log_object': upload_log
+        }
         if not upload:
             item_processed += 1
             continue
@@ -92,7 +118,12 @@ def process_batch_review(batch_review_id):
                 'review',
                 'approve_revision'
             )
-            approve_func(upload, batch_review.review_by, True)
+            approve_func(
+                upload,
+                batch_review.review_by,
+                True,
+                **kwargs
+            )
         else:
             reject_func = module_function(
                 dataset.module.code_name,
