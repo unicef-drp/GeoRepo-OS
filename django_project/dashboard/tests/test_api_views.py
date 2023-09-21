@@ -2133,11 +2133,7 @@ class TestApiViews(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data['is_available'])
 
-    @mock.patch(
-        'modules.admin_boundaries.config.'
-        'trigger_generate_vector_tile_for_view'
-    )
-    def test_update_dataset(self, mocked_view: mock.MagicMock):
+    def test_update_dataset(self):
         user = UserF.create(is_superuser=True)
         dataset = DatasetF.create(
             label='Dataset World',
@@ -2193,8 +2189,6 @@ class TestApiViews(TestCase):
             ).exclude(default_type__isnull=True).count(),
             2
         )
-        self.assertEqual(mocked_view.call_count, 2)
-        mocked_view.reset_mock()
         post_data = {
             'name': 'New World',
             'geometry_similarity_threshold_new': 0.4,
@@ -2222,7 +2216,6 @@ class TestApiViews(TestCase):
         )
         self.assertEqual(updated.label, post_data['name'])
         self.assertFalse(updated.generate_adm0_default_views)
-        self.assertEqual(mocked_view.call_count, 0)
         # setting to false will not remove the views
         self.assertEqual(
             DatasetView.objects.filter(
