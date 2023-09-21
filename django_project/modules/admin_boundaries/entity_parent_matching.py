@@ -1,3 +1,4 @@
+import time
 from typing import Tuple, List
 import json
 import logging
@@ -26,8 +27,11 @@ logger = logging.getLogger(__name__)
 
 
 def do_search_parent_entity_by_geometry(
-        geometry: GEOSGeometry,
-        dataset: Dataset) -> Tuple[GeographicalEntity, float]:
+    geometry: GEOSGeometry,
+    dataset: Dataset,
+    **kwargs
+) -> Tuple[GeographicalEntity, float]:
+    start = time.time()
     max_revision_number = get_latest_revision_number(dataset)
     entities = GeographicalEntity.objects.filter(
         dataset=dataset,
@@ -46,13 +50,19 @@ def do_search_parent_entity_by_geometry(
         )
     ).order_by('-overlap_area', 'internal_code')
     entity = entities.first()
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('do_search_parent_entity_by_geometry', end - start)
     return entity, getattr(entity, 'overlap_area', 0) * 100
 
 
 def do_search_parent_entity_by_geometry_for_level0(
-        geometry: GEOSGeometry,
-        dataset: Dataset,
-        layer_file: LayerFile) -> Tuple[GeographicalEntity, float]:
+    geometry: GEOSGeometry,
+    dataset: Dataset,
+    layer_file: LayerFile,
+    **kwargs
+) -> Tuple[GeographicalEntity, float]:
+    start = time.time()
     entities = GeographicalEntity.objects.filter(
         dataset=dataset,
         level=0,
@@ -70,11 +80,20 @@ def do_search_parent_entity_by_geometry_for_level0(
         )
     ).order_by('-overlap_area', 'internal_code')
     entity = entities.first()
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'do_search_parent_entity_by_geometry_for_level0',
+            end - start
+        )
     return entity, getattr(entity, 'overlap_area', 0) * 100
 
 
 def do_process_layer_files_for_parent_matching(
-        upload_session: LayerUploadSession) -> List[EntityUploadStatus]:
+    upload_session: LayerUploadSession,
+    **kwargs
+) -> List[EntityUploadStatus]:
+    start = time.time()
     # find layer file level 1 from the session
     layer_files = upload_session.layerfile_set.filter(level=1)
     if not layer_files.exists():
@@ -118,7 +137,8 @@ def do_process_layer_files_for_parent_matching(
             matched_parent_entity, overlap_percentage = (
                 do_search_parent_entity_by_geometry(
                     geom,
-                    upload_session.dataset
+                    upload_session.dataset,
+                    **kwargs
                 )
             )
             entity_upload = None
@@ -160,12 +180,21 @@ def do_process_layer_files_for_parent_matching(
         upload_session.save(update_fields=['progress'])
         logger.info(upload_session.progress)
         delete_tmp_shapefile(features.path)
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'admin_boundaries.upload_preprocessing.prepare_validation',
+            end - start
+        )
     return results
 
 
 def do_process_layer_files_for_parent_matching_level0(
-        upload_session: LayerUploadSession,
-        entity_uploads: List[EntityUploadStatus]):
+    upload_session: LayerUploadSession,
+    entity_uploads: List[EntityUploadStatus],
+    **kwargs
+):
+    start = time.time()
     # find layer file level 0
     layer_files0 = upload_session.layerfile_set.filter(level=0)
     if not layer_files0.exists():
@@ -214,7 +243,8 @@ def do_process_layer_files_for_parent_matching_level0(
                 do_search_parent_entity_by_geometry_for_level0(
                     geom,
                     upload_session.dataset,
-                    layer_file0
+                    layer_file0,
+                    **kwargs
                 )
             )
             entity_upload = None
@@ -222,7 +252,8 @@ def do_process_layer_files_for_parent_matching_level0(
                 # find matched_parent_entity from entity_uploads
                 entity_upload = find_matched_entity_upload(
                     entity_uploads,
-                    matched_parent_entity
+                    matched_parent_entity,
+                    **kwargs
                 )
             else:
                 # nothing is found from parent matching
@@ -254,7 +285,12 @@ def do_process_layer_files_for_parent_matching_level0(
         upload_session.save(update_fields=['progress'])
         logger.info(upload_session.progress)
         delete_tmp_shapefile(features.path)
-
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'do_process_layer_files_for_parent_matching_level0',
+            end - start
+        )
 
 def find_matched_entity_upload(entity_uploads: List[EntityUploadStatus],
                                entity: GeographicalEntity):
