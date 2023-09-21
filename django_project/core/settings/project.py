@@ -163,7 +163,5 @@ if USE_AZURE:
                                      '/home/web/media/tmp')
     if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
         os.mkdir(FILE_UPLOAD_TEMP_DIR)
-    # override watchman storage
-    WATCHMAN_STORAGE_PATH = 'media'
 
 CODE_RELEASE_VERSION = code_release_version()
