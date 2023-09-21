@@ -67,46 +67,26 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
     Trigger generate vector tiles for a view
     """
     from dashboard.tasks import (
-        generate_view_vector_tiles_task
-    )
-    view_resources = DatasetViewResource.objects.filter(
-        dataset_view=dataset_view
+        view_vector_tiles_task
     )
     dataset_view.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
     dataset_view.vector_tiles_progress = 0
     if export_data:
         dataset_view.product_sync_status = DatasetView.SyncStatus.SYNCING
         dataset_view.product_progress = 0
-    dataset_view.save()
-    for view_resource in view_resources:
-        if view_resource.vector_tiles_task_id:
-            res = AsyncResult(view_resource.vector_tiles_task_id)
-            if not res.ready():
-                # find if there is running task and stop it
-                app.control.revoke(view_resource.vector_tiles_task_id,
-                                   terminate=True)
-        view_resource.status = DatasetView.DatasetViewStatus.PENDING
-        view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
-        if export_data:
-            view_resource.geojson_progress = 0
-            view_resource.shapefile_progress = 0
-            view_resource.kml_progress = 0
-            view_resource.topojson_progress = 0
-            view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCING
-            view_resource.shapefile_sync_status = (
-                DatasetView.SyncStatus.SYNCING
+    if dataset_view.task_id:
+        res = AsyncResult(dataset_view.task_id)
+        if not res.ready():
+            # find if there is running task and stop it
+            app.control.revoke(
+                dataset_view.task_id,
+                terminate=True,
+                signal='SIGKILL'
             )
-            view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
-            view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
-            view_resource.save()
-
-
-        task = generate_view_vector_tiles_task.apply_async(
-            (view_resource.id, export_data),
-            queue='tegola'
-        )
-        view_resource.vector_tiles_task_id = task.id
-        view_resource.save(update_fields=['vector_tiles_task_id'])
+    dataset_view.save()
+    task = view_vector_tiles_task.delay(dataset_view.id, export_data)
+    dataset_view.task_id = task.id
+    dataset_view.save(update_fields=['task_id'])
 
 
 def generate_default_view_dataset_latest(

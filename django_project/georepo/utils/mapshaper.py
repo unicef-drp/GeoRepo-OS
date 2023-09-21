@@ -5,6 +5,7 @@ import json
 import fiona
 import time
 from django.db.models import F
+from django.db.models.expressions import RawSQL
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from django.contrib.gis.db.models.functions import AsGeoJSON
 from django.core.files.temp import NamedTemporaryFile
@@ -16,7 +17,8 @@ from georepo.models import (
     DatasetTilingConfig,
     AdminLevelTilingConfig,
     DatasetViewTilingConfig,
-    ViewAdminLevelTilingConfig
+    ViewAdminLevelTilingConfig,
+    DatasetView
 )
 from georepo.serializers.entity import SimpleGeographicalGeojsonSerializer
 from georepo.utils.custom_geo_functions import ForcePolygonCCW
@@ -26,6 +28,20 @@ logger = logging.getLogger(__name__)
 SIMPLIFICATION_DOUGLAS_PEUCKER = 'dp'
 SIMPLIFICATION_VISVALINGAM = 'visvalingam'
 SIMPLIFICATION_VISVALINGAM_WEIGHTED = 'visvalingam_weighted'
+
+
+def filter_entities_view(view: DatasetView, level: int, entities):
+    if level is not None:
+        raw_sql = (
+            'SELECT id from "{}" where level={}'
+        ).format(str(view.uuid), level)
+    else:
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(view.uuid))
+    return entities.filter(
+        id__in=RawSQL(raw_sql, [])
+    )
 
 
 def mapshaper_commands(input_path: str, output_path: str,
@@ -107,7 +123,7 @@ def do_simplify(input_file_path, tolerance):
     return output_file.name
 
 
-def read_output_simplification(output_file_path, tolerance):
+def read_output_simplification(output_file_path, tolerance, view=None):
     """Read output simplification geojson and insert into Temp table"""
     data = []
     with fiona.open(output_file_path, encoding='utf-8') as collection:
@@ -131,7 +147,8 @@ def read_output_simplification(output_file_path, tolerance):
             data.append(EntitySimplified(
                 geographical_entity=entity,
                 simplify_tolerance=tolerance,
-                simplified_geometry=geom
+                simplified_geometry=geom,
+                dataset_view=view
             ))
             if len(data) == 5:
                 EntitySimplified.objects.bulk_create(data, batch_size=5)
@@ -159,9 +176,14 @@ def get_dataset_simplification(dataset: Dataset):
             ):
                 tolerances[tiling_config.level].append(
                     tiling_config.simplify_tolerance)
+    return tolerances
+
+
+def get_dataset_view_tolerance(view: DatasetView):
+    tolerances = {}
     # fetch all views with tiling config
     configs = DatasetViewTilingConfig.objects.filter(
-        dataset_view__dataset=dataset
+        dataset_view=view
     )
     for config in configs:
         tiling_configs = ViewAdminLevelTilingConfig.objects.filter(
@@ -179,17 +201,20 @@ def get_dataset_simplification(dataset: Dataset):
     return tolerances
 
 
-def copy_entities(dataset: Dataset, level: int):
+def copy_entities(dataset: Dataset, level: int, view: DatasetView = None):
     entities = GeographicalEntity.objects.filter(
         dataset=dataset,
         level=level
     )
+    if view:
+        entities = filter_entities_view(view, level, entities)
     data = []
     for entity in entities.iterator(chunk_size=1):
         data.append(EntitySimplified(
             geographical_entity=entity,
             simplify_tolerance=1,
-            simplified_geometry=entity.geometry
+            simplified_geometry=entity.geometry,
+            dataset_view=view
         ))
         if len(data) == 5:
             EntitySimplified.objects.bulk_create(data, batch_size=5)
@@ -200,6 +225,11 @@ def copy_entities(dataset: Dataset, level: int):
 
 def simplify_for_dataset(dataset: Dataset):
     logger.info(f'Simplification config for dataset {dataset}')
+    dataset.simplification_progress = (
+        'Entity simplification starts'
+    )
+    dataset.save(update_fields=['simplification_progress'])
+    logger.info(dataset.simplification_progress)
     tolerances = get_dataset_simplification(dataset)
     logger.info(tolerances)
     total_simplification = 0
@@ -261,6 +291,7 @@ def simplify_for_dataset(dataset: Dataset):
                 export_entities_to_geojson(input_file.name, entities)
                 for simplify_factor in values:
                     start = time.time()
+                    output_file_path = ''
                     try:
                         if simplify_factor == 1:
                             copy_entities(dataset, level)
@@ -307,3 +338,167 @@ def simplify_for_dataset(dataset: Dataset):
         finally:
             if input_file and os.path.exists(input_file.name):
                 os.remove(input_file.name)
+    if processed_count == total_simplification:
+        # success
+        dataset.simplification_progress = (
+            'Entity simplification finished'
+        )
+        dataset.is_simplified = True
+        dataset.save(update_fields=[
+            'simplification_progress', 'is_simplified'])
+        logger.info(dataset.simplification_progress)
+    else:
+        # error
+        logger.error('Dataset simplification got error '
+                     f'at {dataset.simplification_progress}')
+        dataset.simplification_progress = (
+            'Entity simplification error '
+            f'at {dataset.simplification_progress}'
+        )
+        dataset.is_simplified = False
+        dataset.save(update_fields=[
+            'simplification_progress', 'is_simplified'])
+    return processed_count == total_simplification
+
+
+def simplify_for_dataset_view(view: DatasetView):
+    logger.info(f'Simplification config for view {view}')
+    view.simplification_progress = (
+        'Entity simplification starts'
+    )
+    view.save(update_fields=['simplification_progress'])
+    logger.info(view.simplification_progress)
+    tolerances = get_dataset_view_tolerance(view)
+    logger.info(tolerances)
+    if len(tolerances.keys()) == 0:
+        view.simplification_progress = (
+            f'Entity simplification finished for {view}'
+        )
+        view.save(update_fields=['simplification_progress'])
+        return True
+    total_simplification = 0
+    for level, values in tolerances.items():
+        entities = GeographicalEntity.objects.filter(
+            dataset=view.dataset,
+            level=level
+        )
+        entities = filter_entities_view(view, level, entities)
+        if not entities.exists():
+            continue
+        total_simplification += len(values)
+    processed_count = 0
+    view.simplification_progress = '0%'
+    view.save(update_fields=['simplification_progress'])
+    for level, values in tolerances.items():
+        input_file = None
+        try:
+            # clear all existing simplified entities
+            existing_entities = EntitySimplified.objects.filter(
+                geographical_entity__level=level,
+                dataset_view=view
+            )
+            existing_entities._raw_delete(existing_entities.db)
+            entities = GeographicalEntity.objects.filter(
+                dataset=view.dataset,
+                level=level
+            )
+            entities = filter_entities_view(view, level, entities)
+            entities = entities.annotate(
+                rhr_geom=AsGeoJSON(
+                    ForcePolygonCCW(F('geometry')),
+                    precision=6
+                )
+            )
+            entities = entities.values('id', 'rhr_geom')
+            if entities.count() == 0:
+                continue
+            logger.info(f'Simplification for view {view} level {level} '
+                        f'total entities: {entities.count()}')
+            # export entities to geojson file
+            input_file = NamedTemporaryFile(
+                delete=False,
+                suffix='.geojson',
+                dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
+            )
+            if len(values) == 1 and values[0] == 1:
+                # skip simplification and just copy over the entities
+                copy_entities(view.dataset, level, view)
+                processed_count += 1
+                progress = (
+                    (100 * processed_count) / total_simplification
+                )
+                view.simplification_progress = f'{progress:.2f}%'
+                view.save(
+                    update_fields=['simplification_progress']
+                )
+                logger.info(f'Simplification for view {view} '
+                            f'{progress:.2f}%')
+            else:
+                export_entities_to_geojson(input_file.name, entities)
+                for simplify_factor in values:
+                    start = time.time()
+                    output_file_path = ''
+                    try:
+                        if simplify_factor == 1:
+                            copy_entities(view.dataset, level, view)
+                        else:
+                            output_file_path = do_simplify(
+                                input_file.name,
+                                simplify_factor
+                            )
+                            read_output_simplification(
+                                output_file_path,
+                                simplify_factor,
+                                view
+                            )
+                    except Exception as ex:
+                        logger.error(
+                            f'Failed to simplify view {view} '
+                            f'level {level} factor {simplify_factor}!'
+                        )
+                        logger.error(ex)
+                    finally:
+                        if (
+                            output_file_path != input_file.name and
+                            os.path.exists(output_file_path)
+                        ):
+                            os.remove(output_file_path)
+                        end = time.time()
+                        logger.info(f'Simplification for view {view} '
+                                    f'level {level} simplify '
+                                    f'{simplify_factor} '
+                                    f'finished: {end-start}s')
+                        processed_count += 1
+                        progress = (
+                            (100 * processed_count) / total_simplification
+                        )
+                        view.simplification_progress = f'{progress:.2f}%'
+                        view.save(
+                            update_fields=['simplification_progress']
+                        )
+                        logger.info(f'Simplification for view {view} '
+                                    f'{progress:.2f}%')
+        except Exception as ex:
+            logger.error(f'Failed to simplify view {view} '
+                         f'level {level}!')
+            logger.error(ex)
+        finally:
+            if input_file and os.path.exists(input_file.name):
+                os.remove(input_file.name)
+    if processed_count == total_simplification:
+        # success
+        view.simplification_progress = (
+            'Entity simplification finished'
+        )
+        view.save(update_fields=['simplification_progress'])
+        logger.info(view.simplification_progress)
+    else:
+        # error
+        logger.error('Dataset simplification for view got error '
+                     f'at {view.simplification_progress}')
+        view.simplification_progress = (
+            'Entity simplification error '
+            f'at {view.simplification_progress}'
+        )
+        view.save(update_fields=['simplification_progress'])
+    return processed_count == total_simplification

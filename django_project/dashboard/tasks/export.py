@@ -1,6 +1,8 @@
 import time
 import os
 from celery import shared_task
+from celery.result import AsyncResult
+from core.celery import app
 import logging
 import shutil
 from django.conf import settings
@@ -14,29 +16,126 @@ from georepo.utils import (
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name="generate_view_vector_tiles")
-def generate_view_vector_tiles_task(view_resource_id: str,
-                                    export_data: bool = True,
-                                    export_vector_tile: bool = True,
-                                    overwrite: bool = True):
+@shared_task(name="view_vector_tiles_task")
+def view_vector_tiles_task(view_id: str, export_data: bool = True,
+                           export_vector_tile: bool = True,
+                           overwrite: bool = True):
+    """Entrypoint of view vector tile generation."""
+    from georepo.models.dataset_view import (
+        DatasetView, DatasetViewResource
+    )
+    from georepo.utils.mapshaper import (
+        simplify_for_dataset,
+        simplify_for_dataset_view
+    )
+    from georepo.utils.dataset_view import (
+        get_entities_count_in_view
+    )
+    view = DatasetView.objects.get(id=view_id)
+    # NOTE: need to handle on how to scale the simplification
+    # before vector tile because right now tile queue is only set
+    # to 1 concurrency.
+    if not view.dataset.is_simplified:
+        # simplification for dataset if tiling config is updated
+        is_simplification_success = simplify_for_dataset(
+            view.dataset
+        )
+        if not is_simplification_success:
+            raise RuntimeError('Dataset Simplification Failed!')
+    # trigger simplificatin for view
+    is_simplification_success = simplify_for_dataset_view(
+        view
+    )
+    if not is_simplification_success:
+        raise RuntimeError('View Simplification Failed!')
+
+    view_resources = DatasetViewResource.objects.filter(
+        dataset_view=view
+    )
+    for view_resource in view_resources:
+        if view_resource.vector_tiles_task_id:
+            res = AsyncResult(view_resource.vector_tiles_task_id)
+            if not res.ready():
+                # find if there is running task and stop it
+                app.control.revoke(
+                    view_resource.vector_tiles_task_id,
+                    terminate=True,
+                    signal='SIGKILL'
+                )
+        entity_count = get_entities_count_in_view(
+            view_resource.dataset_view,
+            view_resource.privacy_level
+        )
+        view_resource.entity_count = entity_count
+        view_resource.vector_tiles_progress = 0
+        if entity_count > 0:
+            view_resource.status = DatasetView.DatasetViewStatus.PENDING
+            view_resource.vector_tile_sync_status = (
+                DatasetView.SyncStatus.SYNCING
+            )
+            if export_data:
+                view_resource.geojson_progress = 0
+                view_resource.shapefile_progress = 0
+                view_resource.kml_progress = 0
+                view_resource.topojson_progress = 0
+                view_resource.geojson_sync_status = (
+                    DatasetView.SyncStatus.SYNCING
+                )
+                view_resource.shapefile_sync_status = (
+                    DatasetView.SyncStatus.SYNCING
+                )
+                view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
+                view_resource.topojson_sync_status = (
+                    DatasetView.SyncStatus.SYNCING
+                )
+        else:
+            view_resource.status = DatasetView.DatasetViewStatus.EMPTY
+            view_resource.vector_tile_sync_status = (
+                DatasetView.SyncStatus.SYNCED
+            )
+            view_resource.geojson_progress = 0
+            view_resource.shapefile_progress = 0
+            view_resource.kml_progress = 0
+            view_resource.topojson_progress = 0
+            view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCED
+            view_resource.shapefile_sync_status = (
+                DatasetView.SyncStatus.SYNCED
+            )
+            view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCED
+            view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCED
+        view_resource.save()
+        if entity_count > 0:
+            task = generate_view_resource_vector_tiles_task.apply_async(
+                (view_resource.id, export_data,
+                 export_vector_tile, overwrite),
+                queue='tegola'
+            )
+            view_resource.vector_tiles_task_id = task.id
+            view_resource.save(update_fields=['vector_tiles_task_id'])
+
+
+@shared_task(name="generate_view_resource_vector_tiles_task")
+def generate_view_resource_vector_tiles_task(view_resource_id: str,
+                                             export_data: bool = True,
+                                             export_vector_tile: bool = True,
+                                             overwrite: bool = True):
+    """
+    Trigger vector tile generation only for view resource.
+
+    Needs to ensure that simplification already happening
+    before this function is called.
+    """
     from georepo.models.dataset_view import (
         DatasetViewResource, DatasetViewResourceLog
     )
-    from georepo.models.entity import EntitySimplified
-    from georepo.utils.mapshaper import simplify_for_dataset
     from georepo.utils.geojson import generate_view_geojson
     from georepo.utils.shapefile import generate_view_shapefile
     from georepo.utils.kml import generate_view_kml
     from georepo.utils.topojson import generate_view_topojson
-    from georepo.utils.simplification import process_simplification
 
     try:
         start = time.time()
         view_resource = DatasetViewResource.objects.get(id=view_resource_id)
-
-        if not view_resource.dataset_view.dataset.is_simplified:
-            process_simplification(view_resource.dataset_view.dataset_id)
-
         try:
             view_resource_log, _ = \
                 DatasetViewResourceLog.objects.get_or_create(
@@ -59,14 +158,6 @@ def generate_view_vector_tiles_task(view_resource_id: str,
                 view_resource,
                 **{'log_object': view_resource_log}
             )
-            dataset = view_resource.dataset_view.dataset
-            # check if has simplified entities record
-            simplified_entities = EntitySimplified.objects.filter(
-                geographical_entity__dataset=dataset
-            )
-            if not simplified_entities.exists():
-                # trigger simplification process
-                simplify_for_dataset(dataset)
             generate_view_vector_tiles(
                 view_resource,
                 overwrite=overwrite,
@@ -117,7 +208,7 @@ def generate_view_vector_tiles_task(view_resource_id: str,
                 logger.info('Removing temporary geojson files done')
         end = time.time()
         view_resource_log.add_log(
-                'generate_view_vector_tiles_task',
+                'generate_view_resource_vector_tiles_task',
                 end - start
         )
     except DatasetViewResource.DoesNotExist:

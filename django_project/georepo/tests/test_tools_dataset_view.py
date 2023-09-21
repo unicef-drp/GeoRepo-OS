@@ -294,7 +294,7 @@ class TestToolsDatasetView(TestCase):
             label='World',
             description='Test'
         )
-        adm0 = GeographicalEntityF.create(
+        GeographicalEntityF.create(
             label='Pakistan',
             unique_code='PAK',
             dataset=dataset,
@@ -311,7 +311,6 @@ class TestToolsDatasetView(TestCase):
             default_ancestor_code__isnull=True
         )
         self.assertEqual(views.count(), 1)
-        # generate_view_vector_tiles_task should be called once
         trigger_generate_dynamic_views(dataset, export_data=False)
         # create another adm0
         GeographicalEntityF.create(
@@ -323,8 +322,6 @@ class TestToolsDatasetView(TestCase):
         )
         generate_default_view_adm0_latest(dataset)
         self.assertEqual(views.count(), 2)
-        # generate_view_vector_tiles_task should be called twice
-        trigger_generate_dynamic_views(dataset, adm0, export_data=False)
 
 
     def test_get_view_resource_from_view(self):

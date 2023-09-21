@@ -463,7 +463,7 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         dataset.styles = None
         dataset.style_source_name = ''
         dataset.save(
-            update_fields=['styles', 'style_source_name', 'is_simplified']
+            update_fields=['styles', 'style_source_name']
         )
 
     def post(self, request, *args, **kwargs):

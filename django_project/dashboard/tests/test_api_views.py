@@ -1371,7 +1371,6 @@ class TestApiViews(TestCase):
         })
         self.assertEqual(response.status_code, 200)
 
-
     @mock.patch('django.core.cache.cache.get',
                 mock.Mock(side_effect=mocked_cache_get))
     def test_update_view(self):

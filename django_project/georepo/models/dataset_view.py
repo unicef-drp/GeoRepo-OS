@@ -39,6 +39,7 @@ class DatasetView(models.Model):
         PROCESSING = 'PR', _('Processing')
         DONE = 'DO', _('Done')
         ERROR = 'ER', _('Error')
+        EMPTY = 'EM', _('Empty')
 
     class DefaultViewType(models.TextChoices):
         IS_LATEST = 'LATEST', _('Is Latest')
@@ -618,6 +619,12 @@ class DatasetViewResource(models.Model):
 
     entity_count = models.IntegerField(
         default=0
+    )
+
+    vector_tile_detail_logs = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True
     )
 
     @property

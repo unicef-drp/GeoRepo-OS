@@ -1,27 +1,16 @@
 import os
-import io
 from django.conf import settings
-from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from azure.core.exceptions import ResourceNotFoundError
 from georepo.utils.azure_blob_storage import StorageContainerClient
+from django.http import StreamingHttpResponse
+from wsgiref.util import FileWrapper
 
 
 class TileAPIView(APIView):
     permission_classes = [AllowAny]
-
-    def build_response(self, file, y):
-        response = HttpResponse(
-            file,
-            content_type='application/octet-stream'
-        )
-        response['Content-Encoding'] = 'gzip'
-        response['Content-Disposition'] = (
-            f'attachment; filename={y}.pbf'
-        )
-        return response
 
     def get(self, *args, **kwargs):
         resource_uuid = kwargs.get('resource', None)
@@ -36,10 +25,17 @@ class TileAPIView(APIView):
                     max_concurrency=2,
                     validate_content=False
                 )
-                stream = io.BytesIO()
-                download_stream.readinto(stream)
-                stream.seek(0)
-                return self.build_response(stream, y)
+                response = StreamingHttpResponse(
+                    download_stream.chunks(),
+                    status=200,
+                    content_type='application/octet-stream'
+                )
+                response['Content-Encoding'] = 'gzip'
+                response['Content-Length'] = download_stream.size
+                response['Content-Disposition'] = (
+                    f'attachment; filename={y}.pbf'
+                )
+                return response
             except ResourceNotFoundError:  # noqa
                 pass
         else:
@@ -51,8 +47,17 @@ class TileAPIView(APIView):
                 str(y)
             )
             if os.path.exists(file_path):
-                with open(file_path, 'rb') as file:
-                    return self.build_response(file, y)
+                response = StreamingHttpResponse(
+                    FileWrapper(open(file_path, 'rb'), 8192),
+                    status=200,
+                    content_type='application/octet-stream'
+                )
+                response['Content-Encoding'] = 'gzip'
+                response['Content-Length'] = os.path.getsize(file_path)
+                response['Content-Disposition'] = (
+                    f'attachment; filename={y}.pbf'
+                )
+                return response
         return Response(status=404, data={
             'detail': 'Not Found'
         })

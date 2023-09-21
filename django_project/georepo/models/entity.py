@@ -415,6 +415,13 @@ class EntitySimplified(models.Model):
         null=True
     )
 
+    dataset_view = models.ForeignKey(
+        'georepo.DatasetView',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
+
 
 # @receiver(post_save, sender=EntityName)
 # def entity_name_post_create(
