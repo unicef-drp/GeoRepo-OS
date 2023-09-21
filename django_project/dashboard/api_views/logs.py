@@ -1,7 +1,7 @@
 import csv
 
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -16,6 +16,15 @@ from georepo.models.dataset_view import (
     DatasetViewResourceLog,
     DatasetView
 )
+
+
+class CSVBuffer:
+    """An object that implements just the write method of the file-like
+    interface.
+    """
+    def write(self, value):
+        """Return the string to write."""
+        return value
 
 
 class ExportLogs(AzureAuthRequiredMixin, APIView):
@@ -73,26 +82,30 @@ class ExportLogs(AzureAuthRequiredMixin, APIView):
                 else:
                     results[key] = val
 
-        response = HttpResponse(
-            content_type="text/csv",
-            headers={
-                f"Content-Disposition": f'attachment; filename="{filename}-logs.csv"'
-            },
-        )
+        writer = csv.writer(CSVBuffer())
 
-        writer = csv.writer(response)
-        writer.writerow(["Action", "Call Count", "Average Time (s)", "Total Time (s)"])
+        rows = [
+            ["Action", "Call Count", "Average Time (s)", "Total Time (s)"]
+        ]
         for key, val in results.items():
             key = key.title().replace('_', ' ').replace('.', ' - ')
             if 'Adminboundarymatching' in key:
                 key = key.replace('Adminboundarymatching', 'Admin Boundary Matching')
             if 'Validateuploadsession' in key:
                 key = key.replace('Validateuploadsession', 'Validate Upload Session')
-            writer.writerow([
+            rows.append([
                 key.title().replace('_', ' '),
                 val['count'],
                 int(val['avg_time'] * 100) / 100,
                 int(val['total_time'] * 100) / 100,
             ])
+
+        response = StreamingHttpResponse(
+            (writer.writerow(row) for row in rows),
+            content_type="text/csv",
+            headers={
+                f"Content-Disposition": f'attachment; filename="{filename}-logs.csv"'
+            },
+        )
 
         return response
