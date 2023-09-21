@@ -505,10 +505,8 @@ class CreateNewView(AzureAuthRequiredMixin,
         }
         query_valid = self.check_query()
         tags = request.data.get('tags', [])
-
         if not query_valid:
             raise Http404('Query invalid')
-
         if not name or not description or not mode or not self.query_string:
             raise Http404('Missing required field')
 

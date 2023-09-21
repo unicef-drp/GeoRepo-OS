@@ -45,7 +45,7 @@ class TestReviewApproval(TestCase):
         'dashboard.tasks.review.trigger_generate_dynamic_views'
     )
     @mock.patch(
-        'dashboard.tasks.review.check_affected_dataset_views'
+        'dashboard.tasks.review.check_affected_dataset_views.delay'
     )
     def test_batch_approval(self, mock_check_views, mocked_dynamic_views):
         # create upload_session + entity_upload

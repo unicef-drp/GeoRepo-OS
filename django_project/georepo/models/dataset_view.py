@@ -146,6 +146,12 @@ class DatasetView(models.Model):
         max_length=256
     )
 
+    product_task_id = models.CharField(
+        blank=True,
+        default='',
+        max_length=256
+    )
+
     default_type = models.CharField(
         max_length=256,
         choices=DefaultViewType.choices,
@@ -771,6 +777,7 @@ def view_res_post_delete(sender, instance: DatasetViewResource,
 @receiver(post_save, sender=DatasetViewResource)
 def view_res_post_save(sender, instance: DatasetViewResource,
                        *args, **kwargs):
+    from georepo.models import Dataset
     from georepo.utils.dataset_view import (
         get_view_tiling_status,
         get_view_product_status
@@ -832,34 +839,17 @@ def view_res_post_save(sender, instance: DatasetViewResource,
     if tiling_status != 'Ready':
         view.status = tiling_status_mapping[tiling_status]
         view.vector_tile_sync_status = sync_status_mapping[tiling_status]
+        if view.vector_tile_sync_status not in ['Error', 'Done']:
+            view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
         view.vector_tiles_progress = vt_progresss
 
     if 'Processing' in product_status:
         view.product_sync_status = sync_status_mapping['Processing']
+        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
     elif 'Pending' in product_status or 'Error' in product_status:
         view.product_sync_status = sync_status_mapping['Pending']
+        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
     elif 'Done' in product_status:
         view.product_sync_status = sync_status_mapping['Done']
     view.product_progress = sum(product_progress) / len(product_progress)
     view.save()
-
-
-@receiver(post_save, sender=DatasetView)
-def dataset_view_post_save(
-    sender,
-    instance: DatasetView,
-    update_fields,
-    *args,
-    **kwargs
-):
-    if getattr(instance, 'skip_signal', False):
-        return
-    if instance.product_sync_status == (
-        DatasetView.SyncStatus.OUT_OF_SYNC
-    ) \
-        or instance.vector_tile_sync_status == (
-        DatasetView.SyncStatus.OUT_OF_SYNC
-    ) \
-        or instance.is_tiling_config_match is False:
-        instance.dataset.sync_status = instance.dataset.SyncStatus.OUT_OF_SYNC
-        instance.dataset.save()
