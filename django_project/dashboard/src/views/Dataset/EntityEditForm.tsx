@@ -19,6 +19,7 @@ import Scrollable from '../../components/Scrollable';
 import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import axios from "axios";
 import AlertDialog from "../../components/AlertDialog";
+import {ThemeButton} from "../../components/Elements/Buttons";
 
 interface EntityDetailGeneralInterface {
     entity: EntityEditInterface;
@@ -224,17 +225,26 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                               }} />
                             </Grid>
                         </Grid>
-                        <Grid container columnSpacing={2} rowSpacing={2} sx={{paddingTop: '1em'}} flexDirection={'row'} justifyContent={'space-between'}>
+                        <Grid container spacing={2} sx={{paddingTop: '1em'}} flexDirection={'row'}>
                             <Grid item>
-                                <div className='button-container'>
-                                    <Button
-                                        variant={"contained"}
-                                        disabled={loading}
-                                        onClick={handleSaveClick}>
-                                        <span style={{ display: 'flex' }}>
-                                        { loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { "Save" }</span>
-                                    </Button>
-                                </div>
+                                <Button
+                                    variant={"contained"}
+                                    disabled={loading}
+                                    onClick={handleSaveClick}>
+                                    <span style={{ display: 'flex' }}>
+                                    { loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { "Save" }</span>
+                                </Button>
+                            </Grid>
+                            <Grid item>
+                                <Button
+                                  disabled={loading}
+                                  variant={'outlined'}
+                                  onClick={() => {
+                                    navigate(-1)
+                                  }}
+                                  >
+                                Cancel
+                              </Button>
                             </Grid>
                             <Grid item>
                               <AlertDialog open={alertOpen} alertClosed={onConfirmationClosed}

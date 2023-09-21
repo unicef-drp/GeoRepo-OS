@@ -99,7 +99,10 @@ class TestCheckAffectedViews(TestCase):
             self.dataset_view_1.vector_tile_sync_status,
             DatasetView.SyncStatus.SYNCED
         )
-        check_affected_dataset_views(entity_id=self.geographical_entity.id)
+        check_affected_dataset_views(
+            dataset_id=self.dataset_1.id,
+            entity_id=self.geographical_entity.id
+        )
 
         for dataset_view in DatasetView.objects.filter(dataset=self.dataset_1):
             self.assertEqual(
@@ -128,7 +131,10 @@ class TestCheckAffectedViews(TestCase):
             self.dataset_view_1.vector_tile_sync_status,
             DatasetView.SyncStatus.SYNCED
         )
-        check_affected_dataset_views(unique_codes=[self.geographical_entity.unique_code])
+        check_affected_dataset_views(
+            dataset_id=self.dataset_1.id,
+            unique_codes=[self.geographical_entity.unique_code]
+        )
 
         for dataset_view in DatasetView.objects.filter(dataset=self.dataset_1):
             self.assertEqual(
@@ -164,7 +170,10 @@ class TestCheckAffectedViews(TestCase):
         self.dataset_view_1.save()
         create_sql_view(self.dataset_view_1)
         init_view_privacy_level(self.dataset_view_1)
-        check_affected_dataset_views(entity_id=self.geographical_entity.id)
+        check_affected_dataset_views(
+            dataset_id=self.dataset_1.id,
+            entity_id=self.geographical_entity.id
+        )
 
         # Dataset View 1 is not affected, since it does not contain the entity.
         self.dataset_view_1.refresh_from_db()
@@ -215,7 +224,10 @@ class TestCheckAffectedViews(TestCase):
         create_sql_view(static_view)
         init_view_privacy_level(static_view)
 
-        check_affected_dataset_views(entity_id=self.geographical_entity.id)
+        check_affected_dataset_views(
+            dataset_id=self.dataset_1.id,
+            entity_id=self.geographical_entity.id
+        )
 
         # Static View is not affected.
         static_view.refresh_from_db()

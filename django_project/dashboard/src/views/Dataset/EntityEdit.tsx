@@ -1,21 +1,13 @@
 import React, {useEffect, useState} from 'react';
-import {useSearchParams} from "react-router-dom";
-import {useNavigate} from "react-router-dom";
+import {useNavigate, useSearchParams} from "react-router-dom";
 import axios from "axios";
-import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 import {useAppDispatch} from "../../app/hooks";
-import TabPanel, {a11yProps} from '../../components/TabPanel';
 import Skeleton from '@mui/material/Skeleton';
-import { EntityEditRoute } from '../routes';
-import EntityEditInterface  from '../../models/entity';
+import EntityEditInterface from '../../models/entity';
 import EntityEditForm from '../Dataset/EntityEditForm';
 import Scrollable from '../../components/Scrollable';
 import {v4 as uuidv4} from 'uuid';
 import '../../styles/Entity.scss';
-import {ThemeButton} from "../../components/Elements/Buttons";
 
 const FETCH_ENTITY_DETAIL = '/api/entity/edit/'
 
@@ -68,26 +60,10 @@ export default function EntityEdit(props: any) {
         }
     }, [searchParams])
 
-    const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-      navigate(`${EntityEditRoute.path}?id=${searchParams.get('id')}&tab=${newValue}`)
-    }
-
     return (
         <Scrollable>
           <div style={{display:'flex', flex: 1, flexDirection: 'column'}}>
               { loading && <Skeleton variant="rectangular" height={'100%'} width={'100%'}/> }
-              { !loading && (
-                <Box sx={{'textAlign':'right'}}>
-                  <ThemeButton
-                    icon={null}
-                    title={'Back'}
-                    variant={'secondary'}
-                    onClick={() => {
-                      navigate(-1)
-                    }}
-                  />
-                </Box>
-              )}
               { !loading && (
                 <EntityEditForm entity={entity} onEntityUpdated={fetchEntityDetail} />
               )}
