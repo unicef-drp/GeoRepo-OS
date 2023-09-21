@@ -1,5 +1,4 @@
 import logging
-import time
 
 from dashboard.models.layer_upload_session import (
     LayerUploadSession
