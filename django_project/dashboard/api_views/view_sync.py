@@ -266,31 +266,9 @@ class ViewResourcesSyncList(AzureAuthRequiredMixin, APIView):
 
 
 class SynchronizeView(AzureAuthRequiredMixin, APIView):
-
-    def _mark_product_syncing(self):
-        dataset_view.product_sync_status = DatasetView.SyncStatus.SYNCING
-        dataset_view.product_progress = 0
-        dataset_view.save()
-        for view_resource in view_resources:
-            if view_resource.vector_tiles_task_id:
-                res = AsyncResult(view_resource.vector_tiles_task_id)
-                if not res.ready():
-                    # find if there is running task and stop it
-                    app.control.revoke(view_resource.vector_tiles_task_id,
-                                       terminate=True)
-            view_resource.status = DatasetView.DatasetViewStatus.PENDING
-            view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
-            view_resource.geojson_progress = 0
-            view_resource.shapefile_progress = 0
-            view_resource.kml_progress = 0
-            view_resource.topojson_progress = 0
-            view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCING
-            view_resource.shapefile_sync_status = (
-                DatasetView.SyncStatus.SYNCING
-            )
-            view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
-            view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
-            view_resource.save()
+    """
+    Synchronize View vector tiles, tiling config, and data.
+    """
 
     def post(self, *args, **kwargs):
         serializer = ViewSyncSerializer(data=self.request.data)
