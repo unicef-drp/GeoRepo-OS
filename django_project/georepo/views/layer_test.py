@@ -167,12 +167,12 @@ class LayerTestView(UserPassesTestMixin, TemplateView):
                         entity_conf.first().dataset_tiling_config.zoom_level
                     )
                     layers_config['maxzoom'] = (
-                        entity_conf.last().dataset_tiling_config.zoom_level
+                        entity_conf.last().dataset_tiling_config.zoom_level + 1
                     )
             else:
                 zoom_configs = get_view_zoom_level(level, dataset_view)
                 layers_config['minzoom'] = zoom_configs['min']
-                layers_config['maxzoom'] = zoom_configs['max']
+                layers_config['maxzoom'] = zoom_configs['max'] + 1
 
             ctx['layers_configs'].append(layers_config)
         # add map tiler api key

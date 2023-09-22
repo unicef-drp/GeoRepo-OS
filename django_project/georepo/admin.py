@@ -664,6 +664,14 @@ def stop_vector_tile_process(modeladmin, request, queryset):
         view_resource.save()
 
 
+@admin.action(description='Clear Vector Tile Pending Cache Keys')
+def clear_vector_tile_pending_cache_keys(modeladmin, request, queryset):
+    """
+    This will remove pending cache keys from cache.
+    
+    Then, no live vector tile generation for ongoing tiles. 
+    """
+
 class DatasetViewResourceAdmin(admin.ModelAdmin):
     search_fields = ['dataset_view__name', 'uuid']
     actions = [

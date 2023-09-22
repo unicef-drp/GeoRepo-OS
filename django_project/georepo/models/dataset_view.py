@@ -653,6 +653,8 @@ class DatasetViewResource(models.Model):
             )
             if dataset_caches:
                 for dataset_cache in dataset_caches:
+                    if b'pending-tile' in dataset_cache:
+                        continue
                     cache.delete(
                         str(dataset_cache).split(':')[-1].replace(
                             '\'',

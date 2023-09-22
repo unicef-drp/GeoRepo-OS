@@ -7,6 +7,7 @@ import time
 from typing import List
 from datetime import datetime
 
+from django.core.cache import cache
 from django.conf import settings
 from django.db.models import Max
 from django.db.models.expressions import RawSQL
@@ -37,19 +38,27 @@ TEGOLA_AZURE_BASE_PATH = 'layer_tiles'
 
 
 def dataset_view_sql_query(dataset_view: DatasetView, level,
-                           privacy_level, tolerance=None,
+                           privacy_level,
                            using_view_tiling_config=False,
+                           bbox_param='!BBOX!',
+                           zoom_param='!ZOOM!',
+                           intersects_param='ST_Transform(!BBOX!, 4326)',
                            **kwargs):
+    """
+    Generate sql query for Tegola and Live VT usng ST_AsMVTGeom.
+
+    Note: ST_AsMVTGeom requires the geometry parameter in srid 3857.    
+    """
     start = time.time()
     select_sql = (
         'SELECT ST_AsMVTGeom('
         'GeomTransformMercator(ges.simplified_geometry), '
-        '!BBOX!) AS geometry, '
-    )
+        '{bbox_param}) AS geometry, '
+    ).format(bbox_param=bbox_param)
     # raw_sql to view to select id
     raw_sql = (
-        'SELECT id from "{}"'
-    ).format(str(dataset_view.uuid))
+        'SELECT id from "{}" where level={}'
+    ).format(str(dataset_view.uuid), level)
     # find IdType that the dataset has
     # retrieve all ids in current dataset
     ids = EntityId.objects.filter(
@@ -111,22 +120,26 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         tiling_config_joins = (
             'inner join georepo_datasetviewtilingconfig dtc on '
             '    dtc.dataset_view_id={dataset_view_id} and '
-            '    dtc.zoom_level=!ZOOM! '
+            '    dtc.zoom_level={zoom_param} '
             'inner join georepo_viewadminleveltilingconfig tc on '
             '    tc.level=gg.level and '
             '    ges.simplify_tolerance=tc.simplify_tolerance and '
             '    tc.view_tiling_config_id = dtc.id '
         ).format(
-            dataset_view_id=dataset_view.id
+            dataset_view_id=dataset_view.id,
+            zoom_param=zoom_param
         )
     else:
         tiling_config_joins = (
             'inner join georepo_datasettilingconfig dtc on '
-            '    dtc.dataset_id=gg.dataset_id and dtc.zoom_level=!ZOOM! '
+            '    dtc.dataset_id=gg.dataset_id and '
+            '    dtc.zoom_level={zoom_param} '
             'inner join georepo_adminleveltilingconfig tc on '
             '    tc.level=gg.level and '
             '    ges.simplify_tolerance=tc.simplify_tolerance and '
             '    tc.dataset_tiling_config_id = dtc.id '
+        ).format(
+            zoom_param=zoom_param
         )
     sql = (
         select_sql +
@@ -156,13 +169,14 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         'LEFT JOIN georepo_geographicalentity pg on pg.id = gg.parent_id ' +
         (' '.join(id_field_left_joins)) + ' ' +
         (' '.join(name_field_left_joins)) + ' '
-        'WHERE ges.simplified_geometry && ST_Transform(!BBOX!, 4326) '
-        'AND gg.level = {level} '
-        'AND gg.dataset_id = {dataset_id} '
+        'WHERE ges.simplified_geometry && {intersects_param} '
+        'AND gg.level={level} '
+        'AND gg.dataset_id={dataset_id} '
         'AND gg.is_approved=True '
-        'AND gg.privacy_level <= {privacy_level} '
+        'AND gg.privacy_level<={privacy_level} '
         'AND gg.id IN ({raw_sql})'.
         format(
+            intersects_param=intersects_param,
             level=level,
             dataset_id=dataset_view.dataset.id,
             privacy_level=privacy_level,
@@ -191,8 +205,8 @@ class TilingConfigZoomLevels(object):
         self.items = items
 
 
-def get_view_tiling_configs(dataset_view: DatasetView, **kwargs
-                            ) -> List[TilingConfigZoomLevels]:
+def get_view_tiling_configs(dataset_view: DatasetView, zoom_level: int = None,
+                            **kwargs) -> List[TilingConfigZoomLevels]:
     # return list of tiling configs for dataset_view
     from georepo.models.dataset_tile_config import (
         DatasetTilingConfig
@@ -205,6 +219,10 @@ def get_view_tiling_configs(dataset_view: DatasetView, **kwargs
     view_tiling_conf = DatasetViewTilingConfig.objects.filter(
         dataset_view=dataset_view
     ).order_by('zoom_level')
+    if zoom_level is not None:
+        view_tiling_conf = view_tiling_conf.filter(
+            zoom_level=zoom_level
+        )
     if view_tiling_conf.exists():
         for conf in view_tiling_conf:
             items = []
@@ -221,6 +239,10 @@ def get_view_tiling_configs(dataset_view: DatasetView, **kwargs
     dataset_tiling_conf = DatasetTilingConfig.objects.filter(
         dataset=dataset_view.dataset
     ).order_by('zoom_level')
+    if zoom_level is not None:
+        dataset_tiling_conf = dataset_tiling_conf.filter(
+            zoom_level=zoom_level
+        )
     if dataset_tiling_conf.exists():
         for conf in dataset_tiling_conf:
             items = []
@@ -338,7 +360,6 @@ def create_view_configuration_files(
                 view_resource.dataset_view,
                 level,
                 view_resource.privacy_level,
-                tolerance=adminlevel_conf.tolerance,
                 using_view_tiling_config=using_view_tiling_config
             )
             provider_layer = {
@@ -561,6 +582,10 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
             f'view_resource {view_resource.id} '
             f'- {view_resource.vector_tiles_progress}'
         )
+        if current_zoom == 0:
+            view_resource.vector_tiles_size = dir_size
+        else:
+            view_resource.vector_tiles_size += dir_size
         view_resource.save()
     logger.info(
         'Finished vector tile generation for '
@@ -584,7 +609,10 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
 
 
 def save_view_resource_on_success(view_resource, entity_count):
-    view_resource.status = DatasetView.DatasetViewStatus.DONE
+    view_resource.status = (
+        DatasetView.DatasetViewStatus.DONE if entity_count > 0 else
+        DatasetView.DatasetViewStatus.EMPTY
+    )
     view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCED
     view_resource.vector_tiles_updated_at = datetime.now()
     view_resource.vector_tiles_progress = 100
@@ -701,7 +729,11 @@ def remove_vector_tiles_dir(
 
 def on_zoom_level_ends(view_resource: DatasetViewResource,
                        current_zoom: int):
-    """Copy over the current zoom directory to live cache."""
+    """
+    Copy over the current zoom directory to live cache.
+    
+    Also remove the zoom from redis to disable live cache VT.
+    """
     try:
         if settings.USE_AZURE:
             client = DirectoryClient(settings.AZURE_STORAGE,
@@ -746,6 +778,14 @@ def on_zoom_level_ends(view_resource: DatasetViewResource,
                 ),
                 original_vector_tile_path
             )
+        if current_zoom == 0:
+            # mark other zooms as Pending tile generation
+            set_pending_tile_cache_keys(view_resource, True)
+        # remove current zoom from cache
+        cache_key = (
+            f'{view_resource.resource_id}-{current_zoom}-pending-tile'
+        )
+        cache.delete(cache_key)
     except Exception as ex:
         logger.error(f'Unable to copy zoom {current_zoom} directories ', ex)
         view_resource.status = DatasetView.DatasetViewStatus.ERROR
@@ -877,3 +917,60 @@ def clean_tegola_config_files(view_resource: DatasetViewResource):
             os.remove(toml_config_file)
         except Exception as ex:
             logger.error('Unable to remove config file ', ex)
+
+
+def reset_pending_tile_cache_keys(view_resource: DatasetViewResource):
+    """Reset all pending tile cache from resource."""
+    cache_keys = []
+    for zoom in range(25):
+        cache_keys.append(f'{view_resource.resource_id}-{zoom}-pending-tile')
+    cache.delete_many(cache_keys)
+
+
+def set_pending_tile_cache_keys(
+        view_resource: DatasetViewResource,
+        is_skip_zoom_0=False
+    ):
+    """
+    Set pending tile cache based on tiling configs.
+    
+    This will be called when:
+    - first time generation of vector tiles
+    - after zoom level 0 finish generating,
+    """
+    tiling_configs, is_from_view_config = get_view_tiling_configs(
+        view_resource.dataset_view)
+    if len(tiling_configs) == 0:
+        return 0
+    cache_count = 0
+    for tiling_config in tiling_configs:
+        zoom_level = tiling_config.zoom_level
+        if is_skip_zoom_0 and zoom_level == 0:
+            continue
+        # for each level in tiling config, generate query
+        sqls = {}
+        for item in tiling_config.items:
+            # check if view resource has entity at this level
+            entity_count = get_entities_count_in_view(
+                view_resource.dataset_view,
+                view_resource.privacy_level,
+                item.level
+            )
+            if entity_count == 0:
+                continue
+            sqls[item.level] = dataset_view_sql_query(
+                view_resource.dataset_view,
+                item.level,
+                view_resource.privacy_level,
+                is_from_view_config,
+                bbox_param='{bbox_param}',
+                zoom_param='{zoom_param}',
+                intersects_param='{intersects_param}'
+            )   
+        cache_key = (
+            f'{view_resource.resource_id}-{tiling_config.zoom_level}-'
+            'pending-tile'
+        )
+        cache.set(cache_key, sqls, timeout=None)
+        cache_count += 1
+    return cache_count

@@ -31,6 +31,10 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
     from georepo.utils.dataset_view import (
         get_entities_count_in_view
     )
+    from georepo.utils.vector_tile import (
+        reset_pending_tile_cache_keys,
+        set_pending_tile_cache_keys
+    )
     view = DatasetView.objects.get(id=view_id)
     # NOTE: need to handle on how to scale the simplification
     # before vector tile because right now tile queue is only set
@@ -42,7 +46,7 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
         )
         if not is_simplification_success:
             raise RuntimeError('Dataset Simplification Failed!')
-    # trigger simplificatin for view
+    # trigger simplification for view
     is_simplification_success = simplify_for_dataset_view(
         view
     )
@@ -104,14 +108,29 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
             view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCED
             view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCED
         view_resource.save()
+        reset_pending_tile_cache_keys(view_resource)
         if entity_count > 0:
+            # check if it's zero tile, if yes, then can enable live vt
+            if view_resource.vector_tiles_size == 0:
+                set_pending_tile_cache_keys(view_resource)
+                # update the size to dummy 1
+                view_resource.vector_tiles_size = 1
             task = generate_view_resource_vector_tiles_task.apply_async(
                 (view_resource.id, export_data,
                  export_vector_tile, overwrite),
                 queue='tegola'
             )
             view_resource.vector_tiles_task_id = task.id
-            view_resource.save(update_fields=['vector_tiles_task_id'])
+            view_resource.save(update_fields=['vector_tiles_task_id',
+                                              'vector_tiles_size'])
+        else:
+            # clear directory if previous tile exists
+            if view_resource.vector_tiles_size > 0:
+                remove_vector_tiles_dir(view_resource.resource_id)
+            view_resource.vector_tiles_size = 0
+            view_resource.vector_tiles_task_id = ''
+            view_resource.save(update_fields=['vector_tiles_task_id',
+                                              'vector_tiles_size'])
 
 
 @shared_task(name="generate_view_resource_vector_tiles_task")
