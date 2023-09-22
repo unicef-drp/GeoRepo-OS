@@ -33,6 +33,14 @@ class TileAPIView(APIView):
             )
             StorageContainerClient.upload_blob(layer_tiles_dest, bytes_result)
         else:
+            dir_path = os.path.join(
+                settings.LAYER_TILES_PATH,
+                resource_uuid,
+                f'{z}',
+                f'{x}'
+            )
+            if not os.path.exists(dir_path):
+                os.makedirs(dir_path)
             vector_tile_path = os.path.join(
                 settings.LAYER_TILES_PATH,
                 resource_uuid,
