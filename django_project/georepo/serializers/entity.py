@@ -31,11 +31,10 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
     parents = serializers.SerializerMethodField()
 
     def get_centroid(self, obj: GeographicalEntity):
-        if 'centroid' in obj and obj['centroid']:
-            centroid_str = str(obj['centroid'])
-            if 'POINT' in centroid_str:
-                return centroid_str.split(';')[-1]
-        return None
+        try:
+            return obj['centroid']
+        except KeyError:
+            return None
 
     def get_geometry(self, obj: GeographicalEntity):
         if 'rhr_geom' in obj and obj['rhr_geom']:
