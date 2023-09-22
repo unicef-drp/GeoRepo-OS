@@ -47,7 +47,7 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
     """
     Generate sql query for Tegola and Live VT usng ST_AsMVTGeom.
 
-    Note: ST_AsMVTGeom requires the geometry parameter in srid 3857.    
+    Note: ST_AsMVTGeom requires the geometry parameter in srid 3857.
     """
     start = time.time()
     select_sql = (
@@ -618,6 +618,8 @@ def save_view_resource_on_success(view_resource, entity_count):
     view_resource.vector_tiles_progress = 100
     view_resource.entity_count = entity_count
     view_resource.save()
+    # clear any pending tile cache keys
+    reset_pending_tile_cache_keys(view_resource)
 
 
 def check_task_tiling_status(dataset: Dataset) -> str:
@@ -731,7 +733,7 @@ def on_zoom_level_ends(view_resource: DatasetViewResource,
                        current_zoom: int):
     """
     Copy over the current zoom directory to live cache.
-    
+
     Also remove the zoom from redis to disable live cache VT.
     """
     try:
@@ -929,11 +931,10 @@ def reset_pending_tile_cache_keys(view_resource: DatasetViewResource):
 
 def set_pending_tile_cache_keys(
         view_resource: DatasetViewResource,
-        is_skip_zoom_0=False
-    ):
+        skip_zoom_0=False):
     """
     Set pending tile cache based on tiling configs.
-    
+
     This will be called when:
     - first time generation of vector tiles
     - after zoom level 0 finish generating,
@@ -945,7 +946,7 @@ def set_pending_tile_cache_keys(
     cache_count = 0
     for tiling_config in tiling_configs:
         zoom_level = tiling_config.zoom_level
-        if is_skip_zoom_0 and zoom_level == 0:
+        if skip_zoom_0 and zoom_level == 0:
             continue
         # for each level in tiling config, generate query
         sqls = {}
@@ -966,7 +967,7 @@ def set_pending_tile_cache_keys(
                 bbox_param='{bbox_param}',
                 zoom_param='{zoom_param}',
                 intersects_param='{intersects_param}'
-            )   
+            )
         cache_key = (
             f'{view_resource.resource_id}-{tiling_config.zoom_level}-'
             'pending-tile'

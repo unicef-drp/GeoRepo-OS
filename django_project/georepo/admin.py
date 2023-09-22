@@ -542,82 +542,64 @@ class TagAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ["name"]}
 
 
-@admin.action(description='Regenerate Vector Tiles')
-def regenerate_resource_vector_tiles(modeladmin, request, queryset):
+def trigger_resource_vt_generation(view_resource, is_overwrite):
     from celery.result import AsyncResult
     from core.celery import app
     from dashboard.tasks import (
         generate_view_resource_vector_tiles_task
     )
+    from georepo.utils.vector_tile import (
+        set_pending_tile_cache_keys
+    )
+    if view_resource.vector_tiles_task_id:
+        res = AsyncResult(view_resource.vector_tiles_task_id)
+        if not res.ready():
+            # find if there is running task and stop it
+            app.control.revoke(
+                view_resource.vector_tiles_task_id,
+                terminate=True,
+                signal='SIGKILL'
+            )
+    view_resource.status = DatasetView.DatasetViewStatus.PENDING
+    view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
+    view_resource.geojson_progress = 0
+    view_resource.shapefile_progress = 0
+    view_resource.kml_progress = 0
+    view_resource.topojson_progress = 0
+    view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCING
+    view_resource.shapefile_sync_status = (
+        DatasetView.SyncStatus.SYNCING
+    )
+    view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
+    view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
+    view_resource.vector_tiles_progress = 0
+    # check if it's zero tile, if yes, then can enable live vt
+    # when there is existing vector tile, live vt will be enabled
+    # after zoom level 0 generation
+    if view_resource.vector_tiles_size == 0:
+        set_pending_tile_cache_keys(view_resource)
+        # update the size to 1, so API can return vector tile URL
+        view_resource.vector_tiles_size = 1
+    view_resource.save()
+    task = generate_view_resource_vector_tiles_task.apply_async(
+        (view_resource.id, True, True, is_overwrite),
+        queue='tegola'
+    )
+    view_resource.vector_tiles_task_id = task.id
+    view_resource.save(update_fields=['vector_tiles_task_id'])
+
+
+@admin.action(description='Regenerate Vector Tiles')
+def regenerate_resource_vector_tiles(modeladmin, request, queryset):
+    # this task needs to have EntitySimplified generated
     for view_resource in queryset:
-        if view_resource.vector_tiles_task_id:
-            res = AsyncResult(view_resource.vector_tiles_task_id)
-            if not res.ready():
-                # find if there is running task and stop it
-                app.control.revoke(
-                    view_resource.vector_tiles_task_id,
-                    terminate=True,
-                    signal='SIGKILL'
-                )
-        view_resource.status = DatasetView.DatasetViewStatus.PENDING
-        view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
-        view_resource.geojson_progress = 0
-        view_resource.shapefile_progress = 0
-        view_resource.kml_progress = 0
-        view_resource.topojson_progress = 0
-        view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCING
-        view_resource.shapefile_sync_status = (
-            DatasetView.SyncStatus.SYNCING
-        )
-        view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
-        view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
-        view_resource.vector_tiles_progress = 0
-        view_resource.save()
-        task = generate_view_resource_vector_tiles_task.apply_async(
-            (view_resource.id, True, True),
-            queue='tegola'
-        )
-        view_resource.vector_tiles_task_id = task.id
-        view_resource.save(update_fields=['vector_tiles_task_id'])
+        trigger_resource_vt_generation(view_resource, True)
 
 
 @admin.action(description='Resume Vector Tiles Generation')
 def resume_vector_tiles_generation(modeladmin, request, queryset):
-    from celery.result import AsyncResult
-    from core.celery import app
-    from dashboard.tasks import (
-        generate_view_resource_vector_tiles_task
-    )
     for view_resource in queryset:
-        if view_resource.vector_tiles_task_id:
-            res = AsyncResult(view_resource.vector_tiles_task_id)
-            if not res.ready():
-                # find if there is running task and stop it
-                app.control.revoke(
-                    view_resource.vector_tiles_task_id,
-                    terminate=True,
-                    signal='SIGKILL'
-                )
-        view_resource.status = DatasetView.DatasetViewStatus.PENDING
-        view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
-        view_resource.geojson_progress = 0
-        view_resource.shapefile_progress = 0
-        view_resource.kml_progress = 0
-        view_resource.topojson_progress = 0
-        view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCING
-        view_resource.shapefile_sync_status = (
-            DatasetView.SyncStatus.SYNCING
-        )
-        view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
-        view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
-        view_resource.vector_tiles_progress = 0
-        view_resource.save()
-        task = generate_view_resource_vector_tiles_task.apply_async(
-            (view_resource.id, True, True, False),
-            queue='tegola'
-        )
-        view_resource.vector_tiles_task_id = task.id
-        view_resource.save(update_fields=['vector_tiles_task_id'])
+        trigger_resource_vt_generation(view_resource, False)
 
 
 @admin.action(description='Calculate Vector Tiles Size')
@@ -664,13 +646,29 @@ def stop_vector_tile_process(modeladmin, request, queryset):
         view_resource.save()
 
 
-@admin.action(description='Clear Vector Tile Pending Cache Keys')
-def clear_vector_tile_pending_cache_keys(modeladmin, request, queryset):
+@admin.action(description='Stop Live Vector Tile')
+def stop_dynamic_live_vector_tile(modeladmin, request, queryset):
     """
-    This will remove pending cache keys from cache.
-    
-    Then, no live vector tile generation for ongoing tiles. 
+    This will stop dynamic live vector tile.
+
+    Then, no live vector tile generation for ongoing tiles.
     """
+    from georepo.utils.vector_tile import reset_pending_tile_cache_keys
+    for view_resource in queryset:
+        reset_pending_tile_cache_keys(view_resource)
+
+
+@admin.action(description='Start Live Vector Tile')
+def start_dynamic_live_vector_tile(modeladmin, request, queryset):
+    """
+    This will add pending cache keys from cache.
+
+    Then, live vector tile generation is enabled.
+    """
+    from georepo.utils.vector_tile import set_pending_tile_cache_keys
+    for view_resource in queryset:
+        set_pending_tile_cache_keys(view_resource)
+
 
 class DatasetViewResourceAdmin(admin.ModelAdmin):
     search_fields = ['dataset_view__name', 'uuid']
@@ -680,7 +678,9 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
         resume_vector_tiles_generation,
         cleanup_tegola_configs,
         fix_entity_count_in_resource,
-        stop_vector_tile_process
+        stop_vector_tile_process,
+        stop_dynamic_live_vector_tile,
+        start_dynamic_live_vector_tile
     ]
 
     def get_list_display(self, request):

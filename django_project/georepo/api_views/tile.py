@@ -10,14 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from azure.core.exceptions import ResourceNotFoundError
-from georepo.models import (
-    DatasetViewResource
-)
 from georepo.utils.azure_blob_storage import StorageContainerClient
-from georepo.utils.vector_tile import (
-    get_view_tiling_configs,
-    dataset_view_sql_query
-)
 
 
 class TileAPIView(APIView):
@@ -52,7 +45,6 @@ class TileAPIView(APIView):
         return bytes_result
 
     def generate_tile(self, sql):
-        rows = []
         tile = bytes()
         with connection.cursor() as cursor:
             raw_sql = (
@@ -138,26 +130,27 @@ class TileAPIView(APIView):
         x = kwargs.get('x')
         y = kwargs.get('y')
         response = self.get_tile_from_live_cache(resource_uuid, z, x, y)
-        if response is None:
-            cache_value = self.check_pending_resource_generation(
-                resource_uuid, z)
-            if cache_value:
-                tile = self.do_run_query(z, x, y, cache_value)
-                if len(tile):
-                    tile_bytes = self.store_mvt_cache(resource_uuid, z, x, y, tile)
-                    response = HttpResponse(
-                        tile_bytes,
-                        status=200,
-                        content_type='application/octet-stream'
-                    )
-                    response['Content-Encoding'] = 'gzip'
-                    response['Content-Length'] = len(tile_bytes)
-                    response['Content-Disposition'] = (
-                        f'attachment; filename={y}.pbf'
-                    )
-                    return response
-        else:
+        if response:
             return response
+        # try to check if resource is in pending generation
+        cache_value = self.check_pending_resource_generation(
+            resource_uuid, z)
+        if cache_value:
+            # generate live VT
+            tile = self.do_run_query(z, x, y, cache_value)
+            if len(tile):
+                tile_bytes = self.store_mvt_cache(resource_uuid, z, x, y, tile)
+                response = HttpResponse(
+                    tile_bytes,
+                    status=200,
+                    content_type='application/octet-stream'
+                )
+                response['Content-Encoding'] = 'gzip'
+                response['Content-Length'] = len(tile_bytes)
+                response['Content-Disposition'] = (
+                    f'attachment; filename={y}.pbf'
+                )
+                return response
         return Response(status=404, data={
             'detail': 'Not Found'
         })

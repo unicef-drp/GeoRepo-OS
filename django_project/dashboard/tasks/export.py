@@ -111,9 +111,11 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
         reset_pending_tile_cache_keys(view_resource)
         if entity_count > 0:
             # check if it's zero tile, if yes, then can enable live vt
+            # when there is existing vector tile, live vt will be enabled
+            # after zoom level 0 generation
             if view_resource.vector_tiles_size == 0:
                 set_pending_tile_cache_keys(view_resource)
-                # update the size to dummy 1
+                # update the size to 1, so API can return vector tile URL
                 view_resource.vector_tiles_size = 1
             task = generate_view_resource_vector_tiles_task.apply_async(
                 (view_resource.id, export_data,
