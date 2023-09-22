@@ -24,6 +24,10 @@ from georepo.utils.dataset_view import (
 
 
 class TestExportLogs(APITestCase):
+    """
+    Test exportingg Dataset View, Layer Upload Session, and Entity Upload logs.
+    """
+
     def setUp(self) -> None:
         self.enLang = LanguageF.create(
             code='EN',
@@ -107,11 +111,18 @@ class TestExportLogs(APITestCase):
     def test_log_layer_upload(self):
         self.setup_upload()
         request = self.factory.get(
-            reverse('export-log-csv', args=['layer', self.layer_upload_session.id])
+            reverse(
+                'export-log-csv',
+                args=['upload_session', self.layer_upload_session.id]
+            )
         )
         request.user = self.superuser
         view = ExportLogs.as_view()
-        response = view(request, 'layer', self.layer_upload_session.id)
+        response = view(
+            request,
+            'upload_session',
+            self.layer_upload_session.id
+        )
         contents = response.streaming_content
         content_list = []
         for content in contents:
@@ -131,11 +142,14 @@ class TestExportLogs(APITestCase):
     def test_log_entity_upload(self):
         self.setup_upload()
         request = self.factory.get(
-            reverse('export-log-csv', args=['entity', self.entity_upload_1.id])
+            reverse(
+                'export-log-csv',
+                args=['entity_upload', self.entity_upload_1.id]
+            )
         )
         request.user = self.superuser
         view = ExportLogs.as_view()
-        response = view(request, 'entity', self.entity_upload_1.id)
+        response = view(request, 'entity_upload', self.entity_upload_1.id)
         contents = response.streaming_content
         content_list = []
         for content in contents:
@@ -158,7 +172,9 @@ class TestExportLogs(APITestCase):
             dataset_view=self.dataset_view_1,
             logs=self.log_1
         )
-        view_resource = self.dataset_view_1.datasetviewresource_set.all().first()
+        view_resource = (
+            self.dataset_view_1.datasetviewresource_set.all().first()
+        )
         DatasetViewResourceLog.objects.create(
             dataset_view=self.dataset_view_1,
             dataset_view_resource=view_resource,
@@ -166,11 +182,14 @@ class TestExportLogs(APITestCase):
         )
 
         request = self.factory.get(
-            reverse('export-log-csv', args=['view', self.dataset_view_1.id])
+            reverse(
+                'export-log-csv',
+                args=['dataset_view', self.dataset_view_1.id]
+            )
         )
         request.user = self.superuser
         view = ExportLogs.as_view()
-        response = view(request, 'view', self.dataset_view_1.id)
+        response = view(request, 'dataset_view', self.dataset_view_1.id)
         contents = response.streaming_content
         content_list = []
         for content in contents:

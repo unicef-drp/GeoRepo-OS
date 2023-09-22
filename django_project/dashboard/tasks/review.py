@@ -6,7 +6,6 @@ from datetime import datetime
 from django.contrib.auth import get_user_model
 from dashboard.models.entity_upload import (
     EntityUploadStatus,
-    EntityUploadStatusLog,
     REVIEWING
 )
 from dashboard.models.entity_upload import EntityUploadStatusLog
@@ -47,6 +46,7 @@ def review_approval(
         'review',
         'approve_revision'
     )
+    print(kwargs)
     approve_revision(entity_upload, user, **kwargs)
     check_affected_dataset_views.delay(
         dataset.id,
@@ -84,7 +84,7 @@ def process_batch_review(batch_review_id):
     item_processed = 0
     for upload_id in batch_review.upload_ids:
         upload = EntityUploadStatus.objects.filter(id=upload_id).first()
-        upload_log = EntityUploadStatus.objects.get_or_create(
+        upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
             id=upload.id
         )
         kwargs = {

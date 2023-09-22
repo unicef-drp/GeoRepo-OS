@@ -52,7 +52,10 @@ def do_search_parent_entity_by_geometry(
     entity = entities.first()
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('do_search_parent_entity_by_geometry', end - start)
+        kwargs.get('log_object').add_log(
+            'do_search_parent_entity_by_geometry',
+            end - start
+        )
     return entity, getattr(entity, 'overlap_area', 0) * 100
 
 
@@ -252,8 +255,7 @@ def do_process_layer_files_for_parent_matching_level0(
                 # find matched_parent_entity from entity_uploads
                 entity_upload = find_matched_entity_upload(
                     entity_uploads,
-                    matched_parent_entity,
-                    **kwargs
+                    matched_parent_entity
                 )
             else:
                 # nothing is found from parent matching
@@ -291,6 +293,7 @@ def do_process_layer_files_for_parent_matching_level0(
             'do_process_layer_files_for_parent_matching_level0',
             end - start
         )
+
 
 def find_matched_entity_upload(entity_uploads: List[EntityUploadStatus],
                                entity: GeographicalEntity):

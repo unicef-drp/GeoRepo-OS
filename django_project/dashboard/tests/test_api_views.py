@@ -833,7 +833,7 @@ class TestApiViews(TestCase):
         request.user = request_by
         view = ApproveRevision.as_view()
         response = view(request, **kwargs)
-        approve_revision(entity_upload, request_by)
+        approve_revision(entity_upload, request_by, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             EntityUploadStatus.objects.get(

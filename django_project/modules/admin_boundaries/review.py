@@ -90,6 +90,13 @@ def approve_revision(
             adm0=entity_upload.revised_geographical_entity
         )
 
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'approve_revision',
+            end - start
+        )
+
 
 def approve_new_revision_upload(
     entity_upload: EntityUploadStatus,

@@ -78,6 +78,7 @@ def approve_revision(
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log('approve_revision', end - start)
 
+
 def generate_default_views(dataset: Dataset):
     generate_default_view_dataset_latest(dataset)
     generate_default_view_dataset_all_versions(dataset)

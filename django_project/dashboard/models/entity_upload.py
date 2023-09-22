@@ -1,5 +1,4 @@
 from django.db import models
-from django.db.models import F
 from django.db.models.signals import pre_delete
 from django.utils import timezone
 from django.dispatch import receiver
@@ -300,7 +299,7 @@ class EntityUploadStatusLog(models.Model):
                 self.entity_upload_status.upload_session
             )
         if self.entity_upload_status and not self.parent_log:
-            self.parent_log = EntityUploadStatusLog.objects.get(
+            self.parent_log, _ = EntityUploadStatusLog.objects.get_or_create(
                 layer_upload_session=self.entity_upload_status.upload_session,
                 entity_upload_status__isnull=True
             )

@@ -514,5 +514,8 @@ def simplify_for_dataset_view(
         view.save(update_fields=['simplification_progress'])
     end = time.time()
     if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log('simplify_for_dataset_view', end - start)
+        kwargs.get('log_object').add_log(
+            'simplify_for_dataset_view',
+            end - start
+        )
     return processed_count == total_simplification
