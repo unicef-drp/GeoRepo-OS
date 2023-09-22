@@ -193,6 +193,7 @@ class EntityEdit(APIView):
         if request.data.get('is_dirty', False):
             entity = serializer.save()
             check_affected_dataset_views.delay(entity.dataset.id, entity.id)
+            entity.refresh_from_db()
         return Response(EntityEditSerializer(entity).data, 200)
 
     def get(self, request, entity_id: int, *args, **kwargs):
