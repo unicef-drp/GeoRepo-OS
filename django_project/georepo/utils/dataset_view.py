@@ -492,7 +492,9 @@ def get_view_tiling_status(view_resource_queryset):
     error_queryset = view_resource_queryset.filter(
         status=DatasetView.DatasetViewStatus.ERROR
     )
-    view_resources = view_resource_queryset.aggregate(
+    view_resources = view_resource_queryset.filter(
+        entity_count__gt=0
+    ).aggregate(
         Avg('vector_tiles_progress')
     )
     tiling_progress = (
