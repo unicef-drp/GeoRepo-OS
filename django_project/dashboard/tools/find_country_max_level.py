@@ -1,5 +1,5 @@
 import logging
-
+import time
 from dashboard.models.layer_upload_session import (
     LayerUploadSession
 )
@@ -24,6 +24,7 @@ def find_country_max_level(
     From each country/entity upload at upload_session,
     find maximum level of layer file that has entity at that level
     """
+    start = time.time()
     available_levels = (
         upload_session.layerfile_set.values_list(
             'level', flat=True
