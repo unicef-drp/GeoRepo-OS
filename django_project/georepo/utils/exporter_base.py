@@ -1,4 +1,5 @@
 import re
+import math
 import os
 import shutil
 import datetime
@@ -38,6 +39,9 @@ from georepo.utils.renderers import (
 from georepo.utils.azure_blob_storage import (
     DirectoryClient,
     StorageContainerClient
+)
+from georepo.utils.directory_helper import (
+    get_folder_size
 )
 
 PROPERTY_INT_VALUES = ['admin_level']
@@ -149,6 +153,25 @@ class DatasetViewExporterBase(object):
             os.mkdir(tmp_output_dir)
         return tmp_output_dir
 
+    def update_progress(self, view_resource=None, progress=0):
+        view_resource = view_resource['resource'] if \
+            view_resource else \
+            self.view_resource
+        setattr(view_resource, f'{self.output}_progress', progress)
+        if math.isclose(progress, 100, abs_tol=1e-4):
+            setattr(
+                view_resource,
+                f'{self.output}_sync_status',
+                DatasetViewResource.SyncStatus.SYNCED
+            )
+            output_path = self.get_tmp_output_dir(view_resource)
+            setattr(
+                view_resource,
+                f'{self.output}_size',
+                get_folder_size(output_path)
+            )
+        view_resource.save()
+
     def run(self):
         print(
             f'Exporting {self.output} from View {self.dataset_view.name} '
@@ -173,6 +196,10 @@ class DatasetViewExporterBase(object):
                 self.do_export(resource, resource.privacy_level,
                                level, tmp_output_dir)
                 self.total_exported += 1
+                self.update_progress(
+                    res,
+                    (self.total_exported / self.total_to_be_exported) * 100
+                )
             # export readme
             self.export_readme(tmp_output_dir)
             self.do_export_post_process(resource)

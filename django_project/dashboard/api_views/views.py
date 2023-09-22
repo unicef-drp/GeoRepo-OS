@@ -2,7 +2,6 @@ import re
 import uuid
 import math
 from django.db.models.expressions import RawSQL, Q
-from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import connection
 from django.http import Http404, HttpResponseForbidden, HttpResponse
@@ -13,8 +12,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from azure_auth.backends import AzureAuthRequiredMixin
-from celery.result import AsyncResult
-from core.celery import app
 from dashboard.serializers.view import (
     DatasetViewSerializer, DatasetViewDetailSerializer
 )
@@ -33,12 +30,10 @@ from georepo.models.dataset_view import (
     DATASET_VIEW_SUBSET_TAG
 )
 from georepo.utils.dataset_view import (
-    trigger_generate_vector_tile_for_view,
     create_sql_view,
     init_view_privacy_level,
     get_view_resource_from_view
 )
-from georepo.tasks.simplify_geometry import simplify_geometry_in_view
 from georepo.utils.permission import (
     check_user_has_view_permission,
     get_views_for_user,
@@ -474,34 +469,17 @@ class UpdateView(AzureAuthRequiredMixin,
         if not query_valid:
             raise Http404('Query invalid')
 
-        should_generate_vector_tiles = False
         if self.query_string != dataset_view.query_string:
             dataset_view.query_string = self.query_string
-            should_generate_vector_tiles = True
-
+            dataset_view = dataset_view.set_out_of_sync(
+                tiling_config=False,
+                vector_tile=True,
+                product=True,
+                save=False
+            )
         dataset_view.save()
-        if should_generate_vector_tiles:
-            create_sql_view(dataset_view)
-            init_view_privacy_level(dataset_view)
-            if not settings.DEBUG:
-                # Trigger simplification
-                if dataset_view.simplification_task_id:
-                    res = AsyncResult(dataset_view.simplification_task_id)
-                    if not res.ready():
-                        app.control.revoke(
-                            dataset_view.simplification_task_id,
-                            terminate=True
-                        )
-                task_simplify = (
-                    simplify_geometry_in_view.delay(dataset_view.id)
-                )
-                dataset_view.simplification_task_id = task_simplify.id
-                dataset_view.simplification_progress = 'Started'
-                dataset_view.save(
-                    update_fields=['simplification_task_id',
-                                   'simplification_progress']
-                )
-                trigger_generate_vector_tile_for_view(dataset_view)
+        create_sql_view(dataset_view)
+        init_view_privacy_level(dataset_view)
         return Response(status=200)
 
 
@@ -527,10 +505,8 @@ class CreateNewView(AzureAuthRequiredMixin,
         }
         query_valid = self.check_query()
         tags = request.data.get('tags', [])
-
         if not query_valid:
             raise Http404('Query invalid')
-
         if not name or not description or not mode or not self.query_string:
             raise Http404('Missing required field')
 
@@ -542,6 +518,12 @@ class CreateNewView(AzureAuthRequiredMixin,
             query_string=self.query_string,
             created_by=self.request.user
         )
+        dataset_view = dataset_view.set_out_of_sync(
+            tiling_config=False,
+            vector_tile=True,
+            product=True,
+            save=False
+        )
 
         if len(tags) > 0:
             for tag_name in tags:
@@ -551,7 +533,6 @@ class CreateNewView(AzureAuthRequiredMixin,
         dataset_view.save()
         create_sql_view(dataset_view)
         init_view_privacy_level(dataset_view)
-        trigger_generate_vector_tile_for_view(dataset_view)
 
         return Response(status=201)
 

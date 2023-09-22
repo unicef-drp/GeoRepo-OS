@@ -101,6 +101,23 @@ function ViewPopover(props: any) {
           </Grid>
         </Grid>
       </Grid>
+      <Grid item>
+        <Grid container flexDirection={'row'} justifyContent={'space-between'} spacing={2}>
+          <Grid item>
+            <Typography sx={{pb: 1}}>Logs:</Typography>
+          </Grid>
+        </Grid>
+      </Grid>
+      <Grid item>
+        <Grid item>
+          <Button
+            variant={'outlined'}
+            onClick={() => window.open(`/api/logs/dataset_view/${props.view.id}`, '_blank')}
+          >
+            Logs
+          </Button>
+        </Grid>
+      </Grid>
     </Grid>
   )
 }
@@ -308,7 +325,8 @@ export default function Views() {
                   key={2}
                   disabled={!rowData[12].includes('Own') || rowData[6] === 'Yes'}
                   color='error'
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     setSelectedView(rowData)
                     setConfirmationText(
                       `Are you sure you want to delete ${rowData[1]}?`)

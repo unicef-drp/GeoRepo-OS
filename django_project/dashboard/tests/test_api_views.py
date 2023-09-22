@@ -833,7 +833,7 @@ class TestApiViews(TestCase):
         request.user = request_by
         view = ApproveRevision.as_view()
         response = view(request, **kwargs)
-        approve_revision(entity_upload, request_by)
+        approve_revision(entity_upload, request_by, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             EntityUploadStatus.objects.get(
@@ -932,9 +932,6 @@ class TestApiViews(TestCase):
             '1'
         )
 
-    @mock.patch(
-        'dashboard.api_views.views.trigger_generate_vector_tile_for_view',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
     def test_create_new_view(self):
         user = UserF.create(username='creator')
         dataset = DatasetF.create()
@@ -1374,12 +1371,6 @@ class TestApiViews(TestCase):
         })
         self.assertEqual(response.status_code, 200)
 
-    @mock.patch(
-        'dashboard.api_views.views.trigger_generate_vector_tile_for_view',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
-    @mock.patch(
-        'dashboard.api_views.views.simplify_geometry_in_view.delay',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
     @mock.patch('django.core.cache.cache.get',
                 mock.Mock(side_effect=mocked_cache_get))
     def test_update_view(self):
@@ -1406,6 +1397,14 @@ class TestApiViews(TestCase):
         self.assertEqual(response.status_code, 200)
         dataset_view = DatasetView.objects.get(id=view_1.id)
         self.assertEqual(dataset_view.name, 'update')
+        self.assertEqual(
+            dataset_view.product_sync_status,
+            DatasetView.SyncStatus.OUT_OF_SYNC
+        )
+        self.assertEqual(
+            dataset_view.vector_tile_sync_status,
+            DatasetView.SyncStatus.OUT_OF_SYNC
+        )
         self.assertTrue(dataset_view.tags.all().filter(name='test').exists())
 
     def test_detail_view(self):
@@ -2134,11 +2133,7 @@ class TestApiViews(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data['is_available'])
 
-    @mock.patch(
-        'modules.admin_boundaries.config.'
-        'trigger_generate_vector_tile_for_view'
-    )
-    def test_update_dataset(self, mocked_view: mock.MagicMock):
+    def test_update_dataset(self):
         user = UserF.create(is_superuser=True)
         dataset = DatasetF.create(
             label='Dataset World',
@@ -2194,8 +2189,6 @@ class TestApiViews(TestCase):
             ).exclude(default_type__isnull=True).count(),
             2
         )
-        self.assertEqual(mocked_view.call_count, 2)
-        mocked_view.reset_mock()
         post_data = {
             'name': 'New World',
             'geometry_similarity_threshold_new': 0.4,
@@ -2223,7 +2216,6 @@ class TestApiViews(TestCase):
         )
         self.assertEqual(updated.label, post_data['name'])
         self.assertFalse(updated.generate_adm0_default_views)
-        self.assertEqual(mocked_view.call_count, 0)
         # setting to false will not remove the views
         self.assertEqual(
             DatasetView.objects.filter(

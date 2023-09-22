@@ -11,7 +11,13 @@ from georepo.utils.permission import (
     PermissionType,
     get_external_view_permission_privacy_level
 )
-from georepo.utils.dataset_view import get_view_tiling_status
+from georepo.utils.dataset_view import (
+    get_view_tiling_status,
+    get_view_product_status
+)
+from georepo.utils.directory_helper import (
+    convert_size
+)
 
 
 class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
@@ -226,3 +232,121 @@ class DatasetViewDetailSerializer(TaggitSerializer,
             'dataset_name',
             'module_name'
         ]
+
+
+class DatasetViewSyncSerializer(serializers.ModelSerializer):
+
+    dataset = serializers.SerializerMethodField()
+    # vector_tile_sync_progress = serializers.SerializerMethodField()
+    # product_sync_progress = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
+
+    def get_dataset(self, obj):
+        return obj.dataset_id
+
+    def get_vector_tile_sync_progress(self, obj):
+        if obj.vector_tile_sync_status == obj.SyncStatus.OUT_OF_SYNC:
+            return 0
+        view_resources = DatasetViewResource.objects.filter(
+            dataset_view=obj,
+            entity_count__gt=0
+        )
+        _, tiling_progress = get_view_tiling_status(view_resources)
+        return tiling_progress
+
+    def get_product_sync_progress(self, obj):
+        if obj.product_sync_status == obj.SyncStatus.OUT_OF_SYNC:
+            return 0
+        view_resources = DatasetViewResource.objects.filter(
+            dataset_view=obj,
+            entity_count__gt=0
+        )
+        _, product_progress = get_view_product_status(view_resources)
+        return product_progress
+
+    def get_permissions(self, obj: DatasetView):
+        user = self.context['user']
+        return PermissionType.get_permissions_for_datasetview(obj, user)
+
+    class Meta:
+        model = DatasetView
+        fields = [
+            'id',
+            'dataset',
+            'name',
+            'is_tiling_config_match',
+            'vector_tile_sync_status',
+            'product_sync_status',
+            'vector_tiles_progress',
+            'product_progress',
+            'permissions'
+        ]
+
+
+class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
+
+    vector_tiles_size = serializers.SerializerMethodField()
+    geojson_size = serializers.SerializerMethodField()
+    shapefile_size = serializers.SerializerMethodField()
+    kml_size = serializers.SerializerMethodField()
+    topojson_size = serializers.SerializerMethodField()
+
+    def get_vector_tiles_size(self, obj):
+        return convert_size(obj.vector_tiles_size)
+
+    def get_geojson_size(self, obj):
+        return convert_size(obj.geojson_size)
+
+    def get_shapefile_size(self, obj):
+        return convert_size(obj.shapefile_size)
+
+    def get_kml_size(self, obj):
+        return convert_size(obj.kml_size)
+
+    def get_topojson_size(self, obj):
+        return convert_size(obj.topojson_size)
+
+    class Meta:
+        model = DatasetViewResource
+        fields = [
+            'id',
+            'uuid',
+            'privacy_level',
+            'vector_tile_sync_status',
+            'geojson_sync_status',
+            'shapefile_sync_status',
+            'kml_sync_status',
+            'topojson_sync_status',
+            'vector_tiles_progress',
+            'geojson_progress',
+            'shapefile_progress',
+            'kml_progress',
+            'topojson_progress',
+            'vector_tiles_size',
+            'geojson_size',
+            'shapefile_size',
+            'kml_size',
+            'topojson_size'
+        ]
+
+
+class ViewSyncSerializer(serializers.Serializer):
+    view_ids = serializers.ListField(
+        child=serializers.IntegerField(), required=True
+    )
+    sync_options = serializers.ListField(
+        child=serializers.CharField(), required=True
+    )
+
+    def validate_sync_options(self, attrs):
+        options = set(attrs)
+        accepted_options = {
+            'tiling_config',
+            'vector_tiles',
+            'products'
+        }
+        if len(options - accepted_options) != 0:
+            raise serializers.ValidationError(
+                'Unknown actions'
+            )
+        return attrs

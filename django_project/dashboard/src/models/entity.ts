@@ -22,5 +22,6 @@ export default interface EntityEditInterface {
     privacy_level: number,
     names: EntityName[],
     codes: EntityCode[],
-    label: string
+    label: string,
+    is_dirty: boolean
 }

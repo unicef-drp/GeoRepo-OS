@@ -277,6 +277,7 @@ class EntityNameSerializer(serializers.ModelSerializer):
                 entity_name.name = name_value
                 entity_name.default = default
                 entity_name.language_id = language
+                entity_name.skip_signal = True
                 entity_name.save()
 
                 if default:
@@ -285,12 +286,14 @@ class EntityNameSerializer(serializers.ModelSerializer):
             except EntityId.DoesNotExist:
                 entity_name = None
         else:
-            entity_name = EntityName.objects.create(
+            entity_name = EntityName(
                 name=name_value,
                 default=default,
                 geographical_entity=entity,
                 language_id=language
             )
+            entity_name.skip_signal = True
+            entity_name.save()
         return entity_name
 
     class Meta:
@@ -347,7 +350,7 @@ class EntityCodeSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField()
     code_id = serializers.IntegerField()
 
-    def validate_code(self, value):
+    def validate_value(self, value):
         stripped_value = value.strip() if value else ''
         return stripped_value
 
@@ -370,16 +373,19 @@ class EntityCodeSerializer(serializers.ModelSerializer):
                     geographical_entity=entity, id=code_id
                 )
                 entity_code.value = code_value
+                entity_code.skip_signal = True
                 entity_code.save()
             except EntityId.DoesNotExist:
                 pass
         else:
-            entity_code = EntityId.objects.create(
+            entity_code = EntityId(
                 value=code_value,
                 default=default,
                 geographical_entity=entity,
                 code_id=code_type
             )
+            entity_code.skip_signal = True
+            entity_code.save()
         return entity_code
 
     class Meta:
@@ -392,6 +398,7 @@ class EntityCodeSerializer(serializers.ModelSerializer):
 
 class EntityEditSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField()
+    is_dirty = serializers.SerializerMethodField()
     codes = serializers.SerializerMethodField(
         source=EntityCodeSerializer(many=True)
     )
@@ -403,12 +410,12 @@ class EntityEditSerializer(serializers.ModelSerializer):
     def validate(self, data):
         data = super().validate(data)
         if 'codes' in self.context:
-            name = EntityCodeSerializer(
+            code = EntityCodeSerializer(
                 data=self.context['codes'],
                 many=True
             )
-            name.is_valid(raise_exception=True)
-            data['codes'] = name
+            code.is_valid(raise_exception=True)
+            data['codes'] = code
         if 'names' in self.context:
             name = EntityNameSerializer(
                 data=self.context['names'],
@@ -443,6 +450,9 @@ class EntityEditSerializer(serializers.ModelSerializer):
             return obj.type.label
         return ''
 
+    def get_is_dirty(self, obj):
+        return False
+
     def save(self):
         entity_type, created = EntityType.objects.get_or_create(
             label=self.validated_data['type']
@@ -451,21 +461,20 @@ class EntityEditSerializer(serializers.ModelSerializer):
         entity.privacy_level = self.validated_data['privacy_level']
         entity.source = self.validated_data['source']
         entity.type = entity_type
+        entity.skip_signal = True
         entity.save()
         if 'codes' in self.validated_data:
             self.validated_data['codes'].save(entity)
         if 'names' in self.validated_data:
             self.validated_data['names'].save(entity)
-        entity.dataset.sync_status = (
-            entity.dataset.DatasetSyncStatus.OUT_OF_SYNC
-        )
-        entity.dataset.save()
+        return entity
 
     class Meta:
         model = GeographicalEntity
         fields = [
             'id',
             'source',
+            'is_dirty',
             'type',
             'privacy_level',
             'names',

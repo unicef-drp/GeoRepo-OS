@@ -29,11 +29,17 @@ class DatasetView(models.Model):
             ('ext_view_datasetview_level_4', 'Read View - Level 4'),
         ]
 
+    class SyncStatus(models.TextChoices):
+        OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
+        SYNCING = 'syncing', _('Syncing')
+        SYNCED = 'synced', _('Synced')
+
     class DatasetViewStatus(models.TextChoices):
         PENDING = 'PE', _('Pending')
         PROCESSING = 'PR', _('Processing')
         DONE = 'DO', _('Done')
         ERROR = 'ER', _('Error')
+        EMPTY = 'EM', _('Empty')
 
     class DefaultViewType(models.TextChoices):
         IS_LATEST = 'LATEST', _('Is Latest')
@@ -100,6 +106,34 @@ class DatasetView(models.Model):
         default=DatasetViewStatus.PENDING
     )
 
+    is_tiling_config_match = models.BooleanField(
+        default=True
+    )
+
+    vector_tile_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    vector_tiles_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    product_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    product_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
     bbox = models.CharField(
         max_length=100,
         default='',
@@ -108,6 +142,12 @@ class DatasetView(models.Model):
     )
 
     task_id = models.CharField(
+        blank=True,
+        default='',
+        max_length=256
+    )
+
+    product_task_id = models.CharField(
         blank=True,
         default='',
         max_length=256
@@ -170,6 +210,67 @@ class DatasetView(models.Model):
         )
         return resource_level
 
+    def set_out_of_sync(
+        self,
+        tiling_config=True,
+        vector_tile=True,
+        product=True,
+        skip_signal=True,
+        save=True
+    ):
+        dsv_resources = self.datasetviewresource_set.all()
+        if tiling_config:
+            # Only set tiling config as out of sync if DatasetView
+            # has no tiling config. Meaning it gets the tiling
+            # config directly from Dataset. So, if Dataset tiling
+            # config is updated, DatasetView tiling config just matches.
+            if self.datasetviewtilingconfig_set.all().exists():
+                self.is_tiling_config_match = False
+
+        for dsv_resource in dsv_resources:
+            dsv_resource.set_out_of_sync(
+                vector_tiles=vector_tile,
+                product=product,
+                skip_signal=True
+            )
+        if vector_tile:
+            self.vector_tile_sync_status = self.SyncStatus.OUT_OF_SYNC
+            self.vector_tiles_progress = 0
+        # Only dynamic views can have product out of sync
+        if product and not self.is_static:
+            self.product_sync_status = self.SyncStatus.OUT_OF_SYNC
+            self.product_progress = 0
+        self.skip_signal = skip_signal
+        if save:
+            self.save()
+        return self
+
+    def set_synced(
+        self,
+        tiling_config=False,
+        vector_tile=False,
+        product=False,
+        skip_signal=False
+    ):
+        dsv_resources = self.datasetviewresource_set.all()
+        if tiling_config:
+            self.is_tiling_config_match = True
+
+        for dsv_resource in dsv_resources:
+            dsv_resource.set_synced(
+                vector_tiles=vector_tile,
+                product=product,
+                skip_signal=True
+            )
+        if vector_tile:
+            self.vector_tile_sync_status = self.SyncStatus.SYNCED
+            self.vector_tiles_progress = 100
+        if product:
+            self.product_sync_status = self.SyncStatus.SYNCED
+            self.product_progress = 100
+        self.skip_signal = skip_signal
+        self.save()
+
     def save(self, *args, **kwargs):
         if not self.uuid:
             self.uuid = uuid4()
@@ -204,6 +305,44 @@ class DatasetView(models.Model):
             resource.clear_permission_cache()
 
         return super(DatasetView, self).save(*args, **kwargs)
+
+    def match_tiling_config(self):
+        from georepo.models.dataset_view_tile_config import (
+            DatasetViewTilingConfig,
+            ViewAdminLevelTilingConfig
+        )
+        from georepo.models.dataset_tile_config import (
+            DatasetTilingConfig, AdminLevelTilingConfig
+        )
+
+        ds_tiling_configs = DatasetTilingConfig.objects.filter(
+            dataset=self.dataset
+        )
+        deleted_count, count_details = DatasetViewTilingConfig.objects.filter(
+            dataset_view=self
+        ).delete()
+
+        # If deleted_count is 0, it means DatasetView does not have specific
+        # tiling config or use Dataset tiling config. We do not need to
+        # create tiling config for this DatasetView.
+        if deleted_count == 0:
+            return
+        for ds_tiling_config in ds_tiling_configs:
+            tiling_config = DatasetViewTilingConfig.objects.create(
+                dataset_view=self,
+                zoom_level=ds_tiling_config.zoom_level
+            )
+            ds_level_configs = AdminLevelTilingConfig.objects.filter(
+                dataset_tiling_config=ds_tiling_config
+            )
+            for level_config in ds_level_configs:
+                ViewAdminLevelTilingConfig.objects.create(
+                    view_tiling_config=tiling_config,
+                    level=level_config.level,
+                    simplify_tolerance=level_config.simplify_tolerance
+                )
+        self.is_tiling_config_match = True
+        self.save()
 
     def __str__(self):
         return self.name
@@ -326,6 +465,11 @@ class DatasetViewResource(models.Model):
     Resource of view for each privacy level
     """
 
+    class SyncStatus(models.TextChoices):
+        OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
+        SYNCING = 'syncing', _('Syncing')
+        SYNCED = 'synced', _('Synced')
+
     dataset_view = models.ForeignKey(
         'georepo.DatasetView',
         null=True,
@@ -341,6 +485,42 @@ class DatasetViewResource(models.Model):
         help_text='UUID'
     )
 
+    product_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    geojson_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    shapefile_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    kml_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    topojson_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    vector_tile_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
     status = models.CharField(
         max_length=2,
         choices=DatasetView.DatasetViewStatus.choices,
@@ -353,9 +533,50 @@ class DatasetViewResource(models.Model):
         max_length=256
     )
 
+    product_task_id = models.CharField(
+        blank=True,
+        default='',
+        max_length=256
+    )
+
     vector_tiles_updated_at = models.DateTimeField(
         auto_now_add=True,
         editable=True
+    )
+
+    product_updated_at = models.DateTimeField(
+        auto_now_add=True,
+        editable=True
+    )
+
+    geojson_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    shapefile_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    kml_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    topojson_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    data_product_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
     )
 
     vector_tiles_progress = models.FloatField(
@@ -380,8 +601,30 @@ class DatasetViewResource(models.Model):
         default=0
     )
 
+    geojson_size = models.FloatField(
+        default=0
+    )
+
+    shapefile_size = models.FloatField(
+        default=0
+    )
+
+    kml_size = models.FloatField(
+        default=0
+    )
+
+    topojson_size = models.FloatField(
+        default=0
+    )
+
     entity_count = models.IntegerField(
         default=0
+    )
+
+    vector_tile_detail_logs = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True
     )
 
     @property
@@ -410,6 +653,8 @@ class DatasetViewResource(models.Model):
             )
             if dataset_caches:
                 for dataset_cache in dataset_caches:
+                    if b'pending-tile' in dataset_cache:
+                        continue
                     cache.delete(
                         str(dataset_cache).split(':')[-1].replace(
                             '\'',
@@ -419,8 +664,82 @@ class DatasetViewResource(models.Model):
         except AttributeError:
             pass
 
+    def set_out_of_sync(
+        self,
+        vector_tiles=True,
+        product=True,
+        skip_signal=True
+    ):
+        if vector_tiles:
+            setattr(
+                self,
+                'vector_tile_sync_status',
+                self.SyncStatus.OUT_OF_SYNC
+            )
+            setattr(self, 'vector_tile_progress', 0)
+
+        if product:
+            fields = [
+                'geojson_sync_status',
+                'shapefile_sync_status',
+                'kml_sync_status',
+                'topojson_sync_status'
+            ]
+            for field in fields:
+                setattr(self, field, self.SyncStatus.OUT_OF_SYNC)
+            fields = [
+                'geojson',
+                'shapefile',
+                'kml',
+                'topojson'
+            ]
+            for field in fields:
+                setattr(self, f'{field}_progress', 0)
+        self.skip_signal = skip_signal
+        self.save()
+
+    def set_synced(
+        self,
+        vector_tiles=True,
+        product=True,
+        skip_signal=False
+    ):
+        if vector_tiles:
+            setattr(
+                self,
+                'vector_tile_sync_status',
+                self.SyncStatus.SYNCED
+            )
+            setattr(self, 'vector_tile_progress', 100)
+
+        if product:
+            fields = [
+                'geojson_sync_status',
+                'shapefile_sync_status',
+                'kml_sync_status',
+                'topojson_sync_status'
+            ]
+            for field in fields:
+                setattr(self, field, self.SyncStatus.SYNCED)
+            fields = [
+                'geojson',
+                'shapefile',
+                'kml',
+                'topojson'
+            ]
+            for field in fields:
+                setattr(self, f'{field}_progress', 100)
+        self.skip_signal = skip_signal
+        self.save()
+
 
 class DatasetViewResourceLog(models.Model):
+    dataset_view = models.ForeignKey(
+        DatasetView,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
     dataset_view_resource = models.ForeignKey(
         DatasetViewResource,
         null=True,
@@ -473,19 +792,79 @@ def view_res_post_delete(sender, instance: DatasetViewResource,
 @receiver(post_save, sender=DatasetViewResource)
 def view_res_post_save(sender, instance: DatasetViewResource,
                        *args, **kwargs):
-    from georepo.utils.dataset_view import get_view_tiling_status
-    # update dataset view status
-    view = instance.dataset_view
-    view_res_qs = DatasetViewResource.objects.filter(
-        dataset_view=view
+    from georepo.models import Dataset
+    from georepo.utils.dataset_view import (
+        get_view_tiling_status,
+        get_view_product_status
     )
-    tiling_status, _ = get_view_tiling_status(view_res_qs)
-    if tiling_status == 'Pending':
-        view.status = DatasetView.DatasetViewStatus.PENDING
-    elif tiling_status == 'Error':
-        view.status = DatasetView.DatasetViewStatus.ERROR
-    elif tiling_status == 'Processing':
-        view.status = DatasetView.DatasetViewStatus.PROCESSING
-    elif tiling_status == 'Done':
-        view.status = DatasetView.DatasetViewStatus.DONE
-    view.save(update_fields=['status'])
+    if getattr(instance, 'skip_signal', False):
+        return
+    # update dataset view status
+    view: DatasetView = instance.dataset_view
+    view_res_qs = DatasetViewResource.objects.filter(
+        dataset_view=view,
+        entity_count__gt=0
+    )
+
+    (
+        tiling_status,
+        vt_progresss
+    ) = get_view_tiling_status(view_res_qs)
+    (
+        geojson_status,
+        geojson_progress
+    ) = get_view_product_status(view_res_qs, 'geojson')
+    (
+        shapefile_status,
+        shapefile_progress
+    ) = get_view_product_status(view_res_qs, 'shapefile')
+    kml_status, kml_progress = get_view_product_status(view_res_qs, 'kml')
+    (
+        topojson_status,
+        topojson_progress
+    ) = get_view_product_status(view_res_qs, 'topojson')
+    product_status = [
+        geojson_status,
+        shapefile_status,
+        kml_status,
+        topojson_status
+    ]
+
+    product_progress = [
+        geojson_progress,
+        shapefile_progress,
+        kml_progress,
+        topojson_progress
+    ]
+
+    tiling_status_mapping = {
+        'Pending': DatasetView.DatasetViewStatus.PENDING,
+        'Error': DatasetView.DatasetViewStatus.ERROR,
+        'Processing': DatasetView.DatasetViewStatus.PROCESSING,
+        'Done': DatasetView.DatasetViewStatus.DONE,
+    }
+
+    sync_status_mapping = {
+        'Pending': DatasetView.SyncStatus.OUT_OF_SYNC,
+        'Error': DatasetView.SyncStatus.OUT_OF_SYNC,
+        'Processing': DatasetView.SyncStatus.SYNCING,
+        'Done': DatasetView.SyncStatus.SYNCED,
+    }
+
+    if tiling_status != 'Ready':
+        view.status = tiling_status_mapping[tiling_status]
+        view.vector_tile_sync_status = sync_status_mapping[tiling_status]
+        if view.vector_tile_sync_status not in ['Error', 'Done']:
+            view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
+        view.vector_tiles_progress = vt_progresss
+
+    if 'Processing' in product_status:
+        view.product_sync_status = sync_status_mapping['Processing']
+        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
+    elif 'Pending' in product_status or 'Error' in product_status:
+        view.product_sync_status = sync_status_mapping['Pending']
+        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
+    elif 'Done' in product_status:
+        view.product_sync_status = sync_status_mapping['Done']
+    view.product_progress = sum(product_progress) / len(product_progress)
+    view.save()

@@ -33,10 +33,10 @@ class Dataset(models.Model):
         DONE = 'DO', _('Done')
         ERROR = 'ER', _('Error')
 
-    class DatasetSyncStatus(models.TextChoices):
+    class SyncStatus(models.TextChoices):
         OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
-        SYNCING = 'Syncing', _('Syncing')
-        SYNCED = 'Synced', _('Synced')
+        SYNCING = 'syncing', _('Syncing')
+        SYNCED = 'synced', _('Synced')
 
     label = models.CharField(
         max_length=255,
@@ -135,8 +135,8 @@ class Dataset(models.Model):
 
     sync_status = models.CharField(
         max_length=15,
-        choices=DatasetSyncStatus.choices,
-        default=DatasetSyncStatus.SYNCED
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
     )
 
     tiling_start_date = models.DateTimeField(
@@ -203,6 +203,10 @@ class Dataset(models.Model):
         null=True,
         blank=True,
         default='Entity simplification finished'
+    )
+
+    is_simplified = models.BooleanField(
+        default=False
     )
 
     def save(self, *args, **kwargs):

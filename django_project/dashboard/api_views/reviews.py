@@ -23,7 +23,8 @@ from dashboard.models.entity_upload import (
     REVIEWING as UPLOAD_REVIEWING,
     PROCESSING_APPROVAL,
     APPROVED,
-    REJECTED
+    REJECTED,
+    EntityUploadStatusLog
 )
 from dashboard.serializers.entity_upload import EntityUploadSerializer
 from dashboard.tasks import run_comparison_boundary
@@ -322,13 +323,20 @@ class ApproveRevision(AzureAuthRequiredMixin,
             id=self.request.data.get(
                 'entity_upload_id')
         )
+        upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+            entity_upload_status=entity_upload
+        )
         upload_session = entity_upload.upload_session
         if not self.request.user.is_superuser:
             if self.request.user.id == upload_session.uploader.id:
                 raise PermissionDenied(
                     'You are not allowed to do this action!'
                 )
-        task = review_approval.delay(entity_upload.id, self.request.user.id)
+        task = review_approval.delay(
+            entity_upload.id,
+            self.request.user.id,
+            upload_log.id
+        )
         entity_upload.task_id = task.id
         entity_upload.status = PROCESSING_APPROVAL
         entity_upload.save(update_fields=['task_id', 'status'])

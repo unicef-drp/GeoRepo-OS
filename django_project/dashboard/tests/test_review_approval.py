@@ -44,7 +44,10 @@ class TestReviewApproval(TestCase):
     @mock.patch(
         'dashboard.tasks.review.trigger_generate_dynamic_views'
     )
-    def test_batch_approval(self, mocked_dynamic_views):
+    @mock.patch(
+        'dashboard.tasks.review.check_affected_dataset_views.delay'
+    )
+    def test_batch_approval(self, mock_check_views, mocked_dynamic_views):
         # create upload_session + entity_upload
         upload_session = LayerUploadSessionF.create(
             status=REVIEWING,
@@ -174,6 +177,8 @@ class TestReviewApproval(TestCase):
         )
         # check dynamic views have been refreshed
         mocked_dynamic_views.assert_called()
+        # check affected view is checked
+        mock_check_views.assert_called()
         # check concept ucode have been generated
         self.assertFalse(
             GeographicalEntity.objects.filter(

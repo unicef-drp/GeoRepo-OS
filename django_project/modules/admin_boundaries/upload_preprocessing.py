@@ -85,17 +85,22 @@ def prepare_validation(
         # pre-process level0
         entity_uploads = preprocess_layer_file_0(
             upload_session,
-            create_temp_entity_level0=has_level1_upload
+            create_temp_entity_level0=has_level1_upload,
+            **kwargs
         )
         # do parent matching for level0
         if has_level1_upload:
-            do_process_layer_files_for_parent_matching_level0(upload_session,
-                                                              entity_uploads)
+            do_process_layer_files_for_parent_matching_level0(
+                upload_session,
+                entity_uploads,
+                **kwargs
+            )
             remove_temp_admin_level_0(upload_session)
     else:
         # run automatic matching parent
         entity_uploads = do_process_layer_files_for_parent_matching(
-            upload_session
+            upload_session,
+            **kwargs
         )
     for entity_upload in entity_uploads:
         adm_level_names = get_admin_level_names_for_upload(
@@ -105,7 +110,11 @@ def prepare_validation(
         entity_upload.admin_level_names = adm_level_names
         entity_upload.save()
     # find max level for each country
-    find_country_max_level(upload_session, is_level0_upload)
+    find_country_max_level(
+        upload_session,
+        is_level0_upload,
+        **kwargs
+    )
     # set status back to Pending once finished
     upload_session.auto_matched_parent_ready = True
     upload_session.status = PENDING
@@ -115,7 +124,8 @@ def prepare_validation(
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(
             'admin_boundaries.upload_preprocessing.prepare_validation',
-            end - start)
+            end - start
+        )
 
 
 def reset_preprocessing(

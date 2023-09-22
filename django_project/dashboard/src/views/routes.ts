@@ -8,6 +8,7 @@ import FactCheckIcon from '@mui/icons-material/FactCheck';
 import PeopleIcon from '@mui/icons-material/People';
 import GroupsIcon from '@mui/icons-material/Groups';
 import ViewCompactAltIcon from '@mui/icons-material/ViewCompactAlt';
+import SyncIcon from '@mui/icons-material/Sync';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';

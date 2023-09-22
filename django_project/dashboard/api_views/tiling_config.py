@@ -7,9 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 from azure_auth.backends import AzureAuthRequiredMixin
-from celery.result import AsyncResult
 from django.utils import timezone
-from core.celery import app
 from georepo.models import (
     Dataset,
     DatasetView,
@@ -32,10 +30,6 @@ from dashboard.serializers.tiling_config import (
 )
 from georepo.utils.dataset_view import (
     get_view_tiling_status
-)
-from georepo.tasks.simplify_geometry import (
-    simplify_geometry_in_dataset,
-    simplify_geometry_in_view
 )
 from dashboard.api_views.common import (
     DatasetManagePermission
@@ -418,11 +412,15 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         DatasetTilingConfig.objects.filter(
             dataset=dataset
         ).delete()
-        for config in configs:
-            tiling_config = DatasetTilingConfig.objects.create(
+        for idx, config in enumerate(configs):
+            tiling_config = DatasetTilingConfig(
                 dataset=dataset,
                 zoom_level=config['zoom_level']
             )
+            # only trigger
+            if idx > 0:
+                tiling_config.skip_signal = True
+            tiling_config.save()
             for level_config in config['admin_level_tiling_configs']:
                 AdminLevelTilingConfig.objects.create(
                     dataset_tiling_config=tiling_config,
@@ -430,54 +428,13 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
                     simplify_tolerance=level_config['simplify_tolerance']
                 )
 
-        if overwrite_view:
-            ds_tiling_configs = DatasetTilingConfig.objects.filter(
-                dataset=dataset
-            )
-            dataset_views = DatasetView.objects.filter(
-                dataset=dataset
-            )
-            DatasetViewTilingConfig.objects.filter(
-                dataset_view__in=dataset_views
-            ).delete()
-            for dataset_view in dataset_views:
-                for ds_tiling_config in ds_tiling_configs:
-                    tiling_config = DatasetViewTilingConfig.objects.create(
-                        dataset_view=dataset_view,
-                        zoom_level=ds_tiling_config.zoom_level
-                    )
-                    ds_level_configs = AdminLevelTilingConfig.objects.filter(
-                        dataset_tiling_config=ds_tiling_config
-                    )
-                    for level_config in ds_level_configs:
-                        ViewAdminLevelTilingConfig.objects.create(
-                            view_tiling_config=tiling_config,
-                            level=level_config.level,
-                            simplify_tolerance=level_config.simplify_tolerance
-                        )
         # reset dataset styles because zoom could be changed
         dataset.styles = None
         dataset.style_source_name = ''
-        dataset.sync_status = dataset.DatasetSyncStatus.OUT_OF_SYNC if \
-            overwrite_view else dataset.sync_status
+        dataset.is_simplified = False
         dataset.save(update_fields=[
-            'styles', 'style_source_name', 'sync_status'
+            'styles', 'style_source_name', 'is_simplified'
         ])
-        # Trigger simplification
-        if dataset.simplification_task_id:
-            res = AsyncResult(dataset.simplification_task_id)
-            if not res.ready():
-                app.control.revoke(
-                    dataset.simplification_task_id,
-                    terminate=True
-                )
-        task_simplify = simplify_geometry_in_dataset.delay(dataset.id)
-        dataset.simplification_task_id = task_simplify.id
-        dataset.simplification_progress = 'Started'
-        dataset.save(
-            update_fields=['simplification_task_id',
-                           'simplification_progress']
-        )
 
     def apply_to_datasetview(self, dataset_view_uuid, configs):
         dataset_view = get_object_or_404(
@@ -487,11 +444,14 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         DatasetViewTilingConfig.objects.filter(
             dataset_view=dataset_view
         ).delete()
-        for config in configs:
-            tiling_config = DatasetViewTilingConfig.objects.create(
+        for idx, config in enumerate(configs):
+            tiling_config = DatasetViewTilingConfig(
                 dataset_view=dataset_view,
                 zoom_level=config['zoom_level']
             )
+            if idx > 0:
+                tiling_config.skip_signal = True
+            tiling_config.save()
             for level_config in config['admin_level_tiling_configs']:
                 ViewAdminLevelTilingConfig.objects.create(
                     view_tiling_config=tiling_config,
@@ -502,21 +462,8 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         dataset = dataset_view.dataset
         dataset.styles = None
         dataset.style_source_name = ''
-        dataset.save(update_fields=['styles', 'style_source_name'])
-        # Trigger simplification
-        if dataset_view.simplification_task_id:
-            res = AsyncResult(dataset_view.simplification_task_id)
-            if not res.ready():
-                app.control.revoke(
-                    dataset_view.simplification_task_id,
-                    terminate=True
-                )
-        task_simplify = simplify_geometry_in_view.delay(dataset_view.id)
-        dataset_view.simplification_task_id = task_simplify.id
-        dataset_view.simplification_progress = 'Started'
-        dataset_view.save(
-            update_fields=['simplification_task_id',
-                           'simplification_progress']
+        dataset.save(
+            update_fields=['styles', 'style_source_name']
         )
 
     def post(self, request, *args, **kwargs):
@@ -557,12 +504,6 @@ class TilingConfigCheckStatus(AzureAuthRequiredMixin, APIView):
     def get(self, request, *args, **kwargs):
         object_type = kwargs.get('object_type')
         object_uuid = kwargs.get('uuid')
-        object_id = None
-        simplification_status = None
-        simplification_progress = ''
-        tiling_status = None
-        tiling_progress = 0
-        module = ''
 
         if object_type == 'dataset':
             dataset = get_object_or_404(

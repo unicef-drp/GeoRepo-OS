@@ -237,11 +237,21 @@ def run_comparison_boundary(entity_upload_id: int):
 
 
 @shared_task(name='layer_upload_preprocessing')
-def layer_upload_preprocessing(upload_session_id: int):
+def layer_upload_preprocessing(
+    upload_session_id: int,
+    log_object_id: int = None
+):
+    start = time.time()
     logger.info(
         'Running layer_upload_preprocessing '
         f'for session {upload_session_id}'
     )
+    upload_log = None
+    if log_object_id:
+        upload_log = EntityUploadStatusLog.objects.get(
+            id=log_object_id
+        )
+
     upload_session = LayerUploadSession.objects.get(
         id=upload_session_id
     )
@@ -250,4 +260,16 @@ def layer_upload_preprocessing(upload_session_id: int):
         dataset.module.code_name,
         'upload_preprocessing',
         'prepare_validation')
-    prepare_validation(upload_session)
+    kwargs = {
+        'log_object': upload_log
+    }
+    prepare_validation(
+        upload_session,
+        **kwargs
+    )
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'layer_upload_preprocessing',
+            end - start
+        )

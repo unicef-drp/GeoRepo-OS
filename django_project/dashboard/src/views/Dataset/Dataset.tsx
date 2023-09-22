@@ -11,6 +11,14 @@ import {postData} from "../../utils/Requests";
 import Loading from "../../components/Loading";
 import AlertDialog from '../../components/AlertDialog'
 import Dataset from '../../models/dataset';
+import Box from "@mui/material/Box";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import TabPanel, {a11yProps} from "../../components/TabPanel";
+import Grid from "@mui/material/Grid";
+import ViewSyncList from "../SyncStatus/List";
+import {parseInt} from "lodash";
+import {ThemeButton} from "../../components/Elements/Buttons";
 
 const DELETE_DATASET_URL = '/api/delete-dataset'
 
@@ -36,6 +44,7 @@ export default function Dataset() {
   const [confirmationOpen, setConfirmationOpen] = useState<boolean>(false)
   const [confirmationText, setConfirmationText] = useState<string>('')
   const [deleteButtonDisabled, setDeleteButtonDisabled] = useState<boolean>(false)
+  const [tabSelected, setTabSelected] = useState(0)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const customColumnOptions = {
@@ -61,6 +70,28 @@ export default function Dataset() {
     },
     'dataset': {
       filter: false
+    },
+    'sync_status': {
+        filter: true,
+        sort: true,
+        display: true,
+        customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+          const onClick = (e: any) => {
+            e.stopPropagation();
+            navigate(`/admin_boundaries/dataset_entities?id=${tableMeta.rowData[0]}&tab=8`)
+          }
+          if (value != 'Synced') {
+            return (
+              <ThemeButton
+                icon={null}
+                title={'Out of Sync'}
+                variant={'secondary'}
+                onClick={onClick}
+              />
+            )
+          }
+          return 'Synced'
+        }
     }
   }
 
