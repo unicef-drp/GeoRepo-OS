@@ -278,6 +278,7 @@ class EntityUploadStatusLog(models.Model):
         )
 
     def add_log(self, log_text, exec_time):
+        self.refresh_from_db()
         if log_text in self.logs:
             self.logs[log_text] = {
                 'count': self.logs[log_text]['count'] + 1,
@@ -298,7 +299,7 @@ class EntityUploadStatusLog(models.Model):
                 self.entity_upload_status.upload_session
             )
         if self.entity_upload_status and not self.parent_log:
-            self.parent_log = EntityUploadStatusLog.objects.get(
+            self.parent_log, _ = EntityUploadStatusLog.objects.get_or_create(
                 layer_upload_session=self.entity_upload_status.upload_session,
                 entity_upload_status__isnull=True
             )

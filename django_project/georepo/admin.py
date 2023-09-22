@@ -659,7 +659,7 @@ def stop_dynamic_live_vector_tile(modeladmin, request, queryset):
         reset_pending_tile_cache_keys(view_resource)
     modeladmin.message_user(
         request,
-        f'Dynamic live tile generation is disabled for the resources!',
+        'Dynamic live tile generation is disabled for the resources!',
         messages.SUCCESS
     )
 
@@ -676,7 +676,7 @@ def start_dynamic_live_vector_tile(modeladmin, request, queryset):
         set_pending_tile_cache_keys(view_resource)
     modeladmin.message_user(
         request,
-        f'Dynamic live tile generation is enabled for the resources!',
+        'Dynamic live tile generation is enabled for the resources!',
         messages.SUCCESS
     )
 

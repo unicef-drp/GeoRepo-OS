@@ -1,3 +1,4 @@
+import time
 from typing import Tuple, List
 import json
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
@@ -61,11 +62,14 @@ def validate_layer_file_0(
 
 
 def preprocess_layer_file_0(
-        upload_session: LayerUploadSession,
-        create_temp_entity_level0: bool = False) -> List[EntityUploadStatus]:
+    upload_session: LayerUploadSession,
+    create_temp_entity_level0: bool = False,
+    **kwargs
+) -> List[EntityUploadStatus]:
     """
     Read layer files level 0 and create entity uploads object
     """
+    start = time.time()
     level_0_data = retrieve_layer0_default_codes(upload_session,
                                                  overwrite=True)
     max_revision_number = get_latest_revision_number(upload_session.dataset)
@@ -104,6 +108,12 @@ def preprocess_layer_file_0(
             results.append(entity_upload)
     if create_temp_entity_level0:
         create_temp_admin_level_0(upload_session)
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'preprocess_layer_file_0',
+            end - start
+        )
     return results
 
 
