@@ -11,6 +11,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import (
     UserChangeForm, ReadOnlyPasswordHashField
 )
+from django.core.cache import cache
 from django.http import HttpResponse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
@@ -656,6 +657,11 @@ def stop_dynamic_live_vector_tile(modeladmin, request, queryset):
     from georepo.utils.vector_tile import reset_pending_tile_cache_keys
     for view_resource in queryset:
         reset_pending_tile_cache_keys(view_resource)
+    modeladmin.message_user(
+        request,
+        f'Dynamic live tile generation is disabled for the resources!',
+        messages.SUCCESS
+    )
 
 
 @admin.action(description='Start Live Vector Tile')
@@ -668,6 +674,37 @@ def start_dynamic_live_vector_tile(modeladmin, request, queryset):
     from georepo.utils.vector_tile import set_pending_tile_cache_keys
     for view_resource in queryset:
         set_pending_tile_cache_keys(view_resource)
+    modeladmin.message_user(
+        request,
+        f'Dynamic live tile generation is enabled for the resources!',
+        messages.SUCCESS
+    )
+
+
+@admin.action(description='Test Live Vector Tile Cache')
+def check_cache_dynamic_live_vector_tile(modeladmin, request, queryset):
+    for view_resource in queryset:
+        zooms = []
+        for zoom in range(25):
+            key = f'{view_resource.resource_id}-{zoom}-pending-tile'
+            if cache.get(key, False):
+                zooms.append(str(zoom))
+        if zooms:
+            zoom_str = ', '.join(zooms)
+            modeladmin.message_user(
+                request,
+                f'Resource {view_resource.resource_id} has '
+                f'live tile cache: {zoom_str}!',
+                messages.SUCCESS
+            )
+        else:
+            modeladmin.message_user(
+                request,
+                f'Resource {view_resource.resource_id} does not have '
+                'live tile cache!',
+                messages.SUCCESS
+            )
+        break
 
 
 class DatasetViewResourceAdmin(admin.ModelAdmin):
@@ -680,7 +717,8 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
         fix_entity_count_in_resource,
         stop_vector_tile_process,
         stop_dynamic_live_vector_tile,
-        start_dynamic_live_vector_tile
+        start_dynamic_live_vector_tile,
+        check_cache_dynamic_live_vector_tile
     ]
 
     def get_list_display(self, request):
