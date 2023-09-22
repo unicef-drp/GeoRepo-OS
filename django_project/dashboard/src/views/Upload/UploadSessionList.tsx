@@ -25,6 +25,10 @@ import {
 import {RootState} from "../../app/store";
 import axios from "axios";
 import {getDefaultFilter, UploadFilterInterface} from "./UploadFilter";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import Popover from "@mui/material/Popover";
+import Grid from "@mui/material/Grid";
+import Typography from "@mui/material/Typography";
 
 const DELETE_UPLOAD_SESSION_URL = '/api/delete-upload-session'
 
@@ -50,6 +54,33 @@ const USER_COLUMNS = [
 const FILTER_VALUES_API_URL = '/api/upload-session-filter/values/'
 const UPLOAD_SESSION_LIST_URL = '/api/upload-sessions/'
 
+function ViewPopover(props: any) {
+  if (props.view === null) {
+    return null
+  }
+  return (
+    <Grid container flexDirection={'column'} sx={{p: 2}}>
+      <Grid item>
+        <Grid container flexDirection={'row'} justifyContent={'space-between'} spacing={2}>
+          <Grid item>
+            <Typography sx={{pb: 1}}>Logs:</Typography>
+          </Grid>
+        </Grid>
+      </Grid>
+      <Grid item>
+        <Grid item>
+          <Button
+            variant={'outlined'}
+            onClick={() => window.open(`/api/logs/upload_session/${props.upload.id}`, '_blank')}
+          >
+            Logs
+          </Button>
+        </Grid>
+      </Grid>
+    </Grid>
+  )
+}
+
 export default function UploadSessionList() {
   const dispatch = useAppDispatch()
   const initialColumns = useAppSelector((state: RootState) => state.uploadTable.currentColumns)
@@ -70,6 +101,7 @@ export default function UploadSessionList() {
   const [pagination, setPagination] = useState<PaginationInterface>(getDefaultPagination())
   const [filterValues, setFilterValues] = useState<UploadFilterInterface>(availableFilters)
   const [currentFilters, setCurrentFilters] = useState<UploadFilterInterface>(initialFilters)
+  const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
   const axiosSource = useRef(null)
   const newCancelToken = useCallback(() => {
     axiosSource.current = axios.CancelToken.source();
@@ -237,6 +269,26 @@ export default function UploadSessionList() {
             return (
               <div className="TableActionContent">
                 <IconButton
+                  aria-label='More Info'
+                  title='More Info'
+                  key={0}
+                  disabled={false}
+                  color='primary'
+                  onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                    event.stopPropagation();
+                    let obj: any = {}
+                    USER_COLUMNS.forEach((element, index) => {
+                      obj[element] = rowData[index];
+                    });
+                    setSelectedSession(obj)
+                    setAnchorEl(event.currentTarget);
+                  }}
+                  className=''
+                >
+                  <MoreVertIcon/>
+                </IconButton>
+
+                <IconButton
                   aria-label={rowData[5] !== 'Reviewing' ? 'Review is not available' : 'Review'}
                   title={rowData[5] !== 'Reviewing' ? 'Review is not available' : 'Review'}
                   key={0}
@@ -340,6 +392,14 @@ export default function UploadSessionList() {
     setCurrentFilters({...currentFilters, 'search_text': search_text})
     dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'search_text': search_text})))
   }
+
+  const handleCloseMoreInfo = () => {
+    setAnchorEl(null);
+    setSelectedSession(null)
+  };
+
+  const open = Boolean(anchorEl);
+  const id = open ? 'view-popover' : undefined;
 
   const handleDeleteClick = () => {
     setDeleteButtonDisabled(true)
@@ -448,7 +508,20 @@ export default function UploadSessionList() {
               />
             </div>
           </div>
-        </Fragment>}
+        </Fragment>
+    }
+    <Popover
+      id={id}
+      open={open}
+      anchorEl={anchorEl}
+      onClose={handleCloseMoreInfo}
+      anchorOrigin={{
+        vertical: 'bottom',
+        horizontal: 'left',
+      }}
+    >
+      <ViewPopover upload={selectedSession}/>
+    </Popover>
     </div>
   )
 }

@@ -78,7 +78,8 @@ def find_country_max_level(
                     upload_session,
                     level1_codes,
                     level,
-                    layer_cache
+                    layer_cache,
+                    **kwargs
                 )
                 if has_valid_level:
                     level_found = level
@@ -88,7 +89,8 @@ def find_country_max_level(
                     upload_session,
                     parent_code,
                     level,
-                    layer_cache
+                    layer_cache,
+                    **kwargs
                 )
                 if has_valid_level:
                     level_found = level
@@ -104,3 +106,7 @@ def find_country_max_level(
         )
         logger.info(upload_session.progress)
         upload_session.save(update_fields=['progress'])
+
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('find_country_max_level', end - start)

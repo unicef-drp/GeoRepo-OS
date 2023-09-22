@@ -536,7 +536,8 @@ def get_view_product_status(view_resource_queryset, product=None):
 def get_entities_count_in_view(
     view: DatasetView,
     privacy_level: int,
-    **kwargs):
+    **kwargs
+):
     start = time.time()
     entities = GeographicalEntity.objects.filter(
         dataset=view.dataset,

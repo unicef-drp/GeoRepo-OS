@@ -732,6 +732,12 @@ class DatasetViewResource(models.Model):
 
 
 class DatasetViewResourceLog(models.Model):
+    dataset_view = models.ForeignKey(
+        DatasetView,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
     dataset_view_resource = models.ForeignKey(
         DatasetViewResource,
         null=True,
