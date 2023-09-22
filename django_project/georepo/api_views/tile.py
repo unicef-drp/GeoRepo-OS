@@ -48,7 +48,7 @@ class TileAPIView(APIView):
                 f'{x}',
                 f'{y}'
             )
-            with open(vector_tile_path, 'wb') as f:
+            with open(vector_tile_path, 'wb+') as f:
                 f.write(bytes_result)
         return bytes_result
 
