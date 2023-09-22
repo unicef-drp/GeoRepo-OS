@@ -772,7 +772,7 @@ def on_zoom_level_ends(view_resource: DatasetViewResource,
                 shutil.rmtree(directory_to_be_cleared)
             if not os.path.exists(original_vector_tile_path):
                 os.makedirs(original_vector_tile_path)
-            shutil.copy(
+            shutil.copytree(
                 os.path.join(
                     settings.LAYER_TILES_PATH,
                     f'temp_{view_resource.resource_id}',

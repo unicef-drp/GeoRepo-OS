@@ -170,7 +170,7 @@ class TestVectorTile(TestCase):
         'os.path.exists',
         mock.Mock(side_effect=mock_os_path_exists))
     @mock.patch(
-        'shutil.copy',
+        'shutil.copytree',
         mock.Mock(side_effect=mock_shutil_move))
     def test_generate_vector_tiles(self):
         # only privacy level 2 will be generated
