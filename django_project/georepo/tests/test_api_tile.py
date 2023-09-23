@@ -12,8 +12,10 @@ class TestTileApiView(TestCase):
         self.factory = APIRequestFactory()
         self.superuser = UserF.create(is_superuser=True)
 
+    @mock.patch('django.core.cache.cache.get')
     @mock.patch('os.path.exists')
-    def test_fetch_tile(self, mockExists):
+    @mock.patch('os.path.getsize')
+    def test_fetch_tile(self, mockgetsize, mockExists, mockCache):
         kwargs = {
             'resource': 'abcdef',
             'z': 0,
@@ -21,6 +23,7 @@ class TestTileApiView(TestCase):
             'y': 0,
         }
         mockExists.return_value = False
+        mockCache.return_value = False
         request = self.factory.get(
             reverse(
                 'download-vector-tile',
@@ -31,6 +34,7 @@ class TestTileApiView(TestCase):
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 404)
         mockExists.return_value = True
-        with mock.patch('builtins.open', mock.mock_open(read_data='test')):
+        mockgetsize.return_value = 100
+        with mock.patch('builtins.open', mock.mock_open(read_data=b'test')):
             response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)

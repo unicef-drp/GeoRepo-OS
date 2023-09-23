@@ -1,4 +1,7 @@
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from georepo.models.dataset_view import DatasetView
 
 
 class DatasetViewTilingConfig(models.Model):
@@ -57,3 +60,20 @@ class ViewAdminLevelTilingConfig(models.Model):
                 self.view_tiling_config_id,
                 self.level
             )
+
+
+@receiver(post_save, sender=DatasetViewTilingConfig)
+def dataset_view_tiling_config_post_create(
+    sender,
+    instance: DatasetViewTilingConfig,
+    created, *args, **kwargs
+):
+    if getattr(instance, 'skip_signal', False):
+        return
+    if created:
+        dataset_view = DatasetView.objects.get(id=instance.dataset_view_id)
+        dataset_view.set_out_of_sync(
+            tiling_config=True,
+            product=False,
+            vector_tile=True
+        )

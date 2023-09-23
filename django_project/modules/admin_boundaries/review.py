@@ -1,4 +1,6 @@
-import datetime
+import time
+
+from django.utils import timezone
 from georepo.models.entity import GeographicalEntity
 from georepo.models.dataset import Dataset
 from dashboard.models.entity_upload import (
@@ -39,12 +41,18 @@ def reject_revision(entity_upload: EntityUploadStatus):
     new_entities.delete()
 
 
-def approve_revision(entity_upload: EntityUploadStatus, user, is_batch=False):
+def approve_revision(
+    entity_upload: EntityUploadStatus,
+    user,
+    is_batch=False,
+    **kwargs
+):
     """
     Approve revision.
 
     This will be run as background task.
     """
+    start = time.time()
     # generate concept unique code for entities in the current upload only
     ancestor_entity = entity_upload.revised_geographical_entity
     new_entities = (
@@ -52,9 +60,17 @@ def approve_revision(entity_upload: EntityUploadStatus, user, is_batch=False):
     )
     generate_concept_ucode(ancestor_entity, new_entities)
     if entity_upload.upload_session.is_historical_upload:
-        approve_historical_upload(entity_upload, user)
+        approve_historical_upload(
+            entity_upload,
+            user,
+            **kwargs
+        )
     else:
-        approve_new_revision_upload(entity_upload, user)
+        approve_new_revision_upload(
+            entity_upload,
+            user,
+            **kwargs
+        )
     dataset = entity_upload.upload_session.dataset
     # generate default views
     generate_default_views(dataset)
@@ -64,6 +80,9 @@ def approve_revision(entity_upload: EntityUploadStatus, user, is_batch=False):
 
     entity_upload.upload_session.status = DONE
     entity_upload.upload_session.save()
+
+    dataset.is_simplified = False
+    dataset.save()
     if not is_batch:
         # trigger refresh views
         trigger_generate_dynamic_views(
@@ -71,8 +90,20 @@ def approve_revision(entity_upload: EntityUploadStatus, user, is_batch=False):
             adm0=entity_upload.revised_geographical_entity
         )
 
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'approve_revision',
+            end - start
+        )
 
-def approve_new_revision_upload(entity_upload: EntityUploadStatus, user):
+
+def approve_new_revision_upload(
+    entity_upload: EntityUploadStatus,
+    user,
+    **kwargs
+):
+    start = time.time()
     # Set is_latest to false for all old entities
     if entity_upload.original_geographical_entity:
         old_entities = (
@@ -106,12 +137,23 @@ def approve_new_revision_upload(entity_upload: EntityUploadStatus, user):
     new_entities.update(
         is_latest=True,
         is_approved=True,
-        approved_date=datetime.datetime.now(),
+        approved_date=timezone.now(),
         approved_by=user
     )
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'approve_new_revision_upload',
+            end - start
+        )
 
 
-def approve_historical_upload(entity_upload: EntityUploadStatus, user):
+def approve_historical_upload(
+    entity_upload: EntityUploadStatus,
+    user,
+    **kwargs
+):
+    start = time.time()
     entity = entity_upload.revised_geographical_entity
     # update end_date of prev version (before start_date of historical upload)
     previous_entity = GeographicalEntity.objects.filter(
@@ -142,9 +184,15 @@ def approve_historical_upload(entity_upload: EntityUploadStatus, user):
     )
     new_entities.update(
         is_approved=True,
-        approved_date=datetime.datetime.now(),
+        approved_date=timezone.now(),
         approved_by=user
     )
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log(
+            'approve_historical_upload',
+            end - start
+        )
 
 
 def generate_default_views(dataset: Dataset):

@@ -7,6 +7,7 @@ import time
 from typing import List
 from datetime import datetime
 
+from django.core.cache import cache
 from django.conf import settings
 from django.db.models import Max
 from django.db.models.expressions import RawSQL
@@ -37,19 +38,27 @@ TEGOLA_AZURE_BASE_PATH = 'layer_tiles'
 
 
 def dataset_view_sql_query(dataset_view: DatasetView, level,
-                           privacy_level, tolerance=None,
+                           privacy_level,
                            using_view_tiling_config=False,
+                           bbox_param='!BBOX!',
+                           zoom_param='!ZOOM!',
+                           intersects_param='ST_Transform(!BBOX!, 4326)',
                            **kwargs):
+    """
+    Generate sql query for Tegola and Live VT usng ST_AsMVTGeom.
+
+    Note: ST_AsMVTGeom requires the geometry parameter in srid 3857.
+    """
     start = time.time()
     select_sql = (
         'SELECT ST_AsMVTGeom('
         'GeomTransformMercator(ges.simplified_geometry), '
-        '!BBOX!) AS geometry, '
-    )
+        '{bbox_param}) AS geometry, '
+    ).format(bbox_param=bbox_param)
     # raw_sql to view to select id
     raw_sql = (
-        'SELECT id from "{}"'
-    ).format(str(dataset_view.uuid))
+        'SELECT id from "{}" where level={}'
+    ).format(str(dataset_view.uuid), level)
     # find IdType that the dataset has
     # retrieve all ids in current dataset
     ids = EntityId.objects.filter(
@@ -111,22 +120,26 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         tiling_config_joins = (
             'inner join georepo_datasetviewtilingconfig dtc on '
             '    dtc.dataset_view_id={dataset_view_id} and '
-            '    dtc.zoom_level=!ZOOM! '
+            '    dtc.zoom_level={zoom_param} '
             'inner join georepo_viewadminleveltilingconfig tc on '
             '    tc.level=gg.level and '
             '    ges.simplify_tolerance=tc.simplify_tolerance and '
             '    tc.view_tiling_config_id = dtc.id '
         ).format(
-            dataset_view_id=dataset_view.id
+            dataset_view_id=dataset_view.id,
+            zoom_param=zoom_param
         )
     else:
         tiling_config_joins = (
             'inner join georepo_datasettilingconfig dtc on '
-            '    dtc.dataset_id=gg.dataset_id and dtc.zoom_level=!ZOOM! '
+            '    dtc.dataset_id=gg.dataset_id and '
+            '    dtc.zoom_level={zoom_param} '
             'inner join georepo_adminleveltilingconfig tc on '
             '    tc.level=gg.level and '
             '    ges.simplify_tolerance=tc.simplify_tolerance and '
             '    tc.dataset_tiling_config_id = dtc.id '
+        ).format(
+            zoom_param=zoom_param
         )
     sql = (
         select_sql +
@@ -156,13 +169,14 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         'LEFT JOIN georepo_geographicalentity pg on pg.id = gg.parent_id ' +
         (' '.join(id_field_left_joins)) + ' ' +
         (' '.join(name_field_left_joins)) + ' '
-        'WHERE ges.simplified_geometry && ST_Transform(!BBOX!, 4326) '
-        'AND gg.level = {level} '
-        'AND gg.dataset_id = {dataset_id} '
+        'WHERE ges.simplified_geometry && {intersects_param} '
+        'AND gg.level={level} '
+        'AND gg.dataset_id={dataset_id} '
         'AND gg.is_approved=True '
-        'AND gg.privacy_level <= {privacy_level} '
+        'AND gg.privacy_level<={privacy_level} '
         'AND gg.id IN ({raw_sql})'.
         format(
+            intersects_param=intersects_param,
             level=level,
             dataset_id=dataset_view.dataset.id,
             privacy_level=privacy_level,
@@ -191,8 +205,8 @@ class TilingConfigZoomLevels(object):
         self.items = items
 
 
-def get_view_tiling_configs(dataset_view: DatasetView, **kwargs
-                            ) -> List[TilingConfigZoomLevels]:
+def get_view_tiling_configs(dataset_view: DatasetView, zoom_level: int = None,
+                            **kwargs) -> List[TilingConfigZoomLevels]:
     # return list of tiling configs for dataset_view
     from georepo.models.dataset_tile_config import (
         DatasetTilingConfig
@@ -205,6 +219,10 @@ def get_view_tiling_configs(dataset_view: DatasetView, **kwargs
     view_tiling_conf = DatasetViewTilingConfig.objects.filter(
         dataset_view=dataset_view
     ).order_by('zoom_level')
+    if zoom_level is not None:
+        view_tiling_conf = view_tiling_conf.filter(
+            zoom_level=zoom_level
+        )
     if view_tiling_conf.exists():
         for conf in view_tiling_conf:
             items = []
@@ -221,6 +239,10 @@ def get_view_tiling_configs(dataset_view: DatasetView, **kwargs
     dataset_tiling_conf = DatasetTilingConfig.objects.filter(
         dataset=dataset_view.dataset
     ).order_by('zoom_level')
+    if zoom_level is not None:
+        dataset_tiling_conf = dataset_tiling_conf.filter(
+            zoom_level=zoom_level
+        )
     if dataset_tiling_conf.exists():
         for conf in dataset_tiling_conf:
             items = []
@@ -338,7 +360,6 @@ def create_view_configuration_files(
                 view_resource.dataset_view,
                 level,
                 view_resource.privacy_level,
-                tolerance=adminlevel_conf.tolerance,
                 using_view_tiling_config=using_view_tiling_config
             )
             provider_layer = {
@@ -447,7 +468,33 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         f'- {view_resource.privacy_level} - overwrite '
         f'- {overwrite}'
     )
+    # generate detail log of vector tile
+    detail_logs = {}
     for toml_config_file in toml_config_files:
+        current_zoom = toml_config_file['zoom']
+        if current_zoom == -1:
+            continue
+        detail_logs[current_zoom] = {
+            'zoom': current_zoom,
+            'command_list': '',
+            'return_code': -1,
+            'time': 0,
+            'status': 'pending',
+            'error': '',
+            'size': 0,
+            'total_files': 0,
+            'cp_time': 0
+        }
+    view_resource.vector_tile_detail_logs = detail_logs
+    view_resource.save(update_fields=['vector_tile_detail_logs'])
+    for toml_config_file in toml_config_files:
+        current_zoom = toml_config_file['zoom']
+        view_resource.vector_tile_detail_logs[current_zoom]['status'] = (
+            'processing'
+        )
+        view_resource.save(update_fields=[
+            'vector_tile_detail_logs'
+        ])
         command_list = (
             [
                 '/opt/tegola',
@@ -469,35 +516,63 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                 bbox_str
             ])
 
-        if 'zoom' in toml_config_file:
-            command_list.extend([
-                '--min-zoom',
-                str(toml_config_file['zoom']),
-                '--max-zoom',
-                str(toml_config_file['zoom'])
-            ])
-        else:
-            command_list.extend([
-                '--min-zoom',
-                '1',
-                '--max-zoom',
-                '8'
-            ])
+        command_list.extend([
+            '--min-zoom',
+            str(toml_config_file['zoom']),
+            '--max-zoom',
+            str(toml_config_file['zoom'])
+        ])
         logger.info('Tegola commands:')
         logger.info(command_list)
+        subprocess_started = time.time()
         result = subprocess.run(command_list, capture_output=True)
+        tegola_time_per_zoom = time.time() - subprocess_started
         logger.info(
             'Vector tile generation for '
             f'view_resource {view_resource.id} '
             f'- {processed_count} '
             f'finished with exit_code {result.returncode}'
         )
+        tegola_log_per_zoom = {
+            'zoom': current_zoom,
+            'command_list': ' '.join(command_list),
+            'return_code': result.returncode,
+            'time': tegola_time_per_zoom
+        }
         if result.returncode != 0:
             logger.error(result.stderr)
             view_resource.status = DatasetView.DatasetViewStatus.ERROR
             view_resource.vector_tiles_log = result.stderr.decode()
-            view_resource.save()
+            tegola_log_per_zoom['error'] = view_resource.vector_tiles_log
+            tegola_log_per_zoom['status'] = 'error'
+            view_resource.vector_tile_detail_logs[current_zoom] = (
+                tegola_log_per_zoom
+            )
+            view_resource.save(update_fields=[
+                'status', 'vector_tiles_log', 'vector_tile_detail_logs'
+            ])
             raise RuntimeError(view_resource.vector_tiles_log)
+        tegola_log_per_zoom['status'] = 'copying temp directory'
+        dir_size, dir_files = get_current_zoom_level_dir_info(
+            view_resource, current_zoom
+        )
+        tegola_log_per_zoom['size'] = dir_size
+        tegola_log_per_zoom['total_files'] = dir_files
+        view_resource.vector_tile_detail_logs[current_zoom] = (
+            tegola_log_per_zoom
+        )
+        view_resource.save(update_fields=[
+            'vector_tile_detail_logs'
+        ])
+        cp_started = time.time()
+        # do move directory
+        on_zoom_level_ends(view_resource, current_zoom)
+        cp_time = time.time() - cp_started
+        tegola_log_per_zoom['status'] = 'done'
+        tegola_log_per_zoom['cp_time'] = cp_time
+        view_resource.vector_tile_detail_logs[current_zoom] = (
+            tegola_log_per_zoom
+        )
         processed_count += 1
         view_resource.vector_tiles_progress = (
             (100 * processed_count) / len(toml_config_files)
@@ -507,6 +582,10 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
             f'view_resource {view_resource.id} '
             f'- {view_resource.vector_tiles_progress}'
         )
+        if current_zoom == 0:
+            view_resource.vector_tiles_size = dir_size
+        else:
+            view_resource.vector_tiles_size += dir_size
         view_resource.save()
     logger.info(
         'Finished vector tile generation for '
@@ -530,11 +609,17 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
 
 
 def save_view_resource_on_success(view_resource, entity_count):
-    view_resource.status = DatasetView.DatasetViewStatus.DONE
+    view_resource.status = (
+        DatasetView.DatasetViewStatus.DONE if entity_count > 0 else
+        DatasetView.DatasetViewStatus.EMPTY
+    )
+    view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCED
     view_resource.vector_tiles_updated_at = datetime.now()
     view_resource.vector_tiles_progress = 100
     view_resource.entity_count = entity_count
     view_resource.save()
+    # clear any pending tile cache keys
+    reset_pending_tile_cache_keys(view_resource)
 
 
 def check_task_tiling_status(dataset: Dataset) -> str:
@@ -644,60 +729,149 @@ def remove_vector_tiles_dir(
             end - start)
 
 
-def post_process_vector_tiles(view_resource: DatasetViewResource,
-                              toml_config_files,
-                              **kwargs):
-    # remove tegola config files
-    start = time.time()
-    if not settings.DEBUG:
-        for toml_config_file in toml_config_files:
-            if not os.path.exists(toml_config_file['config_file']):
-                continue
-            try:
-                os.remove(toml_config_file['config_file'])
-            except Exception as ex:
-                logger.error('Unable to remove config file ', ex)
-    if settings.USE_AZURE:
-        client = DirectoryClient(settings.AZURE_STORAGE,
-                                 settings.AZURE_STORAGE_CONTAINER)
-        layer_tiles_source = f'layer_tiles/temp_{view_resource.resource_id}'
-        layer_tiles_dest = f'layer_tiles/{view_resource.resource_id}'
-        try:
-            # clear existing directory
-            client.rmdir(layer_tiles_dest)
-            # move directory
-            client.movedir(layer_tiles_source, layer_tiles_dest)
-        except Exception as ex:
-            logger.error('Unable to move directories ', ex)
-            view_resource.status = DatasetView.DatasetViewStatus.ERROR
-            view_resource.save(update_fields=['status'])
-            raise ex
-    else:
-        original_vector_tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            view_resource.resource_id
-        )
-        if os.path.exists(original_vector_tile_path):
-            shutil.rmtree(original_vector_tile_path)
-        try:
-            shutil.move(
+def on_zoom_level_ends(view_resource: DatasetViewResource,
+                       current_zoom: int):
+    """
+    Copy over the current zoom directory to live cache.
+
+    Also remove the zoom from redis to disable live cache VT.
+    """
+    try:
+        if settings.USE_AZURE:
+            client = DirectoryClient(settings.AZURE_STORAGE,
+                                     settings.AZURE_STORAGE_CONTAINER)
+            layer_tiles_source = (
+                f'layer_tiles/temp_{view_resource.resource_id}/{current_zoom}'
+            )
+            # copy zoom level
+            layer_tiles_dest = (
+                f'layer_tiles/{view_resource.resource_id}/{current_zoom}'
+            )
+            directory_to_be_cleared = layer_tiles_dest
+            if current_zoom == 0:
+                # clear all directories in live cache
+                directory_to_be_cleared = (
+                    f'layer_tiles/{view_resource.resource_id}'
+                )
+            client.rmdir(directory_to_be_cleared)
+            client.movedir(layer_tiles_source, layer_tiles_dest, is_copy=True)
+        else:
+            original_vector_tile_path = os.path.join(
+                settings.LAYER_TILES_PATH,
+                view_resource.resource_id,
+                f'{current_zoom}'
+            )
+            directory_to_be_cleared = original_vector_tile_path
+            if current_zoom == 0:
+                # clear all directories in live cache
+                directory_to_be_cleared = os.path.join(
+                    settings.LAYER_TILES_PATH,
+                    view_resource.resource_id
+                )
+            if os.path.exists(directory_to_be_cleared):
+                shutil.rmtree(directory_to_be_cleared)
+            shutil.copytree(
                 os.path.join(
                     settings.LAYER_TILES_PATH,
-                    f'temp_{view_resource.resource_id}'
+                    f'temp_{view_resource.resource_id}',
+                    f'{current_zoom}'
                 ),
                 original_vector_tile_path
             )
-        except FileNotFoundError as ex:
-            logger.error('Unable to move temporary vector tiles!')
-            view_resource.status = DatasetView.DatasetViewStatus.ERROR
-            view_resource.save(update_fields=['status'])
-            raise ex
-    calculate_vector_tiles_size(view_resource, **kwargs)
-    end = time.time()
-    if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log(
-            'post_process_vector_tiles',
-            end - start)
+        if current_zoom == 0:
+            # mark other zooms as Pending tile generation
+            set_pending_tile_cache_keys(view_resource, True)
+        # remove current zoom from cache
+        cache_key = (
+            f'{view_resource.resource_id}-{current_zoom}-pending-tile'
+        )
+        cache.delete(cache_key)
+    except Exception as ex:
+        logger.error(f'Unable to copy zoom {current_zoom} directories ', ex)
+        view_resource.status = DatasetView.DatasetViewStatus.ERROR
+        view_resource.vector_tiles_log = (
+            f'Failed to process Zoom Level {current_zoom} directory'
+        )
+        view_resource.vector_tile_detail_logs[current_zoom]['status'] = (
+            view_resource.vector_tiles_log
+        )
+        view_resource.save(update_fields=[
+            'status', 'vector_tiles_log', 'vector_tile_detail_logs'
+        ])
+        raise ex
+
+
+def post_process_vector_tiles(view_resource: DatasetViewResource,
+                              toml_config_files,
+                              **kwargs):
+    try:
+        # remove tegola config files
+        start = time.time()
+        if not settings.DEBUG:
+            for toml_config_file in toml_config_files:
+                if not os.path.exists(toml_config_file['config_file']):
+                    continue
+                try:
+                    os.remove(toml_config_file['config_file'])
+                except Exception as ex:
+                    logger.error('Unable to remove config file ', ex)
+        if settings.USE_AZURE:
+            client = DirectoryClient(settings.AZURE_STORAGE,
+                                     settings.AZURE_STORAGE_CONTAINER)
+            layer_tiles_tmp = f'layer_tiles/temp_{view_resource.resource_id}'
+            # clear tmp directory
+            client.rmdir(layer_tiles_tmp)
+        else:
+            layer_tiles_tmp = os.path.join(
+                settings.LAYER_TILES_PATH,
+                f'temp_{view_resource.resource_id}'
+            )
+            if os.path.exists(layer_tiles_tmp):
+                shutil.rmtree(layer_tiles_tmp)
+        calculate_vector_tiles_size(view_resource, **kwargs)
+        end = time.time()
+        if kwargs.get('log_object'):
+            kwargs.get('log_object').add_log(
+                'post_process_vector_tiles',
+                end - start)
+    except Exception as ex:
+        logger.error('Unable to clear temp directories ', ex)
+        view_resource.status = DatasetView.DatasetViewStatus.ERROR
+        view_resource.vector_tiles_log = (
+            f'Failed to clear temp directories: {str(ex)}'
+        )
+        view_resource.save(update_fields=['status', 'vector_tiles_log'])
+        raise ex
+
+
+def get_current_zoom_level_dir_info(view_resource: DatasetViewResource,
+                                    current_zoom: int):
+    """Return directory size and file count."""
+    dir_size = 0
+    file_count = 0
+    try:
+        if settings.USE_AZURE:
+            client = DirectoryClient(settings.AZURE_STORAGE,
+                                     settings.AZURE_STORAGE_CONTAINER)
+            layer_tiles_source = (
+                f'layer_tiles/temp_{view_resource.resource_id}/{current_zoom}'
+            )
+            dir_size, file_count = client.dir_info(layer_tiles_source)
+        else:
+            original_vector_tile_path = os.path.join(
+                settings.LAYER_TILES_PATH,
+                f'temp_{view_resource.resource_id}',
+                f'{current_zoom}'
+            )
+            if os.path.exists(original_vector_tile_path):
+                for path, dirs, files in os.walk(original_vector_tile_path):
+                    for f in files:
+                        fp = os.path.join(path, f)
+                        dir_size += os.stat(fp).st_size
+                        file_count += 1
+    except Exception as ex:
+        logger.error('Unable to get current zoom directory info ', ex)
+    return dir_size, file_count
 
 
 def calculate_vector_tiles_size(
@@ -743,3 +917,59 @@ def clean_tegola_config_files(view_resource: DatasetViewResource):
             os.remove(toml_config_file)
         except Exception as ex:
             logger.error('Unable to remove config file ', ex)
+
+
+def reset_pending_tile_cache_keys(view_resource: DatasetViewResource):
+    """Reset all pending tile cache from resource."""
+    cache_keys = []
+    for zoom in range(25):
+        cache_keys.append(f'{view_resource.resource_id}-{zoom}-pending-tile')
+    cache.delete_many(cache_keys)
+
+
+def set_pending_tile_cache_keys(
+        view_resource: DatasetViewResource,
+        skip_zoom_0=False):
+    """
+    Set pending tile cache based on tiling configs.
+
+    This will be called when:
+    - first time generation of vector tiles
+    - after zoom level 0 finish generating,
+    """
+    tiling_configs, is_from_view_config = get_view_tiling_configs(
+        view_resource.dataset_view)
+    if len(tiling_configs) == 0:
+        return 0
+    cache_count = 0
+    for tiling_config in tiling_configs:
+        zoom_level = tiling_config.zoom_level
+        if skip_zoom_0 and zoom_level == 0:
+            continue
+        # for each level in tiling config, generate query
+        sqls = {}
+        for item in tiling_config.items:
+            # check if view resource has entity at this level
+            entity_count = get_entities_count_in_view(
+                view_resource.dataset_view,
+                view_resource.privacy_level,
+                item.level
+            )
+            if entity_count == 0:
+                continue
+            sqls[item.level] = dataset_view_sql_query(
+                view_resource.dataset_view,
+                item.level,
+                view_resource.privacy_level,
+                is_from_view_config,
+                bbox_param='{bbox_param}',
+                zoom_param='{zoom_param}',
+                intersects_param='{intersects_param}'
+            )
+        cache_key = (
+            f'{view_resource.resource_id}-{tiling_config.zoom_level}-'
+            'pending-tile'
+        )
+        cache.set(cache_key, sqls, timeout=None)
+        cache_count += 1
+    return cache_count

@@ -11,7 +11,7 @@ from georepo.tests.model_factories import (
     GeographicalEntityF
 )
 from georepo.utils.tile_configs import populate_tile_configs
-from georepo.utils.simplification import process_simplification
+from georepo.utils.mapshaper import simplify_for_dataset
 
 
 def mocked_site_perferences(*args, **kwargs):
@@ -22,7 +22,7 @@ def mocked_site_perferences(*args, **kwargs):
             "tile_configs": [
                 {
                     "level": "0",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 }
             ]
         },
@@ -31,7 +31,7 @@ def mocked_site_perferences(*args, **kwargs):
             "tile_configs": [
                 {
                     "level": "0",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 }
             ]
         },
@@ -40,11 +40,11 @@ def mocked_site_perferences(*args, **kwargs):
             "tile_configs": [
                 {
                     "level": "0",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 },
                 {
                     "level": "1",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 }
             ]
         },
@@ -53,11 +53,11 @@ def mocked_site_perferences(*args, **kwargs):
             "tile_configs": [
                 {
                     "level": "0",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 },
                 {
                     "level": "1",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 }
             ]
         },
@@ -66,15 +66,15 @@ def mocked_site_perferences(*args, **kwargs):
             "tile_configs": [
                 {
                     "level": "0",
-                    "tolerance": 0
+                    "tolerance": 1
                 },
                 {
                     "level": "1",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 },
                 {
                     "level": "2",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 }
             ]
         },
@@ -83,15 +83,15 @@ def mocked_site_perferences(*args, **kwargs):
             "tile_configs": [
                 {
                     "level": "0",
-                    "tolerance": 0
+                    "tolerance": 1
                 },
                 {
                     "level": "1",
-                    "tolerance": 0
+                    "tolerance": 1
                 },
                 {
                     "level": "2",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 }
             ]
         },
@@ -100,19 +100,19 @@ def mocked_site_perferences(*args, **kwargs):
             "tile_configs": [
                 {
                     "level": "0",
-                    "tolerance": 0
+                    "tolerance": 1
                 },
                 {
                     "level": "1",
-                    "tolerance": 0
+                    "tolerance": 1
                 },
                 {
                     "level": "2",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 },
                 {
                     "level": "3",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 }
             ]
         },
@@ -121,19 +121,19 @@ def mocked_site_perferences(*args, **kwargs):
             "tile_configs": [
                 {
                     "level": "0",
-                    "tolerance": 0
+                    "tolerance": 1
                 },
                 {
                     "level": "1",
-                    "tolerance": 0
+                    "tolerance": 1
                 },
                 {
                     "level": "2",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 },
                 {
                     "level": "3",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 }
             ]
         },
@@ -142,31 +142,31 @@ def mocked_site_perferences(*args, **kwargs):
             "tile_configs": [
                 {
                     "level": "0",
-                    "tolerance": 0
+                    "tolerance": 1
                 },
                 {
                     "level": "1",
-                    "tolerance": 0
+                    "tolerance": 1
                 },
                 {
                     "level": "2",
-                    "tolerance": 0
+                    "tolerance": 1
                 },
                 {
                     "level": "3",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 },
                 {
                     "level": "4",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 },
                 {
                     "level": "5",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 },
                 {
                     "level": "6",
-                    "tolerance": 0.0
+                    "tolerance": 1
                 }
             ]
         }
@@ -197,10 +197,10 @@ class TestSimplification(TestCase):
     def test_process_simplification(self, perferences):
         perferences.side_effect = mocked_site_perferences
         populate_tile_configs(self.dataset.id)
-        process_simplification(self.dataset.id)
+        simplify_for_dataset(self.dataset)
         simplified_entities = EntitySimplified.objects.filter(
             geographical_entity=self.entity_1
         ).order_by('simplify_tolerance')
         self.assertEqual(simplified_entities.count(), 1)
         config = simplified_entities[0]
-        self.assertEqual(config.simplify_tolerance, 0.0)
+        self.assertEqual(config.simplify_tolerance, 1)

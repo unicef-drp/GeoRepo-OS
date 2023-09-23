@@ -409,7 +409,8 @@ export default function Step1(props: WizardStepInterface) {
   return (
     <Box>
       <Box className={"description-box"}>
-        Drag layer files to the box or click the box to browse
+        <p>Drag and drop or click to browse for a file in one of these formats: .json, .geojson, .gpkg or a zip file containing a shapefile.</p>
+        <p>The dataset CRS should be EPSG:4326. For zip shapefiles, the shapefiles should be in the root directory of the zip.</p>
       </Box>
       <Scrollable>
         <div className='Step1'>
@@ -443,6 +444,7 @@ export default function Step1(props: WizardStepInterface) {
               accept={ALLOWABLE_FILE_TYPES.join(', ')}
               LayoutComponent={CustomLayout}
               maxSizeBytes={ 600 * 1024 * 1024}
+              inputContent={'Drag and drop or click to browse for a file in one of these formats: .json, .geojson, .gpkg or a zip file containing a shapefile.'}
             />
         </div>
       </Scrollable>

@@ -1,0 +1,70 @@
+from celery import shared_task
+from django.db import connection
+from django.db.models import Q
+from georepo.models.entity import GeographicalEntity
+
+from georepo.models import (
+    DatasetView
+)
+
+
+@shared_task(name="check_affected_views")
+def check_affected_dataset_views(
+    dataset_id: int,
+    entity_id: int = None,
+    unique_codes=[]
+):
+    """
+    Trigger checking affected views for entity update or revision approve.
+    """
+    # Query Views that are synced and dynamic
+    views_to_check = DatasetView.objects.filter(
+        dataset_id=dataset_id,
+        is_static=False
+    ).filter(
+        Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED) |
+        Q(product_sync_status=DatasetView.SyncStatus.SYNCED)
+    )
+    if unique_codes:
+        unique_codes = tuple(
+            GeographicalEntity.objects.filter(
+                dataset_id=dataset_id,
+                unique_code__in=unique_codes
+            ).values_list('id', flat=True)
+        )
+        unique_codes = str(unique_codes)
+        if unique_codes[-2] == ',':
+            unique_codes = unique_codes[:-2] + unique_codes[-1]
+
+    for view in views_to_check:
+        if entity_id:
+            raw_sql = (
+                'select count(*) from "{}" where id={} or ancestor_id={};'
+            ).format(
+                view.uuid,
+                entity_id,
+                entity_id
+            )
+        elif unique_codes:
+            raw_sql = (
+                'select count(*) from "{}" where '
+                'id in {} or ancestor_id in {};'
+            ).format(
+                view.uuid,
+                unique_codes,
+                unique_codes
+            )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                raw_sql
+            )
+            total_count = cursor.fetchone()[0]
+            if total_count > 0:
+                view.set_out_of_sync(
+                    tiling_config=False,
+                    vector_tile=True,
+                    product=True,
+                    skip_signal=False
+                )
+                view.dataset.sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
+                view.dataset.save()

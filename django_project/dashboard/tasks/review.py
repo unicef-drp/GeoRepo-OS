@@ -1,8 +1,14 @@
+import time
+
 from celery import shared_task
 import logging
 from datetime import datetime
 from django.contrib.auth import get_user_model
-from dashboard.models.entity_upload import EntityUploadStatus, REVIEWING
+from dashboard.models.entity_upload import (
+    EntityUploadStatus,
+    REVIEWING
+)
+from dashboard.models.entity_upload import EntityUploadStatusLog
 from dashboard.models.batch_review import BatchReview, PROCESSING, DONE
 from georepo.models.dataset import Dataset
 from georepo.utils.module_import import module_function
@@ -11,14 +17,26 @@ from dashboard.models.notification import (
     Notification,
     NOTIF_TYPE_BATCH_REVIEW
 )
+from georepo.tasks.dataset_view import check_affected_dataset_views
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
 
 
 @shared_task(name="review_approval")
-def review_approval(entity_upload_id, user_id):
+def review_approval(
+    entity_upload_id,
+    user_id,
+    upload_log_id
+):
+    start = time.time()
     """Run approval process for entity upload."""
+    upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+        id=upload_log_id
+    )
+    kwargs = {
+        'log_object': upload_log
+    }
     logger.info(f'Running review_approval {entity_upload_id}')
     entity_upload = EntityUploadStatus.objects.get(id=entity_upload_id)
     user = UserModel.objects.get(id=user_id)
@@ -28,13 +46,23 @@ def review_approval(entity_upload_id, user_id):
         'review',
         'approve_revision'
     )
-    approve_revision(entity_upload, user)
+    print(kwargs)
+    approve_revision(entity_upload, user, **kwargs)
+    check_affected_dataset_views.delay(
+        dataset.id,
+        entity_id=entity_upload.revised_geographical_entity.id
+    )
     # remove task id
     entity_upload = EntityUploadStatus.objects.get(id=entity_upload_id)
     entity_upload.task_id = ''
     entity_upload.save(update_fields=['task_id'])
     logger.info(
         f'Review approval for {entity_upload_id} is finished.')
+    end = time.time()
+    upload_log.add_log(
+        'review_approval',
+        end - start
+    )
 
 
 @shared_task(name="process_batch_review")
@@ -56,6 +84,12 @@ def process_batch_review(batch_review_id):
     item_processed = 0
     for upload_id in batch_review.upload_ids:
         upload = EntityUploadStatus.objects.filter(id=upload_id).first()
+        upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+            id=upload.id
+        )
+        kwargs = {
+            'log_object': upload_log
+        }
         if not upload:
             item_processed += 1
             continue
@@ -84,7 +118,12 @@ def process_batch_review(batch_review_id):
                 'review',
                 'approve_revision'
             )
-            approve_func(upload, batch_review.review_by, True)
+            approve_func(
+                upload,
+                batch_review.review_by,
+                True,
+                **kwargs
+            )
         else:
             reject_func = module_function(
                 dataset.module.code_name,
@@ -102,7 +141,7 @@ def process_batch_review(batch_review_id):
         batch_review.processed_ids.append(upload_id)
         batch_review.save(update_fields=['progress', 'processed_ids'])
     if batch_review.is_approve:
-        # trigger generate vector tiles for dataset in upload_ids
+        # trigger generate dynamic views for dataset in upload_ids
         logger.info(
             f'Trigger vector tiles from batch_review {batch_review_id} - '
             f'with total dataset {len(dataset_list)}'
@@ -112,8 +151,14 @@ def process_batch_review(batch_review_id):
             dataset = Dataset.objects.filter(id=dataset_id).first()
             if not dataset:
                 continue
-            trigger_generate_dynamic_views(dataset, adm0_list=adm0_list)
 
+            dataset.is_simplified = False
+            dataset.save()
+            trigger_generate_dynamic_views(dataset, adm0_list=adm0_list)
+            check_affected_dataset_views.delay(
+                dataset.id,
+                unique_codes=adm0_list
+            )
     # finished processing
     logger.info(f'Finished process_batch_review {batch_review_id}')
     batch_review.finished_at = datetime.now()

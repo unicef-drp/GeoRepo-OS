@@ -21,6 +21,11 @@ import {
   setAvailableFilters,
   setCurrentFilters as setInitialFilters
 } from "../../reducers/reviewTable";
+import Popover from "@mui/material/Popover";
+import Grid from "@mui/material/Grid";
+import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 
 const USER_COLUMNS = [
   'id',
@@ -52,6 +57,32 @@ const FILTER_VALUES_API_URL = '/api/review-filter/values/'
 const VIEW_LIST_URL = '/api/review-list/'
 const FilterIcon: any = FilterAlt
 
+function ViewPopover(props: any) {
+  if (props.view === null) {
+    return null
+  }
+  return (
+    <Grid container flexDirection={'column'} sx={{p: 2}}>
+      <Grid item>
+        <Grid container flexDirection={'row'} justifyContent={'space-between'} spacing={2}>
+          <Grid item>
+            <Typography sx={{pb: 1}}>Logs:</Typography>
+          </Grid>
+        </Grid>
+      </Grid>
+      <Grid item>
+        <Grid item>
+          <Button
+            variant={'outlined'}
+            onClick={() => window.open(`/api/logs/entity_upload/${props.review.id}`, '_blank')}
+          >
+            Logs
+          </Button>
+        </Grid>
+      </Grid>
+    </Grid>
+  )
+}
 
 export default function ReviewList() {
   const initialColumns = useAppSelector((state: RootState) => state.reviewTable.currentColumns)
@@ -66,6 +97,8 @@ export default function ReviewList() {
   const isBatchReviewAvailable = useAppSelector((state: RootState) => state.reviewAction.isBatchReviewAvailable)
   const pendingReviews = useAppSelector((state: RootState) => state.reviewAction.pendingReviews)
   const reviewUpdatedAt = useAppSelector((state: RootState) => state.reviewAction.updatedAt)
+  const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
+  const [selectedReview, setSelectedReview] = useState<any>(null)
 
   const [columns, setColumns] = useState<any>([])
   const [totalCount, setTotalCount] = useState<number>(0)
@@ -201,6 +234,38 @@ export default function ReviewList() {
         }
         return _options
       })
+      _columns.push({
+        name: '',
+        options: {
+          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+            let rowData = tableMeta.rowData
+            return (
+              <div className="TableActionContent">
+                <IconButton
+                  aria-label='More Info'
+                  title='More Info'
+                  key={0}
+                  disabled={false}
+                  color='primary'
+                  onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                    event.stopPropagation();
+                    let obj: any = {}
+                    USER_COLUMNS.forEach((element, index) => {
+                      obj[element] = rowData[index];
+                    });
+                    setSelectedReview(obj)
+                    setAnchorEl(event.currentTarget);
+                  }}
+                  className=''
+                >
+                  <MoreVertIcon/>
+                </IconButton>
+              </div>
+            )
+          },
+          filter: false
+        }
+      })
       setColumns(_columns)
     }
     fetchFilterValuesData()
@@ -267,6 +332,14 @@ export default function ReviewList() {
     dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'search_text': search_text})))
   }
 
+  const handleCloseMoreInfo = () => {
+    setAnchorEl(null);
+    setSelectedReview(null)
+  };
+
+  const open = Boolean(anchorEl);
+  const id = open ? 'view-popover' : undefined;
+
   useEffect(() => {
     let upload
     try {
@@ -306,80 +379,94 @@ export default function ReviewList() {
   }
 
   return (
-    loading ?
-      <div className={"loading-container"}><Loading/></div> :
-      <div className="AdminContentMain review-list main-data-list">
-        <Fragment>
-          <div className='AdminList' ref={ref}>
-            <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
+    <div className="AdminContentMain review-list main-data-list">
+    {
+      loading ?
+        <Loading/> :
+          <Fragment>
+            <div className='AdminList' ref={ref}>
+              <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
                                 onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
-            <div className='AdminTable'>
-              <MUIDataTable
-                title=''
-                data={data}
-                columns={columns}
-                options={{
-                  serverSide: true,
-                  page: pagination.page,
-                  count: totalCount,
-                  rowsPerPage: pagination.rowsPerPage,
-                  rowsPerPageOptions: rowsPerPageOptions,
-                  sortOrder: pagination.sortOrder as MUISortOptions,
-                  jumpToPage: true,
-                  isRowSelectable: (dataIndex: number, selectedRows: any) => {
-                    return canRowBeSelected(dataIndex, data[dataIndex])
-                  },
-                  onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
-                    // @ts-ignore
-                    const rowDataSelected = rowsSelected.map((index) => data[index]['id'])
-                    selectionChanged(rowDataSelected)
-                  },
-                  onRowClick: (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-                    handleRowClick(rowData, rowMeta)
-                  },
-                  onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
-                  customSearchRender: debounceSearchRender(500),
-                  selectableRows: selectableRowsMode,
-                  selectToolbarPlacement: 'none',
-                  textLabels: {
-                    body: {
-                      noMatch: loading ?
-                        <Loading/> :
-                        'Sorry, there is no matching data to display',
+              <div className='AdminTable'>
+                <MUIDataTable
+                  title=''
+                  data={data}
+                  columns={columns}
+                  options={{
+                    serverSide: true,
+                    page: pagination.page,
+                    count: totalCount,
+                    rowsPerPage: pagination.rowsPerPage,
+                    rowsPerPageOptions: rowsPerPageOptions,
+                    sortOrder: pagination.sortOrder as MUISortOptions,
+                    jumpToPage: true,
+                    isRowSelectable: (dataIndex: number, selectedRows: any) => {
+                      return canRowBeSelected(dataIndex, data[dataIndex])
                     },
-                  },
-                  onSearchChange: (searchText: string) => {
-                    handleSearchOnChange(searchText)
-                  },
-                  customFilterDialogFooter: (currentFilterList, applyNewFilters) => {
-                    return (
-                      <div style={{marginTop: '40px'}}>
-                        <Button variant="contained" onClick={() => handleFilterSubmit(applyNewFilters)}>Apply
-                          Filters</Button>
-                      </div>
-                    );
-                  },
-                  onFilterChange: (column, filterList, type) => {
-                    var newFilters = () => (filterList)
-                    handleFilterSubmit(newFilters)
-                  },
-                  searchText: currentFilters.search_text,
-                  searchOpen: (currentFilters.search_text != null && currentFilters.search_text.length > 0),
-                  filter: true,
-                  filterType: 'multiselect',
-                  confirmFilters: true,
-                  tableBodyHeight: `${tableHeight}px`,
-                  tableBodyMaxHeight: `${tableHeight}px`,
-                }}
-                components={{
-                  icons: {
-                    FilterIcon
-                  }
-                }}
-              />
+                    onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
+                      // @ts-ignore
+                      const rowDataSelected = rowsSelected.map((index) => data[index]['id'])
+                      selectionChanged(rowDataSelected)
+                    },
+                    onRowClick: (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
+                      handleRowClick(rowData, rowMeta)
+                    },
+                    onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
+                    customSearchRender: debounceSearchRender(500),
+                    selectableRows: selectableRowsMode,
+                    selectToolbarPlacement: 'none',
+                    textLabels: {
+                      body: {
+                        noMatch: loading ?
+                          <Loading/> :
+                          'Sorry, there is no matching data to display',
+                      },
+                    },
+                    onSearchChange: (searchText: string) => {
+                      handleSearchOnChange(searchText)
+                    },
+                    customFilterDialogFooter: (currentFilterList, applyNewFilters) => {
+                      return (
+                        <div style={{marginTop: '40px'}}>
+                          <Button variant="contained" onClick={() => handleFilterSubmit(applyNewFilters)}>Apply
+                            Filters</Button>
+                        </div>
+                      );
+                    },
+                    onFilterChange: (column, filterList, type) => {
+                      var newFilters = () => (filterList)
+                      handleFilterSubmit(newFilters)
+                    },
+                    searchText: currentFilters.search_text,
+                    searchOpen: (currentFilters.search_text != null && currentFilters.search_text.length > 0),
+                    filter: true,
+                    filterType: 'multiselect',
+                    confirmFilters: true,
+                    tableBodyHeight: `${tableHeight}px`,
+                    tableBodyMaxHeight: `${tableHeight}px`,
+                  }}
+                  components={{
+                    icons: {
+                      FilterIcon
+                    }
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        </Fragment>
-      </div>
+          </Fragment>
+    }
+      <Popover
+          id={id}
+          open={open}
+          anchorEl={anchorEl}
+          onClose={handleCloseMoreInfo}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left',
+          }}
+        >
+          <ViewPopover review={selectedReview}/>
+        </Popover>
+    </div>
   )
 }

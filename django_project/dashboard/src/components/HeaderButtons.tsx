@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {ThemeButton, AddButton, EditButton, CancelButton, WarningButton} from "./Elements/Buttons";
-import {Link, useNavigate, useSearchParams} from "react-router-dom";
+import {Link, useNavigate, useSearchParams, useLocation} from "react-router-dom";
 import axios from "axios";
 import toLower from "lodash/toLower";
 import Divider from '@mui/material/Divider';
@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography';
 import {postData} from "../utils/Requests";
 import {currentModule, setModule} from "../reducers/module";
 import {toggleIsBatchReview, setPendingReviews, setCurrentReview, onBatchReviewSubmitted} from "../reducers/reviewAction";
+import {toggleIsBatchAction} from "../reducers/viewSyncAction";
 import {RootState} from "../app/store";
 import {useAppDispatch, useAppSelector} from "../app/hooks";
 import {modules} from "../modules";
@@ -30,6 +31,7 @@ import {
 import Dataset from '../models/dataset';
 import { ActiveBatchReview } from '../models/review';
 import {setPollInterval, FETCH_INTERVAL_JOB} from "../reducers/notificationPoll";
+import {setCurrentFilters as setInitialFilters} from "../reducers/viewSyncTable";
 
 interface UploadDataButtonInterface {
   next?: any,
@@ -45,6 +47,7 @@ const ADD_UPLOAD_SESSION_URL = '/api/add-upload-session/'
 const FETCH_PENDING_REVIEWS_URL = '/api/review/batch/uploads/'
 const FETCH_CURRENT_REVIEW_URL = '/api/review/batch/identifier/'
 const SUBMIT_BATCH_REVIEW_URL = '/api/review/batch/'
+const TRIGGER_SYNC_API_URL = '/api/sync-view/'
 const CONFIRM_RESET_SESSION_URL = '/api/reset-upload-session/'
 const LOAD_UPLOAD_SESSION_DETAIL_URL = '/api/upload-session/'
 

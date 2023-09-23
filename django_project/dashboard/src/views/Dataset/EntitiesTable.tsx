@@ -517,6 +517,13 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
           }
     }
 
+    const getTextWhenEmptyEntity = () => {
+        if (props.viewUuid) {
+            return 'Sorry, there is no matching data to display.'
+        }
+        return 'Sorry, there is no matching data to display. Use the + Add Data button to upload data to this dataset.'
+    }
+
     return (
         <Grid className={'entities-table-root'} container ref={ref}>
             <Grid item className={'entities-table'}>
@@ -575,7 +582,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                                 body: {
                                     noMatch: loading ?
                                         <Loading /> :
-                                        'Sorry, there is no matching data to display',
+                                        getTextWhenEmptyEntity(),
                                 },
                             },
                         }}

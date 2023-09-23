@@ -5,8 +5,10 @@ import moduleReducer from "../reducers/module"
 import pollIntervalReducer from "../reducers/notificationPoll"
 import maintenanceReducer from "../reducers/maintenanceItem"
 import reviewActionReducer from "../reducers/reviewAction"
+import viewSyncActionReducer from "../reducers/viewSyncAction"
 import reviewTableReducer from "../reducers/reviewTable"
 import viewTableReducer from "../reducers/viewTable"
+import viewSyncTableReducer from "../reducers/viewSyncTable"
 import uploadTableReducer from "../reducers/uploadTable"
 import entitiesTableReducer from "../reducers/entitiesTable"
 
@@ -20,6 +22,8 @@ export const store = configureStore({
     reviewAction: reviewActionReducer,
     reviewTable: reviewTableReducer,
     viewTable: viewTableReducer,
+    viewSyncTable: viewSyncTableReducer,
+    viewSyncAction: viewSyncActionReducer,
     uploadTable: uploadTableReducer,
     entitiesTable: entitiesTableReducer
   },

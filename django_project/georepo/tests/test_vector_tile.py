@@ -57,8 +57,16 @@ def mocked_cache_get(self, *args, **kwargs):
     return OrderedDict()
 
 
+def mocked_cache_op(self, *args, **kwargs):
+    pass
+
+
 @mock.patch('django.core.cache.cache.get',
             mock.Mock(side_effect=mocked_cache_get))
+@mock.patch('django.core.cache.cache.set',
+            mock.Mock(side_effect=mocked_cache_op))
+@mock.patch('django.core.cache.cache.delete',
+            mock.Mock(side_effect=mocked_cache_op))
 class TestVectorTile(TestCase):
 
     def setUp(self) -> None:
@@ -120,7 +128,7 @@ class TestVectorTile(TestCase):
             'ges.simplified_geometry), !BBOX!)',
             sql
         )
-        self.assertIn(f'AND gg.dataset_id = {self.dataset.id}', sql)
+        self.assertIn(f'AND gg.dataset_id={self.dataset.id}', sql)
         sql = dataset_view_sql_query(
             self.view_latest,
             0,
@@ -132,7 +140,7 @@ class TestVectorTile(TestCase):
             'ges.simplified_geometry), !BBOX!)',
             sql
         )
-        self.assertIn(f'AND gg.dataset_id = {self.dataset.id}', sql)
+        self.assertIn(f'AND gg.dataset_id={self.dataset.id}', sql)
 
     def test_create_configuration_files(self):
         view_resource = DatasetViewResource.objects.get(
@@ -162,7 +170,7 @@ class TestVectorTile(TestCase):
         'os.path.exists',
         mock.Mock(side_effect=mock_os_path_exists))
     @mock.patch(
-        'shutil.move',
+        'shutil.copytree',
         mock.Mock(side_effect=mock_shutil_move))
     def test_generate_vector_tiles(self):
         # only privacy level 2 will be generated

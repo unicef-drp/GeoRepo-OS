@@ -67,7 +67,27 @@ class DatasetSerializer(serializers.ModelSerializer):
         return tiling_status
 
     def get_sync_status(self, obj: Dataset):
-        return Dataset.DatasetSyncStatus(obj.sync_status).label
+        vt_sync_status = set(
+            obj.datasetview_set.all().values_list(
+                'vector_tile_sync_status',
+                flat=True
+            ).distinct()
+        )
+        product_sync_status = set(
+            obj.datasetview_set.all().values_list(
+                'product_sync_status',
+                flat=True
+            ).distinct()
+        )
+        all_status = vt_sync_status.union(product_sync_status)
+        if len(all_status) == 0:
+            return obj.SyncStatus.SYNCED.label
+        elif all_status == {obj.SyncStatus.SYNCED}:
+            return obj.SyncStatus.SYNCED.label
+        elif all_status == {obj.SyncStatus.OUT_OF_SYNC}:
+            return obj.SyncStatus.OUT_OF_SYNC.label
+        elif obj.SyncStatus.SYNCING in all_status:
+            return obj.SyncStatus.SYNCING.label
 
     def get_permissions(self, obj: Dataset):
         user = self.context['user']

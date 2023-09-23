@@ -23,7 +23,6 @@ from dashboard.api_views.language import LanguageList, FetchLanguages
 from dashboard.api_views.layer_upload import (
     LayerUploadView,
     LayerRemoveView,
-    LayersProcessView,
     LayerProcessStatusView,
     UpdateLayerUpload,
     LayerFileEntityTypeList,
@@ -55,7 +54,6 @@ from dashboard.api_views.views import (
 from dashboard.models import (
     LayerFile,
     LayerUploadSession,
-    PROCESSING,
     LayerConfig,
     PENDING,
     REVIEWING, EntityUploadStatus,
@@ -288,52 +286,6 @@ class TestApiViews(TestCase):
             LayerFile.objects.get(meta_id='test_2').level, '1')
         self.assertEqual(
             LayerFile.objects.get(meta_id='test_3').level, '2')
-
-    @mock.patch(
-        'dashboard.api_views.layer_upload.process_layer_upload_session.delay',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
-    def test_process_layers(self):
-        uploader = UserF.create(username='uploader')
-        dataset = DatasetF.create()
-        layer_file_1 = LayerFileF.create(
-            meta_id='test_1',
-            uploader=uploader)
-        layer_file_2 = LayerFileF.create(meta_id='test_2', uploader=uploader)
-        post_data = {
-            'entity_types': {
-                layer_file_1.meta_id: 'Country',
-                layer_file_2.meta_id: 'Region'
-            },
-            'levels': {
-                layer_file_1.meta_id: '0',
-                layer_file_2.meta_id: '1'
-            },
-            'all_files': [
-                {
-                    'id': layer_file_1.meta_id,
-                },
-                {
-                    'id': layer_file_2.meta_id,
-                }
-            ],
-            'dataset': dataset.label,
-            'code_format': 'code_{level}',
-            'label_format': 'admin_{level}'
-        }
-        request = self.factory.post(
-            reverse('layers-process'), post_data,
-            format='json'
-        )
-        request.user = UserF.create(username='test')
-        view = LayersProcessView.as_view()
-        response = view(request)
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(
-            LayerUploadSession.objects.filter(
-                dataset=dataset,
-                status=PROCESSING
-            ).exists()
-        )
 
     def test_layer_config(self):
         created_by = UserF.create(username='test_user')
@@ -881,7 +833,7 @@ class TestApiViews(TestCase):
         request.user = request_by
         view = ApproveRevision.as_view()
         response = view(request, **kwargs)
-        approve_revision(entity_upload, request_by)
+        approve_revision(entity_upload, request_by, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             EntityUploadStatus.objects.get(
@@ -980,9 +932,6 @@ class TestApiViews(TestCase):
             '1'
         )
 
-    @mock.patch(
-        'dashboard.api_views.views.trigger_generate_vector_tile_for_view',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
     def test_create_new_view(self):
         user = UserF.create(username='creator')
         dataset = DatasetF.create()
@@ -1422,12 +1371,6 @@ class TestApiViews(TestCase):
         })
         self.assertEqual(response.status_code, 200)
 
-    @mock.patch(
-        'dashboard.api_views.views.trigger_generate_vector_tile_for_view',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
-    @mock.patch(
-        'dashboard.api_views.views.simplify_geometry_in_view.delay',
-        mock.Mock(side_effect=mocked_process_layer_upload_session))
     @mock.patch('django.core.cache.cache.get',
                 mock.Mock(side_effect=mocked_cache_get))
     def test_update_view(self):
@@ -1454,6 +1397,14 @@ class TestApiViews(TestCase):
         self.assertEqual(response.status_code, 200)
         dataset_view = DatasetView.objects.get(id=view_1.id)
         self.assertEqual(dataset_view.name, 'update')
+        self.assertEqual(
+            dataset_view.product_sync_status,
+            DatasetView.SyncStatus.OUT_OF_SYNC
+        )
+        self.assertEqual(
+            dataset_view.vector_tile_sync_status,
+            DatasetView.SyncStatus.OUT_OF_SYNC
+        )
         self.assertTrue(dataset_view.tags.all().filter(name='test').exists())
 
     def test_detail_view(self):
@@ -1461,6 +1412,11 @@ class TestApiViews(TestCase):
         dataset_view = DatasetViewF.create(
             is_static=False,
         )
+        dataset_view.query_string = (
+            'SELECT * from georepo_geographicalentity where dataset_id='
+            f'{dataset_view.dataset.id}'
+        )
+        dataset_view.save()
         request = self.factory.get(
             reverse('view-detail', kwargs={
                 'id': str(dataset_view.id)
@@ -1472,6 +1428,9 @@ class TestApiViews(TestCase):
             'id': str(dataset_view.id)
         })
         self.assertEqual(response.status_code, 200)
+        query_string = response.data['query_string']
+        self.assertNotIn('gg.dataset_id', query_string)
+        self.assertNotIn('dataset_id', query_string)
 
     def test_get_closest_entities(self):
         user = UserF.create(is_superuser=True)
@@ -2174,11 +2133,7 @@ class TestApiViews(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data['is_available'])
 
-    @mock.patch(
-        'modules.admin_boundaries.config.'
-        'trigger_generate_vector_tile_for_view'
-    )
-    def test_update_dataset(self, mocked_view: mock.MagicMock):
+    def test_update_dataset(self):
         user = UserF.create(is_superuser=True)
         dataset = DatasetF.create(
             label='Dataset World',
@@ -2234,8 +2189,6 @@ class TestApiViews(TestCase):
             ).exclude(default_type__isnull=True).count(),
             2
         )
-        self.assertEqual(mocked_view.call_count, 2)
-        mocked_view.reset_mock()
         post_data = {
             'name': 'New World',
             'geometry_similarity_threshold_new': 0.4,
@@ -2263,7 +2216,6 @@ class TestApiViews(TestCase):
         )
         self.assertEqual(updated.label, post_data['name'])
         self.assertFalse(updated.generate_adm0_default_views)
-        self.assertEqual(mocked_view.call_count, 0)
         # setting to false will not remove the views
         self.assertEqual(
             DatasetView.objects.filter(

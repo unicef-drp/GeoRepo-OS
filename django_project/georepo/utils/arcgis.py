@@ -67,7 +67,7 @@ def generate_arcgis_config(
             'type': 'vector',
             'tiles': [
                 f'{layer_tiles_base_url}{vector_tiles}'
-                f'&token={str(requester.auth_token)}'
+                '&token={{YOUR_API_KEY}}&georepo_user_key={{YOUR_EMAIL}}'
             ],
             'tolerance': 0,
             'minzoom': 1,

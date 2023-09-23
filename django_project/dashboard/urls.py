@@ -14,7 +14,6 @@ from dashboard.views.uploader import UploaderView
 from dashboard.views.signup import SignUpView
 from dashboard.api_views.layer_upload import (
     LayerUploadView,
-    LayersProcessView,
     LayerProcessStatusView,
     LayerRemoveView,
     LayerUploadList,
@@ -32,7 +31,8 @@ from dashboard.api_views.upload_session import (
     UploadSessionSummary,
     UploadSessionUpdateStep, CanAddUpload, UpdateUploadSession,
     DeleteUploadSession,
-    ResetUploadSession
+    ResetUploadSession,
+    CheckUploadSessionActionStatus
 )
 from dashboard.api_views.entity_upload_status import (
     EntityUploadStatusDetail,
@@ -127,6 +127,15 @@ from dashboard.api_views.access_request import (
 from dashboard.api_views.media import (
     ErrorReportAPIView
 )
+from dashboard.api_views.view_sync import (
+    ViewSyncList,
+    ViewSyncFilterValue,
+    ViewResourcesSyncList,
+    SynchronizeView
+)
+from dashboard.api_views.logs import (
+    ExportLogs
+)
 from dashboard.views.flower_proxy_view import FlowerProxyView
 
 urlpatterns = [
@@ -217,6 +226,11 @@ urlpatterns = [
         name='reset-upload-session'
     ),
     re_path(
+        r'api/upload-session/action/(?P<id>\d+)/status/?$',
+        CheckUploadSessionActionStatus.as_view(),
+        name='check-upload-session-action-status'
+    ),
+    re_path(
         r'api/upload-sessions/?$',
         UploadSessionList.as_view(),
         name='upload-session-list'
@@ -255,11 +269,6 @@ urlpatterns = [
         r'api/layer-remove/?$',
         LayerRemoveView.as_view(),
         name='layer-remove'
-    ),
-    re_path(
-        r'api/layers-process/?$',
-        LayersProcessView.as_view(),
-        name='layers-process'
     ),
     re_path(
         r'api/layers-process-status/?$',
@@ -531,6 +540,22 @@ urlpatterns = [
             r'(?P<criteria>\w+)/?$',
             ViewFilterValue.as_view(),
             name='view-filter-value'),
+    re_path(r'api/view-sync-list/(?P<dataset_id>\d+)/?$',
+            ViewSyncList.as_view(),
+            name='view-sync-list-per-dataset'),
+    re_path(r'api/view-sync-list/?$',
+            ViewSyncList.as_view(),
+            name='view-sync-list'),
+    re_path(r'^api/view-sync-filter/values/'
+            r'(?P<criteria>\w+)/?$',
+            ViewSyncFilterValue.as_view(),
+            name='view-sync-filter-value'),
+    re_path(r'api/view-resource-sync-list/(?P<view_id>\d+)?$',
+            ViewResourcesSyncList.as_view(),
+            name='view-resource-sync-list'),
+    re_path(r'api/sync-view/?$',
+            SynchronizeView.as_view(),
+            name='sync-view'),
     re_path(r'api/tag-list/?$',
             GetViewTags.as_view(),
             name='get-tag-list'),
@@ -660,6 +685,9 @@ urlpatterns = [
     re_path(r'api/access/request/permission/submit/?$',
             SubmitPermissionAccessRequest.as_view(),
             name='create-permission-access-request'),
+    re_path(r'api/logs/(?P<log_type>\w+)/(?P<obj_id>\d+)?$',
+            ExportLogs.as_view(),
+            name='export-log-csv'),
     re_path(r'sign-up/$',
             SignUpView.as_view(),
             name='signup-view'),

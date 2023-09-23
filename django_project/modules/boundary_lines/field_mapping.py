@@ -1,4 +1,4 @@
-from dashboard.models import LayerFile
+from dashboard.models import LayerFile, PrivacyLevel
 
 
 def is_valid(layer_file: LayerFile):
@@ -13,8 +13,16 @@ def get_summary(layer_file: LayerFile):
     privacy_level_field = f'privacy_level_field = '\
         f'{layer_file.privacy_level_field}'
     if layer_file.privacy_level != '':
-        privacy_level_field = f'privacy_level = '\
-            f'\'{layer_file.privacy_level}\''
+        privacy_level_label = PrivacyLevel.objects.filter(
+            privacy_level=int(layer_file.privacy_level)
+        ).first()
+        if privacy_level_label:
+            privacy_level_field = f'privacy_level = '\
+                f'\'{layer_file.privacy_level} - '\
+                f'{privacy_level_label.label}\''
+        else:
+            privacy_level_field = f'privacy_level = '\
+                f'\'{layer_file.privacy_level}\''
     summary_data = {
         'id': layer_file.id,
         'level': layer_file.level,

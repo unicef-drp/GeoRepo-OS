@@ -8,7 +8,7 @@ from georepo.models import (
     Dataset,
     GeographicalEntity,
     EntityType, Module, Language, EntityName,
-    EntityId, DatasetView, IdType,
+    EntityId, DatasetView, DatasetViewResource, IdType,
     DatasetAdminLevelName, BoundaryType
 )
 
@@ -80,6 +80,16 @@ class DatasetViewF(BaseFactory[DatasetView],
     dataset = factory.SubFactory(DatasetF)
 
     created_by = factory.SubFactory(UserF)
+
+
+class DatasetViewResourceF(
+    BaseFactory[DatasetViewResource],
+    metaclass=BaseMetaFactory[DatasetViewResource]
+):
+    class Meta:
+        model = DatasetViewResource
+
+    dataset_view = factory.SubFactory(DatasetViewF)
 
 
 class EntityTypeF(factory.django.DjangoModelFactory):

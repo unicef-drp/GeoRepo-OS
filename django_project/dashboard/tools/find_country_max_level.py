@@ -1,4 +1,5 @@
 import logging
+import time
 from dashboard.models.layer_upload_session import (
     LayerUploadSession
 )
@@ -15,12 +16,15 @@ logger = logging.getLogger(__name__)
 
 
 def find_country_max_level(
-        upload_session: LayerUploadSession,
-        is_level0_upload: bool):
+    upload_session: LayerUploadSession,
+    is_level0_upload: bool,
+    **kwargs
+):
     """
     From each country/entity upload at upload_session,
     find maximum level of layer file that has entity at that level
     """
+    start = time.time()
     available_levels = (
         upload_session.layerfile_set.values_list(
             'level', flat=True
@@ -75,7 +79,8 @@ def find_country_max_level(
                     upload_session,
                     level1_codes,
                     level,
-                    layer_cache
+                    layer_cache,
+                    **kwargs
                 )
                 if has_valid_level:
                     level_found = level
@@ -85,7 +90,8 @@ def find_country_max_level(
                     upload_session,
                     parent_code,
                     level,
-                    layer_cache
+                    layer_cache,
+                    **kwargs
                 )
                 if has_valid_level:
                     level_found = level
@@ -101,3 +107,7 @@ def find_country_max_level(
         )
         logger.info(upload_session.progress)
         upload_session.save(update_fields=['progress'])
+
+    end = time.time()
+    if kwargs.get('log_object'):
+        kwargs.get('log_object').add_log('find_country_max_level', end - start)

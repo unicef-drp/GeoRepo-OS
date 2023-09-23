@@ -32,19 +32,24 @@ const TILING_CONFIGS_STATUS_URL = '/api/tiling-configs/status/'
 function TilingConfigConfirm(props: any) {
     const [loading, setLoading] = useState(false)
     const [alertOpen, setAlertOpen] = useState(false)
+    const navigate = useNavigate()
 
-    const confirmTilingConfig = (overwriteView: boolean = false) => {
+    const confirmTilingConfig = (redirect: boolean=true) => {
         setLoading(true)
         let _data = {
             'object_uuid': props.viewUUID ? props.viewUUID : props.datasetUUID,
             'object_type': props.viewUUID ? 'datasetview' : 'dataset',
             'session': props.session,
-            'overwrite_view': props.viewUUID ? true : overwriteView
         }
         postData(TILING_CONFIGS_TEMP_CONFIRM_URL, _data).then(
             response => {
                 setLoading(false)
                 props.onTilingConfigConfirmed()
+                if (props.datasetUUID && redirect) {
+                    if (redirect) {
+                        navigate(`/admin_boundaries/dataset_entities?id=${props.datasetId}&tab=8`)
+                    }
+                }
             }
         ).catch(error => {
             setLoading(false)
@@ -93,7 +98,11 @@ function TilingConfigConfirm(props: any) {
                           <AlertDialog open={alertOpen} alertClosed={onConfirmedNo}
                             alertConfirmed={onConfirmedYes}
                             alertDialogTitle={`Saving Tiling Config.`}
-                            alertDialogDescription={'Apply to existing views?'}
+                            alertDialogDescription={
+                              'There are views that derive from this dataset. ' +
+                              'Would you like to manage which affected views will inherit your changes to the ' +
+                              'tiling matrix now? You can always view them later by going to the Sync Status Tab.'
+                            }
                             cancelButtonText={'No'}
                             confirmButtonText={'Yes'}
                           />
@@ -115,6 +124,7 @@ export default function TilingConfigWizard(props: any) {
     const [session, setSession] = useState(null)
     const [datasetUUID, setDatasetUUID] = useState(null)
     const [viewUUID, setViewUUID] = useState(null)
+    const [datasetId, setDatasetId] = useState(null)
     const [alertMessage, setAlertMessage] = useState<string>('')
     const navigate = useNavigate()
     const dispatch = useAppDispatch();
@@ -129,6 +139,7 @@ export default function TilingConfigWizard(props: any) {
             setViewUUID(_view_uuid)
             setDatasetUUID(_dataset_uuid)
             if (_view_uuid) {
+                setDatasetId(response.data.dataset)
                 // append view name to View Breadcrumbs
                 let _name = response.data.name
                 dispatch(updateMenu({
@@ -137,6 +148,7 @@ export default function TilingConfigWizard(props: any) {
                     link: `/view_edit?id=${response.data.id}`
                 }))
             } else {
+                setDatasetId(response.data.id)
                 // append dataset name to Dataset Breadcrumbs
                 let _name = response.data.dataset
                 if (response.data.type) {
@@ -172,7 +184,7 @@ export default function TilingConfigWizard(props: any) {
 
     const onTilingConfigConfirmed = () => {
         // display message, then navigate to dataset/view tiling config tab
-        setAlertMessage('Successfully updating tiling config! Simplification and vector tiles generation will be run in the background.')
+        setAlertMessage('Successfully updating tiling config!')
     }
 
     const onRedirectToTilingConfig = () => {
@@ -219,7 +231,14 @@ export default function TilingConfigWizard(props: any) {
                     </TabPanel>
                     <TabPanel value={tabSelected} index={2}>
                         <Scrollable>
-                            <TilingConfigConfirm session={session} viewUUID={viewUUID} datasetUUID={datasetUUID} onBack={onBack} onTilingConfigConfirmed={onTilingConfigConfirmed} />
+                            <TilingConfigConfirm
+                              session={session}
+                              viewUUID={viewUUID}
+                              datasetUUID={datasetUUID}
+                              onBack={onBack}
+                              datasetId={datasetId}
+                              onTilingConfigConfirmed={onTilingConfigConfirmed}
+                            />
                         </Scrollable>
                     </TabPanel>
                 </Grid>

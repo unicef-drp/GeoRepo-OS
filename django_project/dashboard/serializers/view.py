@@ -11,8 +11,13 @@ from georepo.utils.permission import (
     PermissionType,
     get_external_view_permission_privacy_level
 )
-from georepo.utils.dataset_view import get_view_tiling_status
-from rest_framework.authtoken.models import Token
+from georepo.utils.dataset_view import (
+    get_view_tiling_status,
+    get_view_product_status
+)
+from georepo.utils.directory_helper import (
+    convert_size
+)
 
 
 class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
@@ -25,6 +30,7 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
     min_privacy = serializers.SerializerMethodField()
     max_privacy = serializers.SerializerMethodField()
+    layer_preview = serializers.SerializerMethodField()
 
     def get_mode(self, obj: DatasetView):
         if obj.is_static is None:
@@ -53,9 +59,6 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
 
     def get_layer_tiles(self, obj: DatasetView):
         user = self.context.get('user', None)
-        token = ''
-        if user and Token.objects.filter(user=user).exists():
-            token = str(user.auth_token)
         user_privacy_levels = self.context.get('user_privacy_levels', {})
         privacy_level = user_privacy_levels.get(obj.dataset.id, 0)
         if privacy_level == 0:
@@ -66,7 +69,8 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
         if privacy_level > 0:
             resource = DatasetViewResource.objects.filter(
                 dataset_view=obj,
-                privacy_level=privacy_level
+                privacy_level__lte=privacy_level,
+                entity_count__gt=0
             ).first()
             if resource:
                 updated_at = (
@@ -76,9 +80,28 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
                     f'{settings.LAYER_TILES_BASE_URL}'
                     f'/layer_tiles/{str(resource.uuid)}/{{z}}/{{x}}/{{y}}'
                     f'?t={updated_at}&'
-                    f'token={token}'
+                    'token={{YOUR_TOKEN}}&georepo_user_key={{YOUR_EMAIL}}'
                 )
         return '-'
+
+    def get_layer_preview(self, obj: DatasetView):
+        user = self.context.get('user', None)
+        user_privacy_levels = self.context.get('user_privacy_levels', {})
+        privacy_level = user_privacy_levels.get(obj.dataset.id, 0)
+        if privacy_level == 0:
+            # could be from external view
+            privacy_level = (
+                get_external_view_permission_privacy_level(user, obj)
+            )
+        if privacy_level > 0:
+            resource = DatasetViewResource.objects.filter(
+                dataset_view=obj,
+                privacy_level__lte=privacy_level,
+                entity_count__gt=0
+            ).first()
+            if resource:
+                return f'/layer-test/?dataset_view_resource={str(resource.id)}'
+        return None
 
     def get_permissions(self, obj: DatasetView):
         user = self.context['user']
@@ -99,7 +122,8 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
             'layer_tiles',
             'status',
             'uuid',
-            'permissions'
+            'permissions',
+            'layer_preview'
         ]
 
 
@@ -168,7 +192,7 @@ class DatasetViewDetailSerializer(TaggitSerializer,
         # remove dataset_id from original query_string
         query = obj.query_string if obj.query_string else ''
         # dataset_id after where
-        pattern = r'dataset_id=[\d]+'
+        pattern = r'(gg\.)?dataset_id=[\d]+'
         query = re.sub(pattern, ' ', query, flags=re.IGNORECASE)
         pattern_1 = r'where[ ]+and'
         query = re.sub(pattern_1, 'where ', query, flags=re.IGNORECASE)
@@ -208,3 +232,121 @@ class DatasetViewDetailSerializer(TaggitSerializer,
             'dataset_name',
             'module_name'
         ]
+
+
+class DatasetViewSyncSerializer(serializers.ModelSerializer):
+
+    dataset = serializers.SerializerMethodField()
+    # vector_tile_sync_progress = serializers.SerializerMethodField()
+    # product_sync_progress = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
+
+    def get_dataset(self, obj):
+        return obj.dataset_id
+
+    def get_vector_tile_sync_progress(self, obj):
+        if obj.vector_tile_sync_status == obj.SyncStatus.OUT_OF_SYNC:
+            return 0
+        view_resources = DatasetViewResource.objects.filter(
+            dataset_view=obj,
+            entity_count__gt=0
+        )
+        _, tiling_progress = get_view_tiling_status(view_resources)
+        return tiling_progress
+
+    def get_product_sync_progress(self, obj):
+        if obj.product_sync_status == obj.SyncStatus.OUT_OF_SYNC:
+            return 0
+        view_resources = DatasetViewResource.objects.filter(
+            dataset_view=obj,
+            entity_count__gt=0
+        )
+        _, product_progress = get_view_product_status(view_resources)
+        return product_progress
+
+    def get_permissions(self, obj: DatasetView):
+        user = self.context['user']
+        return PermissionType.get_permissions_for_datasetview(obj, user)
+
+    class Meta:
+        model = DatasetView
+        fields = [
+            'id',
+            'dataset',
+            'name',
+            'is_tiling_config_match',
+            'vector_tile_sync_status',
+            'product_sync_status',
+            'vector_tiles_progress',
+            'product_progress',
+            'permissions'
+        ]
+
+
+class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
+
+    vector_tiles_size = serializers.SerializerMethodField()
+    geojson_size = serializers.SerializerMethodField()
+    shapefile_size = serializers.SerializerMethodField()
+    kml_size = serializers.SerializerMethodField()
+    topojson_size = serializers.SerializerMethodField()
+
+    def get_vector_tiles_size(self, obj):
+        return convert_size(obj.vector_tiles_size)
+
+    def get_geojson_size(self, obj):
+        return convert_size(obj.geojson_size)
+
+    def get_shapefile_size(self, obj):
+        return convert_size(obj.shapefile_size)
+
+    def get_kml_size(self, obj):
+        return convert_size(obj.kml_size)
+
+    def get_topojson_size(self, obj):
+        return convert_size(obj.topojson_size)
+
+    class Meta:
+        model = DatasetViewResource
+        fields = [
+            'id',
+            'uuid',
+            'privacy_level',
+            'vector_tile_sync_status',
+            'geojson_sync_status',
+            'shapefile_sync_status',
+            'kml_sync_status',
+            'topojson_sync_status',
+            'vector_tiles_progress',
+            'geojson_progress',
+            'shapefile_progress',
+            'kml_progress',
+            'topojson_progress',
+            'vector_tiles_size',
+            'geojson_size',
+            'shapefile_size',
+            'kml_size',
+            'topojson_size'
+        ]
+
+
+class ViewSyncSerializer(serializers.Serializer):
+    view_ids = serializers.ListField(
+        child=serializers.IntegerField(), required=True
+    )
+    sync_options = serializers.ListField(
+        child=serializers.CharField(), required=True
+    )
+
+    def validate_sync_options(self, attrs):
+        options = set(attrs)
+        accepted_options = {
+            'tiling_config',
+            'vector_tiles',
+            'products'
+        }
+        if len(options - accepted_options) != 0:
+            raise serializers.ValidationError(
+                'Unknown actions'
+            )
+        return attrs

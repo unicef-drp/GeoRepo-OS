@@ -1,6 +1,7 @@
 import copy
 import uuid
 import json
+from unittest import mock
 from dateutil.parser import isoparse
 from django.test import TestCase
 from django.urls import reverse
@@ -17,6 +18,9 @@ from georepo.tests.model_factories import (
 from dashboard.api_views.entity import EntityEdit
 
 
+@mock.patch(
+    'dashboard.tasks.review.check_affected_dataset_views.delay'
+)
 class TestApiEntity(TestCase):
 
     def setUp(self) -> None:
@@ -99,6 +103,7 @@ class TestApiEntity(TestCase):
             'type': 'Country',
             'privacy_level': 4,
             'label': self.geographical_entity_name_1.name,
+            'is_dirty': True,
             'names': [
                 {
                     'id': self.geographical_entity_name_1.id,
@@ -132,7 +137,7 @@ class TestApiEntity(TestCase):
         ]
         return response_data
 
-    def test_entity_edit_insufficient_permission_get(self):
+    def test_entity_edit_insufficient_permission_get(self, mock_check_views):
         user = UserF.create()
         request = self.factory.get(
             f"{reverse('entity-edit', args=[self.entity.id])}/"
@@ -142,7 +147,7 @@ class TestApiEntity(TestCase):
         response = edit_view(request, self.entity.id)
         self.assertEqual(response.data, {'detail': 'Insufficient permission'})
 
-    def test_entity_edit_insufficient_permission_post(self):
+    def test_entity_edit_insufficient_permission_post(self, mock_check_views):
         user = UserF.create()
         request = self.factory.post(
             f"{reverse('entity-edit', args=[self.entity.id])}/"
@@ -151,8 +156,9 @@ class TestApiEntity(TestCase):
         edit_view = EntityEdit.as_view()
         response = edit_view(request, self.entity.id)
         self.assertEqual(response.data, {'detail': 'Insufficient permission'})
+        mock_check_views.assert_not_called()
 
-    def test_entity_edit_get(self):
+    def test_entity_edit_get(self, mock_check_views):
         from django.core.cache import cache
         cache.clear()
         request = self.factory.get(
@@ -166,6 +172,7 @@ class TestApiEntity(TestCase):
             'source': None,
             'type': 'Country',
             'privacy_level': 4,
+            'is_dirty': False,
             'label': self.geographical_entity_name_1.name,
             'names': [
                 {
@@ -200,12 +207,14 @@ class TestApiEntity(TestCase):
             self._convert_response_to_dict(response.data),
             expected_response
         )
+        mock_check_views.assert_not_called()
 
-    def test_entity_edit_source_type_privacy(self):
+    def test_entity_edit_source_type_privacy(self, mock_check_views):
         payload = copy.deepcopy(self.payload)
         payload['source'] = 'Source_1'
         payload['privacy_level'] = 3
         payload['type'] = 'Province'
+        payload['is_dirty'] = True
         request = self.factory.post(
             f"{reverse('entity-edit', args=[self.geographical_entity.id])}/",
             json.dumps(payload),
@@ -214,12 +223,14 @@ class TestApiEntity(TestCase):
         request.user = self.superuser
         list_view = EntityEdit.as_view()
         response = list_view(request, self.geographical_entity.id)
+        payload['is_dirty'] = False
         self.assertEqual(
             self._convert_response_to_dict(response.data),
             payload
         )
+        mock_check_views.assert_called()
 
-    def test_entity_edit_add_name(self):
+    def test_entity_edit_add_name(self, mock_check_views):
         payload = copy.deepcopy(self.payload)
         payload['names'].append({
             'id': 0,
@@ -243,8 +254,9 @@ class TestApiEntity(TestCase):
             self._convert_response_to_dict(response.data)['names'][-1]['id'],
             0
         )
+        mock_check_views.assert_called()
 
-    def test_entity_edit_change_name(self):
+    def test_entity_edit_change_name(self, mock_check_views):
         payload = copy.deepcopy(self.payload)
         payload['names'][0] = {
             'id': payload['names'][0]['id'],
@@ -264,8 +276,9 @@ class TestApiEntity(TestCase):
             self._convert_response_to_dict(response.data)['names'][0]['name'],
             'Pakistan-updated'
         )
+        mock_check_views.assert_called()
 
-    def test_entity_edit_remove_name(self):
+    def test_entity_edit_remove_name(self, mock_check_views):
         payload = copy.deepcopy(self.payload)
         payload['names'] = payload['names'][:1]
         request = self.factory.post(
@@ -277,8 +290,9 @@ class TestApiEntity(TestCase):
         list_view = EntityEdit.as_view()
         response = list_view(request, self.geographical_entity.id)
         self.assertEqual(len(response.data['names']), 1)
+        mock_check_views.assert_called()
 
-    def test_entity_edit_add_code(self):
+    def test_entity_edit_add_code(self, mock_check_views):
         payload = copy.deepcopy(self.payload)
         payload['codes'].append({
             'id': 0,
@@ -294,20 +308,20 @@ class TestApiEntity(TestCase):
         request.user = self.superuser
         list_view = EntityEdit.as_view()
         response = list_view(request, self.geographical_entity.id)
+        response_data = self._convert_response_to_dict(
+            response.data
+        )
         self.assertEqual(
-            self._convert_response_to_dict(
-                response.data
-            )['codes'][-1]['value'],
+            response_data['codes'][-1]['value'],
             'some-code'
         )
         self.assertNotEqual(
-            self._convert_response_to_dict(
-                response.data
-            )['codes'][-1]['value'],
+            response_data['codes'][-1]['value'],
             0
         )
+        mock_check_views.assert_called()
 
-    def test_entity_edit_change_code(self):
+    def test_entity_edit_change_code(self, mock_check_views):
         payload = copy.deepcopy(self.payload)
         payload['codes'][0] = {
             'id': payload['codes'][0]['id'],
@@ -327,8 +341,9 @@ class TestApiEntity(TestCase):
             self._convert_response_to_dict(response.data)['codes'][0]['value'],
             'PAK-updated'
         )
+        mock_check_views.assert_called()
 
-    def test_entity_edit_remove_code(self):
+    def test_entity_edit_remove_code(self, mock_check_views):
         payload = copy.deepcopy(self.payload)
         payload['codes'] = payload['codes'][:1]
         request = self.factory.post(
@@ -340,3 +355,4 @@ class TestApiEntity(TestCase):
         list_view = EntityEdit.as_view()
         response = list_view(request, self.geographical_entity.id)
         self.assertEqual(len(response.data['codes']), 1)
+        mock_check_views.assert_called()

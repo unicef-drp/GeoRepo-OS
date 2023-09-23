@@ -20,6 +20,7 @@ import axios from "axios";
 import Loading from "../../components/Loading";
 import { WizardStepInterface } from "../../models/upload";
 import Scrollable from '../../components/Scrollable';
+import HtmlTooltip from "../../components/HtmlTooltip";
 
 export const LOAD_UPLOAD_SESSION_DETAIL_URL = '/api/upload-session/'
 
@@ -148,7 +149,16 @@ export default function (props: WizardStepInterface) {
             </div>
           </Grid>
           <Grid className={'form-label'} item md={2} xl={2} xs={12}>
-            <Typography variant={'subtitle1'}>Tolerance</Typography>
+            <Grid container flexDirection={'row'} alignItems={'center'}>
+              <Grid item>
+                <Typography variant={'subtitle1'}>Tolerance</Typography>
+              </Grid>
+              <Grid item>
+                <HtmlTooltip tooltipTitle='Tolerance'
+                    tooltipDescription={<p>The tolerance to allow for in geometry checks.</p>}
+                />            
+              </Grid>
+            </Grid>
           </Grid>
           <Grid item md={10} xs={12} sx={{ display: 'flex' }}>
             <TextField
@@ -159,10 +169,20 @@ export default function (props: WizardStepInterface) {
               onChange={val => setTolerance(parseFloat(val.target.value))}
               value={tolerance}
               sx={{ width: '100%' }}
+              inputProps={{ max: 1, min: 0, step: 0.0001}}
             />
           </Grid>
           <Grid className={'form-label'} item md={2} xl={2} xs={12}>
-            <Typography variant={'subtitle1'}>Gaps smaller than (map units sqr)</Typography>
+            <Grid container flexDirection={'row'} alignItems={'center'}>
+              <Grid item>
+                <Typography variant={'subtitle1'}>Gap treshold (degree sqr)</Typography>
+              </Grid>
+              <Grid item>
+                <HtmlTooltip tooltipTitle='Gap treshold'
+                    tooltipDescription={<p>This parameter defined the maximum gap size in squared degree units. Any gaps which are larger than this area are accepted. If this parameter is set to 0, the check is disabled.</p>}
+                />            
+              </Grid>
+            </Grid>
           </Grid>
           <Grid item md={10} xs={12} sx={{ display: 'flex' }}>
             <TextField
@@ -173,10 +193,20 @@ export default function (props: WizardStepInterface) {
               onChange={val => setGapsThreshold(parseFloat(val.target.value))}
               value={gapsThreshold}
               sx={{ width: '100%' }}
+              inputProps={{ max: 999999999, min: 0}}
             />
           </Grid>
           <Grid className={'form-label'} item md={2} xl={2} xs={12}>
-            <Typography variant={'subtitle1'}>Overlaps smaller than (map units sqr)</Typography>
+            <Grid container flexDirection={'row'} alignItems={'center'}>
+              <Grid item>
+                <Typography variant={'subtitle1'}>Max Overlap Area (degree sqr)</Typography>
+              </Grid>
+              <Grid item>
+                <HtmlTooltip tooltipTitle='Max Overlap Area (degree sqr)'
+                    tooltipDescription={<p>In case this parameter is set to something else than 0.0, the error will only be reported if the overlapping area is smaller than maxOverlapArea.</p>}
+                />            
+              </Grid>
+            </Grid>
           </Grid>
           <Grid item md={10} xs={12} sx={{ display: 'flex' }}>
             <TextField
@@ -187,6 +217,7 @@ export default function (props: WizardStepInterface) {
               onChange={val => setOverlapsThreshold(parseFloat(val.target.value))}
               value={overlapsThreshold}
               sx={{ width: '100%' }}
+              inputProps={{ max: 999999999, min: 0}}
             />
           </Grid>
         </Grid>

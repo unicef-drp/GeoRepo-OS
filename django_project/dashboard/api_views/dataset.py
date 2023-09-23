@@ -939,7 +939,9 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 'results': results,
                 'available_levels': available_levels,
                 'is_read_only': self.upload_session.is_read_only(),
-                'progress': self.upload_session.progress
+                'progress': self.upload_session.progress,
+                'action_uuid': self.upload_session.current_process_uuid,
+                'current_process': self.upload_session.current_process
             }
         )
 
@@ -972,6 +974,13 @@ class CreateDataset(AzureAuthRequiredMixin,
         if not is_short_code_valid:
             return Response(status=400, data={
                 'detail': error
+            })
+        if max_privacy_level < min_privacy_level:
+            return Response(status=400, data={
+                'detail': (
+                    'Error! Maximum privacy level cannot be lower '
+                    'than minimum privacy level'
+                )
             })
 
         dataset = Dataset.objects.create(
