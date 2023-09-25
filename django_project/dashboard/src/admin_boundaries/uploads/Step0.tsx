@@ -155,7 +155,7 @@ export default function (props: WizardStepInterface) {
               </Grid>
               <Grid item>
                 <HtmlTooltip tooltipTitle='Tolerance'
-                    tooltipDescription={<p>The tolerance to allow for in geometry checks.</p>}
+                    tooltipDescription={<p>Used in geometry checks to determine vertices are coincident, edges are close to each other, areas are equivalent. Units are in degrees or degrees squared as appropriate.</p>}
                 />            
               </Grid>
             </Grid>
@@ -179,7 +179,7 @@ export default function (props: WizardStepInterface) {
               </Grid>
               <Grid item>
                 <HtmlTooltip tooltipTitle='Gap treshold'
-                    tooltipDescription={<p>This parameter defined the maximum gap size in squared degree units. Any gaps which are larger than this area are accepted. If this parameter is set to 0, the check is disabled.</p>}
+                    tooltipDescription={<p>This parameter defines the minimum gap size in squared degree units. Any gaps which are smaller than this area are accepted. If this parameter is set to 0, the check is disabled.</p>}
                 />            
               </Grid>
             </Grid>
@@ -203,7 +203,7 @@ export default function (props: WizardStepInterface) {
               </Grid>
               <Grid item>
                 <HtmlTooltip tooltipTitle='Max Overlap Area (degree sqr)'
-                    tooltipDescription={<p>In case this parameter is set to something else than 0.0, the error will only be reported if the overlapping area is smaller than maxOverlapArea.</p>}
+                    tooltipDescription={<p>If the parameter is not 0, the error will be reported if the overlapping area is larger than maxOverlapArea.</p>}
                 />            
               </Grid>
             </Grid>
