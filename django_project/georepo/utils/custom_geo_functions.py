@@ -1,4 +1,5 @@
 from django.contrib.gis.db.models.functions import ForcePolygonCW, Centroid
+from django.db.models.expressions import fields
 
 
 class ForcePolygonCCW(ForcePolygonCW):
@@ -9,3 +10,9 @@ class ForcePolygonCCW(ForcePolygonCW):
 class CentroidGravity(Centroid):
     """Calculate the gravity centroid"""
     function = 'ST_PointOnSurface'
+
+
+class GeometryAsText(Centroid):
+    """Geometry as text"""
+    function = 'ST_AsText'
+    output_field = fields.CharField()
