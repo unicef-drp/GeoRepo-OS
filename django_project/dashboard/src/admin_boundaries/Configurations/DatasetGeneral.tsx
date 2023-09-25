@@ -8,14 +8,16 @@ import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import {useNavigate} from "react-router-dom";
-
+import Select, { SelectChangeEvent } from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import axios from "axios";
 import AlertDialog from '../../components/AlertDialog';
 import AlertMessage from '../../components/AlertMessage';
 import Dataset from '../../models/dataset';
 import HtmlTooltip from "../../components/HtmlTooltip";
 import Loading from "../../components/Loading";
-import {limitInput} from "../../utils/Helpers";
 import {postData} from "../../utils/Requests";
+import PrivacyLevel from "../../models/privacy";
 import Scrollable from '../../components/Scrollable';
 
 interface DatasetGeneralInterface {
@@ -24,6 +26,7 @@ interface DatasetGeneralInterface {
 }
 
 const UPDATE_DATASET_URL = '/api/update-dataset/'
+const FETCH_PRIVACY_LEVEL_LABELS = '/api/permission/privacy-levels/'
 
 export default function DatasetGeneral(props: DatasetGeneralInterface) {
     const [loading, setLoading] = useState(false)
@@ -40,6 +43,7 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
     const [alertLoading, setAlertLoading] = useState<boolean>(false)
     const [alertDialogTitle, setAlertDialogTitle] = useState<string>('')
     const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
+    const [privacyLevelLabels, setPrivacyLevelLabels] = useState<PrivacyLevel>({})
 
     const updateDatasetDetail = (name: string, thresholdNew: number, thresholdOld: number, generateAdm0DefaultViews: boolean, isActive: boolean) => {
         setLoading(true)
@@ -83,6 +87,7 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
             setMinPrivacyLevel(props.dataset.min_privacy_level)
             setDatasetShortCode(props.dataset.short_code)
         }
+        fetchPrivacyLevelLabels()
     }, [props.dataset])
 
     const handleSaveClick = () => {
@@ -103,6 +108,18 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
 
     const handleAlertCancel = () => {
         setAlertOpen(false)
+    }
+
+    const fetchPrivacyLevelLabels = () => {
+        axios.get(`${FETCH_PRIVACY_LEVEL_LABELS}`).then(
+            response => {
+                if (response.data) {
+                    setPrivacyLevelLabels(response.data as PrivacyLevel)
+                }
+            }
+        ).catch(error => {
+            console.log(error)
+        })
     }
 
     return (
@@ -202,30 +219,41 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
                                 <Typography variant={'subtitle1'}>Maximum privacy level</Typography>
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    disabled
-                                    id="input_maxprivacylevel"
-                                    hiddenLabel={true}
-                                    type={"number"}
-                                    value={maxPrivacyLevel}
-                                    sx={{ width: '30%' }}
-                                    onInput={(e) => limitInput(1, e)}
-                                    inputProps={{ max: 4, min: 1}}
-                                />
+                                <FormControl sx={{minWidth: '300px'}} disabled>
+                                    <Select
+                                        id="max-privacy-level-select"
+                                        value={'' +maxPrivacyLevel}
+                                        label=""
+                                        onChange={(event: SelectChangeEvent) => {
+                                            setMaxPrivacyLevel(parseInt(event.target.value))
+                                        }}
+                                    >
+                                        <MenuItem value={1}>{`1${privacyLevelLabels[1] ? ' - ' + privacyLevelLabels[1] : ''}`}</MenuItem>
+                                        <MenuItem value={2}>{`2${privacyLevelLabels[2] ? ' - ' + privacyLevelLabels[2] : ''}`}</MenuItem>
+                                        <MenuItem value={3}>{`3${privacyLevelLabels[3] ? ' - ' + privacyLevelLabels[3] : ''}`}</MenuItem>
+                                        <MenuItem value={4}>{`4${privacyLevelLabels[4] ? ' - ' + privacyLevelLabels[4] : ''}`}</MenuItem>
+                                    </Select>
+                                </FormControl>
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
                                 <Typography variant={'subtitle1'}>Minimum privacy level</Typography>
                             </Grid>
                             <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                                <TextField
-                                    disabled
-                                    id="input_minprivacylevel"
-                                    hiddenLabel={true}
-                                    type={"number"}
-                                    value={minPrivacyLevel}
-                                    onInput={(e) => limitInput(1, e)}
-                                    inputProps={{ max: 4, min: 1}}
-                                />
+                                <FormControl sx={{minWidth: '300px'}} disabled>
+                                    <Select
+                                        id="min-privacy-level-select"
+                                        value={'' +minPrivacyLevel}
+                                        label=""
+                                        onChange={(event: SelectChangeEvent) => {
+                                        setMinPrivacyLevel(parseInt(event.target.value))
+                                        }}
+                                    >
+                                        <MenuItem value={1}>{`1${privacyLevelLabels[1] ? ' - ' + privacyLevelLabels[1] : ''}`}</MenuItem>
+                                        <MenuItem value={2}>{`2${privacyLevelLabels[2] ? ' - ' + privacyLevelLabels[2] : ''}`}</MenuItem>
+                                        <MenuItem value={3}>{`3${privacyLevelLabels[3] ? ' - ' + privacyLevelLabels[3] : ''}`}</MenuItem>
+                                        <MenuItem value={4}>{`4${privacyLevelLabels[4] ? ' - ' + privacyLevelLabels[4] : ''}`}</MenuItem>
+                                    </Select>
+                                </FormControl>
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
                                 <Grid container flexDirection={'row'} alignItems={'center'}>
