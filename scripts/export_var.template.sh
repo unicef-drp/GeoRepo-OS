@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+export BASE_URL={{BASE_URL}}
+export TOKEN={{YOUR_API_KEY}}
+export EMAIL={{YOUR_EMAIL}}
+export MODULE_UUID={{SAMPLE_MODULE_UUID}}
+export DATASET_UUID={{SAMPLE_DATASET_UUID}}
+export VIEW_UUID={{SAMPLE_VIEW_UUID}}
+export ENTITY_TYPE=country
+export CONCEPT_UCODE={{SAMPLE_CONCEPT_UCODE}}
+export UCODE={{SAMPLE_UCODE}}
+export UCODE_1={{SAMPLE_UCODE_ADM1}}
+# ab parameters
+export NUM_OF_REQUESTS=1000
+export NUM_OF_CONCURRENCIES=10
