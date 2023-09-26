@@ -627,7 +627,7 @@ def save_view_resource_on_success(view_resource, entity_count):
     view_resource.vector_tiles_updated_at = datetime.now()
     view_resource.vector_tiles_progress = 100
     view_resource.entity_count = entity_count
-    view_resource.save(update_fields=['vector_tile_sync_status',
+    view_resource.save(update_fields=['status', 'vector_tile_sync_status',
                                       'vector_tiles_updated_at',
                                       'vector_tiles_progress',
                                       'entity_count'])
