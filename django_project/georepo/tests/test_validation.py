@@ -738,8 +738,8 @@ class TestValidation(TestCase):
         updated_entity_upload = EntityUploadStatus.objects.get(
             id=entity_upload.id
         )
-        # false due to mismatch parent code
-        self.assertFalse(status)
+        # if it is parent matching, then parent code validation is ignored
+        self.assertTrue(status)
         self.assertTrue(updated_entity_upload.revised_geographical_entity)
         # expected result: all entities are being kept
         self.assertTrue(GeographicalEntity.objects.filter(
