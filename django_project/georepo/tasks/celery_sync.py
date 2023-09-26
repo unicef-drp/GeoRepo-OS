@@ -63,7 +63,7 @@ def handle_task_failure(task: BackgroundTask):
             )
             resource.status = DatasetView.DatasetViewStatus.ERROR
             resource.vector_tile_sync_status = (
-                DatasetViewResource.SyncStatus.ERROR
+                DatasetViewResource.SyncStatus.OUT_OF_SYNC
             )
             if export_data:
                 fields = [
@@ -74,7 +74,7 @@ def handle_task_failure(task: BackgroundTask):
                 ]
                 for field in fields:
                     setattr(resource, field,
-                            DatasetViewResource.SyncStatus.ERROR)
+                            DatasetViewResource.SyncStatus.OUT_OF_SYNC)
             resource.tiling_current_task = None
             resource.product_current_task = None
             resource.save()
