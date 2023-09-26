@@ -75,6 +75,8 @@ def handle_task_failure(task: BackgroundTask):
                 for field in fields:
                     setattr(resource, field,
                             DatasetViewResource.SyncStatus.ERROR)
+            resource.tiling_current_task = None
+            resource.product_current_task = None
             resource.save()
         except DatasetViewResource.DoesNotExist as ex:
             logger.error(ex)
@@ -87,6 +89,7 @@ def handle_task_failure(task: BackgroundTask):
             view = DatasetView.objects.get(id=view_id)
             view.status = DatasetView.DatasetViewStatus.ERROR
             view.simplification_progress = 'Simplification error'
+            view.simplification_current_task = None
             view.save()
         except DatasetView.DoesNotExist as ex:
             logger.error(ex)
@@ -138,6 +141,9 @@ def handle_task_interrupted(task: BackgroundTask):
                 for field in fields:
                     setattr(resource, field,
                             DatasetViewResource.SyncStatus.SYNCING)
+            resource.tiling_current_task = None
+            resource.product_current_task = None
+            resource.save()
             task_celery = (
                 generate_view_resource_vector_tiles_task.apply_async(
                     (
@@ -151,7 +157,7 @@ def handle_task_interrupted(task: BackgroundTask):
                 )
             )
             resource.vector_tiles_task_id = task_celery.id
-            resource.save()
+            resource.save(update_fields=['vector_tiles_task_id'])
         except DatasetViewResource.DoesNotExist as ex:
             logger.error(ex)
     elif task_name == 'view_vector_tiles_task':
@@ -166,11 +172,12 @@ def handle_task_interrupted(task: BackgroundTask):
             )
             overwrite = task_param[3] if len(task_param) > 3 else True
             view = DatasetView.objects.get(id=view_id)
+            view.simplification_current_task = None
+            view.save(update_fields=['simplification_current_task'])
             task_celery = view_vector_tiles_task.delay(
                 view.id, export_data, export_vector_tile, overwrite)
             view.task_id = task_celery.id
             view.save(update_fields=['task_id'])
-            view.save()
         except DatasetView.DoesNotExist as ex:
             logger.error(ex)
     on_task_invalidated(task)

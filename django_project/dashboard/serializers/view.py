@@ -308,6 +308,8 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
         return convert_size(obj.topojson_size)
 
     def get_vector_tile_sync_status(self, obj: DatasetViewResource):
+        if obj.status == DatasetView.DatasetViewStatus.ERROR:
+            return 'Stopped'
         if (
             obj.vector_tile_sync_status ==
             DatasetViewResource.SyncStatus.SYNCING
