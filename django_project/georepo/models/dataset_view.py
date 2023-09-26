@@ -58,7 +58,8 @@ class DatasetView(models.Model):
     name = models.CharField(
         max_length=255,
         null=False,
-        blank=False
+        blank=False,
+        db_index=True
     )
 
     description = models.TextField(

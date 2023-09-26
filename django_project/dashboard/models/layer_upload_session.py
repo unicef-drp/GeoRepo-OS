@@ -64,7 +64,8 @@ class LayerUploadSession(models.Model):
     source = models.CharField(
         max_length=255,
         blank=True,
-        default=''
+        default='',
+        db_index=True
     )
 
     task_id = models.CharField(
