@@ -684,7 +684,14 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
 
                 # Check hierarchy via parent codes
                 if parent_entities:
-                    if feature_parent_code not in parent_entities_codes:
+                    feature_rematched_parent = children_lv1.filter(
+                        feature_index=feature_idx
+                    ).exists()
+                    if (level == 1 and feature_rematched_parent):
+                        # we skip validation if
+                        # it is level 1+has parent matching
+                        pass
+                    elif feature_parent_code not in parent_entities_codes:
                         error_found = True
                         layer_error[ErrorType.PARENT_CODE_HIERARCHY.value] = (
                             ERROR_CHECK
