@@ -93,13 +93,15 @@ export default function ViewSync(props: ViewResourceInterface) {
             let rowData = tableMeta.rowData
             if (rowData[i] === 'out_of_sync') {
               return 'Out of sync'
-            } else if (rowData[i] === 'syncing') {
+            } else if (rowData[i] === 'syncing' || rowData[i] === 'Running') {
               return (
                 <span style={{display:'flex'}}>
                     <CircularProgress size={18} />
                     <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[i+5].toFixed(1)}%)`}</span>
                 </span>
               )
+            } else if (rowData[i] === 'Stopped' || rowData[i] === 'Queued') {
+              return rowData[i]
             } else {
               return `Synced (${rowData[i+10]})`
             }

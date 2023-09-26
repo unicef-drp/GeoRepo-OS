@@ -52,12 +52,13 @@ def after_setup_celery_logger(logger, **kwargs):
 @signals.after_task_publish.connect
 def task_sent_handler(sender=None, headers=None, body=None, **kwargs):
     from georepo.models.background_task import BackgroundTask
+    from georepo.utils.celery_helper import on_task_queued
     # information about task are located in headers for task messages
     # using the task protocol version 2.
     info = headers if 'task' in headers else body
     task_id = info['id']
     task_args = info['argsrepr'] if 'argsrepr' in info else ''
-    BackgroundTask.objects.get_or_create(
+    bg_task, _ = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
             'name': info['task'],
@@ -66,11 +67,15 @@ def task_sent_handler(sender=None, headers=None, body=None, **kwargs):
             'parameters': task_args
         }
     )
+    on_task_queued(bg_task)
+
 
 @signals.task_prerun.connect
-def task_prerun_handler(sender=None, task_id=None, task=None, args=None, **kwargs):
+def task_prerun_handler(sender=None, task_id=None, task=None,
+                        args=None, **kwargs):
     from georepo.models.background_task import BackgroundTask
-    task, _ = BackgroundTask.objects.get_or_create(
+    from georepo.utils.celery_helper import on_task_queued
+    task, is_created = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
             'name': sender.name if sender else '',
@@ -81,11 +86,14 @@ def task_prerun_handler(sender=None, task_id=None, task=None, args=None, **kwarg
     task.started_at = timezone.now()
     task.status = BackgroundTask.BackgroundTaskStatus.RUNNING
     task.save(update_fields=['last_update', 'started_at', 'status'])
+    if is_created:
+        on_task_queued(task)
 
 
 @signals.task_success.connect
 def task_success_handler(sender, **kwargs):
     from georepo.models.background_task import BackgroundTask
+    from georepo.utils.celery_helper import on_task_success
     task_id = sender.request.id
     task, _ = BackgroundTask.objects.get_or_create(
         task_id=task_id,
@@ -97,6 +105,7 @@ def task_success_handler(sender, **kwargs):
     task.finished_at = timezone.now()
     task.status = BackgroundTask.BackgroundTaskStatus.COMPLETED
     task.save(update_fields=['last_update', 'finished_at', 'status'])
+    on_task_success(task)
 
 
 @signals.task_failure.connect
@@ -170,6 +179,7 @@ def task_retry_handler(sender, reason, **kwargs):
         update_fields=['last_update', 'celery_retry',
                        'celery_last_retry_at', 'celery_retry_reason']
     )
+
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()

@@ -11,7 +11,7 @@ class BackgroundTask(models.Model):
         COMPLETED = 'Completed', _('Completed')
         CANCELLED = 'Cancelled', _('Cancelled')
         INVALIDATED = 'Invalidated', _('Invalidated')
-    
+
     name = models.CharField(
         max_length=255,
         null=False,
@@ -79,8 +79,8 @@ class BackgroundTask(models.Model):
             self.status == BackgroundTask.BackgroundTaskStatus.QUEUED or
             self.status == BackgroundTask.BackgroundTaskStatus.RUNNING
         ):
-            # check if last_update is more than 1 hour than current date time
+            # check if last_update is more than 30mins than current date time
             if self.last_update:
                 diff_seconds = timezone.now() - self.last_update
-                return diff_seconds.total_seconds() > 3600
+                return diff_seconds.total_seconds() >= 1800
         return False

@@ -771,11 +771,17 @@ def cancel_background_task(modeladmin, request, queryset):
                                    signal='SIGKILL')
 
 
+@admin.action(description='Trigger Task Status Check')
+def trigger_task_status_check(modeladmin, request, queryset):
+    from georepo.tasks.celery_sync import check_celery_background_tasks
+    check_celery_background_tasks.delay()
+
+
 class BackgroundTaskAdmin(admin.ModelAdmin):
     list_display = ('name', 'task_id', 'status', 'started_at', 'finished_at',
                     'last_update', 'current_status')
     search_fields = ['name', 'status', 'task_id']
-    actions = [cancel_background_task]
+    actions = [cancel_background_task, trigger_task_status_check]
     list_filter = ["status", "name"]
     list_per_page = 30
 

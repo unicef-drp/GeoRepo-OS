@@ -290,6 +290,7 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
     shapefile_size = serializers.SerializerMethodField()
     kml_size = serializers.SerializerMethodField()
     topojson_size = serializers.SerializerMethodField()
+    vector_tile_sync_status = serializers.SerializerMethodField()
 
     def get_vector_tiles_size(self, obj):
         return convert_size(obj.vector_tiles_size)
@@ -305,6 +306,15 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
 
     def get_topojson_size(self, obj):
         return convert_size(obj.topojson_size)
+
+    def get_vector_tile_sync_status(self, obj: DatasetViewResource):
+        if (
+            obj.vector_tile_sync_status ==
+            DatasetViewResource.SyncStatus.SYNCING
+        ):
+            if obj.tiling_current_task:
+                return obj.tiling_current_task.status
+        return obj.vector_tile_sync_status
 
     class Meta:
         model = DatasetViewResource

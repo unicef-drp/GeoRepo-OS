@@ -1,5 +1,11 @@
 import requests
 import logging
+from ast import literal_eval as make_tuple
+from georepo.models.background_task import BackgroundTask
+from georepo.models.dataset_view import (
+    DatasetView,
+    DatasetViewResource
+)
 
 
 logger = logging.getLogger(__name__)
@@ -29,3 +35,58 @@ def get_task_status(task_id: str):
         logger.error('Error connect : ', errc)
         raise RuntimeError('Unable to connect to Worker Flower API!')
     return status
+
+
+def on_task_queued(task: BackgroundTask):
+    task_param = make_tuple(task.parameters or '()')
+    logger.info(f'On Task Queued {task.name} - {task_param}')
+    if task.name == 'generate_view_resource_vector_tiles_task':
+        if len(task_param) == 0:
+            return
+        view_resource_id = task_param[0]
+        resource = DatasetViewResource.objects.get(
+            id=view_resource_id)
+        export_data = task_param[1] if len(task_param) > 1 else True
+        export_vector_tile = (
+            task_param[2] if len(task_param) > 2 else True
+        )
+        if export_vector_tile:
+            resource.tiling_current_task = task
+        if export_data:
+            resource.product_current_task = task
+        resource.save(update_fields=['tiling_current_task',
+                                     'product_current_task'])
+    elif task.name == 'view_vector_tiles_task':
+        if len(task_param) == 0:
+            return
+        view_id = task_param[0]
+        view = DatasetView.objects.get(id=view_id)
+        view.simplification_current_task = task
+        view.save(update_fields=['simplification_current_task'])
+
+
+def on_task_success(task: BackgroundTask):
+    task_param = make_tuple(task.parameters or '()')
+    if task.name == 'generate_view_resource_vector_tiles_task':
+        if len(task_param) == 0:
+            return
+        view_resource_id = task_param[0]
+        resource = DatasetViewResource.objects.get(
+            id=view_resource_id)
+        export_data = task_param[1] if len(task_param) > 1 else True
+        export_vector_tile = (
+            task_param[2] if len(task_param) > 2 else True
+        )
+        if export_vector_tile:
+            resource.tiling_current_task = None
+            resource.save(update_fields=['tiling_current_task'])
+        if export_data:
+            resource.product_current_task = None
+            resource.save(update_fields=['product_current_task'])
+    elif task.name == 'view_vector_tiles_task':
+        if len(task_param) == 0:
+            return
+        view_id = task_param[0]
+        view = DatasetView.objects.get(id=view_id)
+        view.simplification_current_task = None
+        view.save(update_fields=['simplification_current_task'])
