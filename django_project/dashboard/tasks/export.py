@@ -43,25 +43,6 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
     kwargs = {
         'log_object': obj_log
     }
-    # NOTE: need to handle on how to scale the simplification
-    # before vector tile because right now tile queue is only set
-    # to 1 concurrency.
-    if not view.dataset.is_simplified:
-        # simplification for dataset if tiling config is updated
-        is_simplification_success = simplify_for_dataset(
-            view.dataset,
-            **kwargs
-        )
-        if not is_simplification_success:
-            raise RuntimeError('Dataset Simplification Failed!')
-    # trigger simplification for view
-    is_simplification_success = simplify_for_dataset_view(
-        view,
-        **kwargs
-    )
-    if not is_simplification_success:
-        raise RuntimeError('View Simplification Failed!')
-
     view_resources = DatasetViewResource.objects.filter(
         dataset_view=view
     )
@@ -117,9 +98,36 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
             )
             view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCED
             view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCED
-        view_resource.save()
+        view_resource.save(update_fields=[
+            'entity_count', 'status', 'vector_tile_sync_status',
+            'vector_tiles_progress', 'geojson_progress',
+            'shapefile_progress', 'kml_progress', 'topojson_progress',
+            'shapefile_sync_status', 'kml_sync_status',
+            'topojson_sync_status', 'geojson_sync_status'
+        ])
+
+    # NOTE: need to handle on how to scale the simplification
+    # before vector tile because right now tile queue is only set
+    # to 1 concurrency.
+    if not view.dataset.is_simplified:
+        # simplification for dataset if tiling config is updated
+        is_simplification_success = simplify_for_dataset(
+            view.dataset,
+            **kwargs
+        )
+        if not is_simplification_success:
+            raise RuntimeError('Dataset Simplification Failed!')
+    # trigger simplification for view
+    is_simplification_success = simplify_for_dataset_view(
+        view,
+        **kwargs
+    )
+    if not is_simplification_success:
+        raise RuntimeError('View Simplification Failed!')
+
+    for view_resource in view_resources:
         reset_pending_tile_cache_keys(view_resource)
-        if entity_count > 0:
+        if view_resource.entity_count > 0:
             # check if it's zero tile, if yes, then can enable live vt
             # when there is existing vector tile, live vt will be enabled
             # after zoom level 0 generation
@@ -259,7 +267,6 @@ def generate_view_export_data(view_id: str):
     from georepo.utils.shapefile import generate_view_shapefile
     from georepo.utils.kml import generate_view_kml
     from georepo.utils.topojson import generate_view_topojson
-
     try:
         view = DatasetView.objects.get(id=view_id)
         logger.info(f'Extracting geojson from view {view.name}...')

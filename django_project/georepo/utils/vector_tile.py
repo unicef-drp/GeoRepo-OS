@@ -411,8 +411,14 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
     """
     start = time.time()
     view_resource.status = DatasetView.DatasetViewStatus.PROCESSING
+    view_resource.vector_tile_sync_status = (
+        DatasetViewResource.SyncStatus.SYNCING
+    )
     view_resource.vector_tiles_progress = 0
-    view_resource.save()
+    view_resource.vector_tiles_log = ''
+    view_resource.save(update_fields=['status', 'vector_tile_sync_status',
+                                      'vector_tiles_progress',
+                                      'vector_tiles_log'])
     # Create a sql view
     sql_view = str(view_resource.dataset_view.uuid)
     if not check_view_exists(sql_view):
@@ -586,7 +592,11 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
             view_resource.vector_tiles_size = dir_size
         else:
             view_resource.vector_tiles_size += dir_size
-        view_resource.save()
+        view_resource.save(update_fields=[
+            'vector_tile_detail_logs',
+            'vector_tiles_progress',
+            'vector_tiles_size'
+        ])
     logger.info(
         'Finished vector tile generation for '
         f'view_resource {view_resource.id} '
@@ -617,7 +627,10 @@ def save_view_resource_on_success(view_resource, entity_count):
     view_resource.vector_tiles_updated_at = datetime.now()
     view_resource.vector_tiles_progress = 100
     view_resource.entity_count = entity_count
-    view_resource.save()
+    view_resource.save(update_fields=['status', 'vector_tile_sync_status',
+                                      'vector_tiles_updated_at',
+                                      'vector_tiles_progress',
+                                      'entity_count'])
     # clear any pending tile cache keys
     reset_pending_tile_cache_keys(view_resource)
 

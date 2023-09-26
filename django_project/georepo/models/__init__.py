@@ -14,3 +14,4 @@ from ..models.tag import *  # noqa
 from ..models.dataset_view_tile_config import *  # noqa
 from ..models.role import *  # noqa
 from ..models.access_request import *  # noqa
+from ..models.background_task import *  # noqa

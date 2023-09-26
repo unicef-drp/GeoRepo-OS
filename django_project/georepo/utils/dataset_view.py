@@ -503,7 +503,7 @@ def get_view_tiling_status(view_resource_queryset):
     )
     if error_queryset.exists():
         return 'Error', tiling_progress
-    tiling_status = 'Ready'
+    tiling_status = 'Queued'
     if isclose(tiling_progress, 100, abs_tol=1e-4):
         tiling_status = 'Done'
     elif tiling_progress > 0:
@@ -527,7 +527,7 @@ def get_view_product_status(view_resource_queryset, product=None):
     )
     if error_queryset.exists():
         return 'Error', product_progress
-    product_status = 'Ready'
+    product_status = 'Queued'
     if isclose(product_progress, 100, abs_tol=1e-4):
         product_status = 'Done'
     elif product_progress > 0:

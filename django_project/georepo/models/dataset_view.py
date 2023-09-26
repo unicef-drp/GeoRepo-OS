@@ -194,6 +194,14 @@ class DatasetView(models.Model):
         blank=True
     )
 
+    simplification_current_task = models.ForeignKey(
+        'georepo.BackgroundTask',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='simplification_current_task'
+    )
+
     def get_resource_level_for_user(self, user_privacy_level):
         """
         Return allowed resource based on user level
@@ -627,6 +635,22 @@ class DatasetViewResource(models.Model):
         null=True
     )
 
+    tiling_current_task = models.ForeignKey(
+        'georepo.BackgroundTask',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='tiling_current_view'
+    )
+
+    product_current_task = models.ForeignKey(
+        'georepo.BackgroundTask',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='product_current_view'
+    )
+
     @property
     def resource_id(self):
         return str(self.uuid)
@@ -851,12 +875,14 @@ def view_res_post_save(sender, instance: DatasetViewResource,
         'Done': DatasetView.SyncStatus.SYNCED,
     }
 
-    if tiling_status != 'Ready':
+    if tiling_status != 'Queued':
         view.status = tiling_status_mapping[tiling_status]
         view.vector_tile_sync_status = sync_status_mapping[tiling_status]
         if view.vector_tile_sync_status not in ['Error', 'Done']:
             view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
         view.vector_tiles_progress = vt_progresss
+    else:
+        view.status = DatasetView.DatasetViewStatus.PENDING
 
     if 'Processing' in product_status:
         view.product_sync_status = sync_status_mapping['Processing']

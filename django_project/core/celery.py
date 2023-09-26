@@ -5,6 +5,7 @@ import logging
 from celery import Celery, signals
 from celery.utils.serialization import strtobool
 from celery.worker.control import inspect_command
+from django.utils import timezone
 
 
 # set the default Django settings module for the 'celery' program.
@@ -46,6 +47,138 @@ def after_setup_celery_task_logger(logger, **kwargs):
 def after_setup_celery_logger(logger, **kwargs):
     """ This function sets the 'celery' logger handler and formatter """
     create_celery_logger_handler(logger, False)
+
+
+@signals.after_task_publish.connect
+def task_sent_handler(sender=None, headers=None, body=None, **kwargs):
+    from georepo.models.background_task import BackgroundTask
+    from georepo.utils.celery_helper import on_task_queued
+    # information about task are located in headers for task messages
+    # using the task protocol version 2.
+    info = headers if 'task' in headers else body
+    task_id = info['id']
+    task_args = info['argsrepr'] if 'argsrepr' in info else ''
+    bg_task, _ = BackgroundTask.objects.get_or_create(
+        task_id=task_id,
+        defaults={
+            'name': info['task'],
+            'last_update': timezone.now(),
+            'status': BackgroundTask.BackgroundTaskStatus.QUEUED,
+            'parameters': task_args
+        }
+    )
+    on_task_queued(bg_task)
+
+
+@signals.task_prerun.connect
+def task_prerun_handler(sender=None, task_id=None, task=None,
+                        args=None, **kwargs):
+    from georepo.models.background_task import BackgroundTask
+    from georepo.utils.celery_helper import on_task_queued
+    task, is_created = BackgroundTask.objects.get_or_create(
+        task_id=task_id,
+        defaults={
+            'name': sender.name if sender else '',
+            'parameters': str(args)
+        }
+    )
+    task.last_update = timezone.now()
+    task.started_at = timezone.now()
+    task.status = BackgroundTask.BackgroundTaskStatus.RUNNING
+    task.save(update_fields=['last_update', 'started_at', 'status'])
+    if is_created:
+        on_task_queued(task)
+
+
+@signals.task_success.connect
+def task_success_handler(sender, **kwargs):
+    from georepo.models.background_task import BackgroundTask
+    from georepo.utils.celery_helper import on_task_success
+    task_id = sender.request.id
+    task, _ = BackgroundTask.objects.get_or_create(
+        task_id=task_id,
+        defaults={
+            'name': sender.name if sender else ''
+        }
+    )
+    task.last_update = timezone.now()
+    task.finished_at = timezone.now()
+    task.status = BackgroundTask.BackgroundTaskStatus.COMPLETED
+    task.save(update_fields=['last_update', 'finished_at', 'status'])
+    on_task_success(task)
+
+
+@signals.task_failure.connect
+def task_failure_handler(sender, task_id=None, args=None,
+                         exception=None, **kwargs):
+    from georepo.models.background_task import BackgroundTask
+    task, _ = BackgroundTask.objects.get_or_create(
+        task_id=task_id,
+        defaults={
+            'name': sender,
+            'parameters': str(args)
+        }
+    )
+    task.last_update = timezone.now()
+    task.finished_at = timezone.now()
+    task.status = BackgroundTask.BackgroundTaskStatus.STOPPED
+    task.errors = str(exception)
+    task.save(
+        update_fields=['last_update', 'finished_at', 'status', 'errors']
+    )
+
+
+@signals.task_revoked.connect
+def task_revoked_handler(sender, request = None, **kwargs):
+    from georepo.models.background_task import BackgroundTask
+    task_id = request.id if request else None
+    task, _ = BackgroundTask.objects.get_or_create(
+        task_id=task_id,
+        defaults={
+            'name': sender.name if sender else ''
+        }
+    )
+    task.last_update = timezone.now()
+    task.status = BackgroundTask.BackgroundTaskStatus.CANCELLED
+    task.save(update_fields=['last_update', 'status'])
+
+
+@signals.task_internal_error.connect
+def task_internal_error_handler(sender, task_id=None,
+                                exception=None, **kwargs):
+    from georepo.models.background_task import BackgroundTask
+    task, _ = BackgroundTask.objects.get_or_create(
+        task_id=task_id,
+        defaults={
+            'name': sender.name if sender else ''
+        }
+    )
+    task.last_update = timezone.now()
+    task.status = BackgroundTask.BackgroundTaskStatus.STOPPED
+    task.errors = str(exception)
+    task.save(
+        update_fields=['last_update', 'status', 'errors']
+    )
+
+
+@signals.task_retry.connect
+def task_retry_handler(sender, reason, **kwargs):
+    from georepo.models.background_task import BackgroundTask
+    task_id = sender.request.id
+    task, _ = BackgroundTask.objects.get_or_create(
+        task_id=task_id,
+        defaults={
+            'name': sender.name if sender else ''
+        }
+    )
+    task.last_update = timezone.now()
+    task.celery_retry += 1
+    task.celery_last_retry_at = timezone.now()
+    task.celery_retry_reason = str(reason)
+    task.save(
+        update_fields=['last_update', 'celery_retry',
+                       'celery_last_retry_at', 'celery_retry_reason']
+    )
 
 
 # Load task modules from all registered Django app configs.

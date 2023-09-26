@@ -88,6 +88,8 @@ class DatasetSerializer(serializers.ModelSerializer):
             return obj.SyncStatus.OUT_OF_SYNC.label
         elif obj.SyncStatus.SYNCING in all_status:
             return obj.SyncStatus.SYNCING.label
+        elif all_status == {obj.SyncStatus.ERROR}:
+            return obj.SyncStatus.ERROR.label
 
     def get_permissions(self, obj: Dataset):
         user = self.context['user']

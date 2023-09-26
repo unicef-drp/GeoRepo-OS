@@ -49,6 +49,7 @@ from georepo.models import (
     DatasetViewResourceLog,
     GeorepoRole,
     UserAccessRequest,
+    BackgroundTask
 )
 from georepo.utils.admin import (
     # get_deleted_objects,
@@ -61,6 +62,7 @@ from georepo.utils.directory_helper import (
     convert_size,
     get_folder_size
 )
+from georepo.utils.celery_helper import get_task_status
 
 User = get_user_model()
 
@@ -498,6 +500,7 @@ class DatasetViewAdmin(GuardedModelAdmin):
         'name', 'dataset', 'is_static', 'min_privacy_level',
         'max_privacy_level', 'tiling_status', 'uuid')
     search_fields = ['name', 'dataset__label', 'uuid']
+    list_filter = ["dataset"]
     actions = [generate_view_vector_tiles, create_sql_view_action,
                generate_view_exported_data,
                fix_view_privacy_level,
@@ -754,6 +757,40 @@ class UserAccessRequestAdmin(admin.ModelAdmin):
                      'type', 'status']
 
 
+@admin.action(description='Cancel Task')
+def cancel_background_task(modeladmin, request, queryset):
+    from celery.result import AsyncResult
+    from core.celery import app
+    for background_task in queryset:
+        if background_task.task_id:
+            res = AsyncResult(background_task.task_id)
+            if not res.ready():
+                # find if there is running task and stop it
+                app.control.revoke(background_task.task_id,
+                                   terminate=True,
+                                   signal='SIGKILL')
+
+
+@admin.action(description='Trigger Task Status Check')
+def trigger_task_status_check(modeladmin, request, queryset):
+    from georepo.tasks.celery_sync import check_celery_background_tasks
+    check_celery_background_tasks.delay()
+
+
+class BackgroundTaskAdmin(admin.ModelAdmin):
+    list_display = ('name', 'task_id', 'status', 'started_at', 'finished_at',
+                    'last_update', 'current_status')
+    search_fields = ['name', 'status', 'task_id']
+    actions = [cancel_background_task, trigger_task_status_check]
+    list_filter = ["status", "name"]
+    list_per_page = 30
+
+    def current_status(self, obj: BackgroundTask):
+        if obj.is_possible_interrupted() and obj.task_id:
+            return get_task_status(obj.task_id)
+        return '-'
+
+
 admin.site.register(GeographicalEntity, GeographicalEntityAdmin)
 admin.site.register(Language, LanguageAdmin)
 admin.site.register(EntityType)
@@ -773,6 +810,7 @@ admin.site.register(TagWithDescription, TagAdmin)
 admin.site.register(DatasetViewResource, DatasetViewResourceAdmin)
 admin.site.register(DatasetViewResourceLog, DatasetViewResourceLogAdmin)
 admin.site.register(UserAccessRequest, UserAccessRequestAdmin)
+admin.site.register(BackgroundTask, BackgroundTaskAdmin)
 
 
 # Define inline formset
