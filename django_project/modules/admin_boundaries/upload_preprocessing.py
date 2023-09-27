@@ -38,8 +38,8 @@ def is_valid_upload_session(
         )
         if not is_valid_level0_upload:
             return False, (
-                'There are duplicate admin level 0 '
-                f'with default code {duplicate}'
+                'There are duplicate admin level 0 geometries '
+                f'with default ID: {duplicate}'
             )
     end = time.time()
     if kwargs.get('log_object'):

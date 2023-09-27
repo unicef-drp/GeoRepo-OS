@@ -182,7 +182,7 @@ export default function ViewDetail() {
                         <Tab label="Sync Status" {...a11yProps(4)} disabled={view === null} />
                     )}
                 </Tabs>
-                { tabSelected === 1 && <Box flexDirection={'column'} justifyContent={'center'} display={'flex'} sx={{marginRight: '20px'}}>
+                { view && <Box flexDirection={'column'} justifyContent={'center'} display={'flex'} sx={{marginRight: '20px'}}>
                     <Tooltip title='Download view with possible filters: Country, Admin Level'>
                         <Button disabled={isDownloading}
                             id='download-as-button'

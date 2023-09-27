@@ -779,13 +779,13 @@ def trigger_task_status_check(modeladmin, request, queryset):
 
 class BackgroundTaskAdmin(admin.ModelAdmin):
     list_display = ('name', 'task_id', 'status', 'started_at', 'finished_at',
-                    'last_update', 'current_status')
+                    'last_update', 'celery_status')
     search_fields = ['name', 'status', 'task_id']
     actions = [cancel_background_task, trigger_task_status_check]
     list_filter = ["status", "name"]
     list_per_page = 30
 
-    def current_status(self, obj: BackgroundTask):
+    def celery_status(self, obj: BackgroundTask):
         if obj.is_possible_interrupted() and obj.task_id:
             return get_task_status(obj.task_id)
         return '-'

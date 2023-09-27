@@ -7,7 +7,7 @@ class BackgroundTask(models.Model):
     class BackgroundTaskStatus(models.TextChoices):
         QUEUED = 'Queued', _('Queued')
         RUNNING = 'Running', _('Running')
-        STOPPED = 'Stopped', _('Stopped')
+        STOPPED = 'Stopped', _('Stopped with error')
         COMPLETED = 'Completed', _('Completed')
         CANCELLED = 'Cancelled', _('Cancelled')
         INVALIDATED = 'Invalidated', _('Invalidated')
