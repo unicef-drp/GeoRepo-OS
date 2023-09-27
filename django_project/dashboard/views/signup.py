@@ -4,11 +4,15 @@ from django.urls import reverse
 from django.template.loader import render_to_string
 from django import forms
 from django.http import HttpResponseRedirect
+from django.contrib.auth import get_user_model
 from django.views.generic.edit import FormView
 from captcha.fields import CaptchaField
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from core.models.preferences import SitePreferences
 from georepo.models.access_request import UserAccessRequest
+
+UserModel = get_user_model()
 
 
 class SignUpForm(forms.Form):
@@ -19,6 +23,16 @@ class SignUpForm(forms.Form):
     description = forms.CharField(max_length=512, required=True,
                                   widget=forms.Textarea(attrs={'cols': 30}))
     captcha = CaptchaField()
+
+    def clean_email(self):
+        data = self.cleaned_data['email']
+        # check if user with email exist
+        existing_user = UserModel.objects.filter(
+            email=data
+        ).exists()
+        if existing_user:
+            raise ValidationError('There is existing user with this email!')
+        return data
 
     def send_email(self, request_obj: UserAccessRequest, request):
         admin_emails = SitePreferences.preferences().default_admin_emails
@@ -98,6 +112,11 @@ class SignUpView(FormView):
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             return HttpResponseRedirect('dashboard-view')
+        if 'b2c_user' not in self.request.session:
+            return HttpResponseRedirect('/')
+        if request.GET.get('success', False):
+            if 'b2c_user' in self.request.session:
+                del self.request.session['b2c_user']
         return super(SignUpView, self).get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
