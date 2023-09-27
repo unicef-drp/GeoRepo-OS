@@ -19,7 +19,6 @@ services:
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
-      - ./volumes/django_cache:/home/web/django_cache
 
   celery_beat:
     image: kartoza/georepo_dev
@@ -33,7 +32,6 @@ services:
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
-      - ./volumes/django_cache:/home/web/django_cache
 
   dev:
     image: kartoza/georepo_dev
@@ -48,4 +46,3 @@ services:
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
-      - ./volumes/django_cache:/home/web/django_cache

@@ -19,8 +19,6 @@ services:
       - ./volumes/static:/home/web/static
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
-      - ./volumes/layer_tiles:/opt/layer_tiles
-      - ./volumes/django_cache:/home/web/django_cache
     links:
       - db
       - azurite
@@ -37,8 +35,6 @@ services:
       - ./volumes/static:/home/web/static
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
-      - ./volumes/layer_tiles:/opt/layer_tiles
-      - ./volumes/django_cache:/home/web/django_cache
 
   dev:
     image: kartoza/georepo_dev
@@ -53,8 +49,6 @@ services:
       - ./volumes/static:/home/web/static
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
-      - ./volumes/layer_tiles:/opt/layer_tiles
-      - ./volumes/django_cache:/home/web/django_cache
     links:
       - db
       - worker
