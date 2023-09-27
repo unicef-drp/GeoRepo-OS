@@ -11,6 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ("easyaudit", "__latest__"),
     ]
 
     operations = [
