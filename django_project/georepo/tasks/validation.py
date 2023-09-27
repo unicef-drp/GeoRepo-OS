@@ -43,7 +43,8 @@ def validate_ready_uploads(entity_upload_id, log_obj_id=None):
         NOTIF_TYPE_LAYER_VALIDATION
     )
     start = time.time()
-    if entity_upload_id:
+    upload_log = None
+    if log_obj_id:
         upload_log = EntityUploadStatusLog.objects.get(id=log_obj_id)
     entity_upload = EntityUploadStatus.objects.get(
         id=entity_upload_id

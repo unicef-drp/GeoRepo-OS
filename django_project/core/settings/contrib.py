@@ -97,7 +97,14 @@ DJANGO_EASY_AUDIT_UNREGISTERED_CLASSES_EXTRA = [
     'georepo.DatasetViewTilingConfig',
     'georepo.ViewAdminLevelTilingConfig',
     'georepo.EntitySimplified',
-    'georepo.BackgroundTask'
+    'georepo.BackgroundTask',
+    'georepo.LayerStyle',
+    'georepo.DatasetUserObjectPermission',
+    'georepo.DatasetGroupObjectPermission',
+    'georepo.ModuleUserObjectPermission',
+    'georepo.ModuleGroupObjectPermission',
+    'georepo.DatasetViewUserObjectPermission',
+    'georepo.DatasetViewGroupObjectPermission'
 ]
 DJANGO_EASY_AUDIT_WATCH_AUTH_EVENTS = False
 DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False

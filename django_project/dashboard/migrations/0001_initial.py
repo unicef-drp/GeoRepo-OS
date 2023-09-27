@@ -8,10 +8,15 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     initial = True
-
-    dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-    ]
+    if 'easyaudit' in settings.INSTALLED_APPS:
+        dependencies = [
+            ("easyaudit", "__latest__"),
+            migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        ]
+    else:
+        dependencies = [
+            migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        ]
 
     operations = [
         migrations.CreateModel(
