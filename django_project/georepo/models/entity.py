@@ -247,7 +247,8 @@ class GeographicalEntity(models.Model):
                     models.Index(fields=['label']),
                     models.Index(fields=['level']),
                     models.Index(fields=['revision_number']),
-                    models.Index(fields=['concept_ucode'])
+                    models.Index(fields=['concept_ucode']),
+                    models.Index(fields=['unique_code'])
                 ]
 
     def __str__(self):

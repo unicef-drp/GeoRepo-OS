@@ -41,7 +41,8 @@ class Dataset(models.Model):
     label = models.CharField(
         max_length=255,
         null=False,
-        blank=False
+        blank=False,
+        db_index=True
     )
 
     description = models.TextField(
@@ -289,7 +290,8 @@ class DatasetAdminLevelName(models.Model):
         max_length=255,
         null=False,
         blank=True,
-        default=''
+        default='',
+        db_index=True
     )
 
     level = models.IntegerField(

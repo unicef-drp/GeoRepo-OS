@@ -299,8 +299,8 @@ class EntityUploadStatusLog(models.Model):
                 self.entity_upload_status.upload_session
             )
         if self.entity_upload_status and not self.parent_log:
-            self.parent_log, _ = EntityUploadStatusLog.objects.get_or_create(
+            self.parent_log = EntityUploadStatusLog.objects.filter(
                 layer_upload_session=self.entity_upload_status.upload_session,
                 entity_upload_status__isnull=True
-            )
+            ).first()
         super().save(**kwargs)
