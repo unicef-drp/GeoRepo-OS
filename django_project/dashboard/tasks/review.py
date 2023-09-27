@@ -9,7 +9,9 @@ from dashboard.models.entity_upload import (
     REVIEWING
 )
 from dashboard.models.entity_upload import EntityUploadStatusLog
-from dashboard.models.batch_review import BatchReview, PROCESSING, DONE
+from dashboard.models.batch_review import (
+    BatchReview, PROCESSING, DONE, PENDING
+)
 from georepo.models.dataset import Dataset
 from georepo.utils.module_import import module_function
 from georepo.utils.dataset_view import trigger_generate_dynamic_views
@@ -46,7 +48,6 @@ def review_approval(
         'review',
         'approve_revision'
     )
-    print(kwargs)
     approve_revision(entity_upload, user, **kwargs)
     check_affected_dataset_views.delay(
         dataset.id,
@@ -184,3 +185,36 @@ def process_batch_review(batch_review_id):
         recipient=batch_review.review_by,
         payload=payload
     )
+
+
+@shared_task(name="revert_process_batch_review_approval")
+def revert_process_batch_review_approval(batch_review_id):
+    """Revert approval batch review before re-trigger the task."""
+    logger.info('Running revert_process_batch_review_approval '
+                f'{batch_review_id}')
+    batch_review = BatchReview.objects.get(id=batch_review_id)
+    if not batch_review.is_approve:
+        return
+    batch_review.started_at = datetime.now()
+    batch_review.status = PENDING
+    batch_review.processed_ids = []
+    batch_review.progress = (
+        f'Processing 0/'
+        f'{len(batch_review.upload_ids)}'
+    )
+    batch_review.save(update_fields=['started_at', 'status', 'progress',
+                                     'processed_ids'])
+    for upload_id in batch_review.upload_ids:
+        upload = EntityUploadStatus.objects.filter(id=upload_id).first()
+        if not upload:
+            continue
+        upload_session = upload.upload_session
+        dataset = upload_session.dataset
+        revert_approval_func = module_function(
+            dataset.module.code_name,
+            'review',
+            'revert_approve_revision')
+        revert_approval_func(upload)
+    task = process_batch_review.delay(batch_review.id)
+    batch_review.task_id = task.id
+    batch_review.save(update_fields=['task_id'])

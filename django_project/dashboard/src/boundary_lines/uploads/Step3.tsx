@@ -18,6 +18,8 @@ import Scrollable from "../../components/Scrollable";
 import ColumnHeaderIcon from '../../components/ColumnHeaderIcon'
 import { WizardStepInterface } from "../../models/upload";
 import {utcToLocalDateTimeString} from '../../utils/Helpers';
+import UploadActionStatus from "../../components/UploadActionStatus";
+import AlertMessage from '../../components/AlertMessage';
 
 const URL = '/api/entity-upload-status-list/'
 const READY_TO_REVIEW_URL = '/api/ready-to-review/'
@@ -75,6 +77,8 @@ export default function Step3(props: WizardStepInterface) {
   const [selectedEntities, setSelectedEntities] = useState<number[]>([])
   const url = URL + `?id=${props.uploadSession}`
   const [searchParams, setSearchParams] = useSearchParams()
+  const [actionUuid, setActionUuid] = useState('')
+  const [alertMessage, setAlertMessage] = useState('')
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const [isReadOnly, setIsReadOnly] = useState(false)
@@ -194,15 +198,19 @@ export default function Step3(props: WizardStepInterface) {
       }
     ).then((response) => {
       if (response.status === 200) {
-        // trigger to fetch notification frequently
-        dispatch(setPollInterval(FETCH_INTERVAL_JOB))
-        navigate(ReviewListRoute.path)
+        let _data = response.data
+        if (_data['action_uuid']) {
+          setActionUuid(_data['action_uuid'])
+        } else {
+          console.log('response data ', _data)
+          setAlertMessage('There is unexpected error when submitting selected entities!')
+        }
       }
     }).catch((error) => {
       if (error.response && error.response.data && error.response.data['detail']) {
-        alert(error.response.data['detail'])
+        setAlertMessage(error.response.data['detail'])
       } else {
-        alert("Error importing data")
+        setAlertMessage("Error importing data")
       }
     })
   }
@@ -221,6 +229,37 @@ export default function Step3(props: WizardStepInterface) {
     return <ColumnHeaderIcon title={header} tooltipTitle={header}
       tooltipDescription={<p>{COLUMN_DESCRIPTION[header]}</p>}
     />
+  }
+  
+  const onSessionActionError = (error: string) => {
+    setActionUuid('')
+    // show error to User
+    setAlertMessage(error)
+  }
+
+  const onSessionActionSuccess = (result?: any) => {
+    setActionUuid('')
+    let _defaultError = 'There is an unxpected error from importing of selected entities! Please try again or retry from previous step!'
+    // check if success validation
+    let _isValid = result?.is_valid
+    let _error = result?.error
+    if (result) {
+      if (_isValid) {
+        // go to next step
+        // trigger to fetch notification frequently
+        dispatch(setPollInterval(FETCH_INTERVAL_JOB))
+        if ((window as any).is_admin) {
+          navigate(`${ReviewListRoute.path}?upload=${props.uploadSession}`)
+        } else {
+          navigate(ReviewListRoute.path)
+        }
+      } else {
+        _error = _error || _defaultError
+        setAlertMessage(_error)
+      }
+    } else {
+      setAlertMessage(_defaultError)
+    }
   }
 
   return (
@@ -275,6 +314,9 @@ export default function Step3(props: WizardStepInterface) {
             </Grid>
         </Box>
       </Modal>
+      <UploadActionStatus actionUuid={actionUuid} sessionId={props.uploadSession}
+          title="Processing selected entities" onError={onSessionActionError} onSuccess={onSessionActionSuccess} />
+      <AlertMessage message={alertMessage} onClose={() => setAlertMessage('')} />
       <List
         pageName={'Country'}
         listUrl={''}

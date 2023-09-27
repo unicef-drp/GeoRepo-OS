@@ -63,7 +63,7 @@ def validate_ready_uploads(entity_upload_id, log_obj_id=None):
             entity_upload.original_geographical_entity))
     entity_upload.status = PROCESSING
     entity_upload.started_at = timezone.now()
-    entity_upload.save(update_fields=['status'])
+    entity_upload.save(update_fields=['status', 'started_at'])
 
     validate_layer_file(
         entity_upload,

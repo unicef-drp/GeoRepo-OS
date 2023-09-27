@@ -3,6 +3,8 @@ import logging
 import time
 from core.celery import app
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from dashboard.models import (
     LayerUploadSession, EntityUploadStatusLog,
@@ -15,6 +17,7 @@ from dashboard.models import (
 from georepo.tasks import validate_ready_uploads
 from georepo.utils.module_import import module_function
 
+UserModel = get_user_model()
 logger = logging.getLogger(__name__)
 
 
@@ -57,11 +60,47 @@ def validate_selected_country(upload_session, entities, **kwargs):
     return True, ''
 
 
+def validate_selected_country_for_review(dataset: Dataset, user, uploads):
+    is_importable_func = module_function(
+        dataset.module.code_name,
+        'qc_validation',
+        'is_validation_result_importable'
+    )
+    for entity_upload in uploads:
+        upload_session = entity_upload.upload_session
+        if entity_upload.original_geographical_entity:
+            country = entity_upload.original_geographical_entity.label
+            other_uploads = EntityUploadStatus.objects.filter(
+                original_geographical_entity=(
+                    entity_upload.original_geographical_entity
+                ),
+                upload_session__dataset=upload_session.dataset,
+                status=REVIEWING
+            ).exclude(
+                upload_session=upload_session
+            )
+            if other_uploads.exists():
+                return False, f'{country} has upload being reviewed'
+        else:
+            country = entity_upload.revised_entity_name
+        is_importable, _ = is_importable_func(
+            entity_upload,
+            user
+        )
+        if not is_importable:
+            return False, (
+                f'{country} cannot be imported because '
+                'there is validation error!'
+            )
+    return True, ''
+
+
 @shared_task(name="process_country_selection")
 def process_country_selection(session_action_id):
     """Run process country selection."""
     logger.info(f'Running process_country_selection {session_action_id}')
-    action_data = LayerUploadSessionActionLog.objects.get(id=session_action_id)
+    action_data = LayerUploadSessionActionLog.objects.get(
+        id=session_action_id)
     action_data.on_started()
     start = time.time()
     upload_session = action_data.session
@@ -76,6 +115,8 @@ def process_country_selection(session_action_id):
         **{'log_object': upload_log}
     )
     if not is_selected_valid:
+        end = time.time()
+        upload_log.add_log('process_country_selection', end - start)
         action_data.on_finished(True, {
             'is_valid': False,
             'error': error
@@ -176,7 +217,7 @@ def process_country_selection(session_action_id):
             revised.delete()
 
     end = time.time()
-    upload_log.add_log('ValidateUploadSession.post', end - start)
+    upload_log.add_log('process_country_selection', end - start)
     action_data.on_finished(True, {
         'is_valid': True,
         'error': None
@@ -184,6 +225,78 @@ def process_country_selection(session_action_id):
     # update session step
     upload_session.last_step = 4
     upload_session.save(update_fields=['last_step'])
+
+
+@shared_task(name="process_country_selection_for_review")
+def process_country_selection_for_review(session_action_id, user_id):
+    """Run process country selection for review."""
+    logger.info(f'Running process_country_selection_for_review '
+                f'{session_action_id}')
+    action_data = LayerUploadSessionActionLog.objects.get(
+        id=session_action_id)
+    action_data.on_started()
+    user = UserModel.objects.get(id=user_id)
+    start = time.time()
+    upload_session = action_data.session
+    upload_entities = action_data.data['upload_entities']
+    upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+        layer_upload_session=upload_session,
+        entity_upload_status__isnull=True
+    )
+    upload_entity_ids = upload_entities.split(',')
+    uploads = EntityUploadStatus.objects.filter(
+        id__in=upload_entity_ids
+    )
+    upload_session = LayerUploadSession.objects.filter(
+        id__in=uploads.values('upload_session')
+    )
+    upload_session_obj: LayerUploadSession = upload_session.first()
+    dataset: Dataset = upload_session_obj.dataset
+    # validate the imported countries has not in-review in other session
+    is_selected_valid, error = validate_selected_country_for_review(
+        dataset, user, uploads)
+    if not is_selected_valid:
+        end = time.time()
+        upload_log.add_log('process_country_selection_for_review',
+                           end - start)
+        action_data.on_finished(True, {
+            'is_valid': False,
+            'error': error
+        })
+        return
+    ready_to_review_func = module_function(
+        dataset.module.code_name,
+        'prepare_review',
+        'ready_to_review')
+    ready_to_review_func(uploads)
+    for upload in uploads:
+        # Start the comparison boundary in the background
+        celery_task = run_comparison_boundary.apply_async(
+            (upload.id,),
+            queue='validation'
+        )
+        upload.task_id = celery_task.id
+        upload.save(update_fields=['task_id'])
+    upload_session.update(status=REVIEWING)
+    # remove entities from non-selected country
+    non_selected_uploads = EntityUploadStatus.objects.filter(
+        upload_session__in=upload_session
+    ).exclude(
+        id__in=upload_entity_ids
+    )
+    for upload in non_selected_uploads:
+        if upload.revised_geographical_entity:
+            revised = upload.revised_geographical_entity
+            upload.revised_geographical_entity = None
+            upload.save(update_fields=['revised_geographical_entity'])
+            if revised:
+                revised.delete()
+    end = time.time()
+    upload_log.add_log('process_country_selection_for_review', end - start)
+    action_data.on_finished(True, {
+        'is_valid': True,
+        'error': None
+    })
 
 
 @shared_task(name='run_comparison_boundary')

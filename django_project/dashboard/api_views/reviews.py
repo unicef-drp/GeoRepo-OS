@@ -14,7 +14,8 @@ from dashboard.api_views.common import (
 )
 from dashboard.models import (
     EntityUploadStatus, LayerUploadSession,
-    REVIEWING
+    LayerUploadSessionActionLog,
+    UPLOAD_PROCESS_IMPORT_FOR_REVIEW
 )
 from dashboard.models.batch_review import (
     BatchReview, PENDING, PROCESSING
@@ -27,11 +28,11 @@ from dashboard.models.entity_upload import (
     EntityUploadStatusLog
 )
 from dashboard.serializers.entity_upload import EntityUploadSerializer
-from dashboard.tasks import run_comparison_boundary
 from dashboard.tasks.review import (
     review_approval,
     process_batch_review
 )
+from dashboard.tasks.upload import process_country_selection_for_review
 from georepo.utils.module_import import module_function
 
 
@@ -85,55 +86,37 @@ class ReadyToReview(AzureAuthRequiredMixin, APIView):
                     'detail': 'Empty Entity Uploads'
                 }
             )
-        upload_session = LayerUploadSession.objects.filter(
+        upload_sessions = LayerUploadSession.objects.filter(
             id__in=uploads.values('upload_session')
         )
+        upload_session = upload_sessions.first()
         # validate upload_session is not read only
-        for session in upload_session:
-            if session.is_read_only():
-                return Response(
-                    status=400,
-                    data={
-                        'detail': 'Invalid Upload Session'
-                    }
-                )
-        upload_session_obj = upload_session.first()
-        dataset = upload_session_obj.dataset
-        # validate the imported countries has not in-review in other session
-        is_selected_valid, error = self.validate_selected_country(
-            dataset, request.user, uploads)
-        if not is_selected_valid:
-            return Response(status=400, data={
-                        'detail': error
-                    })
-        ready_to_review_func = module_function(
-            dataset.module.code_name,
-            'prepare_review',
-            'ready_to_review')
-        ready_to_review_func(uploads)
-        for upload in uploads:
-            # Start the comparison boundary in the background
-            run_comparison_boundary.apply_async(
-                (upload.id,),
-                queue='validation'
+        if not upload_session or upload_session.is_read_only():
+            return Response(
+                status=400,
+                data={
+                    'detail': 'Invalid Upload Session'
+                }
             )
-
-        upload_session.update(status=REVIEWING)
-        # remove entities from non-selected country
-        non_selected_uploads = EntityUploadStatus.objects.filter(
-            upload_session__in=upload_session
-        ).exclude(
-            id__in=upload_entity_ids
+        action_data = {
+            'upload_entities': request.data.get('upload_entities')
+        }
+        session_action = LayerUploadSessionActionLog.objects.create(
+            session=upload_session,
+            action=UPLOAD_PROCESS_IMPORT_FOR_REVIEW,
+            data=action_data
         )
-        for upload in non_selected_uploads:
-            if upload.revised_geographical_entity:
-                revised = upload.revised_geographical_entity
-                upload.revised_geographical_entity = None
-                upload.save(update_fields=['revised_geographical_entity'])
-                if revised:
-                    revised.delete()
+        upload_session.current_process = UPLOAD_PROCESS_IMPORT_FOR_REVIEW
+        upload_session.current_process_uuid = session_action.uuid
+        upload_session.save(update_fields=['current_process',
+                                           'current_process_uuid'])
+        # trigger task
+        task_obj = process_country_selection_for_review.delay(
+            session_action.id, request.user.id)
+        session_action.task_id = task_obj.id
+        session_action.save(update_fields=['task_id'])
         return Response(status=200, data={
-            'session_id': upload_session_obj.id
+            'action_uuid': str(session_action.uuid)
         })
 
 

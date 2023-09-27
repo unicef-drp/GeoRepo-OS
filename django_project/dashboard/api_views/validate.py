@@ -120,10 +120,10 @@ class LayerUploadPreprocess(AzureAuthRequiredMixin, APIView):
                 terminate=True,
                 signal='SIGKILL'
             )
-            task_id = layer_upload_preprocessing.delay(
+            task = layer_upload_preprocessing.delay(
                 upload_session.id,
                 upload_log.id
             )
-            upload_session.task_id = task_id
+            upload_session.task_id = task.id
             upload_session.save(update_fields=['task_id'])
         return Response(status=200)
