@@ -3,13 +3,11 @@ version: '3.8'
 volumes:
   static-data:
   media-data:
-  reports-data:
   conf-data:
   tegola-data:
   layer-tiles:
   arcgis-configs:
   database:
-  django-cache:
   nginx-cache:
   backups-data:
 
@@ -59,11 +57,9 @@ x-common-django:
   volumes:
     - static-data:/home/web/static
     - media-data:/home/web/media
-    - reports-data:/home/web/reports
     - tegola-data:/opt/tegola_config
     - layer-tiles:/opt/layer_tiles
     - arcgis-configs:/home/web/arcgis
-    - django-cache:/home/web/django_cache
   restart: on-failure
 
 services:
