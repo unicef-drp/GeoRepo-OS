@@ -89,10 +89,22 @@ DJANGO_EASY_AUDIT_UNREGISTERED_CLASSES_EXTRA = [
     'dashboard.EntityUploadStatusLog',
     'dashboard.BoundaryComparison',
     'dashboard.EntitiesUserConfig',
-    'dashboard.TempUsage'
+    'dashboard.TempUsage',
+    'dashboard.Notification',
+    'georepo.DatasetTilingConfig',
+    'georepo.AdminLevelTilingConfig',
+    'georepo.TemporaryTilingConfig',
+    'georepo.DatasetViewTilingConfig',
+    'georepo.ViewAdminLevelTilingConfig',
+    'georepo.EntitySimplified',
+    'georepo.BackgroundTask'
 ]
 DJANGO_EASY_AUDIT_WATCH_AUTH_EVENTS = False
 DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False
+DJANGO_EASY_AUDIT_CRUD_EVENT_NO_CHANGED_FIELDS_SKIP = True
+from django.core import serializers
+# register custom json serializer to remove geometry field
+serializers.register_serializer('json', 'core.easy_audit')
 
 # watchman settings
 WATCHMAN_AUTH_DECORATOR = 'georepo.views.decorators.superuser_required'

@@ -72,6 +72,7 @@ from dashboard.api_views.common import (
     DatasetReadPermission,
     DatasetManagePermission
 )
+from georepo.tasks.dataset_delete import dataset_delete
 
 DATASET_SHORT_CODE_MAX_LENGTH = 4
 
@@ -573,9 +574,15 @@ class DeleteDataset(AzureAuthRequiredMixin, UserPassesTestMixin, APIView):
         return self.request.user.has_perm('delete_dataset', dataset)
 
     def post(self, request, *args, **kwargs):
-        dataset = Dataset.objects.get(id=kwargs.get('id'))
-        dataset.delete()
-        return Response(status=200)
+        ids = list()
+        ids.append(int(kwargs.get('id')))
+        task = dataset_delete.delay(ids)
+        return Response(
+            status=200,
+            data={
+                'task_id': task.id
+            }
+        )
 
 
 class DatasetDetail(AzureAuthRequiredMixin, DatasetReadPermission, APIView):

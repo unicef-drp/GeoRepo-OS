@@ -29,6 +29,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import Popover from "@mui/material/Popover";
 import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
+import TaskStatus from '../../components/TaskStatus';
 
 const DELETE_UPLOAD_SESSION_URL = '/api/delete-upload-session'
 
@@ -109,6 +110,7 @@ export default function UploadSessionList() {
   }, [])
   const ref = useRef(null)
   const [tableHeight, setTableHeight] = useState(0)
+  const [deleteTaskId, setDeleteTaskId] = useState('')
 
   const FilterIcon: any = FilterAlt
 
@@ -408,8 +410,8 @@ export default function UploadSessionList() {
     ).then(
       response => {
         setDeleteButtonDisabled(false)
-        fetchUploadList()
         setConfirmationOpen(false)
+        setDeleteTaskId(response.data['task_id'])
       }
     ).catch(error => {
       setDeleteButtonDisabled(false)
@@ -441,6 +443,12 @@ export default function UploadSessionList() {
           confirmButtonText='Delete'
           confirmButtonProps={{color: 'error', autoFocus: true}}
       />
+      <TaskStatus dialogTitle='Deleting upload session' errorMessage='Error! There is unexpected error while deleting upload session, please contact Administrator.'
+        successMessage='Upload session has been deleted successfully!' task_id={deleteTaskId} onCompleted={() => {
+          setDeleteTaskId('')
+          fetchUploadList()
+        }}
+        />
     {loading ? <Loading/> :
        <Fragment>
           <div className='AdminList' ref={ref}>

@@ -3,13 +3,14 @@ import logging
 import time
 from core.celery import app
 from django.utils import timezone
-
+from georepo.models.entity import GeographicalEntity
 from dashboard.models import (
     LayerUploadSession, EntityUploadStatusLog,
     STARTED,
     EntityUploadStatus,
     REVIEWING,
-    LayerUploadSessionActionLog
+    LayerUploadSessionActionLog,
+    LayerFile
 )
 from georepo.tasks import validate_ready_uploads
 from georepo.utils.module_import import module_function
@@ -273,3 +274,41 @@ def layer_upload_preprocessing(
             'layer_upload_preprocessing',
             end - start
         )
+
+
+@shared_task(name='delete_layer_upload_session')
+def delete_layer_upload_session(session_id):
+    upload_session = LayerUploadSession.objects.get(id=session_id)
+    all_uploads = upload_session.entityuploadstatus_set.all()
+    upload: EntityUploadStatus
+    for upload in all_uploads:
+        if upload.error_report:
+            if (
+                not upload.error_report.storage.exists(
+                    upload.error_report.name)
+            ):
+                upload.error_report = None
+                upload.save(update_fields=['error_report'])
+    uploads = upload_session.entityuploadstatus_set.exclude(
+        revised_geographical_entity__isnull=True
+    )
+    for upload in uploads:
+        # delete revised entity level 0
+        upload.revised_geographical_entity.delete()
+    layer_files = upload_session.layerfile_set.all()
+    layer_file: LayerFile
+    for layer_file in layer_files:
+        # check exist layer_file.layer_file, if not, then set to null
+        if layer_file.layer_file:
+            if (
+                not layer_file.layer_file.storage.exists(
+                    layer_file.layer_file.name)
+            ):
+                layer_file.layer_file = None
+                layer_file.save(update_fields=['layer_file'])
+        # layer_file FK is not set to cascade
+        # need to manually delete
+        GeographicalEntity.objects.filter(
+            layer_file=layer_file
+        ).delete()
+    upload_session.delete()

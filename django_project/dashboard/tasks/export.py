@@ -10,7 +10,8 @@ from django.conf import settings
 from georepo.utils import (
     generate_view_vector_tiles,
     remove_vector_tiles_dir,
-    generate_view_resource_bbox
+    generate_view_resource_bbox,
+    DirectoryClient
 )
 from georepo.models.dataset_view import DatasetViewResourceLog
 
@@ -299,19 +300,28 @@ def remove_view_resource_data(resource_id: str):
     # remove vector tiles dir
     remove_vector_tiles_dir(resource_id)
     remove_vector_tiles_dir(resource_id, True)
-    export_data_list = [
-        settings.GEOJSON_FOLDER_OUTPUT,
-        settings.SHAPEFILE_FOLDER_OUTPUT,
-        settings.KML_FOLDER_OUTPUT,
-        settings.TOPOJSON_FOLDER_OUTPUT
-    ]
-    for export_dir in export_data_list:
-        export_data = os.path.join(
-            export_dir,
-            resource_id
-        )
-        if os.path.exists(export_data):
-            shutil.rmtree(export_data)
+    export_data_dict = {
+        'geojson': settings.GEOJSON_FOLDER_OUTPUT,
+        'shapefile': settings.SHAPEFILE_FOLDER_OUTPUT,
+        'kml': settings.KML_FOLDER_OUTPUT,
+        'topojson': settings.TOPOJSON_FOLDER_OUTPUT
+    }
+    for output, export_dir in export_data_dict.items():
+        if settings.USE_AZURE:
+            output_dir = (
+                f'media/export_data/{output}/'
+                f'{str(resource_id)}'
+            )
+            client = DirectoryClient(settings.AZURE_STORAGE,
+                                     settings.AZURE_STORAGE_CONTAINER)
+            client.rmdir(output_dir)
+        else:
+            export_data = os.path.join(
+                export_dir,
+                resource_id
+            )
+            if os.path.exists(export_data):
+                shutil.rmtree(export_data)
         temp_export_data = os.path.join(
             export_dir,
             f'temp_{resource_id}'
