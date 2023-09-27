@@ -137,6 +137,7 @@ from dashboard.api_views.logs import (
     ExportLogs
 )
 from dashboard.views.flower_proxy_view import FlowerProxyView
+from dashboard.api_views.task_status import CheckTaskStatus
 
 urlpatterns = [
     path('tinymce/', include('tinymce.urls')),
@@ -229,6 +230,11 @@ urlpatterns = [
         r'api/upload-session/action/(?P<id>\d+)/status/?$',
         CheckUploadSessionActionStatus.as_view(),
         name='check-upload-session-action-status'
+    ),
+    re_path(
+        r'api/background-task/status/?$',
+        CheckTaskStatus.as_view(),
+        name='check-background-task-status'
     ),
     re_path(
         r'api/upload-sessions/?$',

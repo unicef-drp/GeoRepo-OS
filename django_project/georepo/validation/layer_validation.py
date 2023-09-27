@@ -8,7 +8,8 @@ from django.db.models.functions import Cast
 from dashboard.models import (
     LayerUploadSession,
     CANCELED,
-    LayerUploadSessionMetadata
+    LayerUploadSessionMetadata,
+    LayerFile
 )
 from dashboard.models.entity_upload import EntityUploadStatus
 from georepo.utils.module_import import module_function
@@ -229,7 +230,7 @@ def retrieve_layer0_default_codes(
         ).first()
         if session_metadata and session_metadata.adm0_default_codes:
             return session_metadata.adm0_default_codes
-    layer_file = layer_files.first()
+    layer_file: LayerFile = layer_files.first()
     id_field = (
         [id_field['field'] for id_field in layer_file.id_fields
             if id_field['default']][0]
@@ -238,6 +239,8 @@ def retrieve_layer0_default_codes(
         [name_field['field'] for name_field in layer_file.name_fields
             if name_field['default']][0]
     )
+    if not layer_file.layer_file.storage.exists(layer_file.layer_file.name):
+        return layer0_default_codes
     with open_collection_by_file(layer_file.layer_file,
                                  layer_file.layer_type) as features:
         for feature in features:

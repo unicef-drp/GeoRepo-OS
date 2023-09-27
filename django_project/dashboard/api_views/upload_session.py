@@ -33,6 +33,7 @@ from dashboard.api_views.common import (
     DatasetWritePermission
 )
 from core.models.preferences import SitePreferences
+from dashboard.tasks.upload import delete_layer_upload_session
 
 
 class AddUploadSession(AzureAuthRequiredMixin,
@@ -563,21 +564,13 @@ class DeleteUploadSession(AzureAuthRequiredMixin,
                     )
                 }
             )
-        uploads = upload_session.entityuploadstatus_set.exclude(
-            revised_geographical_entity__isnull=True
+        task = delete_layer_upload_session.delay(upload_session.id)
+        return Response(
+            status=200,
+            data={
+                'task_id': task.id
+            }
         )
-        for upload in uploads:
-            # delete revised entity level 0
-            upload.revised_geographical_entity.delete()
-        layer_files = upload_session.layerfile_set.all()
-        for layer_file in layer_files:
-            # layer_file FK is not set to cascade
-            # need to manually delete
-            GeographicalEntity.objects.filter(
-                layer_file=layer_file
-            ).delete()
-        upload_session.delete()
-        return Response(status=200)
 
 
 class ResetUploadSession(AzureAuthRequiredMixin,

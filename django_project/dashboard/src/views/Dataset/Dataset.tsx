@@ -11,14 +11,8 @@ import {postData} from "../../utils/Requests";
 import Loading from "../../components/Loading";
 import AlertDialog from '../../components/AlertDialog'
 import Dataset from '../../models/dataset';
-import Box from "@mui/material/Box";
-import Tabs from "@mui/material/Tabs";
-import Tab from "@mui/material/Tab";
-import TabPanel, {a11yProps} from "../../components/TabPanel";
-import Grid from "@mui/material/Grid";
-import ViewSyncList from "../SyncStatus/List";
-import {parseInt} from "lodash";
 import {ThemeButton} from "../../components/Elements/Buttons";
+import TaskStatus from '../../components/TaskStatus';
 
 const DELETE_DATASET_URL = '/api/delete-dataset'
 
@@ -44,7 +38,6 @@ export default function Dataset() {
   const [confirmationOpen, setConfirmationOpen] = useState<boolean>(false)
   const [confirmationText, setConfirmationText] = useState<string>('')
   const [deleteButtonDisabled, setDeleteButtonDisabled] = useState<boolean>(false)
-  const [tabSelected, setTabSelected] = useState(0)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const customColumnOptions = {
@@ -94,7 +87,8 @@ export default function Dataset() {
         }
     }
   }
-
+  const [deleteTaskId, setDeleteTaskId] = useState('')
+  
   const customColumnHeaderRender = {
     'is_active': (columnMeta: any, handleToggleColumn: Function) => {
         return <span>Status</span>
@@ -168,8 +162,8 @@ export default function Dataset() {
     ).then(
       response => {
         setDeleteButtonDisabled(false)
-        fetchDataset()
         setConfirmationOpen(false)
+        setDeleteTaskId(response.data['task_id'])
       }
     ).catch(error => {
       setDeleteButtonDisabled(false)
@@ -191,6 +185,12 @@ export default function Dataset() {
           confirmButtonText='Delete'
           confirmButtonProps={{color: 'error', autoFocus: true}}
       />
+      <TaskStatus dialogTitle='Deleting dataset' errorMessage='Error! There is unexpected error while deleting dataset, please contact Administrator.'
+        successMessage='Dataset has been deleted successfully!' task_id={deleteTaskId} onCompleted={() => {
+          setDeleteTaskId('')
+          fetchDataset()
+        }}
+        />
       {!loading ?
         <List
           pageName={pageName}
