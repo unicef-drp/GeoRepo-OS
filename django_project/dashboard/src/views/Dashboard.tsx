@@ -1,5 +1,4 @@
 import React, {Suspense, useEffect, useState, useRef} from 'react';
-import {useSearchParams} from "react-router-dom";
 import '../styles/App.scss';
 import '../styles/mui.scss';
 import NavBar from "../components/NavBar";
@@ -104,7 +103,6 @@ export function Header(props: HeaderInterface) {
   const dispatch = useAppDispatch();
   const route = useMatchedRoute(props.routes);
   const menus = useAppSelector(breadcrumbMenus);
-  const [searchParams, setSearchParams] = useSearchParams()
 
   const breadCrumb = () => {
     if (menus.length > 0) {
@@ -113,7 +111,7 @@ export function Header(props: HeaderInterface) {
           menus.map((menu, index) => {
             let _link = menu.link
             if (index === menus.length - 1) {
-              _link += `?${searchParams.toString()}`
+              return <span>{index > 0 ? ' > ' : ''}{menu.name}</span>
             }
             return <Link key={index} to={_link}>{index > 0 ? ' > ' : ''}{menu.name}</Link>
           })
