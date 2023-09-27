@@ -540,6 +540,7 @@ export default function Step3(props: WizardStepInterface) {
       </Grid>
       <Grid item style={{ width: '100%' }}>
         <h3 style={{ textAlign: 'left' }}>Import Data</h3>
+        <Typography sx={{textAlign: 'left'}}>Unpacking spatial datasets and loading them into the database. When this process completes, you will see a list of the Admin 0 entities below.</Typography>
       </Grid>
       <Grid item flexDirection={'column'} ref={listContainerRef} flex={1} style={{ width: '100%' }} className="Step3Content">
       {
