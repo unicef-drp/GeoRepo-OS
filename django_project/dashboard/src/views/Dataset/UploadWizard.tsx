@@ -17,6 +17,7 @@ import Loading from "../../components/Loading";
 import AlertDialog from '../../components/AlertDialog'
 import TabPanel, {a11yProps} from '../../components/TabPanel';
 import { WizardStepInterface, WizardStepElementInterface } from "../../models/upload";
+import TaskStatus from '../../components/TaskStatus';
 
 
 interface UploadWizardInterface {
@@ -59,6 +60,7 @@ export default function UploadWizard (props: UploadWizardInterface) {
   const [ongoingTab, setOngoingTab] = useState(-1)
   const [lastStep, setLastStep] = useState(0)
   const [resetProgressOpen, setResetProgressOpen] = useState(false)
+  const [resetTaskId, setResetTaskId] = useState('')
 
   const initUploadWizardStep = () => {
     if (props.moduleName) {
@@ -217,9 +219,9 @@ export default function UploadWizard (props: UploadWizardInterface) {
     setLoading(true)
     postData(`${CONFIRM_RESET_SESSION_URL}${searchParams.get('session')}/${tabSelected}/`, {}).then(
       response => {
-        initUploadWizardStep()
-        handleResetProgressOnClose()
+        setResetTaskId(response.data['task_id'])
         setLoading(false)
+        handleResetProgressOnClose()
       }
     ).catch(error => {
       setLoading(false)
@@ -244,8 +246,15 @@ export default function UploadWizard (props: UploadWizardInterface) {
           alertDialogTitle={'Confirm edit'}
           alertDialogDescription={'You have results from the next upload steps, editing this page will reset the progress. Are you sure to edit this page?'}
           confirmButtonText='Confirm'
+          alertLoading={loading}
           confirmButtonProps={{color: 'error', autoFocus: true}}
       />
+      <TaskStatus dialogTitle='Reset upload session' errorMessage='Error! There is unexpected error while resetting upload session, please contact Administrator.'
+        successMessage='' task_id={resetTaskId} onCompleted={() => {
+          setResetTaskId('')
+          initUploadWizardStep()
+        }}
+        />
       <Grid container flexDirection='column' flex={1}>
         <Grid item>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

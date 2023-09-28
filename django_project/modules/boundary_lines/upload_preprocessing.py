@@ -54,7 +54,7 @@ def prepare_validation(
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(
-            'admin_boundaries.upload_preprocessing.reset_preprocessing',
+            'boundary_lines.upload_preprocessing.prepare_validation',
             end - start
         )
 
@@ -85,6 +85,6 @@ def reset_preprocessing(
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(
-            'admin_boundaries.upload_preprocessing.reset_preprocessing',
+            'boundary_lines.upload_preprocessing.reset_preprocessing',
             end - start
         )

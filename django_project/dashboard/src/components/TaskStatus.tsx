@@ -30,10 +30,10 @@ export default function TaskStatus(props: TaskStatusInterface) {
             let _status = response.data['status']
             if (TASK_FINAL_STATES.includes(_status)) {
                 if (_status === 'SUCCESS') {
-                    // setActionMessage('')
-                    setActionMessage(successMessage)
+                    if (successMessage) {
+                        setActionMessage(successMessage)
+                    }
                 } else if (_status === 'FAILURE') {
-                    // setActionMessage('')
                     setActionMessage(errorMessage)
                 } else if (_status === 'REVOKED') {
                     setActionMessage('The task has been cancelled! Please try again later.')

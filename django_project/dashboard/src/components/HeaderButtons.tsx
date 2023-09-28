@@ -31,7 +31,7 @@ import {
 import Dataset from '../models/dataset';
 import { ActiveBatchReview } from '../models/review';
 import {setPollInterval, FETCH_INTERVAL_JOB} from "../reducers/notificationPoll";
-import {setCurrentFilters as setInitialFilters} from "../reducers/viewSyncTable";
+import TaskStatus from './TaskStatus';
 
 interface UploadDataButtonInterface {
   next?: any,
@@ -47,7 +47,6 @@ const ADD_UPLOAD_SESSION_URL = '/api/add-upload-session/'
 const FETCH_PENDING_REVIEWS_URL = '/api/review/batch/uploads/'
 const FETCH_CURRENT_REVIEW_URL = '/api/review/batch/identifier/'
 const SUBMIT_BATCH_REVIEW_URL = '/api/review/batch/'
-const TRIGGER_SYNC_API_URL = '/api/sync-view/'
 const CONFIRM_RESET_SESSION_URL = '/api/reset-upload-session/'
 const LOAD_UPLOAD_SESSION_DETAIL_URL = '/api/upload-session/'
 
@@ -351,6 +350,7 @@ export const CancelActiveUploadButton = () => {
   const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
   const [alertLoading, setAlertLoading] = useState<boolean>(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
+  const [resetTaskId, setResetTaskId] = useState('')
 
   useEffect(() => {
     fetchUploadSessionStatus()
@@ -383,8 +383,7 @@ export const CancelActiveUploadButton = () => {
       response => {
         setAlertLoading(false)
         setAlertOpen(false)
-        setConfirmMessage('The upload has been cancelled, redirecting...')
-        redirectAfterCancelled()
+        setResetTaskId(response.data['task_id'])
       }
     ).catch(error => {
       setAlertLoading(false)
@@ -411,6 +410,12 @@ export const CancelActiveUploadButton = () => {
                  alertLoading={alertLoading}
                  alertDialogTitle={alertDialogTitle}
                  alertDialogDescription={alertDialogDescription} />
+      <TaskStatus dialogTitle='Cancel upload session' errorMessage='Error! There is unexpected error while cancelling upload session, please contact Administrator.'
+        successMessage='The upload has been cancelled, redirecting...' task_id={resetTaskId} onCompleted={() => {
+          setResetTaskId('')
+          redirectAfterCancelled()
+        }}
+        />
       { isActiveUpload &&
         <CancelButton onClick={cancelActiveUpload} useIcon={false} text='Cancel Upload' />
       }

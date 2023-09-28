@@ -238,6 +238,11 @@ def reset_preprocessing(
         if upload.revised_geographical_entity:
             upload.revised_geographical_entity.delete()
     uploads.delete()
+    # delete temp entities
+    existing_entities = EntityTemp.objects.filter(
+        upload_session=upload_session
+    )
+    existing_entities._raw_delete(existing_entities.db)
     upload_session.auto_matched_parent_ready = False
     upload_session.status = PENDING
     upload_session.task_id = ''
