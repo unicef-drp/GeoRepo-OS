@@ -3,17 +3,21 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.test import TestCase, override_settings
 
 from core.settings.utils import absolute_path
-from georepo.models.entity import GeographicalEntity
 from georepo.tests.model_factories import (
     GeographicalEntityF,
     DatasetF,
     LanguageF
 )
-from dashboard.models import EntityUploadStatus, EntityUploadChildLv1
+from dashboard.models import (
+    EntityUploadStatus, EntityUploadChildLv1,
+    EntityTemp
+)
 from dashboard.tests.model_factories import LayerFileF, LayerUploadSessionF
 from dashboard.tools.validate_layer_file_0 import (
-    preprocess_layer_file_0,
-    remove_temp_admin_level_0
+    preprocess_layer_file_0
+)
+from modules.admin_boundaries.upload_preprocessing import (
+    read_temp_layer_file
 )
 from modules.admin_boundaries.entity_parent_matching import (
     do_search_parent_entity_by_geometry,
@@ -190,16 +194,15 @@ class TestEntityParentMatching(TestCase):
             layer_file=geojson_1
         )
         # pre-process level0
+        read_temp_layer_file(upload_session, layer_file_0)
         entity_uploads = preprocess_layer_file_0(
-            upload_session,
-            create_temp_entity_level0=True
+            upload_session
         )
         # do parent matching for level0
         do_process_layer_files_for_parent_matching_level0(upload_session,
                                                           entity_uploads)
-        remove_temp_admin_level_0(upload_session)
-        # check no temp_admin_level_0
-        self.assertFalse(GeographicalEntity.objects.filter(
+        # check has EntityTemp
+        self.assertTrue(EntityTemp.objects.filter(
             layer_file=layer_file_0
         ).exists())
         # check there are EntityUploadChildLv1 records

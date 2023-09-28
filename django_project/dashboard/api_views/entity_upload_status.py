@@ -12,7 +12,7 @@ from azure_auth.backends import AzureAuthRequiredMixin
 from georepo.models.entity import GeographicalEntity
 from georepo.models.dataset import DatasetAdminLevelName
 from dashboard.models import LayerUploadSession, EntityUploadStatus, \
-    EntityUploadChildLv1
+    EntityUploadChildLv1, STARTED
 from dashboard.serializers.upload_session import DetailUploadSessionSerializer
 from georepo.utils.module_import import module_function
 from dashboard.api_views.common import EntityUploadStatusReadPermission
@@ -71,6 +71,11 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
             result.append(sorted)
         return result
 
+    def get_status(self, status):
+        if status == STARTED:
+            return 'Queued'
+        return status
+
     def get(self, request, *args, **kwargs):
         upload_session_id = request.GET.get('id', None)
         upload_session = LayerUploadSession.objects.get(
@@ -113,7 +118,7 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
                 ),
                 'started at': entity_upload.started_at.astimezone(tz)
                 .strftime(f"%d %B %Y %H:%M:%S {settings.TIME_ZONE}"),
-                'status': entity_upload.status,
+                'status': self.get_status(entity_upload.status),
                 'error_summaries': self.sort_error_summaries(
                     entity_upload.summaries),
                 'error_report': (

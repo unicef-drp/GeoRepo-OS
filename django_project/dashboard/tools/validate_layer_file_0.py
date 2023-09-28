@@ -1,10 +1,8 @@
 import time
 from typing import Tuple, List
-import json
-from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 
 from georepo.models import (
-    GeographicalEntity, EntityType
+    GeographicalEntity
 )
 from georepo.validation.layer_validation import (
     retrieve_layer0_default_codes
@@ -63,7 +61,6 @@ def validate_layer_file_0(
 
 def preprocess_layer_file_0(
     upload_session: LayerUploadSession,
-    create_temp_entity_level0: bool = False,
     **kwargs
 ) -> List[EntityUploadStatus]:
     """
@@ -106,8 +103,6 @@ def preprocess_layer_file_0(
                 )
             )
             results.append(entity_upload)
-    if create_temp_entity_level0:
-        create_temp_admin_level_0(upload_session)
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(
@@ -115,74 +110,3 @@ def preprocess_layer_file_0(
             end - start
         )
     return results
-
-
-def create_temp_admin_level_0(upload_session: LayerUploadSession):
-    """
-    Entities admin level 0 may be generated when auto parent matching
-    during upload level 0
-    """
-    entity_type = EntityType.objects.all().first()
-    if not entity_type:
-        entity_type = EntityType.objects.get_by_label(
-            'Country'
-        )
-    # find layer file level 0 from the session
-    layer_files = upload_session.layerfile_set.filter(level=0)
-    if not layer_files.exists():
-        # ignore if no layer file 0 exists
-        return
-    layer_file_0 = layer_files.first()
-    id_field = (
-        [id_field['field'] for id_field in layer_file_0.id_fields
-            if id_field['default']][0]
-    )
-    layer0_default_codes = []
-    with open_collection_by_file(layer_file_0.layer_file,
-                                 layer_file_0.layer_type) as features:
-        for feature in features:
-            # default code
-            entity_id = (
-                str(feature['properties'][id_field]) if
-                id_field in feature['properties'] else None
-            )
-            if not entity_id:
-                # skip if entity_id not found
-                continue
-            if entity_id in layer0_default_codes:
-                continue
-            layer0_default_codes.append(entity_id)
-            geom_str = json.dumps(feature['geometry'])
-            geom = GEOSGeometry(geom_str)
-            if isinstance(geom, Polygon):
-                geom = MultiPolygon([geom])
-            # create entity level 0 temporary to do parent matching
-            GeographicalEntity.objects.create(
-                level=0,
-                internal_code=entity_id,
-                layer_file=layer_file_0,
-                dataset=upload_session.dataset,
-                type=entity_type,
-                geometry=geom,
-                is_approved=False,
-                is_validated=False,
-                is_latest=False
-            )
-        delete_tmp_shapefile(features.path)
-
-
-def remove_temp_admin_level_0(upload_session: LayerUploadSession):
-    """
-    This function is to remove entities admin level 0 may be generated
-    when auto parent matching during upload level 0.
-    """
-    layer_files0 = upload_session.layerfile_set.filter(level=0)
-    if layer_files0.exists():
-        layer_file0 = layer_files0.first()
-        temp_entities = GeographicalEntity.objects.filter(
-            dataset=upload_session.dataset,
-            level=0,
-            is_approved=False,
-            layer_file=layer_file0
-        )
-        temp_entities.delete()

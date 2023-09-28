@@ -17,7 +17,7 @@ from django.db.models.functions import Cast
 
 from dashboard.models import LayerFile, ERROR
 from dashboard.models.entity_upload import EntityUploadStatus, VALID, \
-    EntityUploadChildLv1
+    EntityUploadChildLv1, EntityTemp
 from dashboard.models.layer_upload_session import LayerUploadSession
 from georepo.models.entity import GeographicalEntity, EntityType, EntityName,\
     EntityId
@@ -360,6 +360,17 @@ def do_valid_nodes_check(geom_str: str,
     return geom
 
 
+def get_temp_entity_count(upload_session: LayerUploadSession, level: int,
+                          ancestor_id: str):
+    if level == 0:
+        return 1
+    return EntityTemp.objects.filter(
+        upload_session=upload_session,
+        level=level,
+        ancestor_entity_id=ancestor_id
+    ).count()
+
+
 def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
     """
     Validate all layer_files from upload session against
@@ -471,6 +482,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
             # Check parent entities
             parent_entities = None
             parent_entities_codes = []
+            total_features = 1
             if level > 0 and ancestor:
                 parent_level = level - 1
                 if (
@@ -487,17 +499,19 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                         dataset=entity_upload.upload_session.dataset,
                         revision_number=revision
                     )
+                total_features = get_temp_entity_count(
+                    entity_upload.upload_session,
+                    level,
+                    ancestor.internal_code
+                )
             if parent_entities:
                 parent_entities_codes = parent_entities.values_list(
                     'internal_code', flat=True
                 )
 
-            total_features = (
-                children_lv1.count() if level == 1 else
-                len(layer)
-            )
             entity_upload.progress = (
-                f'Level {level} (1/{total_features})'
+                f'Level {level} - Validation Checks '
+                f'(1 of {total_features} polygons)'
             )
             entity_upload.save(update_fields=['progress'])
             layer_index = 0
@@ -602,11 +616,11 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                             ErrorType.PARENT_ID_FIELD_ERROR.value] += 1
 
                 entity_upload.progress = (
-                    f'Level {level} '
-                    f'({feature_included_idx + 1}/{total_features})'
+                    f'Level {level} - Validation Checks '
+                    f'({feature_included_idx + 1} of '
+                    f'{total_features} polygons)'
                 )
                 entity_upload.save(update_fields=['progress'])
-                feature_included_idx += 1
                 # Check name fields
                 name_fields = []
                 label = '-'
@@ -925,7 +939,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                         'privacy_level': geo_privacy_level
                     }
                 )
-
+                feature_included_idx += 1
                 for name_field in name_fields:
                     try:
                         EntityName.objects.create(
@@ -963,18 +977,15 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
             # for contained_check + gap_check at level 0,
             # we cannot do at this run_validation since
             # this processes only 1 adm 0 entity
-            # run contained check to entities
             if level > 0:
-                entity_upload.progress = (
-                    f'Level {level} - check feature within other features'
-                )
-                entity_upload.save(update_fields=['progress'])
+                feature_included_idx = 0
                 entities = GeographicalEntity.objects.filter(
                     dataset=dataset,
                     layer_file=layer_file,
                     level=level,
                     ancestor=entity_upload.revised_geographical_entity
                 )
+                # we can do contained check if all features have been inserted
                 for entity in entities:
                     is_valid = do_contained_check(
                         entity,
@@ -982,6 +993,13 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                         layer_file,
                         **kwargs
                     )
+                    entity_upload.progress = (
+                        f'Level {level} - Contained Check '
+                        f'({feature_included_idx + 1} of '
+                        f'{total_features} polygons)'
+                    )
+                    entity_upload.save(update_fields=['progress'])
+                    feature_included_idx += 1
                     if is_valid:
                         continue
                     # find layer_error from validation_summaries
@@ -1002,7 +1020,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                     level_error_report[
                         ErrorType.WITHIN_OTHER_FEATURES.value] += 1
                 entity_upload.progress = (
-                    f'Level {level} - check gaps'
+                    f'Level {level} - Gaps Check ({total_features} polygons)'
                 )
                 entity_upload.save(update_fields=['progress'])
                 # run gaps check for entities at current parent
