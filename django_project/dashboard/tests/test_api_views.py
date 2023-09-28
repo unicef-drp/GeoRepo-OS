@@ -532,6 +532,11 @@ class TestApiViews(TestCase):
         'process_country_selection_for_review.delay',
         mock.Mock(side_effect=mocked_process_layer_upload_session)
     )
+    @mock.patch(
+        'dashboard.tasks.upload.'
+        'run_comparison_boundary.apply_async',
+        mock.Mock(side_effect=mocked_process_layer_upload_session)
+    )
     def test_send_to_ready_reviews(self):
         user = UserF.create(
             username='bob', is_staff=True)
