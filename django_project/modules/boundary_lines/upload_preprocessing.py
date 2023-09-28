@@ -3,7 +3,7 @@ from typing import Tuple
 from core.celery import app
 from georepo.models.entity import GeographicalEntity
 from dashboard.models.layer_upload_session import (
-    LayerUploadSession, PRE_PROCESSING, PENDING
+    LayerUploadSession, PRE_PROCESSING, PENDING, CANCELED
 )
 from dashboard.models.entity_upload import EntityUploadStatus, STARTED
 from dashboard.models.layer_file import LayerFile
@@ -76,7 +76,8 @@ def reset_preprocessing(
     uploads = upload_session.entityuploadstatus_set.all()
     uploads.delete()
     upload_session.auto_matched_parent_ready = False
-    upload_session.status = PENDING
+    if upload_session.status != CANCELED:
+        upload_session.status = PENDING
     upload_session.current_process = None
     upload_session.current_process_uuid = None
     upload_session.save(update_fields=['auto_matched_parent_ready', 'status',

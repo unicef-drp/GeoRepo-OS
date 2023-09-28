@@ -4,7 +4,7 @@ from typing import Tuple
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from core.celery import app
 from dashboard.models.layer_upload_session import (
-    LayerUploadSession, PRE_PROCESSING, PENDING
+    LayerUploadSession, PRE_PROCESSING, PENDING, CANCELED
 )
 from dashboard.models.entity_upload import EntityTemp
 from dashboard.models.layer_file import LayerFile
@@ -244,7 +244,8 @@ def reset_preprocessing(
     )
     existing_entities._raw_delete(existing_entities.db)
     upload_session.auto_matched_parent_ready = False
-    upload_session.status = PENDING
+    if upload_session.status != CANCELED:
+        upload_session.status = PENDING
     upload_session.task_id = ''
     upload_session.current_process = None
     upload_session.current_process_uuid = None
