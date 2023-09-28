@@ -425,3 +425,40 @@ def delete_layer_upload_session(session_id):
             layer_file=layer_file
         ).delete()
     upload_session.delete()
+
+
+@shared_task(name='reset_upload_session')
+def reset_upload_session(session_id, preprocessing, qc_validation, cancel):
+    """Reset step or cancel upload."""
+    logger.info(
+        'Running reset_upload_session '
+        f'for session {session_id}: preprocessing {preprocessing} '
+        f'qc_validation {qc_validation} cancel {cancel}'
+    )
+    upload_session = LayerUploadSession.objects.get(id=session_id)
+    if qc_validation:
+        reset_func = module_function(
+            upload_session.dataset.module.code_name,
+            'qc_validation',
+            'reset_qc_validation'
+        )
+        reset_func(upload_session)
+    if preprocessing:
+        reset_func = module_function(
+            upload_session.dataset.module.code_name,
+            'upload_preprocessing',
+            'reset_preprocessing'
+        )
+        reset_func(upload_session)
+    if cancel and not preprocessing:
+        reset_func = module_function(
+            upload_session.dataset.module.code_name,
+            'upload_preprocessing',
+            'reset_preprocessing'
+        )
+        reset_func(upload_session)
+    logger.info(
+        'Finished reset_upload_session '
+        f'for session {session_id}: preprocessing {preprocessing} '
+        f'qc_validation {qc_validation} cancel {cancel}'
+    )

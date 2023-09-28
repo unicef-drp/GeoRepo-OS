@@ -33,7 +33,10 @@ from dashboard.api_views.common import (
     DatasetWritePermission
 )
 from core.models.preferences import SitePreferences
-from dashboard.tasks.upload import delete_layer_upload_session
+from dashboard.tasks.upload import (
+    delete_layer_upload_session,
+    reset_upload_session
+)
 
 
 class AddUploadSession(AzureAuthRequiredMixin,
@@ -594,24 +597,6 @@ class ResetUploadSession(AzureAuthRequiredMixin,
             return True
         return False
 
-    def reset_preprocessing(self,
-                            upload_session: LayerUploadSession):
-        reset_func = module_function(
-            upload_session.dataset.module.code_name,
-            'upload_preprocessing',
-            'reset_preprocessing'
-        )
-        reset_func(upload_session)
-
-    def reset_qc_validation(self,
-                            upload_session: LayerUploadSession):
-        reset_func = module_function(
-            upload_session.dataset.module.code_name,
-            'qc_validation',
-            'reset_qc_validation'
-        )
-        reset_func(upload_session)
-
     def post(self, request, *args, **kwargs):
         upload_session = LayerUploadSession.objects.get(
             id=kwargs.get('id')
@@ -628,18 +613,26 @@ class ResetUploadSession(AzureAuthRequiredMixin,
         existing_uploads = upload_session.entityuploadstatus_set.exclude(
             status=''
         )
+        preprocessing = False
+        qc_validation = False
         if existing_uploads.exists():
-            self.reset_qc_validation(upload_session)
+            qc_validation = True
             if step < 3:
-                # modified at field mapping/layer file uploads
-                self.reset_preprocessing(upload_session)
+                preprocessing = True
         else:
-            self.reset_preprocessing(upload_session)
+            preprocessing = True
+        task = reset_upload_session.delay(
+            upload_session.id, preprocessing, qc_validation, reset_last_step)
         if reset_last_step:
             # set the status to cancel
             upload_session.status = CANCELED
             upload_session.save(update_fields=['status'])
-        return Response(status=200)
+        return Response(
+            status=200,
+            data={
+                'task_id': task.id
+            }
+        )
 
 
 class CheckUploadSessionActionStatus(AzureAuthRequiredMixin,
