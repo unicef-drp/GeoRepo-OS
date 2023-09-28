@@ -84,3 +84,6 @@ class BackgroundTask(models.Model):
                 diff_seconds = timezone.now() - self.last_update
                 return diff_seconds.total_seconds() >= 1800
         return False
+
+    def __str__(self) -> str:
+        return self.name

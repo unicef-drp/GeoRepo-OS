@@ -25,7 +25,7 @@ def mocked_auto_parent_matching(*args, **kwargs):
     upload.auto_matched_parent_ready = True
     upload.status = 'Pending'
     upload.save()
-    return True
+    return DummyTask('1')
 
 
 def mocked_revoke_running_task(*args, **kwargs):

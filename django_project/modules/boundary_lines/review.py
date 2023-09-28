@@ -4,7 +4,7 @@ import time
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from dashboard.models.entity_upload import (
-    EntityUploadStatus, REJECTED, APPROVED
+    EntityUploadStatus, REJECTED, APPROVED, REVIEWING
 )
 from dashboard.models.layer_upload_session import (
     DONE
@@ -163,4 +163,22 @@ def approve_historical_upload(entity_upload: EntityUploadStatus, user):
         is_approved=True,
         approved_date=datetime.datetime.now(),
         approved_by=user
+    )
+
+
+def revert_approve_revision(entity_upload: EntityUploadStatus):
+    """Revert approval before re-approve."""
+    # update upload status back to REVIEWING
+    entity_upload.status = REVIEWING
+    entity_upload.save(update_fields=['status'])
+    new_entities = GeographicalEntity.objects.filter(
+        layer_file__in=entity_upload
+        .upload_session.layerfile_set.all()
+    ).order_by('internal_code')
+    # set concept ucode to be empty
+    new_entities.update(
+        is_approved=False,
+        approved_date=None,
+        approved_by=None,
+        concept_ucode=''
     )

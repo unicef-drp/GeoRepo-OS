@@ -13,7 +13,8 @@ def ready_to_review(entity_uploads):
     """Update entity_uploads to REVIEWING."""
     entity_uploads.update(
         status=REVIEWING,
-        progress='Pending Boundary Matching'
+        progress='Pending Boundary Matching',
+        comparison_data_ready=False
     )
 
 

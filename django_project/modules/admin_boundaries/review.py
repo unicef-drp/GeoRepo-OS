@@ -4,7 +4,7 @@ from django.utils import timezone
 from georepo.models.entity import GeographicalEntity
 from georepo.models.dataset import Dataset
 from dashboard.models.entity_upload import (
-    EntityUploadStatus, REJECTED, APPROVED
+    EntityUploadStatus, REJECTED, APPROVED, REVIEWING
 )
 from dashboard.models.layer_upload_session import (
     DONE, PENDING
@@ -35,10 +35,11 @@ def reject_revision(entity_upload: EntityUploadStatus):
     entity_upload.upload_session.save()
 
     # Delete new entities after rejected
-    new_entities = (
-        entity_upload.revised_geographical_entity.all_children()
-    )
-    new_entities.delete()
+    if entity_upload.revised_geographical_entity:
+        new_entities = (
+            entity_upload.revised_geographical_entity.all_children()
+        )
+        new_entities.delete()
 
 
 def approve_revision(
@@ -201,3 +202,20 @@ def generate_default_views(dataset: Dataset):
     if dataset.generate_adm0_default_views:
         generate_default_view_adm0_latest(dataset)
         generate_default_view_adm0_all_versions(dataset)
+
+
+def revert_approve_revision(entity_upload: EntityUploadStatus):
+    """Revert approval before re-approve."""
+    # update upload status back to REVIEWING
+    entity_upload.status = REVIEWING
+    entity_upload.save(update_fields=['status'])
+    new_entities = (
+        get_new_entities_in_upload(entity_upload)
+    )
+    # set concept ucode to be empty
+    new_entities.update(
+        is_approved=False,
+        approved_date=None,
+        approved_by=None,
+        concept_ucode=''
+    )

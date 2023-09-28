@@ -21,6 +21,8 @@ import Step4OverlapsError from './Step4OverlapsError'
 import ColumnHeaderIcon from '../../components/ColumnHeaderIcon'
 import { WizardStepInterface } from "../../models/upload";
 import {utcToLocalDateTimeString} from '../../utils/Helpers';
+import UploadActionStatus from "../../components/UploadActionStatus";
+import AlertMessage from '../../components/AlertMessage';
 
 const URL = '/api/entity-upload-status-list/'
 const READY_TO_REVIEW_URL = '/api/ready-to-review/'
@@ -164,10 +166,13 @@ export default function Step4(props: WizardStepInterface) {
   const [hasErrorOverlaps, setHasErrorOverlaps] = useState(false)
   const [viewOverlapId, setViewOverlapId] = useState<number>(null)
   const [allFinished, setAllFinished] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(false)
   const [openErrorModal, setOpenErrorModal] = useState<boolean>(false)
   const [selectedEntities, setSelectedEntities] = useState<number[]>([])
   const url = URL + `?id=${props.uploadSession}`
   const [searchParams, setSearchParams] = useSearchParams()
+  const [actionUuid, setActionUuid] = useState('')
+  const [alertMessage, setAlertMessage] = useState('')
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const [viewOverlapError, setViewOverlapError] = useState(false)
@@ -295,27 +300,29 @@ export default function Step4(props: WizardStepInterface) {
   }
 
   const handleImportClick = () => {
+    setLoading(true)
     postData(
       READY_TO_REVIEW_URL,
       {
         'upload_entities': selectedEntities.join(',')
       }
     ).then((response) => {
+      setLoading(false)
       if (response.status === 200) {
-        // trigger to fetch notification frequently
-        dispatch(setPollInterval(FETCH_INTERVAL_JOB))
-        if ((window as any).is_admin && 'session_id' in response.data) {
-          let _id = response.data['session_id']
-          navigate(`${ReviewListRoute.path}?upload=${_id}`)
+        let _data = response.data
+        if (_data['action_uuid']) {
+          setActionUuid(_data['action_uuid'])
         } else {
-          navigate(ReviewListRoute.path)
+          console.log('response data ', _data)
+          setAlertMessage('There is unexpected error when submitting selected countries!')
         }
       }
     }).catch((error) => {
+      setLoading(false)
       if (error.response && error.response.data && error.response.data['detail']) {
-        alert(error.response.data['detail'])
+        setAlertMessage(error.response.data['detail'])
       } else {
-        alert("Error importing data")
+        setAlertMessage("Error importing data")
       }
     })
   }
@@ -326,14 +333,35 @@ export default function Step4(props: WizardStepInterface) {
     return rowData['is_importable']
   }
 
-  const getColumnHeader = (header: string) => {
-    if (!(header in COLUMN_DESCRIPTION)) {
-      return header
-    }
+  const onSessionActionError = (error: string) => {
+    setActionUuid('')
+    // show error to User
+    setAlertMessage(error)
+  }
 
-    return <ColumnHeaderIcon title={header} tooltipTitle={header}
-      tooltipDescription={<p>{COLUMN_DESCRIPTION[header]}</p>}
-    />
+  const onSessionActionSuccess = (result?: any) => {
+    setActionUuid('')
+    let _defaultError = 'There is an unxpected error from importing of selected countries! Please try again or retry from previous step!'
+    // check if success validation
+    let _isValid = result?.is_valid
+    let _error = result?.error
+    if (result) {
+      if (_isValid) {
+        // go to next step
+        // trigger to fetch notification frequently
+        dispatch(setPollInterval(FETCH_INTERVAL_JOB))
+        if ((window as any).is_admin) {
+          navigate(`${ReviewListRoute.path}?upload=${props.uploadSession}`)
+        } else {
+          navigate(ReviewListRoute.path)
+        }
+      } else {
+        _error = _error || _defaultError
+        setAlertMessage(_error)
+      }
+    } else {
+      setAlertMessage(_defaultError)
+    }
   }
 
   return (
@@ -407,6 +435,9 @@ export default function Step4(props: WizardStepInterface) {
           )}
         </Box>
       </Modal>
+      <UploadActionStatus actionUuid={actionUuid} sessionId={props.uploadSession}
+          title="Processing selected countries" onError={onSessionActionError} onSuccess={onSessionActionSuccess} />
+      <AlertMessage message={alertMessage} onClose={() => setAlertMessage('')} />
       <List
         pageName={'Country'}
         listUrl={''}
@@ -428,7 +459,7 @@ export default function Step4(props: WizardStepInterface) {
             <Grid item>
               { !props.isReadOnly && (
                 <Button variant="contained"
-                    disabled={selectedEntities.length == 0}
+                    disabled={loading || (selectedEntities.length == 0)}
                     onClick={handleImportClick}
                 >Import</Button>
               )}

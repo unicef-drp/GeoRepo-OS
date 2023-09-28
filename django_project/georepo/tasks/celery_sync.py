@@ -5,9 +5,11 @@ from ast import literal_eval as make_tuple
 from georepo.models import (
     BackgroundTask,
     DatasetViewResource,
-    DatasetView
+    DatasetView,
+    Dataset
 )
 from georepo.utils.celery_helper import get_task_status, TASK_NOT_FOUND
+from georepo.utils.module_import import module_function
 
 
 logger = logging.getLogger(__name__)
@@ -30,12 +32,16 @@ def check_celery_background_tasks():
             continue
         if not task.is_possible_interrupted():
             continue
-        # check using flower API
-        status = get_task_status(task.task_id)
-        if status == states.FAILURE:
-            handle_task_failure(task)
-        elif status == TASK_NOT_FOUND:
-            handle_task_interrupted(task)
+        try:
+            # check using flower API
+            status = get_task_status(task.task_id)
+            if status == states.FAILURE:
+                handle_task_failure(task)
+            elif status == TASK_NOT_FOUND:
+                handle_task_interrupted(task)
+        except Exception as ex:
+            logger.error(f'Failed to handle interrupted task: {str(task)}')
+            logger.error(ex)
 
 
 def on_task_invalidated(task: BackgroundTask):
@@ -97,9 +103,24 @@ def handle_task_failure(task: BackgroundTask):
 
 
 def handle_task_interrupted(task: BackgroundTask):
+    from dashboard.models import (
+        EntityUploadStatus, STARTED, REVIEWING,
+        LayerUploadSession, PROCESSING_APPROVAL,
+        BatchReview, PENDING
+    )
     from dashboard.tasks.export import (
         generate_view_resource_vector_tiles_task,
         view_vector_tiles_task
+    )
+    from dashboard.tasks.upload import (
+        validate_ready_uploads,
+        run_comparison_boundary,
+        layer_upload_preprocessing
+    )
+    from dashboard.tasks.review import (
+        review_approval,
+        process_batch_review,
+        revert_process_batch_review_approval
     )
     task_name = task.name
     parameters = task.parameters
@@ -179,5 +200,122 @@ def handle_task_interrupted(task: BackgroundTask):
             view.task_id = task_celery.id
             view.save(update_fields=['task_id'])
         except DatasetView.DoesNotExist as ex:
+            logger.error(ex)
+    elif task_name == 'validate_ready_uploads':
+        if len(task_param) == 0:
+            raise ValueError(
+                'Invalid parameter validate_ready_uploads')
+        try:
+            upload_id = task_param[0]
+            log_object_id = (
+                int(task_param[1]) if len(task_param) > 1 else None
+            )
+            upload = EntityUploadStatus.objects.get(id=upload_id)
+            # reset the status back to STARTED
+            upload.status = STARTED
+            upload.save(update_fields=['status'])
+            task_celery = validate_ready_uploads.apply_async(
+                (
+                    upload.id,
+                    log_object_id
+                ),
+                queue='validation'
+            )
+            upload.task_id = task_celery.id
+            upload.save(update_fields=['task_id'])
+        except EntityUploadStatus.DoesNotExist as ex:
+            logger.error(ex)
+    elif task_name == 'run_comparison_boundary':
+        if len(task_param) == 0:
+            raise ValueError(
+                'Invalid parameter run_comparison_boundary')
+        try:
+            upload_id = task_param[0]
+            upload = EntityUploadStatus.objects.get(id=upload_id)
+            upload_session: LayerUploadSession = upload.upload_session
+            dataset: Dataset = upload_session.dataset
+            # call ready_to_review func to reset state
+            uploads = EntityUploadStatus.objects.filter(
+                id=upload_id
+            )
+            ready_to_review_func = module_function(
+                dataset.module.code_name,
+                'prepare_review',
+                'ready_to_review')
+            ready_to_review_func(uploads)
+            # update upload session status to REVIEWING
+            upload_session.status = REVIEWING
+            upload_session.save(update_fields=['status'])
+            upload.refresh_from_db()
+            task_celery = run_comparison_boundary.apply_async(
+                (upload.id,),
+                queue='validation'
+            )
+            upload.task_id = task_celery.id
+            upload.save(update_fields=['task_id'])
+        except EntityUploadStatus.DoesNotExist as ex:
+            logger.error(ex)
+    elif task_name == 'review_approval':
+        if len(task_param) < 3:
+            raise ValueError(
+                'Invalid parameter review_approval')
+        try:
+            upload_id = task_param[0]
+            upload = EntityUploadStatus.objects.get(id=upload_id)
+            upload_session: LayerUploadSession = upload.upload_session
+            dataset: Dataset = upload_session.dataset
+            user_id = task_param[1]
+            upload_log_id = task_param[2]
+            revert_approval_func = module_function(
+                dataset.module.code_name,
+                'review',
+                'revert_approve_revision')
+            revert_approval_func(upload)
+            celery_task = review_approval.delay(
+                upload_id,
+                user_id,
+                upload_log_id
+            )
+            upload.task_id = celery_task.id
+            upload.status = PROCESSING_APPROVAL
+            upload.save(update_fields=['task_id', 'status'])
+        except EntityUploadStatus.DoesNotExist as ex:
+            logger.error(ex)
+    elif task_name == 'process_batch_review':
+        if len(task_param) == 0:
+            raise ValueError(
+                'Invalid parameter process_batch_review')
+        try:
+            batch_id = task_param[0]
+            batch_review = BatchReview.objects.get(id=batch_id)
+            batch_review.status = PENDING
+            if batch_review.is_approve:
+                celery_task = revert_process_batch_review_approval.delay(
+                    batch_id)
+                batch_review.task_id = celery_task.task_id
+            else:
+                celery_task = process_batch_review.delay(batch_id)
+                batch_review.task_id = celery_task.task_id
+            batch_review.save(update_fields=['status', 'task_id'])
+        except BatchReview.DoesNotExist as ex:
+            logger.error(ex)
+    elif task_name == 'layer_upload_preprocessing':
+        if len(task_param) == 0:
+            raise ValueError(
+                'Invalid parameter layer_upload_preprocessing')
+        try:
+            upload_session_id = task_param[0]
+            log_object_id = (
+                int(task_param[1]) if len(task_param) > 1 else None
+            )
+            upload_session = LayerUploadSession.objects.get(
+                id=upload_session_id)
+            celery_task = layer_upload_preprocessing.delay(
+                upload_session.id,
+                log_object_id
+            )
+            upload_session.task_id = task.id
+            upload_session.save(update_fields=['task_id'])
+        except LayerUploadSession.DoesNotExist as ex:
             logger.error(ex)
     on_task_invalidated(task)
