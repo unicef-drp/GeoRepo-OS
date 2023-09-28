@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.gis.db import models as GisModels
 from django.db.models.signals import pre_delete
 from django.utils import timezone
 from django.dispatch import receiver
@@ -304,3 +305,68 @@ class EntityUploadStatusLog(models.Model):
                 entity_upload_status__isnull=True
             ).first()
         super().save(**kwargs)
+
+
+class EntityTemp(GisModels.Model):
+
+    upload_session = GisModels.ForeignKey(
+        'dashboard.LayerUploadSession',
+        on_delete=GisModels.CASCADE
+    )
+
+    layer_file = GisModels.ForeignKey(
+        'dashboard.LayerFile',
+        on_delete=GisModels.CASCADE
+    )
+
+    feature_index = GisModels.IntegerField(
+        default=-1
+    )
+
+    level = GisModels.IntegerField(
+        default=0
+    )
+
+    geometry = GisModels.GeometryField(
+        null=True
+    )
+
+    entity_name = GisModels.CharField(
+        max_length=255
+    )
+
+    entity_id = GisModels.CharField(
+        max_length=100
+    )
+
+    parent_entity_id = GisModels.CharField(
+        max_length=100,
+        null=True,
+        blank=True
+    )
+
+    ancestor_entity_id = GisModels.CharField(
+        max_length=100,
+        null=True,
+        blank=True
+    )
+
+    is_parent_rematched = models.BooleanField(
+        default=False,
+        help_text='True if rematched parent has different default code'
+    )
+
+    overlap_percentage = models.FloatField(
+        default=0,
+        null=True,
+        blank=True
+    )
+
+    def __str__(self) -> str:
+        return self.entity_name
+
+    class Meta:
+        indexes = [
+                    models.Index(fields=['level', 'entity_id']),
+                    models.Index(fields=['level', 'ancestor_entity_id']),
+                ]

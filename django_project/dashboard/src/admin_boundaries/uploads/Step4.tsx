@@ -10,7 +10,7 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
-import { DataGrid, GridColDef, GridColumnGroupingModel, GridColumnHeaderParams, GridCellParams } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridColumnGroupingModel, GridColumnHeaderParams, GridCellParams, allGridColumnsSelector } from '@mui/x-data-grid';
 import CircularProgress from '@mui/material/CircularProgress';
 import {postData} from "../../utils/Requests";
 import {useAppDispatch} from "../../app/hooks";
@@ -154,8 +154,9 @@ const COLUMN_DESCRIPTION: {
   'Upgraded Privacy Level': 'Privacy level has been upgraded to dataset minimum privacy level',
 }
 
-
-const IN_PROGRES_STATUS_LIST = ['Started', 'Processing']
+const STATUS_LIST = ['Not Completed', 'Queued', 'Processing', 'Error', 'Valid', 'Approved', 'Rejected']
+const INCOMPLETE_STATUS_LIST = ['Started', 'Queued', 'Processing']
+const IN_PROGRES_STATUS_LIST = ['Processing']
 
 const DOWNLOAD_ERROR_REPORT_URL = '/api/entity-upload-error-download/'
 
@@ -177,10 +178,58 @@ export default function Step4(props: WizardStepInterface) {
   const dispatch = useAppDispatch()
   const [viewOverlapError, setViewOverlapError] = useState(false)
   const [customColumnOptions, setCustomColumnOptions] = useState({
+    'id': {
+      filter: false,
+      display: false,
+    },
+    'started at': {
+      filter: false
+    },
+    'error_summaries': {
+      filter: false,
+      display: false,
+    },
+    'error_report': {
+      filter: false,
+      display: false,
+    },
+    'is_importable': {
+      filter: false,
+      display: false,
+    },
+    'is_warning': {
+      filter: false,
+      display: false,
+    },
+    'progress': {
+      filter: false,
+      display: false,
+    },
+    'Country': {
+      filter: true,
+      sort: true,
+      display: true,
+      filterOptions: {
+        fullWidth: true,
+      }
+    },
     'status': {
         filter: true,
         sort: true,
         display: true,
+        filterOptions: {
+          fullWidth: true,
+          names: STATUS_LIST,
+          logic(val:any, filters:any) {
+            if (filters[0]) {
+              if (filters[0] === 'Not Completed') {
+                return !INCOMPLETE_STATUS_LIST.includes(val)
+              }
+              return val !== filters[0]
+            }
+            return false
+          }
+        },
         customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
           let id = tableMeta['rowData'][0]
           let isImportable = tableMeta['rowData'][6]
@@ -229,7 +278,7 @@ export default function Step4(props: WizardStepInterface) {
         } else if (response.data && response.data['results']) {
           let _results = response.data['results']
           const unfinished = _results.filter((responseData: any) => {
-            return responseData['status'] == 'Started' || responseData['status'] == 'Processing';
+            return INCOMPLETE_STATUS_LIST.includes(responseData['status']);
           })
           if (unfinished.length == 0) {
             setAllFinished(true)
@@ -258,6 +307,13 @@ export default function Step4(props: WizardStepInterface) {
 
   useEffect(() => {
     if (uploadData.length > 0 && !allFinished) {
+      // set filter by 'Not Completed'
+      let _statusFilter = {...customColumnOptions['status']} as any
+      _statusFilter['filterList'] = ['Not Completed']
+      setCustomColumnOptions({
+        ...customColumnOptions,
+        'status': _statusFilter
+      })
       const interval = setInterval(() => {
         getStatus()
       }, 5000);

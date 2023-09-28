@@ -13,7 +13,8 @@ from dashboard.models import (
     LayerUploadSession,
     EntityUploadStatus,
     EntityUploadChildLv1,
-    LayerFile
+    LayerFile,
+    EntityTemp
 )
 from georepo.utils.layers import get_feature_value
 from georepo.utils.unique_code import get_latest_revision_number
@@ -64,12 +65,10 @@ def do_search_parent_entity_by_geometry_for_level0(
     dataset: Dataset,
     layer_file: LayerFile,
     **kwargs
-) -> Tuple[GeographicalEntity, float]:
+) -> Tuple[EntityTemp, float]:
     start = time.time()
-    entities = GeographicalEntity.objects.filter(
-        dataset=dataset,
+    entities = EntityTemp.objects.filter(
         level=0,
-        is_approved=False,
         layer_file=layer_file,
         geometry__bboverlaps=geometry
     )
@@ -81,7 +80,7 @@ def do_search_parent_entity_by_geometry_for_level0(
             Area('intersect_area') / geometry.area,
             output_field=FloatField()
         )
-    ).order_by('-overlap_area', 'internal_code')
+    ).order_by('-overlap_area', 'entity_id')
     entity = entities.first()
     end = time.time()
     if kwargs.get('log_object'):
@@ -269,10 +268,29 @@ def do_process_layer_files_for_parent_matching_level0(
                     parent_entity_id=parent_entity_id,
                     is_parent_rematched=(
                         parent_entity_id !=
-                        matched_parent_entity.internal_code
+                        matched_parent_entity.entity_id
                     ),
                     feature_index=feature_idx
                 )
+                if parent_entity_id != matched_parent_entity.entity_id:
+                    # update EntityTemp level 1 and above
+                    EntityTemp.objects.filter(
+                        upload_session=upload_session,
+                        level=1,
+                        parent_entity_id=parent_entity_id
+                    ).update(
+                        parent_entity_id=matched_parent_entity.entity_id,
+                        ancestor_entity_id=matched_parent_entity.entity_id,
+                        is_parent_rematched=True,
+                        overlap_percentage=overlap_percentage
+                    )
+                    EntityTemp.objects.filter(
+                        upload_session=upload_session,
+                        level__gt=1,
+                        ancestor_entity_id=parent_entity_id
+                    ).update(
+                        ancestor_entity_id=matched_parent_entity.entity_id
+                    )
             upload_session.progress = (
                 'Auto parent matching admin level 1 entities '
                 f'({feature_idx + 1}/{total_features})'
@@ -296,13 +314,13 @@ def do_process_layer_files_for_parent_matching_level0(
 
 
 def find_matched_entity_upload(entity_uploads: List[EntityUploadStatus],
-                               entity: GeographicalEntity):
+                               entity: EntityTemp):
     for upload in entity_uploads:
         entity_id = (
             upload.original_geographical_entity.internal_code if
             upload.original_geographical_entity else
             upload.revised_entity_id
         )
-        if entity_id == entity.internal_code:
+        if entity_id == entity.entity_id:
             return upload
     return None

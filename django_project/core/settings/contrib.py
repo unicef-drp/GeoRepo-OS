@@ -91,6 +91,7 @@ DJANGO_EASY_AUDIT_UNREGISTERED_CLASSES_EXTRA = [
     'dashboard.EntitiesUserConfig',
     'dashboard.TempUsage',
     'dashboard.Notification',
+    'dashboard.EntityTemp',
     'georepo.DatasetTilingConfig',
     'georepo.AdminLevelTilingConfig',
     'georepo.TemporaryTilingConfig',
