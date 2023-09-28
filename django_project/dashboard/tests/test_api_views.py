@@ -58,7 +58,8 @@ from dashboard.models import (
     PENDING,
     REVIEWING, EntityUploadStatus,
     APPROVED, DONE, REJECTED, ERROR,
-    BoundaryComparison
+    BoundaryComparison,
+    LayerUploadSessionActionLog
 )
 from dashboard.tests.model_factories import LayerFileF, LayerUploadSessionF, \
     EntityUploadF, BoundaryComparisonF
@@ -101,6 +102,10 @@ from georepo.utils.dataset_view import (
     init_view_privacy_level
 )
 from core.models.preferences import SitePreferences
+from dashboard.tasks.upload import (
+    validate_selected_country_for_review,
+    process_country_selection_for_review
+)
 
 
 def mocked_cache_get(self, *args, **kwargs):
@@ -523,8 +528,9 @@ class TestApiViews(TestCase):
         self.assertEqual(layer_file_test_1.entity_type, 'Country')
 
     @mock.patch(
-        'dashboard.api_views.reviews.run_comparison_boundary.apply_async',
-        mock.Mock(side_effect=mocked_run_comparison_boundary)
+        'dashboard.api_views.reviews.'
+        'process_country_selection_for_review.delay',
+        mock.Mock(side_effect=mocked_process_layer_upload_session)
     )
     def test_send_to_ready_reviews(self):
         user = UserF.create(
@@ -559,6 +565,11 @@ class TestApiViews(TestCase):
             }
         )
         self.assertEqual(response.status_code, 200)
+        self.assertIn('action_uuid', response.data)
+        session_action = LayerUploadSessionActionLog.objects.get(
+            uuid=response.data['action_uuid'])
+        process_country_selection_for_review(session_action.id,
+                                             self.superuser.id)
         self.assertEqual(
             LayerUploadSession.objects.get(id=upload_session.id).status,
             'Reviewing'
@@ -590,14 +601,13 @@ class TestApiViews(TestCase):
         )
         entity_upload.original_geographical_entity = geo_ori
         entity_upload.save()
-        response = client.post(
-            reverse('ready-to-review'),
-            {
-                'upload_entities': f'{entity_upload.id},{entity_upload_2.id}'
-            }
+        check_uploads = EntityUploadStatus.objects.filter(
+            id__in=[entity_upload.id, entity_upload_2.id]
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('detail', response.data)
+        is_valid, _ = validate_selected_country_for_review(
+            upload_session.dataset, self.superuser.id, check_uploads
+        )
+        self.assertFalse(is_valid)
 
     def test_get_boundary_comparison_summary(self):
         entity_upload_status = EntityUploadF.create(

@@ -21,7 +21,6 @@ from dashboard.models.batch_review import (
     BatchReview, PENDING, PROCESSING
 )
 from dashboard.models.entity_upload import (
-    REVIEWING as UPLOAD_REVIEWING,
     PROCESSING_APPROVAL,
     APPROVED,
     REJECTED,
@@ -39,40 +38,6 @@ from georepo.utils.module_import import module_function
 class ReadyToReview(AzureAuthRequiredMixin, APIView):
     """Api to update upload session to ready to review"""
     permission_classes = [IsAuthenticated]
-
-    def validate_selected_country(self, dataset, user, uploads):
-        is_importable_func = module_function(
-            dataset.module.code_name,
-            'qc_validation',
-            'is_validation_result_importable'
-        )
-        for entity_upload in uploads:
-            upload_session = entity_upload.upload_session
-            if entity_upload.original_geographical_entity:
-                country = entity_upload.original_geographical_entity.label
-                other_uploads = EntityUploadStatus.objects.filter(
-                    original_geographical_entity=(
-                        entity_upload.original_geographical_entity
-                    ),
-                    upload_session__dataset=upload_session.dataset,
-                    status=UPLOAD_REVIEWING
-                ).exclude(
-                    upload_session=upload_session
-                )
-                if other_uploads.exists():
-                    return False, f'{country} has upload being reviewed'
-            else:
-                country = entity_upload.revised_entity_name
-            is_importable, _ = is_importable_func(
-                entity_upload,
-                user
-            )
-            if not is_importable:
-                return False, (
-                    f'{country} cannot be imported because '
-                    'there is validation error!'
-                )
-        return True, ''
 
     def post(self, request, *args, **kwargs):
         upload_entity_ids = request.data.get('upload_entities').split(',')
