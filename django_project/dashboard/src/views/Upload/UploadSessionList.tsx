@@ -293,7 +293,7 @@ export default function UploadSessionList() {
                 <IconButton
                   aria-label={rowData[5] !== 'Reviewing' ? 'Review is not available' : 'Review'}
                   title={rowData[5] !== 'Reviewing' ? 'Review is not available' : 'Review'}
-                  key={0}
+                  key={1}
                   disabled={rowData[5] !== 'Reviewing'}
                   color='primary'
                   onClick={(e) => {
@@ -308,7 +308,7 @@ export default function UploadSessionList() {
                 <IconButton
                   aria-label= {deleteLabel()}
                   title={deleteLabel()}
-                  key={1}
+                  key={2}
                   disabled={['Done', 'Processing'].includes(rowData[5])}
                   color='error'
                   onClick={(e) => {

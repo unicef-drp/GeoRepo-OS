@@ -77,9 +77,10 @@ def validate_ready_uploads(entity_upload_id, log_obj_id=None):
         Q(status=STARTED) | Q(status=PROCESSING)
     ).exists()
     if not has_pending_upload:
+        dataset = entity_upload.upload_session.dataset
         message = (
             'Your layer validation for '
-            f'{entity_upload.upload_session.source}'
+            f'{dataset.label}'
             ' has finished! Click here to view!'
         )
         payload = {
