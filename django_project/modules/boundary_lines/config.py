@@ -4,8 +4,8 @@ from dashboard.models.layer_upload_session import LayerUploadSession
 
 def vector_tile_geometry_type():
     """Return geometry type in this module."""
-    # return empty so tegola will infer the type from table
-    return ''
+    # try using MultiLineString
+    return 'MultiLineString'
 
 
 def generate_adm0_default_views(dataset: Dataset):

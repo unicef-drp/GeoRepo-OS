@@ -27,9 +27,7 @@ from georepo.utils.permission import (
     get_view_permission_privacy_level
 )
 from georepo.utils.custom_geo_functions import (
-    ForcePolygonCCW,
-    CentroidGravity,
-    GeometryAsText
+    ForcePolygonCCW
 )
 
 from georepo.api_views.api_cache import ApiCache
@@ -769,9 +767,6 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
             )
             values.append('rhr_geom')
         elif geom_type == GeomReturnType.CENTROID:
-            entities = entities.annotate(
-                centroid=GeometryAsText(CentroidGravity(F('geometry'))),
-            )
             values.append('centroid')
         # retrieve all ids+names in current dataset
         ids = EntityId.objects.filter(

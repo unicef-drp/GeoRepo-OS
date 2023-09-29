@@ -248,7 +248,10 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             is_latest=True,
             admin_level_name='Province',
             start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK0_2'
+            concept_ucode='#PAK0_2',
+            centroid=(
+                self.geographical_entity.geometry.point_on_surface.wkt
+            )
         )
         EntityIdF.create(
             code=self.pCode,

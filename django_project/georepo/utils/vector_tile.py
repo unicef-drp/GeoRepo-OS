@@ -39,9 +39,9 @@ TEGOLA_AZURE_BASE_PATH = 'layer_tiles'
 
 def dataset_view_sql_query(dataset_view: DatasetView, level,
                            privacy_level,
+                           simplify_factor,
                            using_view_tiling_config=False,
                            bbox_param='!BBOX!',
-                           zoom_param='!ZOOM!',
                            intersects_param='ST_Transform(!BBOX!, 4326)',
                            **kwargs):
     """
@@ -115,35 +115,14 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
                 f'{join_name}.geographical_entity_id=gg.id AND '
                 f'{join_name}.idx={name_idx} '
             )
-    tiling_config_joins = ''
+    view_tiling_config_where_cond = ''
     if using_view_tiling_config:
-        tiling_config_joins = (
-            'inner join georepo_datasetviewtilingconfig dtc on '
-            '    dtc.dataset_view_id={dataset_view_id} and '
-            '    dtc.zoom_level={zoom_param} '
-            'inner join georepo_viewadminleveltilingconfig tc on '
-            '    tc.level=gg.level and '
-            '    ges.simplify_tolerance=tc.simplify_tolerance and '
-            '    tc.view_tiling_config_id = dtc.id '
-        ).format(
-            dataset_view_id=dataset_view.id,
-            zoom_param=zoom_param
-        )
-    else:
-        tiling_config_joins = (
-            'inner join georepo_datasettilingconfig dtc on '
-            '    dtc.dataset_id=gg.dataset_id and '
-            '    dtc.zoom_level={zoom_param} '
-            'inner join georepo_adminleveltilingconfig tc on '
-            '    tc.level=gg.level and '
-            '    ges.simplify_tolerance=tc.simplify_tolerance and '
-            '    tc.dataset_tiling_config_id = dtc.id '
-        ).format(
-            zoom_param=zoom_param
+        view_tiling_config_where_cond = (
+            f'AND ges.dataset_view_id={dataset_view.id}'
         )
     sql = (
         select_sql +
-        'ST_AsText(ST_PointOnSurface(gg.geometry)) AS centroid, '
+        'gg.centroid AS centroid, gg.bbox AS bbox, '
         'gg.id, gg.label, '
         'gg.level, ge.label as type, gg.internal_code as default, '
         'gg.start_date as start_date, gg.end_date as end_date, '
@@ -164,12 +143,13 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         'FROM georepo_entitysimplified ges '
         'INNER JOIN georepo_geographicalentity gg on '
         '    gg.id=ges.geographical_entity_id ' +
-        tiling_config_joins +
         'INNER JOIN georepo_entitytype ge on ge.id = gg.type_id '
         'LEFT JOIN georepo_geographicalentity pg on pg.id = gg.parent_id ' +
         (' '.join(id_field_left_joins)) + ' ' +
         (' '.join(name_field_left_joins)) + ' '
         'WHERE ges.simplified_geometry && {intersects_param} '
+        'AND ges.simplify_tolerance={simplify_factor} '
+        '{view_tiling_config_cond} '
         'AND gg.level={level} '
         'AND gg.dataset_id={dataset_id} '
         'AND gg.is_approved=True '
@@ -177,10 +157,12 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         'AND gg.id IN ({raw_sql})'.
         format(
             intersects_param=intersects_param,
+            simplify_factor=simplify_factor,
             level=level,
             dataset_id=dataset_view.dataset.id,
             privacy_level=privacy_level,
-            raw_sql=raw_sql
+            raw_sql=raw_sql,
+            view_tiling_config_cond=view_tiling_config_where_cond
         ))
     end = time.time()
     if kwargs.get('log_object'):
@@ -360,6 +342,7 @@ def create_view_configuration_files(
                 view_resource.dataset_view,
                 level,
                 view_resource.privacy_level,
+                adminlevel_conf.tolerance,
                 using_view_tiling_config=using_view_tiling_config
             )
             provider_layer = {
@@ -974,9 +957,9 @@ def set_pending_tile_cache_keys(
                 view_resource.dataset_view,
                 item.level,
                 view_resource.privacy_level,
-                is_from_view_config,
+                item.tolerance,
+                using_view_tiling_config=is_from_view_config,
                 bbox_param='{bbox_param}',
-                zoom_param='{zoom_param}',
                 intersects_param='{intersects_param}'
             )
         cache_key = (

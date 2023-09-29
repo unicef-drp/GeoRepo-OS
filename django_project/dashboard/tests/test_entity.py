@@ -10,7 +10,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from rest_framework.test import APIRequestFactory
 
 from georepo.utils import absolute_path
-from georepo.models import IdType
+from georepo.models import IdType, EntityName
 from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, EntityIdF,
     EntityNameF, LanguageF, UserF
@@ -250,11 +250,14 @@ class TestApiEntity(TestCase):
             self._convert_response_to_dict(response.data)['names'][-1]['name'],
             'some-name'
         )
-        self.assertNotEqual(
-            self._convert_response_to_dict(response.data)['names'][-1]['id'],
-            0
+        name_id = (
+            self._convert_response_to_dict(response.data)['names'][-1]['id']
         )
+        self.assertNotEqual(name_id, 0)
         mock_check_views.assert_called()
+        name = EntityName.objects.get(id=name_id)
+        # idx should be positive integer
+        self.assertTrue(name.idx is not None and name.idx > 0)
 
     def test_entity_edit_change_name(self, mock_check_views):
         payload = copy.deepcopy(self.payload)
@@ -277,6 +280,9 @@ class TestApiEntity(TestCase):
             'Pakistan-updated'
         )
         mock_check_views.assert_called()
+        name = EntityName.objects.get(id=payload['names'][0]['id'])
+        # idx should be positive integer
+        self.assertTrue(name.idx is not None and name.idx == 0)
 
     def test_entity_edit_remove_name(self, mock_check_views):
         payload = copy.deepcopy(self.payload)

@@ -369,25 +369,35 @@ def count_max_unique_code(dataset: Dataset, level: int,
 
 def generate_concept_ucode(ancestor_entity,
                            new_entities: QuerySet[GeographicalEntity],
-                           use_boundary_comparison: bool = True):
+                           use_boundary_comparison: bool = True,
+                           dataset: Dataset = None):
     """Generate concept ucode to all entities inside entity_upload."""
     from dashboard.models.boundary_comparison import BoundaryComparison
     # find the number of concept uuid in current ancestor
-    entities = GeographicalEntity.objects.filter(
-        dataset=ancestor_entity.dataset,
-        is_approved=True,
-    ).filter(
-        Q(
-            Q(ancestor__isnull=True) &
-            Q(unique_code=ancestor_entity.unique_code)
-        ) |
-        Q(
-            Q(ancestor__isnull=False) &
-            Q(ancestor__unique_code=ancestor_entity.unique_code)
+    sequence = 0
+    if ancestor_entity:
+        entities = GeographicalEntity.objects.filter(
+            dataset=ancestor_entity.dataset,
+            is_approved=True,
+        ).filter(
+            Q(
+                Q(ancestor__isnull=True) &
+                Q(unique_code=ancestor_entity.unique_code)
+            ) |
+            Q(
+                Q(ancestor__isnull=False) &
+                Q(ancestor__unique_code=ancestor_entity.unique_code)
+            )
         )
-    )
-    entities = entities.aggregate(entity_count=Count('uuid', distinct=True))
-    sequence = entities['entity_count']
+        entities = entities.aggregate(
+            entity_count=Count('uuid', distinct=True))
+        sequence = entities['entity_count']
+    elif dataset:
+        entities = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+        ).aggregate(entity_count=Count('uuid', distinct=True))
+        sequence = entities['entity_count']
     entity: GeographicalEntity
     for entity in new_entities.iterator(chunk_size=1):
         if use_boundary_comparison:

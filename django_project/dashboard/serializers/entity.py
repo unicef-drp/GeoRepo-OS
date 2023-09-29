@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from django.db.models import Q
+from django.db.models import Q, Max
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from georepo.models.entity import EntityName, EntityId, EntityType
@@ -286,11 +286,19 @@ class EntityNameSerializer(serializers.ModelSerializer):
             except EntityId.DoesNotExist:
                 entity_name = None
         else:
+            # get max value
+            idx = 0
+            max_idx_res = EntityName.objects.filter(
+                geographical_entity=entity
+            ).aggregate(Max('idx'))
+            if max_idx_res:
+                idx = max_idx_res['idx__max'] + 1
             entity_name = EntityName(
                 name=name_value,
                 default=default,
                 geographical_entity=entity,
-                language_id=language
+                language_id=language,
+                idx=idx
             )
             entity_name.skip_signal = True
             entity_name.save()

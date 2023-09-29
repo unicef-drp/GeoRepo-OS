@@ -936,7 +936,12 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                         'is_latest': False,
                         'ancestor': ancestor if level != 0 else None,
                         'admin_level_name': admin_level_name,
-                        'privacy_level': geo_privacy_level
+                        'privacy_level': geo_privacy_level,
+                        'bbox': (
+                            '[' + ','.join(map(str, geom.extent)) +
+                            ']'
+                        ),
+                        'centroid': geom.point_on_surface.wkt
                     }
                 )
                 feature_included_idx += 1

@@ -212,7 +212,12 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs):
                         'is_latest': False,
                         'ancestor': None,
                         'admin_level_name': None,
-                        'privacy_level': geo_privacy_level
+                        'privacy_level': geo_privacy_level,
+                        'bbox': (
+                            '[' + ','.join(map(str, geom.extent)) +
+                            ']'
+                        ),
+                        'centroid': geom.point_on_surface.wkt
                     }
                 )
                 # add extra id fields

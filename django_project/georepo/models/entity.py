@@ -234,6 +234,22 @@ class GeographicalEntity(models.Model):
         default=4
     )
 
+    centroid = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        default='',
+        help_text='Geometry centroid using ST_PointOnSurface'
+    )
+
+    bbox = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        default='',
+        help_text='Geometry bounding box'
+    )
+
     @property
     def ucode(self):
         from georepo.utils import get_unique_code
@@ -248,7 +264,9 @@ class GeographicalEntity(models.Model):
                     models.Index(fields=['level']),
                     models.Index(fields=['revision_number']),
                     models.Index(fields=['concept_ucode']),
-                    models.Index(fields=['unique_code'])
+                    models.Index(fields=['unique_code']),
+                    models.Index(fields=['dataset', 'is_approved',
+                                         'level', 'privacy_level'])
                 ]
 
     def __str__(self):
@@ -422,6 +440,13 @@ class EntitySimplified(models.Model):
         blank=True,
         on_delete=models.CASCADE
     )
+
+    class Meta:
+        indexes = [
+                    models.Index(fields=['geographical_entity',
+                                         'simplify_tolerance',
+                                         'dataset_view'])
+                ]
 
 
 # @receiver(post_save, sender=EntityName)

@@ -5,12 +5,15 @@ from georepo.models.entity import GeographicalEntity
 from dashboard.models.layer_upload_session import (
     LayerUploadSession, PRE_PROCESSING, PENDING, CANCELED
 )
-from dashboard.models.entity_upload import EntityUploadStatus, STARTED
+from dashboard.models.entity_upload import (
+    EntityUploadStatus, STARTED, EntityUploadStatusLog
+)
 from dashboard.models.layer_file import LayerFile
+from georepo.tasks import validate_ready_uploads
 
 
 def is_valid_upload_session(
-        upload_session: LayerUploadSession) -> Tuple[bool, str]:
+        upload_session: LayerUploadSession, **kwargs) -> Tuple[bool, str]:
     """
     do pre-validation before layer upload pre-processing/prepare_validation
     Returns: IsValid, ErrorMessage
@@ -38,8 +41,8 @@ def prepare_validation(
     # set status to PRE_PROCESSING
     upload_session.status = PRE_PROCESSING
     upload_session.save(update_fields=['status'])
-    # create entity upload status with STARTED to trigger validation
-    EntityUploadStatus.objects.create(
+    # create entity upload status with STARTED
+    entity_upload_status = EntityUploadStatus.objects.create(
         upload_session=upload_session,
         status=STARTED,
         revised_entity_name=(
@@ -51,6 +54,24 @@ def prepare_validation(
     upload_session.status = PENDING
     upload_session.auto_matched_parent_ready = True
     upload_session.save(update_fields=['status', 'auto_matched_parent_ready'])
+    # trigger validation task
+    upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+        layer_upload_session=upload_session,
+        entity_upload_status__isnull=True
+    )
+    upload_log_entity, _ = EntityUploadStatusLog.objects.get_or_create(
+        entity_upload_status=entity_upload_status,
+        parent_log=upload_log
+    )
+    task = validate_ready_uploads.apply_async(
+        (
+            entity_upload_status.id,
+            upload_log_entity.id
+        ),
+        queue='validation'
+    )
+    entity_upload_status.task_id = task.id
+    entity_upload_status.save(update_fields=['task_id'])
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(

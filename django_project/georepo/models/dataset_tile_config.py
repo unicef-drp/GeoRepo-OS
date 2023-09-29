@@ -59,6 +59,13 @@ class AdminLevelTilingConfig(models.Model):
                 self.level
             )
 
+    class Meta:
+        indexes = [
+                    models.Index(fields=['dataset_tiling_config',
+                                         'level',
+                                         'simplify_tolerance'])
+                ]
+
 
 class TemporaryTilingConfig(models.Model):
     """Tiling config temporary for generating preview."""

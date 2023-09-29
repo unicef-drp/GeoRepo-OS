@@ -61,6 +61,13 @@ class ViewAdminLevelTilingConfig(models.Model):
                 self.level
             )
 
+    class Meta:
+        indexes = [
+                    models.Index(fields=['view_tiling_config',
+                                         'level',
+                                         'simplify_tolerance'])
+                ]
+
 
 @receiver(post_save, sender=DatasetViewTilingConfig)
 def dataset_view_tiling_config_post_create(

@@ -121,7 +121,8 @@ class TestVectorTile(TestCase):
         sql = dataset_view_sql_query(
             self.view_latest,
             0,
-            4
+            4,
+            1
         )
         self.assertIn(
             'ST_AsMVTGeom(GeomTransformMercator('
@@ -133,7 +134,8 @@ class TestVectorTile(TestCase):
             self.view_latest,
             0,
             4,
-            0.5
+            0.5,
+            1
         )
         self.assertIn(
             'SELECT ST_AsMVTGeom(GeomTransformMercator('
