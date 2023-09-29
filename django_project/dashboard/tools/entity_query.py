@@ -49,11 +49,11 @@ def generate_query_condition(
         sql = (
             sql + 'AND gg.level IN %s ')
         query_values.append(tuple(filter.filters['level']))
-    if ('level_name' in filter.filters and
-            len(filter.filters['level_name']) > 0):
+    if ('admin_level_name' in filter.filters and
+            len(filter.filters['admin_level_name']) > 0):
         sql = (
-            sql + 'AND gg.label IN %s ')
-        query_values.append(tuple(filter.filters['level_name']))
+            sql + 'AND gg.admin_level_name IN %s ')
+        query_values.append(tuple(filter.filters['admin_level_name']))
     if ('revision' in filter.filters and
             len(filter.filters['revision']) > 0):
         sql = (

@@ -73,7 +73,7 @@ const FILTER_ENABLED_COLUMNS = [
     'country',
     'level',
     'type',
-    'name',
+    'admin_level_name',
     'updated',
     'rev',
     'status',
@@ -127,7 +127,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
         let filters = []
         filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/country/?${_query_params}`))
         filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/level/?${_query_params}`))
-        filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/level_name/?${_query_params}`))
+        filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/admin_level_name/?${_query_params}`))
         filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/type/?${_query_params}`))
         filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/revision/?${_query_params}`))
         filters.push(axios.get(`${FILTER_VALUES_API_URL}${props.dataset_id}/status/?${_query_params}`))
@@ -136,7 +136,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
         let filter_values = {
             'country': resultData[0].data,
             'level': resultData[1].data,
-            'name': resultData[2].data,
+            'admin_level_name': resultData[2].data,
             'type': resultData[3].data,
             'rev': resultData[4].data,
             'status': resultData[5].data,
@@ -428,9 +428,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
 
     const getCriteriaFromColumnName = (col_name: string): string => {
         let val = col_name;
-        if (col_name === 'name')
-            val = 'level_name'
-        else if (col_name === 'rev')
+        if (col_name === 'rev')
             val = 'revision'
         else if (col_name === 'updated')
             val = 'valid_on'
@@ -449,8 +447,8 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
             case 'type':
                 values = props.filter.type
                 break;
-            case 'name':
-                values = props.filter.level_name
+            case 'admin_level_name':
+                values = props.filter.admin_level_name
                 break;
             case 'rev':
                 values = props.filter.revision

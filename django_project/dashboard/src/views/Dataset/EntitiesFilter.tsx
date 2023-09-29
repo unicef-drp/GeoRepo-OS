@@ -3,7 +3,7 @@
 export interface EntitiesFilterInterface {
     country: string[],
     level: string[],
-    level_name: string[],
+    admin_level_name: string[],
     type: string[],
     valid_from: Date,
     valid_to: Date,
@@ -19,7 +19,7 @@ export function getDefaultFilter():EntitiesFilterInterface {
     return {
         country: [],
         level: [],
-        level_name: [],
+        admin_level_name: [],
         type: [],
         valid_from: null,
         valid_to: null,
