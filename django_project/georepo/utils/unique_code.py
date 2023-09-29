@@ -389,7 +389,8 @@ def generate_concept_ucode(ancestor_entity,
                 Q(ancestor__unique_code=ancestor_entity.unique_code)
             )
         )
-        entities = entities.aggregate(entity_count=Count('uuid', distinct=True))
+        entities = entities.aggregate(
+            entity_count=Count('uuid', distinct=True))
         sequence = entities['entity_count']
     elif dataset:
         entities = GeographicalEntity.objects.filter(

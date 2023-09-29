@@ -100,6 +100,7 @@ class EntityViewTestSuite(EntityResponseChecker):
         with open(geojson_0_path) as geojson:
             data = json.load(geojson)
             geom_str = json.dumps(data['features'][0]['geometry'])
+            geom = GEOSGeometry(geom_str)
             self.pak0_1 = GeographicalEntityF.create(
                 dataset=self.dataset,
                 level=0,
@@ -108,7 +109,7 @@ class EntityViewTestSuite(EntityResponseChecker):
                 is_validated=True,
                 is_approved=True,
                 is_latest=False,
-                geometry=GEOSGeometry(geom_str),
+                geometry=geom,
                 internal_code='PAK',
                 revision_number=1,
                 label='Pakistan',
@@ -116,7 +117,8 @@ class EntityViewTestSuite(EntityResponseChecker):
                 unique_code_version=1,
                 start_date=isoparse('2023-01-01T06:16:13Z'),
                 end_date=isoparse('2023-01-10T06:16:13Z'),
-                concept_ucode='#PAK_1'
+                concept_ucode='#PAK_1',
+                centroid=geom.point_on_surface.wkt
             )
             EntityIdF.create(
                 code=self.pCode,
@@ -138,7 +140,7 @@ class EntityViewTestSuite(EntityResponseChecker):
                 is_validated=True,
                 is_approved=True,
                 is_latest=True,
-                geometry=GEOSGeometry(geom_str),
+                geometry=geom,
                 internal_code='PAK',
                 revision_number=2,
                 label='Pakistan',
@@ -146,7 +148,8 @@ class EntityViewTestSuite(EntityResponseChecker):
                 unique_code_version=2,
                 start_date=isoparse('2023-01-10T06:16:13Z'),
                 uuid=self.pak0_1.uuid,
-                concept_ucode=self.pak0_1.concept_ucode
+                concept_ucode=self.pak0_1.concept_ucode,
+                centroid=geom.point_on_surface.wkt
             )
             EntityIdF.create(
                 code=self.pCode,
@@ -174,6 +177,7 @@ class EntityViewTestSuite(EntityResponseChecker):
             random.shuffle(v1_idx)
             temp_entities = {}
             for i in v1_idx:
+                geom = GEOSGeometry(geom_str)
                 entity = GeographicalEntityF.create(
                     parent=self.pak0_1,
                     ancestor=self.pak0_1,
@@ -184,7 +188,7 @@ class EntityViewTestSuite(EntityResponseChecker):
                     is_validated=True,
                     is_approved=True,
                     is_latest=False,
-                    geometry=GEOSGeometry(geom_str),
+                    geometry=geom,
                     internal_code=f'PAK00{i+1}',
                     revision_number=1,
                     label='Khyber Pakhtunkhwa',
@@ -192,7 +196,8 @@ class EntityViewTestSuite(EntityResponseChecker):
                     unique_code_version=1,
                     start_date=isoparse('2023-01-01T06:16:13Z'),
                     end_date=isoparse('2023-01-10T06:16:13Z'),
-                    concept_ucode=f'#PAK_{i+2}'
+                    concept_ucode=f'#PAK_{i+2}',
+                    centroid=geom.point_on_surface.wkt
                 )
                 if i == 0:
                     entity_1_uuid = entity.uuid
@@ -218,6 +223,7 @@ class EntityViewTestSuite(EntityResponseChecker):
             random.shuffle(v2_idx)
             temp_entities2 = {}
             for i in v2_idx:
+                geom = GEOSGeometry(geom_str)
                 entity = GeographicalEntityF.create(
                     parent=self.pak0_2,
                     ancestor=self.pak0_2,
@@ -228,7 +234,7 @@ class EntityViewTestSuite(EntityResponseChecker):
                     is_validated=True,
                     is_approved=True,
                     is_latest=True,
-                    geometry=GEOSGeometry(geom_str),
+                    geometry=geom,
                     internal_code=f'PAK00{i+1}',
                     revision_number=2,
                     label='Khyber Pakhtunkhwa',
@@ -236,7 +242,8 @@ class EntityViewTestSuite(EntityResponseChecker):
                     unique_code_version=2,
                     start_date=isoparse('2023-01-10T06:16:13Z'),
                     privacy_level=privacy_levels[i],
-                    concept_ucode=f'#PAK_{i+4}'
+                    concept_ucode=f'#PAK_{i+4}',
+                    centroid=geom.point_on_surface.wkt
                 )
                 if i == 0:
                     entity.uuid = entity_1_uuid
