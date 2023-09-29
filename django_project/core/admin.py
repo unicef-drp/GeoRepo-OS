@@ -83,11 +83,6 @@ class SitePreferencesAdmin(admin.ModelAdmin):
                 'default_admin_emails',
             )
         }),
-        ('Help', {
-            'fields': (
-                'base_url_help_page',
-            )
-        }),
         ('Swagger UI', {
             'fields': (
                 'swagger_api_documentation_link',

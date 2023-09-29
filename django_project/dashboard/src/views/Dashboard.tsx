@@ -111,7 +111,7 @@ export function Header(props: HeaderInterface) {
           menus.map((menu, index) => {
             let _link = menu.link
             if (index === menus.length - 1) {
-              return <span>{index > 0 ? ' > ' : ''}{menu.name}</span>
+              return <span key={index}>{index > 0 ? ' > ' : ''}{menu.name}</span>
             }
             return <Link key={index} to={_link}>{index > 0 ? ' > ' : ''}{menu.name}</Link>
           })
