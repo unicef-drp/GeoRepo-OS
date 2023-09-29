@@ -73,7 +73,6 @@ class TileAPIView(APIView):
             sql = cache_value[level]
             q = sql.format(
                 bbox_param=f'TileBBox({z}, {x}, {y}, 3857)',
-                zoom_param=f'{z}',
                 intersects_param=f'TileBBox({z}, {x}, {y}, 4326)'
             )
             fsql = (
