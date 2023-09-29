@@ -220,198 +220,208 @@ export default function List(
         }
     }
 
+    const updateTableColumns = () => {
+        const _columns:MUIDataTableColumnDef[] = []
+        for (const rowKey of Object.keys(data[0])) {
+            const rowName = rowKey.replace(/_/gi, ' ')
+            let isAction = false
+            for (const _actionData of actionData) {
+                if (rowKey === _actionData.field) {
+                    isAction = true
+                    break
+                }
+            }
+
+            if (!isAction) {
+                let _column:MUIDataTableColumnDef = {
+                    name: rowKey,
+                    label: capitalize(rowName),
+                }
+                if (customRowRender[rowKey] !== undefined) {
+                    // using custom body render
+                    _column['options'] = {
+                        filter: false,
+                        sort: false,
+                        display: rowKey !== 'id',
+                        customBodyRender: customRowRender[rowKey]
+                    }
+                } else {
+                    _column['options'] = {
+                        display: rowKey !== 'id' && excludedColumns.findIndex((col_name) => col_name === rowKey) === -1
+                    }
+                }
+                if (customColumnHeaderRender[rowKey] !== undefined) {
+                    _column['options'] = {
+                        customHeadLabelRender: customColumnHeaderRender[rowKey]
+                    }
+                }
+                if (customOptions[rowKey] !== undefined) {
+                    _column['options'] = customOptions[rowKey]
+                }
+                if (rowKey.toLowerCase().includes('date')) {
+                    _column['options'] = {
+                        filter: false,
+                        customBodyRender: (value, tableMeta, updateValue) => {
+                            if (value.includes('T') && value.includes('Z')) {
+                                return new Date(value).toDateString()
+                            }
+                            return value
+                        }
+                    }
+                }
+                _columns.push(_column)
+            }
+        }
+
+        if (actionData) {
+            _columns.push({
+                name: '',
+                options: {
+                    filter: false,
+                    customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+                        const rowData: any = data.find(({id}) => id === tableMeta.rowData[0])
+                        if (!rowData) return null
+                        // grouping the action data buttons
+                        // e.g. Edit and Delete might be better to separate it into different group
+                        let actionDataGroup:any = {
+                            'default': []
+                        }
+                        let iconActionGroup:JSX.Element[] = []
+                        actionData.map((_actionData, idx) => {
+                            let element = null
+                            if (_actionData.onClick) {
+                                if (_actionData.icon) {
+                                    // use icon button
+                                    element = (
+                                        <IconButton aria-label={_actionData.getName ? _actionData.getName(rowData) : _actionData.name}
+                                            title={_actionData.getName ? _actionData.getName(rowData) : _actionData.name}
+                                            key={idx}
+                                            disabled={_actionData.isDisabled ? _actionData.isDisabled(rowData) : false}
+                                            color={_actionData.color ? _actionData.color : 'primary'}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                _actionData.onClick(rowData, e)
+                                            }}
+                                            className={_actionData.className ? _actionData.className : ''}
+                                        >
+                                            {_actionData.icon}
+                                        </IconButton>
+                                    )
+                                } else {
+                                    element = (
+                                        <Button
+                                            key={idx}
+                                            color={_actionData.color ? _actionData.color : 'primary'}
+                                            disabled={_actionData.isDisabled ? _actionData.isDisabled(rowData) : false}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                _actionData.onClick(rowData, e)
+                                            }} variant={'contained'}
+                                            className={_actionData.className ? _actionData.className : ''}
+                                            sx={{minWidth: '82px'}}>{_actionData.getName ? _actionData.getName(rowData) : _actionData.name}
+                                        </Button>
+                                    )
+                                }
+                            } else if (rowData[_actionData.field]) {
+                                if (_actionData.icon) {
+                                    // use icon button
+                                    element = (
+                                        <IconButton aria-label="Edit"
+                                            title="Edit"
+                                            key={idx}
+                                            disabled={_actionData.isDisabled ? _actionData.isDisabled(rowData) : false}
+                                            color={_actionData.color ? _actionData.color : 'primary'}
+                                            className={_actionData.className ? _actionData.className : ''}
+                                            onClick={(e) => navigate(_actionData.url + rowData[_actionData.field])}
+                                        >
+                                            {_actionData.icon}
+                                        </IconButton>
+                                    )
+                                } else {
+                                    element = (
+                                        <Button
+                                            key={idx}
+                                            disabled={_actionData.isDisabled ? _actionData.isDisabled(rowData) : false}
+                                            onClick={(e) => navigate(_actionData.url + rowData[_actionData.field])}
+                                            variant={'contained'}
+                                            className={_actionData.className ? _actionData.className : ''}
+                                            sx={{minWidth: '82px'}}>Edit
+                                        </Button>
+                                    )
+                                }
+                            }
+                            if (_actionData.icon) {
+                                // add to icon actions group
+                                iconActionGroup.push(element)
+                            } else if (_actionData.actionGroup) {
+                                if (actionDataGroup[_actionData.actionGroup] === undefined) {
+                                    actionDataGroup[_actionData.actionGroup] = []
+                                }
+                                actionDataGroup[_actionData.actionGroup].push(element)
+                            } else {
+                                actionDataGroup['default'].push(element)
+                            }
+                        })
+                        // check whether this is icon actions or button groups
+                        if (iconActionGroup.length > 0) {
+                            return (
+                                <div className="TableActionContent">
+                                    {
+                                        iconActionGroup.map((_action_button:any, idx:any) => _action_button)
+                                    }
+                                </div>
+                            )
+                        }
+                        return (
+                            <div className="TableActionContent">
+                                {
+                                    Object.entries(actionDataGroup).map((_action_group:any, idx:any) => 
+                                        <ButtonGroup variant="contained" key={_action_group[0]} sx={{ ...(idx > 0 && {marginLeft: '10px'})}} >
+                                            {
+                                                _action_group[1].map((_action_button:any, idx_element:number) => _action_button)
+                                            }
+                                        </ButtonGroup>
+                                    )
+                                }
+                            </div>
+                        )
+                    }
+                },
+            })
+        }
+
+        // Add action to column
+        if (editUrl || detailUrl || redirectUrl || onEditClick) {
+            _columns.push({
+                name: '',
+                options: {
+                    filter: false,
+                    customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+                        const rowData = tableMeta.rowData
+                        return COLUMNS_ACTION(
+                          rowData, addUrl, redirectUrl, editUrl, onEditClick, detailUrl, navigate)
+                    }
+                }
+            })
+        }
+        setTableColumns(_columns)
+    }
+
     useEffect(() => {
         setData(initData)
     }, [initData])
 
     useEffect(() => {
         if (data.length > 0 && tableColumns.length === 0) {
-            const _columns:MUIDataTableColumnDef[] = []
-            for (const rowKey of Object.keys(data[0])) {
-                const rowName = rowKey.replace(/_/gi, ' ')
-                let isAction = false
-                for (const _actionData of actionData) {
-                    if (rowKey === _actionData.field) {
-                        isAction = true
-                        break
-                    }
-                }
-
-                if (!isAction) {
-                    let _column:MUIDataTableColumnDef = {
-                        name: rowKey,
-                        label: capitalize(rowName),
-                    }
-                    if (customRowRender[rowKey] !== undefined) {
-                        // using custom body render
-                        _column['options'] = {
-                            filter: false,
-                            sort: false,
-                            display: rowKey !== 'id',
-                            customBodyRender: customRowRender[rowKey]
-                        }
-                    } else {
-                        _column['options'] = {
-                            display: rowKey !== 'id' && excludedColumns.findIndex((col_name) => col_name === rowKey) === -1
-                        }
-                    }
-                    if (customColumnHeaderRender[rowKey] !== undefined) {
-                        _column['options'] = {
-                            customHeadLabelRender: customColumnHeaderRender[rowKey]
-                        }
-                    }
-                    if (customOptions[rowKey] !== undefined) {
-                        _column['options'] = customOptions[rowKey]
-                    }
-                    if (rowKey.toLowerCase().includes('date')) {
-                        _column['options'] = {
-                            filter: false,
-                            customBodyRender: (value, tableMeta, updateValue) => {
-                                if (value.includes('T') && value.includes('Z')) {
-                                    return new Date(value).toDateString()
-                                }
-                                return value
-                            }
-                        }
-                    }
-                    _columns.push(_column)
-                }
-            }
-
-            if (actionData) {
-                    _columns.push({
-                        name: '',
-                        options: {
-                            filter: false,
-                            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-                                const rowData: any = data.find(({id}) => id === tableMeta.rowData[0])
-                                if (!rowData) return null
-                                // grouping the action data buttons
-                                // e.g. Edit and Delete might be better to separate it into different group
-                                let actionDataGroup:any = {
-                                    'default': []
-                                }
-                                let iconActionGroup:JSX.Element[] = []
-                                actionData.map((_actionData, idx) => {
-                                    let element = null
-                                    if (_actionData.onClick) {
-                                        if (_actionData.icon) {
-                                            // use icon button
-                                            element = (
-                                                <IconButton aria-label={_actionData.getName ? _actionData.getName(rowData) : _actionData.name}
-                                                    title={_actionData.getName ? _actionData.getName(rowData) : _actionData.name}
-                                                    key={idx}
-                                                    disabled={_actionData.isDisabled ? _actionData.isDisabled(rowData) : false}
-                                                    color={_actionData.color ? _actionData.color : 'primary'}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        _actionData.onClick(rowData, e)
-                                                    }}
-                                                    className={_actionData.className ? _actionData.className : ''}
-                                                >
-                                                    {_actionData.icon}
-                                                </IconButton>
-                                            )
-                                        } else {
-                                            element = (
-                                                <Button
-                                                    key={idx}
-                                                    color={_actionData.color ? _actionData.color : 'primary'}
-                                                    disabled={_actionData.isDisabled ? _actionData.isDisabled(rowData) : false}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        _actionData.onClick(rowData, e)
-                                                    }} variant={'contained'}
-                                                    className={_actionData.className ? _actionData.className : ''}
-                                                    sx={{minWidth: '82px'}}>{_actionData.getName ? _actionData.getName(rowData) : _actionData.name}
-                                                </Button>
-                                            )
-                                        }
-                                    } else if (rowData[_actionData.field]) {
-                                        if (_actionData.icon) {
-                                            // use icon button
-                                            element = (
-                                                <IconButton aria-label="Edit"
-                                                    title="Edit"
-                                                    key={idx}
-                                                    disabled={_actionData.isDisabled ? _actionData.isDisabled(rowData) : false}
-                                                    color={_actionData.color ? _actionData.color : 'primary'}
-                                                    className={_actionData.className ? _actionData.className : ''}
-                                                    onClick={(e) => navigate(_actionData.url + rowData[_actionData.field])}
-                                                >
-                                                    {_actionData.icon}
-                                                </IconButton>
-                                            )
-                                        } else {
-                                            element = (
-                                                <Button
-                                                    key={idx}
-                                                    disabled={_actionData.isDisabled ? _actionData.isDisabled(rowData) : false}
-                                                    onClick={(e) => navigate(_actionData.url + rowData[_actionData.field])}
-                                                    variant={'contained'}
-                                                    className={_actionData.className ? _actionData.className : ''}
-                                                    sx={{minWidth: '82px'}}>Edit
-                                                </Button>
-                                            )
-                                        }
-                                    }
-                                    if (_actionData.icon) {
-                                        // add to icon actions group
-                                        iconActionGroup.push(element)
-                                    } else if (_actionData.actionGroup) {
-                                        if (actionDataGroup[_actionData.actionGroup] === undefined) {
-                                            actionDataGroup[_actionData.actionGroup] = []
-                                        }
-                                        actionDataGroup[_actionData.actionGroup].push(element)
-                                    } else {
-                                        actionDataGroup['default'].push(element)
-                                    }
-                                })
-                                // check whether this is icon actions or button groups
-                                if (iconActionGroup.length > 0) {
-                                    return (
-                                        <div className="TableActionContent">
-                                            {
-                                                iconActionGroup.map((_action_button:any, idx:any) => _action_button)
-                                            }
-                                        </div>
-                                    )
-                                }
-                                return (
-                                    <div className="TableActionContent">
-                                        {
-                                            Object.entries(actionDataGroup).map((_action_group:any, idx:any) => 
-                                                <ButtonGroup variant="contained" key={_action_group[0]} sx={{ ...(idx > 0 && {marginLeft: '10px'})}} >
-                                                    {
-                                                        _action_group[1].map((_action_button:any, idx_element:number) => _action_button)
-                                                    }
-                                                </ButtonGroup>
-                                            )
-                                        }
-                                    </div>
-                                )
-                            }
-                        },
-                    })
-                }
-
-            // Add action to column
-            if (editUrl || detailUrl || redirectUrl || onEditClick) {
-                _columns.push({
-                    name: '',
-                    options: {
-                        filter: false,
-                        customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-                            const rowData = tableMeta.rowData
-                            return COLUMNS_ACTION(
-                              rowData, addUrl, redirectUrl, editUrl, onEditClick, detailUrl, navigate)
-                        }
-                    }
-                })
-            }
-            setTableColumns(_columns)
+            updateTableColumns()
         }
     }, [data])
+
+    useEffect(() => {
+        if (data.length > 0 && tableColumns.length > 0) {
+            updateTableColumns()
+        }
+    }, [customOptions])
 
     // Show modal when url changed
     useEffect(() => {

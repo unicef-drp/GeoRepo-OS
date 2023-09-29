@@ -334,11 +334,11 @@ def run_comparison_boundary(entity_upload_id: int):
     ).exists()
     if not has_pending_upload:
         message = (
-            f'Boundary matching for {entity_upload.upload_session.source}'
+            f'Boundary matching for {dataset.label}'
             ' has finished! Click here to view!'
         )
         payload = {
-            'review_id': entity_upload_id,
+            'review_id': entity_upload.upload_session.id,
             'severity': 'success'
         }
 

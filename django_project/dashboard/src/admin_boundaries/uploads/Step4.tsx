@@ -309,11 +309,14 @@ export default function Step4(props: WizardStepInterface) {
     if (uploadData.length > 0 && !allFinished) {
       // set filter by 'Not Completed'
       let _statusFilter = {...customColumnOptions['status']} as any
-      _statusFilter['filterList'] = ['Not Completed']
-      setCustomColumnOptions({
-        ...customColumnOptions,
-        'status': _statusFilter
-      })
+      if (!('filterList' in _statusFilter)) {
+        _statusFilter['filterList'] = ['Not Completed']
+        setCustomColumnOptions({
+          ...customColumnOptions,
+          'status': _statusFilter
+        })
+      }
+
       const interval = setInterval(() => {
         getStatus()
       }, 5000);
@@ -406,17 +409,35 @@ export default function Step4(props: WizardStepInterface) {
         // go to next step
         // trigger to fetch notification frequently
         dispatch(setPollInterval(FETCH_INTERVAL_JOB))
-        if ((window as any).is_admin) {
-          navigate(`${ReviewListRoute.path}?upload=${props.uploadSession}`)
-        } else {
-          navigate(ReviewListRoute.path)
-        }
+        navigate(`${ReviewListRoute.path}?upload=${props.uploadSession}`)
       } else {
         _error = _error || _defaultError
         setAlertMessage(_error)
       }
     } else {
       setAlertMessage(_defaultError)
+    }
+  }
+
+  const handleFilterChange = (applyFilters: any) => {
+    let filterList = applyFilters()
+    let _statusFilter = {...customColumnOptions['status']} as any
+    if ('filterList' in _statusFilter) {
+      // check if no filter applied, then remove filterList
+      let _allEmpty = true
+      for (let idx in filterList) {
+        if (filterList[idx] && filterList[idx].length) {
+          _allEmpty = false
+          break
+        }
+      }
+      if (_allEmpty) {
+        _statusFilter['filterList'] = []
+        setCustomColumnOptions({
+          ...customColumnOptions,
+          'status': {..._statusFilter}
+        })
+      }
     }
   }
 
@@ -442,7 +463,7 @@ export default function Step4(props: WizardStepInterface) {
                   </IconButton>
                 </Grid>
               </Grid>
-              <h2 className="error-modal-title">Error</h2>
+              <h2 className="error-modal-title">Error Report</h2>
               <Box  sx={{width: '100%', overflowX: 'auto', height: '450px'}}>
                 <DataGrid
                   getRowId={(row) => row['Level']}
@@ -476,11 +497,11 @@ export default function Step4(props: WizardStepInterface) {
                       {/* { hasErrorOverlaps && <Button variant={'outlined'} onClick={() => setViewOverlapError(true)}>
                         View Overlaps Error
                       </Button>} */}
-                    </Grid>
-                    <Grid item>
                       <Button variant={'contained'} onClick={() => downloadReport(errorReportId)}>
                         Download Error Report
                       </Button>
+                    </Grid>
+                    <Grid item>
                     </Grid>
                   </Grid>
                   
@@ -504,6 +525,13 @@ export default function Step4(props: WizardStepInterface) {
         editUrl={''}
         excludedColumns={['is_importable', 'progress', 'error_summaries', 'error_report', 'is_warning']}
         customOptions={customColumnOptions}
+        options={{
+          'selectableRowsHeader': !props.isReadOnly,
+          'onFilterChange': (column: any, filterList: any, type: any) => {
+            var newFilters = () => (filterList)
+            handleFilterChange(newFilters)
+          }
+        }}
       />
         <div className="button-container" style={{marginLeft:0, width: '100%'}}>
           <Grid container direction='row' justifyContent='space-between'>
@@ -518,6 +546,12 @@ export default function Step4(props: WizardStepInterface) {
                     disabled={loading || (selectedEntities.length == 0)}
                     onClick={handleImportClick}
                 >Import</Button>
+              )}
+              { props.isReadOnly && uploadData.length > 0 && (
+                <Button variant="contained"
+                  disabled={loading}
+                  onClick={() => navigate(`${ReviewListRoute.path}?upload=${props.uploadSession}`)}
+                >Go to Review</Button>
               )}
             </Grid>
           </Grid>

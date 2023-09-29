@@ -50,7 +50,7 @@ function NotificationItem(props: NotificationItemInterface) {
                                     'success') as AlertColor
     return (
         <Snackbar open={props.open} onClose={(e, reason) => props.handleClose(props.data.id, reason)}
-            TransitionComponent={TransitionLeft}>
+            TransitionComponent={TransitionLeft} autoHideDuration={60000}>
             <Alert variant="filled"
                 onClose={() => props.handleClose(props.data.id)} severity={severity} sx={{ width: '100%' }}>
                 <Typography onClick={() => props.handleClick?props.handleClick(props.data.id):null}
@@ -146,10 +146,13 @@ export default function Notification() {
                 break;
             case 'BOUNDARY_MATCHING':
                 // redirect to review detail page
-                // if ('review_id' in notification.payload)
-                //     navigate(ReviewDetailRoute.path + `?id=${notification.payload.review_id}`)
-                // else
+                if ('review_id' in notification.payload)
+                    navigate(ReviewListRoute.path + `?upload=${notification.payload.review_id}`)
+                else
                     navigate(ReviewListRoute.path)
+                break;
+            case 'BATCH_REVIEW':
+                navigate(ReviewListRoute.path)
                 break;
             default:
                 break;
