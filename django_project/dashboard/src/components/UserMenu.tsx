@@ -19,7 +19,6 @@ interface UserMenuInterface {
  * User dropdown.
  **/
 export default function UserMenu(props: UserMenuInterface) {
-  console.log(props.helpPageRef?.current)
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
   const is_staff = (window as any).is_staff

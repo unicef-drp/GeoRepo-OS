@@ -125,7 +125,8 @@ class SitePreferences(SingletonModel):
     search_similarity = models.FloatField(
         null=True,
         blank=True,
-        default=0.3
+        default=0.3,
+        help_text='Search Similarity Threshold for fuzzy search.'
     )
     # -----------------------------------------------
     # Simplify tolerance for geometry fuzzy search
@@ -133,7 +134,8 @@ class SitePreferences(SingletonModel):
     search_simplify_tolerance = models.FloatField(
         null=True,
         blank=True,
-        default=0.5
+        default=0.5,
+        help_text='Simplify tolerance for geometry fuzzy search.'
     )
     # -----------------------------------------------
     # Threshold for geometry similarity in boundary matching
@@ -160,11 +162,12 @@ class SitePreferences(SingletonModel):
         )
     )
     # -----------------------------------------------
-    # JSON template for vector tiling config
+    # JSON template for simplification tiling config
     # -----------------------------------------------
     tile_configs_template = models.JSONField(
         default=list,
-        blank=True
+        blank=True,
+        help_text='Default simplification tiling config.'
     )
     # -----------------------------------------------
     # Dataset short code to be excluded from UCode generation
@@ -182,14 +185,16 @@ class SitePreferences(SingletonModel):
     # -----------------------------------------------
     level_names_template = models.JSONField(
         default=list,
-        blank=True
+        blank=True,
+        help_text='Default admin level names.'
     )
     # -----------------------------------------------
     # API pagination setting
     # -----------------------------------------------
     api_config = models.JSONField(
         default=default_api_config,
-        blank=True
+        blank=True,
+        help_text='API pagination configuration.'
     )
     # -----------------------------------------------
     # API current latest version - Usage in background task that generates URL
@@ -207,15 +212,17 @@ class SitePreferences(SingletonModel):
     # -----------------------------------------------
     metadata_xml_config = models.JSONField(
         default=default_metadata_xml_config,
-        blank=True
+        blank=True,
+        help_text='Metadata xml configuration for export data.'
     )
     # -----------------------------------------------
     # Default Group Name (Public)
-    # new user will be added to this groups
+    # Default group name that cannot be removed.
     # -----------------------------------------------
     default_public_groups = models.JSONField(
         default=default_public_groups,
-        blank=True
+        blank=True,
+        help_text='Default group that cannot be removed from system.'
     )
     # -----------------------------------------------
     # Map Tiler API Keys for browse dataset in FrontEnd
@@ -232,7 +239,8 @@ class SitePreferences(SingletonModel):
     # -----------------------------------------------
     default_geometry_checker_params = models.JSONField(
         default=default_geometry_checker_params,
-        blank=True
+        blank=True,
+        help_text='Default parameters for geometry validation.'
     )
     # -----------------------------------------------
     # Default Admin Email Addresses
@@ -240,17 +248,10 @@ class SitePreferences(SingletonModel):
     # -----------------------------------------------
     default_admin_emails = models.JSONField(
         default=list,
-        blank=True
-    )
-    # -----------------------------------------------
-    # Base URL Help Page in FrontEnd
-    # -----------------------------------------------
-    base_url_help_page = models.CharField(
-        max_length=256,
-        default='',
+        blank=True,
         help_text=_(
-            'Used in FrontEnd UI to scraping help text'
-        )
+            'For sending email when there is sign-up/access request.'
+        ),
     )
 
     swagger_api_documentation_link = models.TextField(

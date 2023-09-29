@@ -9,7 +9,7 @@ import InfoIcon from '@mui/icons-material/Info';
 
 const MAX_DESCRIPTION_LENGTH = 200;
 const WINDOW_PREFERENCES: any = window.preferences
-const HELP_BASE_URL = WINDOW_PREFERENCES ? WINDOW_PREFERENCES['base_url_help_page'] : ''
+const HELP_BASE_URL = ''
 const HelpTooltipCustom = styled(({ className, ...props }: TooltipProps) => (
     <Tooltip {...props} classes={{ popper: className }} />
   ))(({ theme }) => ({
