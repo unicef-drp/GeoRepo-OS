@@ -1,6 +1,8 @@
 import time
 import json
 from typing import Tuple
+from django.db.models import IntegerField
+from django.db.models.functions import Cast
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from core.celery import app
 from dashboard.models.layer_upload_session import (
@@ -162,7 +164,11 @@ def prepare_validation(
     upload_session.progress = ''
     upload_session.save(update_fields=['auto_matched_parent_ready',
                                        'status', 'progress'])
-    layer_files = upload_session.layerfile_set.all()
+    layer_files = LayerFile.objects.annotate(
+        level_int=Cast('level', IntegerField())
+    ).filter(
+        layer_upload_session=upload_session
+    ).order_by('level_int')
     for layer_file in layer_files:
         read_temp_layer_file(upload_session, layer_file)
     # check if upload from level 0

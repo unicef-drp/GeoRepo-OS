@@ -285,9 +285,9 @@ class DashboardDatasetFilterValue(AzureAuthRequiredMixin,
         return GeographicalEntity.objects.filter(
             dataset=dataset,
             privacy_level__lte=privacy_level
-        ).exclude(label__isnull=True).exclude(
-            label__exact='').order_by().values_list(
-                'label',
+        ).exclude(admin_level_name__isnull=True).exclude(
+            admin_level_name__exact='').order_by().values_list(
+                'admin_level_name',
                 flat=True).distinct()
 
     def fetch_available_type(self, dataset, privacy_level):
@@ -340,7 +340,7 @@ class DashboardDatasetFilterValue(AzureAuthRequiredMixin,
             data = self.fetch_available_country(dataset, privacy_level)
         elif criteria == 'level':
             data = self.fetch_available_level(dataset, privacy_level)
-        elif criteria == 'level_name':
+        elif criteria == 'admin_level_name':
             data = self.fetch_available_level_name(dataset, privacy_level)
         elif criteria == 'type':
             data = self.fetch_available_type(dataset, privacy_level)
