@@ -29,7 +29,7 @@ def ready_to_review(entity_uploads):
     )
 
 
-def prepare_review(entity_upload: EntityUploadStatus):
+def prepare_review(entity_upload: EntityUploadStatus, **kwargs):
     logger.info('prepare for review of boundary_lines')
     layer_files = LayerFile.objects.filter(
         layer_upload_session=entity_upload.upload_session

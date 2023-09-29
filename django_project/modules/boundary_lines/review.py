@@ -57,7 +57,8 @@ def approve_revision(
         layer_file__in=entity_upload
         .upload_session.layerfile_set.all()
     ).order_by('internal_code')
-    generate_concept_ucode(ancestor_entity, new_entities, False)
+    generate_concept_ucode(ancestor_entity, new_entities,
+                           False, entity_upload.upload_session.dataset)
     if entity_upload.upload_session.is_historical_upload:
         approve_historical_upload(entity_upload, user)
     else:

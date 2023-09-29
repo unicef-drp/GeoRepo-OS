@@ -49,10 +49,11 @@ def review_approval(
         'approve_revision'
     )
     approve_revision(entity_upload, user, **kwargs)
-    check_affected_dataset_views.delay(
-        dataset.id,
-        entity_id=entity_upload.revised_geographical_entity.id
-    )
+    if entity_upload.revised_geographical_entity:
+        check_affected_dataset_views.delay(
+            dataset.id,
+            entity_id=entity_upload.revised_geographical_entity.id
+        )
     # remove task id
     entity_upload = EntityUploadStatus.objects.get(id=entity_upload_id)
     entity_upload.task_id = ''
