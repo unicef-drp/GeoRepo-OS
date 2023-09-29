@@ -5,6 +5,7 @@ import zipfile
 
 from django import forms
 from django.conf import settings
+from django.db.models import Q
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -262,6 +263,34 @@ def patch_views_in_dataset(modeladmin, request, queryset):
     )
 
 
+def patch_centroid_in_entities(modeladmin, request, queryset):
+    from georepo.tasks.dataset_patch import entity_patch_centroid_bbox
+    entity_patch_centroid_bbox.delay()
+    modeladmin.message_user(
+        request,
+        'Entities patch centroid will be run in the background!',
+        messages.SUCCESS
+    )
+
+
+def check_entities_empty_centroid(modeladmin, request, queryset):
+    count = GeographicalEntity.objects.filter(
+        Q(centroid__isnull=True) | Q(centroid='')
+    ).count()
+    if count > 0:
+        modeladmin.message_user(
+            request,
+            f'There are {count} entities unpatched without centroid+bbox!!',
+            messages.WARNING
+        )
+    else:
+        modeladmin.message_user(
+            request,
+            'Entities all patched with centroid+bbox!!',
+            messages.SUCCESS
+        )
+
+
 class DatasetAdmin(GuardedModelAdmin):
     add_form_template = None
     form = DatasetAdminChangeForm
@@ -286,7 +315,8 @@ class DatasetAdmin(GuardedModelAdmin):
         clear_cache, generate_jmeter_script,
         generate_default_views, add_to_public_groups,
         generate_dataset_concept_ucode, patch_entity_names,
-        patch_views_in_dataset]
+        patch_views_in_dataset, patch_centroid_in_entities,
+        check_entities_empty_centroid]
 
     def get_form(self, request, obj=None, **kwargs):
         """

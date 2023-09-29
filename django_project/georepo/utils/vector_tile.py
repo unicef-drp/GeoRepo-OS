@@ -122,7 +122,7 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         )
     sql = (
         select_sql +
-        'ST_AsText(ST_PointOnSurface(gg.geometry)) AS centroid, '
+        'gg.centroid AS centroid, gg.bbox AS bbox, '
         'gg.id, gg.label, '
         'gg.level, ge.label as type, gg.internal_code as default, '
         'gg.start_date as start_date, gg.end_date as end_date, '

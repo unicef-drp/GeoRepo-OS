@@ -206,3 +206,33 @@ def dataset_patch_views(dataset_id):
         generate_view_bbox(view)
         logger.info(f'Patch view {view} is finished')
     logger.info(f'Patch views in dataset {dataset} is finished')
+
+
+@shared_task(name='entity_patch_centroid_bbox')
+def entity_patch_centroid_bbox():
+    entities = GeographicalEntity.objects.filter(
+        Q(centroid__isnull=True) | Q(centroid='')
+    )
+    total_count = entities.count()
+    logger.info(f'entity_patch_centroid_bbox with {total_count} entities')
+    total_updated = 0
+    data = []
+    for entity in entities.iterator(chunk_size=1):
+        entity.bbox = '[' + ','.join(map(str, entity.geometry.extent)) + ']'
+        entity.centroid = entity.geometry.point_on_surface.wkt
+        data.append(entity)
+        if len(data) == 10:
+            total_updated += GeographicalEntity.objects.bulk_update(
+                data, fields=['bbox', 'centroid'], batch_size=10)
+            data.clear()
+            if total_updated % 1000 == 0:
+                logger.info('entity_patch_centroid_bbox has finished '
+                            f'processing {total_updated} of {total_count} '
+                            'entities')
+    if len(data) > 0:
+        total_updated += GeographicalEntity.objects.bulk_update(
+            data, fields=['bbox', 'centroid'])
+        data.clear()
+    logger.info('entity_patch_centroid_bbox has finished processing all '
+                f'{total_updated} of {total_count} entities')
+    return (total_count, total_updated)

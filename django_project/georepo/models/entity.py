@@ -234,6 +234,22 @@ class GeographicalEntity(models.Model):
         default=4
     )
 
+    centroid = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        default='',
+        help_text='Geometry centroid using ST_PointOnSurface'
+    )
+
+    bbox = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        default='',
+        help_text='Geometry bounding box'
+    )
+
     @property
     def ucode(self):
         from georepo.utils import get_unique_code

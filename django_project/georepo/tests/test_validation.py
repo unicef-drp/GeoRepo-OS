@@ -157,14 +157,18 @@ class TestValidation(TestCase):
         )
         self.assertTrue(status)
         self.assertTrue(updated_entity_upload.revised_geographical_entity)
-        self.assertTrue(GeographicalEntity.objects.filter(
+        entity_lvl1 = GeographicalEntity.objects.filter(
             parent__revision_number=2,
             revision_number=2,
             level=1,
             label='Khyber Pakhtunkhwa',
             is_approved=None,
             is_validated=False
-        ).exists())
+        )
+        self.assertTrue(entity_lvl1.exists())
+        entity = entity_lvl1.first()
+        self.assertTrue(entity.centroid)
+        self.assertTrue(entity.bbox)
         entity_lvl2 = GeographicalEntity.objects.filter(
             parent__label='Khyber Pakhtunkhwa',
             level=2,
@@ -173,7 +177,10 @@ class TestValidation(TestCase):
             is_validated=False
         )
         self.assertTrue(entity_lvl2.exists())
-        names = entity_lvl2.first().entity_names.all()
+        entity = entity_lvl2.first()
+        self.assertTrue(entity.centroid)
+        self.assertTrue(entity.bbox)
+        names = entity.entity_names.all()
         self.assertEqual(names.count(), 1)
         self.assertEqual(names[0].name, 'Lakki Marwat Tsd')
         self.assertEqual(names[0].label, 'Name 1')
