@@ -68,3 +68,25 @@ def check_affected_dataset_views(
                 )
                 view.dataset.sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
                 view.dataset.save()
+
+
+@shared_task(name="check_affected_views_from_tiling_config")
+def check_affected_views_from_tiling_config(
+    dataset_id: int
+):
+    """
+    Trigger checking affected views for dataset tiling config update.
+    """
+    views_to_check = DatasetView.objects.filter(
+        dataset_id=dataset_id
+    ).filter(
+        vector_tile_sync_status=DatasetView.SyncStatus.SYNCED
+    )
+    for view in views_to_check:
+        if view.datasetviewtilingconfig_set.all().exists():
+            continue
+        view.set_out_of_sync(
+            tiling_config=True,
+            vector_tile=True,
+            product=False
+        )

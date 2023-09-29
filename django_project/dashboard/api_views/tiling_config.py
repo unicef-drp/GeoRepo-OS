@@ -34,6 +34,9 @@ from georepo.utils.dataset_view import (
 from dashboard.api_views.common import (
     DatasetManagePermission
 )
+from georepo.tasks.dataset_view import (
+    check_affected_views_from_tiling_config
+)
 
 
 class FetchDatasetTilingConfig(AzureAuthRequiredMixin,
@@ -432,9 +435,12 @@ class ConfirmTemporaryTilingConfigAPIView(TemporaryTilingConfigAPIView):
         dataset.styles = None
         dataset.style_source_name = ''
         dataset.is_simplified = False
+        dataset.sync_status = dataset.SyncStatus.OUT_OF_SYNC
         dataset.save(update_fields=[
-            'styles', 'style_source_name', 'is_simplified'
+            'styles', 'style_source_name', 'is_simplified', 'sync_status'
         ])
+        # trigger check affected views from dataset tiling config
+        check_affected_views_from_tiling_config.delay(dataset.id)
 
     def apply_to_datasetview(self, dataset_view_uuid, configs):
         dataset_view = get_object_or_404(

@@ -5,7 +5,6 @@ from django.test import TestCase
 
 from georepo.models import (
     DatasetTilingConfig,
-    DatasetViewTilingConfig,
     AdminLevelTilingConfig,
     IdType
 )
@@ -125,31 +124,3 @@ class TestModelSignal(TestCase):
                 self.view_latest.product_sync_status,
                 DatasetView.SyncStatus.OUT_OF_SYNC
             )
-
-    def test_dataset_tiling_config_post_create(self):
-        """
-        Test create Dataset Tiling Config mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        DatasetTilingConfig.objects.create(
-            dataset=self.dataset,
-            zoom_level=5
-        )
-
-        self.check_post_condition(is_tile_config=True)
-
-    def test_dataset_view_tiling_config_post_create(self):
-        """
-        Test create Dataset View Tiling Config mark
-        Dataset and View as out of sync
-        """
-        self.check_precondition()
-
-        DatasetViewTilingConfig.objects.create(
-            dataset_view=self.view_latest,
-            zoom_level=5
-        )
-
-        self.check_post_condition(is_tile_config=True)
