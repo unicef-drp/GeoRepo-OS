@@ -22,6 +22,7 @@ from georepo.models import (
 )
 from georepo.serializers.entity import SimpleGeographicalGeojsonSerializer
 from georepo.utils.custom_geo_functions import ForcePolygonCCW
+from georepo.utils.directory_helper import convert_size
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ def mapshaper_commands(input_path: str, output_path: str,
     return command_list
 
 
-def export_entities_to_geojson(file_path, queryset):
+def export_entities_to_geojson(file_path, queryset, level):
     with open(file_path, "w") as geojson_file:
         geojson_file.write('{\n')
         geojson_file.write('"type": "FeatureCollection",\n')
@@ -98,9 +99,12 @@ def export_entities_to_geojson(file_path, queryset):
             idx += 1
         geojson_file.write(']\n')
         geojson_file.write('}\n')
+    file_size = os.path.getsize(file_path)
+    logger.info(f'Entities level {level} are exported '
+                f'to {file_path} with size {convert_size(file_size)}')
 
 
-def do_simplify(input_file_path, tolerance):
+def do_simplify(input_file_path, tolerance, level):
     if tolerance == 1:
         return input_file_path
     output_file = NamedTemporaryFile(
@@ -113,13 +117,20 @@ def do_simplify(input_file_path, tolerance):
         output_file.name,
         tolerance
     )
+    logger.info('Mapshaper commands:')
+    logger.info(commands)
     result = subprocess.run(commands, capture_output=True)
+    output = result.stdout.decode()
+    logger.info(output)
     if result.returncode != 0:
         error = result.stderr.decode()
         logger.error('Failed to simplify with commands')
         logger.error(commands)
         logger.error(error)
         raise RuntimeError(error)
+    file_size = os.path.getsize(output_file.name)
+    logger.info(f'Entities level {level} are simplified '
+                f'to {output_file.name} with size {convert_size(file_size)}')
     return output_file.name
 
 
@@ -292,7 +303,7 @@ def simplify_for_dataset(
                 logger.info(f'Simplification for dataset {dataset} '
                             f'{progress:.2f}%')
             else:
-                export_entities_to_geojson(input_file.name, entities)
+                export_entities_to_geojson(input_file.name, entities, level)
                 for simplify_factor in values:
                     start = time.time()
                     output_file_path = ''
@@ -302,24 +313,13 @@ def simplify_for_dataset(
                         else:
                             output_file_path = do_simplify(
                                 input_file.name,
-                                simplify_factor
+                                simplify_factor,
+                                level
                             )
                             read_output_simplification(
                                 output_file_path,
                                 simplify_factor
                             )
-                    except Exception as ex:
-                        logger.error(
-                            f'Failed to simplify dataset {dataset} '
-                            f'level {level} factor {simplify_factor}!'
-                        )
-                        logger.error(ex)
-                    finally:
-                        if (
-                            output_file_path != input_file.name and
-                            os.path.exists(output_file_path)
-                        ):
-                            os.remove(output_file_path)
                         end = time.time()
                         logger.info(f'Simplification for dataset {dataset} '
                                     f'level {level} simplify '
@@ -335,10 +335,22 @@ def simplify_for_dataset(
                         )
                         logger.info(f'Simplification for dataset {dataset} '
                                     f'{progress:.2f}%')
+                    except Exception as ex:
+                        logger.error(
+                            f'Failed to simplify dataset {dataset} '
+                            f'level {level} factor {simplify_factor}!'
+                        )
+                        logger.error(ex)
+                        raise ex
+                    finally:
+                        if (
+                            output_file_path != input_file.name and
+                            os.path.exists(output_file_path)
+                        ):
+                            os.remove(output_file_path)
         except Exception as ex:
             logger.error(f'Failed to simplify dataset {dataset} '
                          f'level {level}!')
-            logger.error(ex)
         finally:
             if input_file and os.path.exists(input_file.name):
                 os.remove(input_file.name)
@@ -373,13 +385,8 @@ def simplify_for_dataset_view(
     **kwargs
 ):
     start = time.time()
-    logger.info(f'Simplification config for view {view}')
-    view.simplification_progress = (
-        'Entity simplification starts'
-    )
-    view.save(update_fields=['simplification_progress'])
-    logger.info(view.simplification_progress)
     tolerances = get_dataset_view_tolerance(view)
+    logger.info(f'Simplification config for view {view}')
     logger.info(tolerances)
     if len(tolerances.keys()) == 0:
         view.simplification_progress = (
@@ -387,6 +394,11 @@ def simplify_for_dataset_view(
         )
         view.save(update_fields=['simplification_progress'])
         return True
+    view.simplification_progress = (
+        'Entity simplification starts'
+    )
+    view.save(update_fields=['simplification_progress'])
+    logger.info(view.simplification_progress)
     total_simplification = 0
     for level, values in tolerances.items():
         entities = GeographicalEntity.objects.filter(
@@ -445,7 +457,7 @@ def simplify_for_dataset_view(
                 logger.info(f'Simplification for view {view} '
                             f'{progress:.2f}%')
             else:
-                export_entities_to_geojson(input_file.name, entities)
+                export_entities_to_geojson(input_file.name, entities, level)
                 for simplify_factor in values:
                     start = time.time()
                     output_file_path = ''
@@ -455,25 +467,14 @@ def simplify_for_dataset_view(
                         else:
                             output_file_path = do_simplify(
                                 input_file.name,
-                                simplify_factor
+                                simplify_factor,
+                                level
                             )
                             read_output_simplification(
                                 output_file_path,
                                 simplify_factor,
                                 view
                             )
-                    except Exception as ex:
-                        logger.error(
-                            f'Failed to simplify view {view} '
-                            f'level {level} factor {simplify_factor}!'
-                        )
-                        logger.error(ex)
-                    finally:
-                        if (
-                            output_file_path != input_file.name and
-                            os.path.exists(output_file_path)
-                        ):
-                            os.remove(output_file_path)
                         end = time.time()
                         logger.info(f'Simplification for view {view} '
                                     f'level {level} simplify '
@@ -489,10 +490,22 @@ def simplify_for_dataset_view(
                         )
                         logger.info(f'Simplification for view {view} '
                                     f'{progress:.2f}%')
+                    except Exception as ex:
+                        logger.error(
+                            f'Failed to simplify view {view} '
+                            f'level {level} at factor {simplify_factor}!'
+                        )
+                        logger.error(ex)
+                        raise ex
+                    finally:
+                        if (
+                            output_file_path != input_file.name and
+                            os.path.exists(output_file_path)
+                        ):
+                            os.remove(output_file_path)
         except Exception as ex:
             logger.error(f'Failed to simplify view {view} '
                          f'level {level}!')
-            logger.error(ex)
         finally:
             if input_file and os.path.exists(input_file.name):
                 os.remove(input_file.name)
