@@ -14,6 +14,7 @@ from georepo.utils import (
     DirectoryClient
 )
 from georepo.models.dataset_view import DatasetViewResourceLog
+from georepo.models.dataset_view_tile_config import DatasetViewTilingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +108,13 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
             'topojson_sync_status', 'geojson_sync_status'
         ])
 
+    has_view_tile_configs = DatasetViewTilingConfig.objects.filter(
+        dataset_view=view
+    ).exists()
     # NOTE: need to handle on how to scale the simplification
     # before vector tile because right now tile queue is only set
     # to 1 concurrency.
-    if not view.dataset.is_simplified:
+    if not view.dataset.is_simplified and not has_view_tile_configs:
         # simplification for dataset if tiling config is updated
         is_simplification_success = simplify_for_dataset(
             view.dataset,
