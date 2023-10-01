@@ -348,7 +348,7 @@ def simplify_for_dataset(
                             os.path.exists(output_file_path)
                         ):
                             os.remove(output_file_path)
-        except Exception as ex:
+        except Exception:
             logger.error(f'Failed to simplify dataset {dataset} '
                          f'level {level}!')
         finally:
@@ -503,7 +503,7 @@ def simplify_for_dataset_view(
                             os.path.exists(output_file_path)
                         ):
                             os.remove(output_file_path)
-        except Exception as ex:
+        except Exception:
             logger.error(f'Failed to simplify view {view} '
                          f'level {level}!')
         finally:
