@@ -21,7 +21,7 @@ You also need to provide entity's concept ucode and ucode for this tests which y
 
 You can also configure the number of requests and concurrencies that ab will use using variables: NUM_OF_REQUESTS and NUM_OF_CONCURRENCIES.
 
-## Running the scripts
+## Running the script individually
 
 The request files are numbered and you need to use **run_benchmark.sh** script to run each file.
 Load the environment variables before running the sripts.
@@ -30,6 +30,18 @@ Load the environment variables before running the sripts.
 source export_var.sh
 ./run_benchmark.sh 01_module_list.sh
 ./run_benchmark.sh 02_dataset_list.sh
+```
+
+The benchmark results will be in the output directory with date format (DD-MM-YYYY).
+
+## Running the all scripts
+
+Use **run_all_benchmark.sh** to run all scripts.
+Load the environment variables before running the sripts.
+
+```
+source export_var.sh
+./run_all_benchmark.sh
 ```
 
 The benchmark results will be in the output directory with date format (DD-MM-YYYY).

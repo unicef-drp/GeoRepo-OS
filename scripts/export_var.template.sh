@@ -10,6 +10,11 @@ export ENTITY_TYPE=country
 export CONCEPT_UCODE={{SAMPLE_CONCEPT_UCODE}}
 export UCODE={{SAMPLE_UCODE}}
 export UCODE_1={{SAMPLE_UCODE_ADM1}}
+# vector tile x y z
+export VT_Z={{SAMPLE_VECTOR_TILE_Z}}
+export VT_X={{SAMPLE_VECTOR_TILE_X}}
+export VT_Y={{SAMPLE_VECTOR_TILE_Y}}
+export VT_UUID={{SAMPLE_VIEW_RESOURCE_UUID}}
 # ab parameters
 export NUM_OF_REQUESTS=1000
 export NUM_OF_CONCURRENCIES=10
