@@ -2,7 +2,8 @@ from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework.exceptions import (
     NotAuthenticated,
-    PermissionDenied as RestPermissionDenied
+    PermissionDenied as RestPermissionDenied,
+    AuthenticationFailed
 )
 from django.core.exceptions import (
     ValidationError,
@@ -23,6 +24,7 @@ EXCLUDED_EXCEPTIONS = (
     PermissionDenied,
     NotAuthenticated,
     RestPermissionDenied,
+    AuthenticationFailed
 )
 
 

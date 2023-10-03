@@ -84,7 +84,8 @@ SENTRY_DSN = os.environ.get('SENTRY_DSN', None)
 if SENTRY_DSN and SENTRY_DSN != "''":
     from rest_framework.exceptions import (
         NotAuthenticated,
-        PermissionDenied as RestPermissionDenied
+        PermissionDenied as RestPermissionDenied,
+        AuthenticationFailed
     )
     from django.core.exceptions import (
         PermissionDenied
@@ -96,6 +97,7 @@ if SENTRY_DSN and SENTRY_DSN != "''":
                 NotAuthenticated,
                 RestPermissionDenied,
                 PermissionDenied,
+                AuthenticationFailed,
             )
             exc_value = hint['exc_info'][1]
 
