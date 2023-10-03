@@ -1,4 +1,5 @@
 from drf_yasg import openapi
+import ast
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 from django.db.models.expressions import RawSQL
@@ -150,8 +151,8 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
         if resource is None:
             return bbox
         if resource.bbox:
-            bbox = resource.bbox.split(',')
-        bbox = [float(b) for b in bbox]
+            bbox_str = '[' + resource.bbox + ']'
+            bbox = ast.literal_eval(bbox_str)
         return bbox
 
     def get_dataset(self, obj: DatasetView):
