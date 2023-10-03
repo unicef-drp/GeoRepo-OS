@@ -3,7 +3,8 @@ from rest_framework import serializers
 from dashboard.models import (
     EntityUploadStatus,
     APPROVED,
-    REJECTED
+    REJECTED,
+    PROCESSING_APPROVAL
 )
 
 
@@ -55,7 +56,11 @@ class EntityUploadSerializer(serializers.ModelSerializer):
             return APPROVED
         elif obj.status == REJECTED:
             return REJECTED
-        return 'Pending'
+        elif obj.status == PROCESSING_APPROVAL:
+            return APPROVED
+        elif not self.get_is_comparison_ready(obj):
+            return 'Processing'
+        return 'Ready for Review'
 
     class Meta:
         model = EntityUploadStatus

@@ -6,3 +6,8 @@ export interface ActiveBatchReview {
     progress: string,
     status: string
 }
+
+export interface ReviewSummaryCount {
+    processing: number;
+    ready_for_review: number;
+}

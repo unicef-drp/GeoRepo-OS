@@ -63,9 +63,12 @@ class CustomTokenAuthentication(TokenAuthentication):
                 keyword = 'Bearer'
             request.META['HTTP_AUTHORIZATION'] = f'{keyword} {token}'
         user_key = self.get_user_key_param(request)
-        user, token = (
+        auth_result = (
             super(CustomTokenAuthentication, self).authenticate(request)
         )
+        if auth_result is None:
+            return None
+        user, token = auth_result
         self.test_user_key(user, user_key)
         return (user, token)
 

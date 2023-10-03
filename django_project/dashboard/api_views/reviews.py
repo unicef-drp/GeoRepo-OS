@@ -23,7 +23,7 @@ from dashboard.models.batch_review import (
 from dashboard.models.entity_upload import (
     PROCESSING_APPROVAL,
     APPROVED,
-    REJECTED,
+    REVIEWING,
     EntityUploadStatusLog
 )
 from dashboard.serializers.entity_upload import EntityUploadSerializer
@@ -106,31 +106,24 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
 
         if 'status' in dict(request.data):
             filter_values = sorted(dict(request.data).get('status', []))
-            if not filter_values or \
-                filter_values == [APPROVED, 'Pending']:
+            if not filter_values:
                 return queryset.filter(**filter_kwargs)
-
-            non_pending_filter_combinations = [
-                [APPROVED],
-                [REJECTED]
-            ]
-            pending_status = [
-                choice[0] for choice in EntityUploadStatus.STATUS_CHOICES if
-                choice[0] not in [APPROVED, REJECTED]
-            ]
-            if filter_values in non_pending_filter_combinations:
-                filter_kwargs.update({'status__in': filter_values})
-            elif 'Pending' in filter_values:
-                if APPROVED in filter_values:
-                    filter_kwargs.update(
-                        {
-                            'status__in': [
-                                *pending_status, APPROVED
-                            ]
-                        }
-                    )
-                else:
-                    filter_kwargs.update({'status__in': pending_status})
+            # filter status is not multiple select
+            filter_value = filter_values[0]
+            if filter_value == 'Ready for Review':
+                filter_kwargs.update({
+                    'status': REVIEWING,
+                    'comparison_data_ready': True
+                })
+            elif filter_value == 'Processing':
+                filter_kwargs.update({
+                    'status': REVIEWING,
+                    'comparison_data_ready': False
+                })
+            else:
+                filter_kwargs.update({
+                    'status': filter_value
+                })
         return queryset.filter(**filter_kwargs)
 
     def _search_queryset(self, queryset, request):
@@ -247,7 +240,8 @@ class ReviewFilterValue(
     def fetch_status(self):
         return [
             APPROVED,
-            'Pending'
+            'Processing',
+            'Ready for Review'
         ]
 
     def get(self, request, criteria, *args, **kwargs):
