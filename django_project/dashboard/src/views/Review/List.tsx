@@ -446,15 +446,17 @@ export default function ReviewList() {
   const canRowBeSelected = (dataIndex: number, rowData: any) => {
     if (!isBatchReviewAvailable)
       return false
-    return !pendingReviews.includes(rowData['id']) && rowData['is_comparison_ready']
+    return !pendingReviews.includes(rowData['id']) && rowData['is_comparison_ready'] && rowData['status'] === 'Ready for Review'
   }
 
-  const selectionChanged = (data: any) => {
-    dispatch(setSelectedReviews(data))
+  const selectionChanged = (data: number[], removedIds: number[]) => {
+    let _selected = selectedReviews.filter(number => !removedIds.includes(number))
+    data.forEach((number) => (_selected.indexOf(number) > -1) ? null: _selected.push(number))
+    dispatch(setSelectedReviews(_selected))
   }
 
   const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-    console.log(rowData)
+    if (isBatchReview) return
     let moduleName = toLower(rowData[8]).replace(' ', '_')
     if (!moduleName) {
       moduleName = modules[0]
@@ -483,8 +485,7 @@ export default function ReviewList() {
                     page: pagination.page,
                     count: totalCount,
                     rowsPerPage: pagination.rowsPerPage,
-                    // rowsPerPageOptions: rowsPerPageOptions,
-                    rowsPerPageOptions: [2, 10], // test only
+                    rowsPerPageOptions: rowsPerPageOptions,
                     sortOrder: pagination.sortOrder as MUISortOptions,
                     jumpToPage: true,
                     isRowSelectable: (dataIndex: number, selectedRows: any) => {
@@ -493,7 +494,13 @@ export default function ReviewList() {
                     onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
                       // @ts-ignore
                       const rowDataSelected = rowsSelected.map((index) => data[index]['id'])
-                      selectionChanged(rowDataSelected)
+                      let _rowsRemoved = []
+                      for (let i=0; i<rowsSelectedInPage.length; ++i) {
+                        if (!rowsSelected.includes(rowsSelectedInPage[i])) {
+                          _rowsRemoved.push(data[rowsSelectedInPage[i]]['id'])
+                        }
+                      }
+                      selectionChanged(rowDataSelected, _rowsRemoved)
                     },
                     onRowClick: (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
                       handleRowClick(rowData, rowMeta)
