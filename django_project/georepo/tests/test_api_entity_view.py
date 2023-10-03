@@ -118,7 +118,8 @@ class EntityViewTestSuite(EntityResponseChecker):
                 start_date=isoparse('2023-01-01T06:16:13Z'),
                 end_date=isoparse('2023-01-10T06:16:13Z'),
                 concept_ucode='#PAK_1',
-                centroid=geom.point_on_surface.wkt
+                centroid=geom.point_on_surface.wkt,
+                bbox='[' + ','.join(map(str, geom.extent)) + ']'
             )
             EntityIdF.create(
                 code=self.pCode,
@@ -149,7 +150,8 @@ class EntityViewTestSuite(EntityResponseChecker):
                 start_date=isoparse('2023-01-10T06:16:13Z'),
                 uuid=self.pak0_1.uuid,
                 concept_ucode=self.pak0_1.concept_ucode,
-                centroid=geom.point_on_surface.wkt
+                centroid=geom.point_on_surface.wkt,
+                bbox='[' + ','.join(map(str, geom.extent)) + ']'
             )
             EntityIdF.create(
                 code=self.pCode,
@@ -197,7 +199,8 @@ class EntityViewTestSuite(EntityResponseChecker):
                     start_date=isoparse('2023-01-01T06:16:13Z'),
                     end_date=isoparse('2023-01-10T06:16:13Z'),
                     concept_ucode=f'#PAK_{i+2}',
-                    centroid=geom.point_on_surface.wkt
+                    centroid=geom.point_on_surface.wkt,
+                    bbox='[' + ','.join(map(str, geom.extent)) + ']'
                 )
                 if i == 0:
                     entity_1_uuid = entity.uuid
@@ -243,7 +246,8 @@ class EntityViewTestSuite(EntityResponseChecker):
                     start_date=isoparse('2023-01-10T06:16:13Z'),
                     privacy_level=privacy_levels[i],
                     concept_ucode=f'#PAK_{i+4}',
-                    centroid=geom.point_on_surface.wkt
+                    centroid=geom.point_on_surface.wkt,
+                    bbox='[' + ','.join(map(str, geom.extent)) + ']'
                 )
                 if i == 0:
                     entity.uuid = entity_1_uuid

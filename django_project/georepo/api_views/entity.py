@@ -759,7 +759,7 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
             'unique_code', 'unique_code_version',
             'uuid', 'uuid_revision',
             'type__label', 'level', 'start_date', 'end_date',
-            'is_latest', 'admin_level_name', 'concept_ucode'
+            'is_latest', 'admin_level_name', 'concept_ucode', 'bbox'
         ]
         if geom_type == GeomReturnType.FULL_GEOM or format == 'geojson':
             entities = entities.annotate(

@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import json
+import ast
 from rest_framework import serializers
 from drf_yasg import openapi
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
@@ -26,6 +27,7 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
     type = serializers.SerializerMethodField()
     ext_codes = serializers.SerializerMethodField()
     names = serializers.SerializerMethodField()
+    bbox = serializers.SerializerMethodField()
     centroid = serializers.SerializerMethodField()
     geometry = serializers.SerializerMethodField()
     parents = serializers.SerializerMethodField()
@@ -35,6 +37,13 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
             return obj['centroid']
         except KeyError:
             return None
+
+    def get_bbox(self, obj: GeographicalEntity):
+        if self.output_format != 'simple':
+            return None
+        if obj['bbox']:
+            return ast.literal_eval(obj['bbox'])
+        return None
 
     def get_geometry(self, obj: GeographicalEntity):
         if 'rhr_geom' in obj and obj['rhr_geom']:
@@ -298,6 +307,13 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
                     title='True if this is latest revision',
                     type=openapi.TYPE_BOOLEAN,
                 ),
+                'bbox': openapi.Schema(
+                    title='Bounding box of this geographical entity',
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Items(
+                        type=openapi.TYPE_NUMBER
+                    )
+                ),
                 'parents': openapi.Schema(
                     title='All parents in upper level',
                     type=openapi.TYPE_ARRAY,
@@ -370,6 +386,7 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
                         'type': 'Country'
                     }
                 ],
+                'bbox': [-121.5, 47.25, -120.4, 47.8],
                 'centroid': 'POINT (37.11368735239726 35.99933852889995)'
             }
         }
@@ -390,6 +407,7 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
             'ext_codes',
             'names',
             'parents',
+            'bbox',
             'centroid',
             'geometry'
         ]
