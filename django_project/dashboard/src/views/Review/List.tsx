@@ -26,6 +26,15 @@ import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import Checkbox from '@mui/material/Checkbox';
+import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+
+
+const checkBoxOutlinedicon = <CheckBoxOutlineBlankIcon fontSize="small" />;
+const checkBoxCheckedIcon = <CheckBoxIcon fontSize="small" />;
 
 const USER_COLUMNS = [
   'id',
@@ -97,6 +106,7 @@ export default function ReviewList() {
   const isBatchReviewAvailable = useAppSelector((state: RootState) => state.reviewAction.isBatchReviewAvailable)
   const pendingReviews = useAppSelector((state: RootState) => state.reviewAction.pendingReviews)
   const reviewUpdatedAt = useAppSelector((state: RootState) => state.reviewAction.updatedAt)
+  const selectedReviews = useAppSelector((state: RootState) => state.reviewAction.selectedReviews)
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
   const [selectedReview, setSelectedReview] = useState<any>(null)
 
@@ -112,23 +122,24 @@ export default function ReviewList() {
   }, [])
   const ref = useRef(null)
   const [tableHeight, setTableHeight] = useState(0)
+  const [hasProcessingReview, setHasProcessingReview] = useState(false)
+  const [rowsSelectedInPage, setRowsSelectedInPage] = useState<number[]>([])
 
   let selectableRowsMode: any = isBatchReview ? 'multiple' : 'none'
 
   const fetchFilterValues = async () => {
     let filters = []
-    filters.push(axios.get(`${FILTER_VALUES_API_URL}level_0_entity/`))
     filters.push(axios.get(`${FILTER_VALUES_API_URL}upload/`))
     filters.push(axios.get(`${FILTER_VALUES_API_URL}dataset/`))
     filters.push(axios.get(`${FILTER_VALUES_API_URL}revision/`))
     filters.push(axios.get(`${FILTER_VALUES_API_URL}status/`))
     let resultData = await Promise.all(filters)
     let filterVals = {
-      'level_0_entity': resultData[0].data,
-      'upload': resultData[1].data,
-      'dataset': resultData[2].data,
-      'revision': resultData[3].data,
-      'status': resultData[4].data,
+      'level_0_entity': [] as any,
+      'upload': resultData[0].data,
+      'dataset': resultData[1].data,
+      'revision': resultData[2].data,
+      'status': resultData[3].data,
       'search_text': ''
     }
     setFilterValues(filterVals)
@@ -139,7 +150,9 @@ export default function ReviewList() {
   const fetchReviewList = () => {
     if (axiosSource.current) axiosSource.current.cancel()
     let cancelFetchToken = newCancelToken()
-    setLoading(true)
+    if (!hasProcessingReview) {
+      setLoading(true)
+    }
     let sortBy = pagination.sortOrder.name ? pagination.sortOrder.name : ''
     let sortDirection = pagination.sortOrder.direction ? pagination.sortOrder.direction : ''
     const url = `${VIEW_LIST_URL}?` + `page=${pagination.page + 1}&page_size=${pagination.rowsPerPage}` +
@@ -152,7 +165,16 @@ export default function ReviewList() {
       }
     ).then((response) => {
       setLoading(false)
-      setData(response.data.results as reviewTableRowInterface[])
+      let _data = response.data.results as reviewTableRowInterface[]
+      let _hasProcessingReview = false
+      for (let i=0;i<_data.length;++i) {
+        if (_data[i].status === 'Processing') {
+          _hasProcessingReview = true
+          break;
+        }
+      }
+      setHasProcessingReview(_hasProcessingReview)
+      setData(_data)
       setTotalCount(response.data.count)
     }).catch(error => {
       if (!axios.isCancel(error)) {
@@ -171,9 +193,6 @@ export default function ReviewList() {
   const getExistingFilterValue = (colName: string): string[] => {
     let values: string[] = []
     switch (colName) {
-      case 'level_0_entity':
-        values = currentFilters.level_0_entity
-        break;
       case 'upload':
         values = currentFilters.upload
         break;
@@ -217,7 +236,7 @@ export default function ReviewList() {
             sort: true
           }
         }
-        if (['level_0_entity', 'upload', 'revision', 'dataset', 'status'].includes(columnName)) {
+        if (['upload', 'revision', 'dataset', 'status'].includes(columnName)) {
           // set filter values in dropdown
           _options.options.filterOptions = {
             names: filterVals[columnName]
@@ -227,7 +246,52 @@ export default function ReviewList() {
         } else {
           _options.options.filter = false
         }
-        if (columnName == 'start_date') {
+        if (columnName === 'status') {
+          _options.options.filterType = 'dropdown'
+          _options.options.sort = false
+        } else if (columnName === 'upload') {
+          _options.options.filterType = 'custom'
+          _options.options.filterOptions = {
+            names: filterVals[columnName],
+            fullWidth: true,
+            logic(val:any, filters:any) {
+              return false
+            },
+            display: (filterList: any, onChange: any, index: any, column: any) => (
+              <div>
+                <Autocomplete
+                  multiple
+                  id="checkboxes-id-filter"
+                  options={filterVals['upload']}
+                  disableCloseOnSelect
+                  value={filterList[index]}
+                  onChange={(event: any, newValue: any | null) => {
+                    filterList[index] = newValue
+                    onChange(filterList[index], index, column)
+                  }}
+                  getOptionLabel={(option) => `${option}`}
+                  renderOption={(props, option, { selected }) => (
+                    <li {...props}>
+                      <Checkbox
+                        icon={checkBoxOutlinedicon}
+                        checkedIcon={checkBoxCheckedIcon}
+                        style={{ marginRight: 8 }}
+                        checked={selected}
+                      />
+                      {option}
+                    </li>
+                  )}
+                  style={{ width: 500 }}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Uploads" variant="standard" />
+                  )}
+                />
+              </div>
+            )
+          }
+        } else if (columnName === 'dataset') {
+          _options.options.filterOptions['fullWidth'] = true
+        } else if (columnName === 'start_date') {
           _options.options.customBodyRender = (value: string) => {
               return new Date(value).toDateString()
           }
@@ -273,7 +337,28 @@ export default function ReviewList() {
 
   useEffect(() => {
     fetchReviewList()
-  }, [pagination, filterValues, currentFilters])
+  }, [pagination, currentFilters])
+
+  useEffect(() => {
+    if (data.length > 0 && hasProcessingReview) {
+      const interval = setInterval(() => {
+        fetchReviewList()
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [data, hasProcessingReview])
+
+  useEffect(() => {
+    let _selectedIdx: number[] = []
+    if (data) {
+      for (let i=0; i<data.length; i++) {
+        if (selectedReviews.includes(data[i].id)) {
+          _selectedIdx.push(i)
+        }
+      }
+    }
+    setRowsSelectedInPage(_selectedIdx)
+  }, [data, selectedReviews])
 
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
@@ -345,10 +430,11 @@ export default function ReviewList() {
     try {
       upload = searchParams.get('upload') ? [searchParams.get('upload')] : []
     } catch (error: any) {
-      upload = currentFilters['upload']
     }
-    setCurrentFilters({...currentFilters, 'upload': upload})
-    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'upload': upload})))
+    if (upload) {
+      setCurrentFilters({...currentFilters, 'upload': upload})
+      dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'upload': upload})))
+    }
   }, [searchParams])
 
   useEffect(() => {
@@ -379,14 +465,14 @@ export default function ReviewList() {
   }
 
   return (
-    <div className="AdminContentMain review-list main-data-list">
+    <div className="AdminContentMain review-list main-data-list" ref={ref}>
+    <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
+                      onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
     {
       loading ?
         <Loading/> :
           <Fragment>
-            <div className='AdminList' ref={ref}>
-              <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
-                                onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
+            <div className='AdminList'>
               <div className='AdminTable'>
                 <MUIDataTable
                   title=''
@@ -397,7 +483,8 @@ export default function ReviewList() {
                     page: pagination.page,
                     count: totalCount,
                     rowsPerPage: pagination.rowsPerPage,
-                    rowsPerPageOptions: rowsPerPageOptions,
+                    // rowsPerPageOptions: rowsPerPageOptions,
+                    rowsPerPageOptions: [2, 10], // test only
                     sortOrder: pagination.sortOrder as MUISortOptions,
                     jumpToPage: true,
                     isRowSelectable: (dataIndex: number, selectedRows: any) => {
@@ -415,6 +502,7 @@ export default function ReviewList() {
                     customSearchRender: debounceSearchRender(500),
                     selectableRows: selectableRowsMode,
                     selectToolbarPlacement: 'none',
+                    rowsSelected: rowsSelectedInPage,
                     textLabels: {
                       body: {
                         noMatch: loading ?

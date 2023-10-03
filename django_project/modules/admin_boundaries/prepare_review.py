@@ -23,7 +23,7 @@ def ready_to_review(entity_uploads):
         existing_entities._raw_delete(existing_entities.db)
     entity_uploads.update(
         status=REVIEWING,
-        progress='Pending Boundary Matching',
+        progress='Processing Boundary Matching',
         comparison_data_ready=False
     )
 

@@ -144,7 +144,8 @@ def handle_task_interrupted(task: BackgroundTask):
             )
             overwrite = False
             log_object_id = (
-                int(task_param[4]) if len(task_param) > 4 else None
+                int(task_param[4]) if len(task_param) > 4 and
+                task_param[4] is not None else None
             )
             resource.status = (
                 DatasetView.DatasetViewStatus.PENDING
@@ -208,7 +209,8 @@ def handle_task_interrupted(task: BackgroundTask):
         try:
             upload_id = task_param[0]
             log_object_id = (
-                int(task_param[1]) if len(task_param) > 1 else None
+                int(task_param[1]) if len(task_param) > 1 and
+                task_param[1] is not None else None
             )
             upload = EntityUploadStatus.objects.get(id=upload_id)
             # reset the status back to STARTED
@@ -306,7 +308,8 @@ def handle_task_interrupted(task: BackgroundTask):
         try:
             upload_session_id = task_param[0]
             log_object_id = (
-                int(task_param[1]) if len(task_param) > 1 else None
+                int(task_param[1]) if len(task_param) > 1 and
+                task_param[1] is not None else None
             )
             upload_session = LayerUploadSession.objects.get(
                 id=upload_session_id)
