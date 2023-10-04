@@ -775,9 +775,26 @@ class DatasetViewResourceLogAdmin(admin.ModelAdmin):
     list_display = ('dataset_view_resource', 'task_id')
 
 
+@admin.action(description='Check Sentry DSN')
+def check_sentry_dsn(modeladmin, request, queryset):
+    if getattr(settings, 'SENTRY_DSN', None):
+        modeladmin.message_user(
+            request,
+            f'Sentry DSN is {settings.SENTRY_DSN}',
+            messages.SUCCESS
+        )
+    else:
+        modeladmin.message_user(
+            request,
+            'Sentry DSN is not available',
+            messages.ERROR
+        )
+
+
 class ModuleAdmin(GuardedModelAdmin):
     list_display = (
         'name', 'uuid', 'created_at')
+    actions = [check_sentry_dsn]
 
 
 class UserAccessRequestAdmin(admin.ModelAdmin):
