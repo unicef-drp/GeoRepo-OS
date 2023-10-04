@@ -1,8 +1,6 @@
 import time
 import os
 from celery import shared_task
-from celery.result import AsyncResult
-from core.celery import app
 import logging
 import shutil
 from django.conf import settings
@@ -15,8 +13,49 @@ from georepo.utils import (
 )
 from georepo.models.dataset_view import DatasetViewResourceLog
 from georepo.models.dataset_view_tile_config import DatasetViewTilingConfig
+from georepo.utils.dataset_view import (
+    get_entities_count_in_view
+)
+from georepo.utils.celery_helper import cancel_task
 
 logger = logging.getLogger(__name__)
+
+
+def clean_resource_vector_tiles_directory(resource_id):
+    # remove vector tiles dir
+    remove_vector_tiles_dir(resource_id)
+    remove_vector_tiles_dir(resource_id, True)
+
+
+def clean_resource_export_data_directory(resource_id):
+    export_data_dict = {
+        'geojson': settings.GEOJSON_FOLDER_OUTPUT,
+        'shapefile': settings.SHAPEFILE_FOLDER_OUTPUT,
+        'kml': settings.KML_FOLDER_OUTPUT,
+        'topojson': settings.TOPOJSON_FOLDER_OUTPUT
+    }
+    for output, export_dir in export_data_dict.items():
+        if settings.USE_AZURE:
+            output_dir = (
+                f'media/export_data/{output}/'
+                f'{str(resource_id)}'
+            )
+            client = DirectoryClient(settings.AZURE_STORAGE,
+                                     settings.AZURE_STORAGE_CONTAINER)
+            client.rmdir(output_dir)
+        else:
+            export_data = os.path.join(
+                export_dir,
+                resource_id
+            )
+            if os.path.exists(export_data):
+                shutil.rmtree(export_data)
+        temp_export_data = os.path.join(
+            export_dir,
+            f'temp_{resource_id}'
+        )
+        if os.path.exists(temp_export_data):
+            shutil.rmtree(temp_export_data)
 
 
 @shared_task(name="view_vector_tiles_task")
@@ -30,9 +69,6 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
     from georepo.utils.mapshaper import (
         simplify_for_dataset,
         simplify_for_dataset_view
-    )
-    from georepo.utils.dataset_view import (
-        get_entities_count_in_view
     )
     from georepo.utils.vector_tile import (
         reset_pending_tile_cache_keys,
@@ -50,14 +86,7 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
     )
     for view_resource in view_resources:
         if view_resource.vector_tiles_task_id:
-            res = AsyncResult(view_resource.vector_tiles_task_id)
-            if not res.ready():
-                # find if there is running task and stop it
-                app.control.revoke(
-                    view_resource.vector_tiles_task_id,
-                    terminate=True,
-                    signal='SIGKILL'
-                )
+            cancel_task(view_resource.vector_tiles_task_id)
         entity_count = get_entities_count_in_view(
             view_resource.dataset_view,
             view_resource.privacy_level,
@@ -100,6 +129,7 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
             )
             view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCED
             view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCED
+            remove_view_resource_data.delay(view_resource.resource_id)
         view_resource.save(update_fields=[
             'entity_count', 'status', 'vector_tile_sync_status',
             'vector_tiles_progress', 'geojson_progress',
@@ -266,28 +296,64 @@ def generate_view_resource_vector_tiles_task(view_resource_id: str,
 
 
 @shared_task(name="generate_view_export_data")
-def generate_view_export_data(view_id: str):
-    from georepo.models.dataset_view import DatasetView
+def generate_view_export_data(view_resource_id: str):
+    from georepo.models.dataset_view import DatasetView, DatasetViewResource
     from georepo.utils.geojson import generate_view_geojson
     from georepo.utils.shapefile import generate_view_shapefile
     from georepo.utils.kml import generate_view_kml
     from georepo.utils.topojson import generate_view_topojson
     try:
-        view = DatasetView.objects.get(id=view_id)
-        logger.info(f'Extracting geojson from view {view.name}...')
-        geojson_exporter = generate_view_geojson(view)
-        logger.info(
-            f'Extracting shapefile from view {view.name}...'
+        resource = DatasetViewResource.objects.get(id=view_resource_id)
+        view = resource.dataset_view
+        entity_count = get_entities_count_in_view(
+            view,
+            resource.privacy_level
         )
-        generate_view_shapefile(view)
+        if entity_count == 0:
+            resource.entity_count = entity_count
+            resource.status = DatasetView.DatasetViewStatus.EMPTY
+            resource.vector_tile_sync_status = (
+                DatasetView.SyncStatus.SYNCED
+            )
+            resource.geojson_progress = 0
+            resource.shapefile_progress = 0
+            resource.kml_progress = 0
+            resource.topojson_progress = 0
+            resource.geojson_sync_status = DatasetView.SyncStatus.SYNCED
+            resource.shapefile_sync_status = (
+                DatasetView.SyncStatus.SYNCED
+            )
+            resource.kml_sync_status = DatasetView.SyncStatus.SYNCED
+            resource.topojson_sync_status = DatasetView.SyncStatus.SYNCED
+            resource.save(update_fields=[
+                'entity_count', 'status', 'vector_tile_sync_status',
+                'vector_tiles_progress', 'geojson_progress',
+                'shapefile_progress', 'kml_progress', 'topojson_progress',
+                'shapefile_sync_status', 'kml_sync_status',
+                'topojson_sync_status', 'geojson_sync_status'
+            ])
+            clean_resource_export_data_directory(resource.resource_id)
+            return
         logger.info(
-            f'Extracting kml from view {view.name}...'
+            f'Extracting geojson from view {view.name} - '
+            f'{resource.privacy_level}...'
         )
-        generate_view_kml(view)
+        geojson_exporter = generate_view_geojson(view, resource)
         logger.info(
-            f'Extracting topojson from view {view.name}...'
+            f'Extracting shapefile from view {view.name} - '
+            f'{resource.privacy_level}...'
         )
-        generate_view_topojson(view)
+        generate_view_shapefile(view, resource)
+        logger.info(
+            f'Extracting kml from view {view.name} - '
+            f'{resource.privacy_level}...'
+        )
+        generate_view_kml(view, resource)
+        logger.info(
+            f'Extracting topojson from view {view.name} - '
+            f'{resource.privacy_level}...'
+        )
+        generate_view_topojson(view, resource)
 
         logger.info('Extract view data done')
         if settings.USE_AZURE:
@@ -295,40 +361,11 @@ def generate_view_export_data(view_id: str):
             # cleanup geojson files if using Azure
             geojson_exporter.do_remove_temp_dirs()
             logger.info('Removing temporary geojson files done')
-    except DatasetView.DoesNotExist:
-        logger.error(f'DatasetView {view_id} does not exist')
+    except DatasetViewResource.DoesNotExist:
+        logger.error(f'DatasetViewResource {view_resource_id} does not exist')
 
 
 @shared_task(name="remove_view_resource_data")
 def remove_view_resource_data(resource_id: str):
-    # remove vector tiles dir
-    remove_vector_tiles_dir(resource_id)
-    remove_vector_tiles_dir(resource_id, True)
-    export_data_dict = {
-        'geojson': settings.GEOJSON_FOLDER_OUTPUT,
-        'shapefile': settings.SHAPEFILE_FOLDER_OUTPUT,
-        'kml': settings.KML_FOLDER_OUTPUT,
-        'topojson': settings.TOPOJSON_FOLDER_OUTPUT
-    }
-    for output, export_dir in export_data_dict.items():
-        if settings.USE_AZURE:
-            output_dir = (
-                f'media/export_data/{output}/'
-                f'{str(resource_id)}'
-            )
-            client = DirectoryClient(settings.AZURE_STORAGE,
-                                     settings.AZURE_STORAGE_CONTAINER)
-            client.rmdir(output_dir)
-        else:
-            export_data = os.path.join(
-                export_dir,
-                resource_id
-            )
-            if os.path.exists(export_data):
-                shutil.rmtree(export_data)
-        temp_export_data = os.path.join(
-            export_dir,
-            f'temp_{resource_id}'
-        )
-        if os.path.exists(temp_export_data):
-            shutil.rmtree(temp_export_data)
+    clean_resource_vector_tiles_directory(resource_id)
+    clean_resource_export_data_directory(resource_id)

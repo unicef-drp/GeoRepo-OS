@@ -291,6 +291,10 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
     kml_size = serializers.SerializerMethodField()
     topojson_size = serializers.SerializerMethodField()
     vector_tile_sync_status = serializers.SerializerMethodField()
+    geojson_sync_status = serializers.SerializerMethodField()
+    shapefile_sync_status = serializers.SerializerMethodField()
+    kml_sync_status = serializers.SerializerMethodField()
+    topojson_sync_status = serializers.SerializerMethodField()
 
     def get_vector_tiles_size(self, obj):
         return convert_size(obj.vector_tiles_size)
@@ -317,6 +321,24 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
             if obj.tiling_current_task:
                 return obj.tiling_current_task.status
         return obj.vector_tile_sync_status
+
+    def product_sync_status(self, obj: DatasetViewResource, default: str):
+        if default == DatasetViewResource.SyncStatus.SYNCING:
+            if obj.product_current_task:
+                return obj.product_current_task.status
+        return default
+
+    def get_geojson_sync_status(self, obj: DatasetViewResource):
+        return self.product_sync_status(obj, obj.geojson_sync_status)
+
+    def get_shapefile_sync_status(self, obj: DatasetViewResource):
+        return self.product_sync_status(obj, obj.shapefile_sync_status)
+
+    def get_kml_sync_status(self, obj: DatasetViewResource):
+        return self.product_sync_status(obj, obj.kml_sync_status)
+
+    def get_topojson_sync_status(self, obj: DatasetViewResource):
+        return self.product_sync_status(obj, obj.topojson_sync_status)
 
     class Meta:
         model = DatasetViewResource

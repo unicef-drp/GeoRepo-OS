@@ -4,8 +4,9 @@ from django.db.models import Q
 from georepo.models.entity import GeographicalEntity
 
 from georepo.models import (
-    DatasetView
+    DatasetView, DatasetViewResource
 )
+from georepo.utils.celery_helper import cancel_task
 
 
 @shared_task(name="check_affected_views")
@@ -23,7 +24,11 @@ def check_affected_dataset_views(
         is_static=False
     ).filter(
         Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED) |
-        Q(product_sync_status=DatasetView.SyncStatus.SYNCED)
+        Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCING) |
+        Q(simplification_sync_status=DatasetView.SyncStatus.SYNCED) |
+        Q(simplification_sync_status=DatasetView.SyncStatus.SYNCING) |
+        Q(product_sync_status=DatasetView.SyncStatus.SYNCED) |
+        Q(product_sync_status=DatasetView.SyncStatus.SYNCING)
     )
     if unique_codes:
         unique_codes = tuple(
@@ -60,6 +65,19 @@ def check_affected_dataset_views(
             )
             total_count = cursor.fetchone()[0]
             if total_count > 0:
+                # cancel ongoing task
+                if view.simplification_task_id:
+                    cancel_task(view.simplification_task_id)
+                if view.task_id:
+                    cancel_task(view.task_id)
+                view_resources = DatasetViewResource.objects.filter(
+                    dataset_view=view
+                )
+                for view_resource in view_resources:
+                    if view_resource.vector_tiles_task_id:
+                        cancel_task(view_resource.vector_tiles_task_id)
+                    if view_resource.product_task_id:
+                        cancel_task(view_resource.product_task_id)
                 view.set_out_of_sync(
                     tiling_config=False,
                     vector_tile=True,
@@ -80,13 +98,28 @@ def check_affected_views_from_tiling_config(
     views_to_check = DatasetView.objects.filter(
         dataset_id=dataset_id
     ).filter(
-        vector_tile_sync_status=DatasetView.SyncStatus.SYNCED
+        Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED) |
+        Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCING) |
+        Q(simplification_sync_status=DatasetView.SyncStatus.SYNCED) |
+        Q(simplification_sync_status=DatasetView.SyncStatus.SYNCING)
     )
     for view in views_to_check:
         if view.datasetviewtilingconfig_set.all().exists():
             continue
+        # cancel ongoing task
+        if view.simplification_task_id:
+            cancel_task(view.simplification_task_id)
+        if view.task_id:
+            cancel_task(view.task_id)
+        view_resources = DatasetViewResource.objects.filter(
+            dataset_view=view
+        )
+        for view_resource in view_resources:
+            if view_resource.vector_tiles_task_id:
+                cancel_task(view_resource.vector_tiles_task_id)
         view.set_out_of_sync(
             tiling_config=True,
             vector_tile=True,
             product=False
         )
+

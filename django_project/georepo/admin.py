@@ -397,21 +397,6 @@ class IdTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'created_by', 'created_at')
 
 
-@admin.action(description='Generate exported data')
-def generate_view_exported_data(modeladmin, request, queryset):
-    from dashboard.tasks import generate_view_export_data
-    from celery.result import AsyncResult
-    from core.celery import app
-    for dataset_view in queryset:
-        if dataset_view.task_id:
-            # find if there is running task and stop it
-            res = AsyncResult(dataset_view.task_id)
-            if not res.ready():
-                app.control.revoke(dataset_view.task_id, terminate=True)
-        task = generate_view_export_data.delay(dataset_view.id)
-        dataset_view.task_id = task.id
-        dataset_view.save()
-
 
 @admin.action(description='Create SQL View')
 def create_sql_view_action(modeladmin, request, queryset):
@@ -532,7 +517,6 @@ class DatasetViewAdmin(GuardedModelAdmin):
     search_fields = ['name', 'dataset__label', 'uuid']
     list_filter = ["dataset"]
     actions = [generate_view_vector_tiles, create_sql_view_action,
-               generate_view_exported_data,
                fix_view_privacy_level,
                fix_view_entity_count,
                view_generate_simplified_geometry,

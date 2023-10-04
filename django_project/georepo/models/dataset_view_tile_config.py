@@ -20,10 +20,16 @@ class DatasetViewTilingConfig(models.Model):
     )
 
     def __str__(self):
-        return '{0} - {1}'.format(
-            self.dataset_view.name,
-            self.zoom_level
-        )
+        try:
+            return '{0} - {1}'.format(
+                self.dataset_view.name,
+                self.zoom_level
+            )
+        except DatasetView.DoesNotExist:
+            return '{0} - {1}'.format(
+                self.dataset_view_id,
+                self.zoom_level
+            )
 
     class Meta:
         ordering = [

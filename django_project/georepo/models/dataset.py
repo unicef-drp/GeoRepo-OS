@@ -37,6 +37,7 @@ class Dataset(models.Model):
         OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
         SYNCING = 'syncing', _('Syncing')
         SYNCED = 'synced', _('Synced')
+        ERROR = 'error', _('Stopped with error')
 
     label = models.CharField(
         max_length=255,
@@ -156,12 +157,6 @@ class Dataset(models.Model):
         default=0
     )
 
-    simplification_task_id = models.CharField(
-        blank=True,
-        default='',
-        max_length=256
-    )
-
     short_code = models.CharField(
         blank=True,
         default='',
@@ -198,6 +193,18 @@ class Dataset(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name='deprecated_dataset'
+    )
+
+    simplification_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    simplification_task_id = models.CharField(
+        blank=True,
+        default='',
+        max_length=256
     )
 
     simplification_progress = models.TextField(
