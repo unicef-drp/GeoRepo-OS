@@ -155,7 +155,7 @@ export default function (props: WizardStepInterface) {
               </Grid>
               <Grid item>
                 <HtmlTooltip tooltipTitle='Tolerance'
-                    tooltipDescription={<p>Used in geometry checks to determine vertices are coincident, edges are close to each other, areas are equivalent. Units are in degrees or degrees squared as appropriate.</p>}
+                    tooltipDescription={<p>Used in geometry checks to determine if vertices are coincident, edges are close to each other, areas are equivalent. Units are in degrees or degrees squared as appropriate.</p>}
                 />            
               </Grid>
             </Grid>
