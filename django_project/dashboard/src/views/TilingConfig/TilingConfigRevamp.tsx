@@ -31,6 +31,7 @@ import { AddButton } from '../../components/Elements/Buttons';
 import HtmlTooltip from '../../components/HtmlTooltip';
 import { TilingConfig, MAX_ZOOM } from '../../models/tiling';
 import TilingConfigPreview from './TilingConfigPreview';
+import StatusLoadingDialog from '../../components/StatusLoadingDialog';
 
 
 const FETCH_TILING_CONFIG_URL = '/api/fetch-tiling-configs/'
@@ -584,17 +585,10 @@ function EditTilingConfigMatrix(props: EditTilingConfigMatrixInterface) {
                         <DoDisturbOnIcon color='error' fontSize='small' /><span> : excluded in vector tile at current zoom level</span>
                     </Grid>
                     <Grid item sx={{width: '100%'}}>
-                        <Grid container flexDirection={'row'} justifyContent='space-between'>
-                            <Grid item sx={{marginTop: '10px', textAlign: 'left', width: '50%'}}>
-                                <p>
-                                    Use the matrix above to enable boundaries to be rendered into tiles at different zoom levels and with different simplification levels. 
-                                    Enter 1 to enable rendering without simplification. Using too small a simplification factor may result in artifacts such as slivers or polygons being rendered as triangles. 
-                                    Note that pressing save will result in the entire tileset to be rerendered to cache, a CPU and time intensive operation.
-                                </p>
-                            </Grid>
-                            <Grid item sx={{marginTop: '10px', textAlign: 'right', width: '50%'}}>
-                            </Grid>
-                        </Grid>
+                        <p className='tiling-desc-note'>
+                            Use the matrix above to enable boundaries to be rendered into tiles at different zoom levels and with different simplification levels. Enter 1 to enable rendering without simplification. Using too small a simplification factor may result polygons being rendered as triangles or overly simple shapes. Note that pressing save will result in the dataset and views that inherit it's tiling config to be marked as inconsistent.
+                            Inconsistent views will need their tile caches regenerated which you can do on the Sync Status tab of this dataset or of individual views. Note that cache regeneration is a CPU and time intensive operation.
+                        </p>
                     </Grid>
                 </Grid>
             </Box>
@@ -608,6 +602,7 @@ export default function TilingConfiguration(props: TilingConfigInterface) {
     const [loading, setLoading] = useState(true)
     const [data, setData] = useState<TilingConfig[]>(null)
     const [originalData, setOriginalData] = useState<TilingConfig[]>(null)
+    const [onGeoJsonLoading, setOnGeoJsonLoading] = useState(false)
 
     const fetchTilingConfigs = () => {
         setLoading(true)
@@ -635,44 +630,45 @@ export default function TilingConfiguration(props: TilingConfigInterface) {
     }, [props.dataset, props.view])
 
     const onCancel = () => {
-        setData(cloneTilingConfig(data))
+        setData(cloneTilingConfig(originalData))
         setIsEdit(false)
     }
 
     return (
         <Box className='tiling-configuration-container'>
+            <StatusLoadingDialog open={onGeoJsonLoading} title={'Loading Country Geojson'} description={'Please wait while loading selected country geojson for the preview.'} />
             <Grid container flexDirection={'row'} justifyContent={'space-between'}>
                 <Grid item>
                 </Grid>
                 <Grid item textAlign={'right'}>
                     {!isEdit && 
-                        <AddButton
-                            text={"Edit"}
-                            variant={"secondary"}
+                        <Button
+                            variant={"contained"}
                             disabled={loading}
-                            useIcon={false}
-                            additionalClass={'action-button'}
-                            onClick={() => setIsEdit(true)} />
+                            className='action-button'
+                            onClick={() => setIsEdit(true)}>
+                            Edit
+                        </Button>
                     }
                     {isEdit &&
                         <Grid container flexDirection={'row'} justifyContent={'space-between'} spacing={1}>
                             <Grid item>
-                                <AddButton
-                                    text={"Save"}
-                                    variant={"primary"}
+                                <Button
+                                    variant={"contained"}
                                     disabled={loading}
-                                    useIcon={false}
-                                    additionalClass={'action-button'}
-                                    onClick={() => setIsEdit(false)} />
+                                    className='action-button'
+                                    onClick={() => setIsEdit(false)}>
+                                    Save
+                                </Button>
                             </Grid>
                             <Grid item>
-                                <AddButton
-                                    text={"Cancel"}
-                                    variant={"secondary"}
+                                <Button
+                                    variant={"outlined"}
                                     disabled={loading}
-                                    useIcon={false}
-                                    additionalClass={'action-button'}
-                                    onClick={onCancel} />
+                                    className='action-button'
+                                    onClick={onCancel}>
+                                    Cancel
+                                </Button>
                             </Grid>
                         </Grid>
                     }
@@ -695,7 +691,8 @@ export default function TilingConfiguration(props: TilingConfigInterface) {
                         <EditTilingConfigMatrix initialData={data} onUpdated={(data: TilingConfig[]) => setData(data)} />
                     </Grid>
                     <Grid item md={4} xs={12} sx={{display: 'flex'}}>
-                        <TilingConfigPreview configData={data} dataset={props.dataset} view={props.view} />
+                        <TilingConfigPreview configData={data} dataset={props.dataset} view={props.view}
+                          onGeoJsonLoading={(isLoading) => setOnGeoJsonLoading(isLoading)}/>
                     </Grid>
                 </Grid>
             }

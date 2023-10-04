@@ -56,6 +56,7 @@ interface TilingConfigPreviewInterface {
     configData: TilingConfig[];
     dataset?: Dataset;
     view?: View;
+    onGeoJsonLoading?: (isLoading: boolean) => void;
 }
 
 
@@ -89,6 +90,10 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
     }
 
     const fetchTilingConfigCountryList = () => {
+        // levels update -> files update -> fetch geojson for each level
+        if (props.onGeoJsonLoading) {
+            props.onGeoJsonLoading(true)
+        }
         let _fetch_url = `${TILING_CONFIGS_TEMP_DETAIL_URL}`
         if (props.view && props.view.uuid) {
             _fetch_url = _fetch_url + `?view_uuid=${props.view.uuid}`
@@ -112,11 +117,19 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
                     setSelectedAdm0Id(_countries[0].id)
                 }
                 setAvailableLevels(_data.levels as number[])
+                if (_data.levels && _data.levels.length === 0) {
+                    if (props.onGeoJsonLoading) {
+                        props.onGeoJsonLoading(false)
+                    }
+                }
                 setLoading(false)
             }
         ).catch((error) => {
             console.log('error fetchTempTilingConfig ', error)
             setLoading(false)
+            if (props.onGeoJsonLoading) {
+                props.onGeoJsonLoading(false)
+            }
         })
     }
 
@@ -199,9 +212,15 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
             }
             Promise.all(_fetchApis).then((responses) => {
                 processGeoJsonData(responses, files)
+                if (props.onGeoJsonLoading) {
+                    props.onGeoJsonLoading(false)
+                }
                 setLoading(false)
             }).catch((error) => {
                 setLoading(false)
+                if (props.onGeoJsonLoading) {
+                    props.onGeoJsonLoading(false)
+                }
                 console.log('Error fetching geojson! ', error)
             })
         } else {
