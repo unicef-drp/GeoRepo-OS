@@ -106,7 +106,7 @@ def handle_task_interrupted(task: BackgroundTask):
     from dashboard.models import (
         EntityUploadStatus, STARTED, REVIEWING,
         LayerUploadSession, PROCESSING_APPROVAL,
-        BatchReview, PENDING
+        BatchReview, PENDING, PROCESSING
     )
     from dashboard.tasks.export import (
         generate_view_resource_vector_tiles_task,
@@ -213,18 +213,20 @@ def handle_task_interrupted(task: BackgroundTask):
                 task_param[1] is not None else None
             )
             upload = EntityUploadStatus.objects.get(id=upload_id)
-            # reset the status back to STARTED
-            upload.status = STARTED
-            upload.save(update_fields=['status'])
-            task_celery = validate_ready_uploads.apply_async(
-                (
-                    upload.id,
-                    log_object_id
-                ),
-                queue='validation'
-            )
-            upload.task_id = task_celery.id
-            upload.save(update_fields=['task_id'])
+            # validate if upload is not in final state
+            if upload.status in [STARTED, PROCESSING]:
+                # reset the status back to STARTED
+                upload.status = STARTED
+                upload.save(update_fields=['status'])
+                task_celery = validate_ready_uploads.apply_async(
+                    (
+                        upload.id,
+                        log_object_id
+                    ),
+                    queue='validation'
+                )
+                upload.task_id = task_celery.id
+                upload.save(update_fields=['task_id'])
         except EntityUploadStatus.DoesNotExist as ex:
             logger.error(ex)
     elif task_name == 'run_comparison_boundary':
