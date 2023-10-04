@@ -636,7 +636,7 @@ export default function TilingConfiguration(props: TilingConfigInterface) {
 
     return (
         <Box className='tiling-configuration-container'>
-            <StatusLoadingDialog open={onGeoJsonLoading} title={'Loading Country Geojson'} description={'Please wait while loading selected country geojson for the preview.'} />
+            <StatusLoadingDialog open={onGeoJsonLoading} title={'Fetching Country Boundaries'} description={'Please wait while loading selected country geojson for the preview.'} />
             <Grid container flexDirection={'row'} justifyContent={'space-between'}>
                 <Grid item>
                 </Grid>
