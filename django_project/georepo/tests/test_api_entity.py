@@ -77,19 +77,22 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         with open(geojson_0_path) as geojson:
             data = json.load(geojson)
             geom_str = json.dumps(data['features'][0]['geometry'])
+            geom = GEOSGeometry(geom_str)
             self.geographical_entity = GeographicalEntityF.create(
                 dataset=self.dataset,
                 type=self.entity_type,
                 is_validated=True,
                 is_approved=True,
                 is_latest=True,
-                geometry=GEOSGeometry(geom_str),
+                geometry=geom,
                 internal_code='PAK',
                 revision_number=1,
                 label='Pakistan',
                 unique_code='PAK',
                 start_date=isoparse('2023-01-01T06:16:13Z'),
-                concept_ucode='#PAK_1'
+                concept_ucode='#PAK_1',
+                centroid=geom.point_on_surface.wkt,
+                bbox='[' + ','.join(map(str, geom.extent)) + ']'
             )
             EntityIdF.create(
                 code=self.pCode,
@@ -141,7 +144,9 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             is_latest=True,
             admin_level_name='Province',
             start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK0_2'
+            concept_ucode='#PAK0_2',
+            centroid=self.geographical_entity.centroid,
+            bbox=self.geographical_entity.bbox
         )
         EntityIdF.create(
             code=self.pCode,
@@ -249,9 +254,8 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             admin_level_name='Province',
             start_date=isoparse('2023-01-01T06:16:13Z'),
             concept_ucode='#PAK0_2',
-            centroid=(
-                self.geographical_entity.geometry.point_on_surface.wkt
-            )
+            centroid=self.geographical_entity.centroid,
+            bbox=self.geographical_entity.bbox
         )
         EntityIdF.create(
             code=self.pCode,
@@ -388,6 +392,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         with open(geojson_0_1_path) as geojson:
             data = json.load(geojson)
         geom_str = json.dumps(data['features'][0]['geometry'])
+        geom = GEOSGeometry(geom_str)
         entity = GeographicalEntityF.create(
             level=0,
             uuid=str(uuid.uuid4()),
@@ -396,10 +401,12 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             is_validated=True,
             is_approved=True,
             is_latest=True,
-            geometry=GEOSGeometry(geom_str),
+            geometry=geom,
             internal_code='PAK',
             revision_number=1,
-            concept_ucode='#PAK_1'
+            concept_ucode='#PAK_1',
+            centroid=geom.point_on_surface.wkt,
+            bbox='[' + ','.join(map(str, geom.extent)) + ']'
         )
         EntityIdF.create(
             code=self.pCode,
@@ -676,7 +683,8 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             label='Pakistan',
             unique_code='PAK1',
             start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK_2'
+            concept_ucode='#PAK_2',
+            bbox='[1,1,1,1]'
         )
         EntityNameF.create(
             geographical_entity=entity_2,
@@ -723,7 +731,8 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             label='Pakistan',
             unique_code='PAK1',
             start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK_10'
+            concept_ucode='#PAK_10',
+            bbox='[1,1,1,1]'
         )
         kwargs = {
             'uuid': str(dataset_2.uuid),
@@ -819,7 +828,9 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             is_approved=True,
             is_latest=True,
             start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK0_2'
+            concept_ucode='#PAK0_2',
+            centroid=self.geographical_entity.centroid,
+            bbox=self.geographical_entity.bbox
         )
         EntityIdF.create(
             code=self.pCode,
@@ -919,7 +930,9 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             revision_number=1,
             start_date=isoparse('2023-01-01T06:16:13Z'),
             end_date=isoparse('2023-01-10T06:16:13Z'),
-            concept_ucode='#PAK0_2'
+            concept_ucode='#PAK0_2',
+            centroid=self.geographical_entity.centroid,
+            bbox=self.geographical_entity.bbox
         )
         EntityIdF.create(
             code=self.pCode,
@@ -949,7 +962,9 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             revision_number=2,
             start_date=isoparse('2023-01-10T06:16:13Z'),
             end_date=None,
-            concept_ucode=geo_1.concept_ucode
+            concept_ucode=geo_1.concept_ucode,
+            centroid=self.geographical_entity.centroid,
+            bbox=self.geographical_entity.bbox
         )
         EntityIdF.create(
             code=self.pCode,

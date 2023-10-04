@@ -266,6 +266,7 @@ class ViewEntityListByAdminLevel0(DatasetViewSearchBase,
         | names | Other names with ISO2 language code |
         | is_latest | True if this is latest revision |
         | parents | All parents in upper level |
+        | bbox | Bounding box of this geographical entity |
     """
 
     @swagger_auto_schema(
@@ -371,6 +372,7 @@ class ViewEntityListByAdminLevel(DatasetViewSearchBase,
         | names | Other names with ISO2 language code |
         | is_latest | True if this is latest revision |
         | parents | All parents in upper level |
+        | bbox | Bounding box of this geographical entity |
     """
 
     @swagger_auto_schema(
@@ -477,6 +479,7 @@ class ViewEntityListByAdminLevelAndUCode(
         | names | Other names with ISO2 language code |
         | is_latest | True if this is latest revision |
         | parents | All parents in upper level |
+        | bbox | Bounding box of this geographical entity |
     """
 
     @swagger_auto_schema(
@@ -588,6 +591,7 @@ class ViewEntityListByAdminLevelAndConceptUCode(
         | names | Other names with ISO2 language code |
         | is_latest | True if this is latest revision |
         | parents | All parents in upper level |
+        | bbox | Bounding box of this geographical entity |
     """
 
     @swagger_auto_schema(
@@ -698,6 +702,7 @@ class ViewEntityListByEntityType(
         | names | Other names with ISO2 language code |
         | is_latest | True if this is latest revision |
         | parents | All parents in upper level |
+        | bbox | Bounding box of this geographical entity |
     """
 
     @swagger_auto_schema(
@@ -808,6 +813,7 @@ class ViewEntityListByEntityTypeAndUcode(
         | names | Other names with ISO2 language code |
         | is_latest | True if this is latest revision |
         | parents | All parents in upper level |
+        | bbox | Bounding box of this geographical entity |
     """
 
     @swagger_auto_schema(
@@ -1944,6 +1950,7 @@ class ViewEntityTraverseHierarchyByUCode(
         | names | Other names with ISO2 language code |
         | is_latest | True if this is latest revision |
         | parents | All parents in upper level |
+        | bbox | Bounding box of this geographical entity |
     """
     traverse_direction = 'up'
 
@@ -2123,6 +2130,7 @@ class ViewEntityTraverseChildrenHierarchyByUCode(
         | names | Other names with ISO2 language code |
         | is_latest | True if this is latest revision |
         | parents | All parents in upper level |
+        | bbox | Bounding box of this geographical entity |
     """
     traverse_direction = 'down'
 

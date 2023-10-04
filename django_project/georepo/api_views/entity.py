@@ -1554,6 +1554,7 @@ class EntityList(EntitySearchBase):
     | names | Other names with ISO2 language code |
     | is_latest | True if this is latest revision |
     | parents | All parents in upper level |
+    | bbox | Bounding box of this geographical entity |
     """
 
 
@@ -1665,6 +1666,7 @@ class EntityListByUCode(EntitySearchBase):
     | names | Other names with ISO2 language code |
     | is_latest | True if this is latest revision |
     | parents | All parents in upper level |
+    | bbox | Bounding box of this geographical entity |
     """
 
 
@@ -1767,6 +1769,7 @@ class EntityListByAdminLevel(EntitySearchBase):
     | names | Other names with ISO2 language code |
     | is_latest | True if this is latest revision |
     | parents | All parents in upper level |
+    | bbox | Bounding box of this geographical entity |
     """
 
 
@@ -1873,6 +1876,7 @@ class EntityListByAdminLevelAndUCode(EntitySearchBase):
     | names | Other names with ISO2 language code |
     | is_latest | True if this is latest revision |
     | parents | All parents in upper level |
+    | bbox | Bounding box of this geographical entity |
     """
 
 

@@ -531,7 +531,8 @@ class SearchEntitySerializer(GeographicalEntitySerializer):
             'parents',
             'centroid',
             'geometry',
-            'similarity'
+            'similarity',
+            'bbox'
         ]
 
     def get_similarity(self, obj):
@@ -579,7 +580,8 @@ class SearchGeometrySerializer(GeographicalEntitySerializer):
             'parents',
             'centroid',
             'geometry',
-            'distance'
+            'distance',
+            'bbox'
         ]
 
     def get_distance(self, obj):

@@ -122,8 +122,8 @@ class EntityResponseChecker(object):
                 self.assertEqual(parent.level, item_parent['admin_level'])
                 self.assertEqual(parent.type.label, item_parent['type'])
                 parent = parent.parent
-        if 'bbox' in item:
-            self.assertEqual(len(item['bbox']), 4)
+        self.assertIn('bbox', item)
+        self.assertEqual(len(item['bbox']), 4)
         for col in excluded_columns:
             self.assertNotIn(col, item)
         if geom_type == 'centroid':
