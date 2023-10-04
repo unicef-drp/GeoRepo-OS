@@ -109,7 +109,8 @@ from dashboard.api_views.tiling_config import (
     CreateTemporaryTilingConfig, TemporaryTilingConfigAPIView,
     ConfirmTemporaryTilingConfigAPIView,
     TilingConfigCheckStatus,
-    PreviewTempTilingConfigAPIView, FetchGeoJsonPreview
+    PreviewTempTilingConfigAPIView, FetchGeoJsonPreview,
+    CountriesTilingConfigAPIView
 )
 from dashboard.api_views.permission import (
     PermissionActorList,
@@ -626,6 +627,9 @@ urlpatterns = [
     re_path(r'api/tiling-configs/temporary/apply/?$',
             ConfirmTemporaryTilingConfigAPIView.as_view(),
             name='tiling-configs-temp-apply'),
+    re_path(r'api/tiling-configs/preview/country/list/?$',
+            CountriesTilingConfigAPIView.as_view(),
+            name='tiling-configs-preview-country-list'),
     re_path(r'api/tiling-configs/status/'
             r'(?P<object_type>(dataset|datasetview))/'
             r'(?P<uuid>[\da-f-]+)/?$',

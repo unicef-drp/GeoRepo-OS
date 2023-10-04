@@ -339,6 +339,73 @@ class PreviewTempTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
         return Response(status=200)
 
 
+class CountriesTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
+    """
+    Fetch country list for preview
+    """
+    permission_classes = [IsAuthenticated]
+
+    def prepare_response(self, entities, adm0_id = None):
+        # retrieve list of adm0
+        adm0 = entities.filter(
+            level=0
+        ).order_by('label').values('id', 'label')
+        first_adm0 = adm0_id or (adm0[0]['id'] if adm0 else None)
+        dataset_levels = entities.filter(
+            Q(ancestor=first_adm0) |
+            (Q(ancestor__isnull=True) & Q(id=first_adm0))
+        ).order_by('level').values_list(
+            'level',
+            flat=True
+        ).distinct()
+        return {
+            'countries': adm0,
+            'levels': dataset_levels
+        }
+
+    def get_dataset_levels(self, dataset_uuid, adm0_id = None):
+        dataset = get_object_or_404(Dataset, uuid=dataset_uuid)
+        entities = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            is_latest=True
+        )
+        return self.prepare_response(entities, adm0_id)
+
+    def get_view_levels(self, view_uuid, adm0_id = None):
+        dataset_view = get_object_or_404(DatasetView, uuid=view_uuid)
+        dataset = dataset_view.dataset
+        entities = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            is_latest=True
+        )
+        # raw_sql to view to select id
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(dataset_view.uuid))
+        entities = entities.filter(
+            id__in=RawSQL(raw_sql, [])
+        )
+        return self.prepare_response(entities, adm0_id)
+
+    def get(self, request, *args, **kwargs):
+        dataset_uuid = request.GET.get('dataset_uuid', None)
+        view_uuid = request.GET.get('view_uuid', None)
+        adm0_id = request.GET.get('adm0_id', None)
+        if dataset_uuid:
+            return Response(
+                status=200,
+                data=self.get_dataset_levels(dataset_uuid, adm0_id)
+            )
+        elif view_uuid:
+            return Response(
+                status=200,
+                data=self.get_view_levels(view_uuid, adm0_id)
+            )
+        return Response(status=200)
+
+
 class FetchGeoJsonPreview(AzureAuthRequiredMixin, APIView):
     """
     Fetch geojson for country and admin level for preview

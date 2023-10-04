@@ -104,7 +104,7 @@ main {
     color: $primary-color;
     display: flex;
     margin: 0 0 0 0;
-    padding: 0.5rem 1rem;
+    padding: 8px;
     border-bottom: 1px solid;
     border-color: rgba(0, 0, 0, 0.12);
 
@@ -310,7 +310,10 @@ main {
   input[type=number]::-webkit-outer-spin-button { 
     -webkit-appearance: none; 
     margin: 0; 
-  }  
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
 }
 
 // MUI Table

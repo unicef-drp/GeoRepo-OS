@@ -4,10 +4,11 @@ import { DatasetTabElementInterface } from "../models/dataset"
 import DatasetStyle from "../views/Dataset/Configurations/DatasetStyles";
 import DatasetPermission from "../views/Dataset/Configurations/DatasetPermission";
 import DatasetGeneral from "./Configurations/DatasetGeneral";
-import DatasetTilingConfig from "../views/Dataset/Configurations/DatasetTilingConfig";
+// import DatasetTilingConfig from "../views/Dataset/Configurations/DatasetTilingConfig";
 import DatasetAdminLevelNames from "./Configurations/DatasetAdminLevelNames";
 import DatasetEntities from "../views/Dataset/DatasetEntities";
 import ViewSyncList from "../views/SyncStatus/List";
+import TilingConfiguration from "../views/TilingConfig/TilingConfigRevamp";
 
 
 export function NavigateComponent() {
@@ -44,7 +45,7 @@ export default function DatasetDetailWrapper() {
         },
         {
             title: 'TILING CONFIG',
-            element: DatasetTilingConfig,
+            element: TilingConfiguration,
             permissions: ['Manage']
         },
         {

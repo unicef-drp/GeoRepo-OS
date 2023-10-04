@@ -67,6 +67,52 @@ interface AdminLevelTilingInterface {
     isReadOnly?: boolean
 }
 
+interface AdminLevelItemViewInterface {
+    tiling_config_idx: number,
+    tiling_config: TilingConfig,
+    admin_level: number,
+}
+
+export function AdminLevelItemView(props: AdminLevelItemViewInterface) {
+    const [idx, setIdx] = useState(-1)
+    const [item, setItem] = useState({
+        level: props.admin_level,
+        simplify_tolerance: 1
+    })
+    useEffect(() => {
+        let _idx = props.tiling_config.admin_level_tiling_configs.findIndex((element) => element.level === props.admin_level)
+        setIdx(_idx)
+        if (_idx > -1) {
+            let _item = props.tiling_config.admin_level_tiling_configs[_idx]
+            setItem(_item)
+        } else {
+            setItem({
+                level: props.admin_level,
+                simplify_tolerance: 1
+            })
+        }
+    }, [props.admin_level, props.tiling_config])
+
+    return (
+        <Box>
+            <Grid container flexDirection={'row'} alignItems={'center'} justifyContent={'center'}>
+                <Grid item>
+                    { idx === -1 ? (
+                        <IconButton disabled={true}><DoDisturbOnIcon color='error' fontSize='small' /></IconButton>
+                    ) : (
+                        <Button size='small' sx={{width:'40px'}} startIcon={<CheckCircleOutlineIcon fontSize='small' color='success' />}
+                            disabled={true}>
+                            {item.simplify_tolerance}
+                        </Button>
+                    )}
+                </Grid>
+                <Grid item>
+                </Grid>
+            </Grid>
+        </Box>
+    )
+}
+
 export function AdminLevelItem(props: AdminLevelTilingInterface) {
     const [isHovering, setIsHovering] = useState(false)
     const [isEdit, setIsEdit] = useState(false)
@@ -456,6 +502,15 @@ export function DatasetTilingConfigMatrix(props: DatasetTilingConfigInterface) {
                 
             </Box>
         </Box>
+    )
+}
+
+function TilingSimplificationStatus(props: any) {
+
+    return (
+        <div>
+            
+        </div>
     )
 }
 
