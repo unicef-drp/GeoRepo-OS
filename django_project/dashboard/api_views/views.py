@@ -246,7 +246,7 @@ class ViewList(AzureAuthRequiredMixin, APIView):
         filter_kwargs.update(self._filter_dataset(request))
         filter_kwargs.update(self._filter_min_privacy(request))
         filter_kwargs.update(self._filter_max_privacy(request))
-        return queryset.filter(**filter_kwargs)
+        return queryset.filter(**filter_kwargs).distinct()
 
     def _search_queryset(self, queryset, request):
         search_text = request.data.get('search_text', '')
