@@ -15,6 +15,7 @@ REVIEWING = 'Reviewing'
 APPROVED = 'Approved'
 REJECTED = 'Rejected'
 PROCESSING_APPROVAL = 'Processing_Approval'
+PROCESSING_ERROR = 'Error Processing'
 
 
 class EntityUploadStatus(models.Model):
@@ -28,6 +29,7 @@ class EntityUploadStatus(models.Model):
         (APPROVED, APPROVED),
         (REJECTED, REJECTED),
         (PROCESSING_APPROVAL, PROCESSING_APPROVAL),
+        (PROCESSING_ERROR, PROCESSING_ERROR),
     )
 
     upload_session = models.ForeignKey(

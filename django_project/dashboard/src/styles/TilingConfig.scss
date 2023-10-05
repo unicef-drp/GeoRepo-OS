@@ -33,3 +33,12 @@
     margin-top: 10px;
     padding-right: 10px;
 }
+
+.tiling-status-desc-icon {
+    display: flex;
+    align-items: center;
+
+    &.margin-left-small {
+        margin-left: 5px;
+    }
+}

@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from 'react';
-import axios from "axios";
 import Grid from '@mui/material/Grid';
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -13,6 +12,7 @@ import Dataset from '../../models/dataset';
 import View from '../../models/view';
 import { StatusAndProgress } from '../../models/syncStatus';
 import { fetchTilingStatusAPI } from '../../utils/api/TilingStatus';
+import '../../styles/TilingConfig.scss';
 
 const DONE_STATUS_LIST = ['Done', 'Error']
 
@@ -74,14 +74,14 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
     const getTilingStatus = () => {
         if (tilingStatus.status === 'Done') {
             return (
-                <span style={{display:'flex'}}>
+                <span className='tiling-status-desc-icon'>
                     <CheckCircleIcon color='success' fontSize='small' />
                     <span style={{marginLeft: '5px' }}>Done</span>
                 </span>
             )
         } else if (tilingStatus.status === 'Error') {
             return (
-                <span style={{display:'flex'}}>
+                <span className='tiling-status-desc-icon'>
                     <ErrorIcon color='error' fontSize='small' />
                     <span style={{marginLeft: '5px' }}>Stopped with Error</span>
                 </span>
@@ -90,7 +90,7 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
             return <span>-</span>
         }
         return (
-            <span style={{display:'flex', marginLeft: '5px' }}>
+            <span className='tiling-status-desc-icon margin-left-small'>
                 {tilingStatus.status === 'Processing' && <CircularProgress size={18} /> }
                 <span style={{marginLeft: '5px' }}>{tilingStatus.status}{tilingStatus.status === 'Processing' && tilingStatus.progress ? ` ${tilingStatus.progress}%`:''}</span>
             </span>
@@ -100,14 +100,14 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
     const getSimplificationStatus = () => {
         if (simplificationStatus.status === 'Done') {
             return (
-                <span style={{display:'flex'}}>
+                <span className='tiling-status-desc-icon'>
                     <CheckCircleIcon color='success' fontSize='small' />
                     <span style={{marginLeft: '5px' }}>Done</span>
                 </span>
             )
         } else if (simplificationStatus.status === 'Error') {
             return (
-                <span style={{display:'flex'}}>
+                <span className='tiling-status-desc-icon'>
                     <ErrorIcon color='error' fontSize='small' />
                     <span style={{marginLeft: '5px' }}>Stopped with Error</span>
                 </span>
@@ -116,7 +116,7 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
             return <span>-</span>
         }
         return (
-            <span style={{display:'flex', marginLeft: '5px'}}>
+            <span className='tiling-status-desc-icon margin-left-small'>
                 {simplificationStatus.status === 'Processing' && <CircularProgress size={18} /> }
                 <span style={{marginLeft: '5px' }}>{simplificationStatus.status === 'Processing' && simplificationStatus.progress ? ` ${simplificationStatus.progress}`:''}</span>
                 {simplificationStatus.status === 'Processing' && <HtmlTooltip tooltipDescription={<p>Preview might be unavailable due to simplified geometries are being generated</p>} /> }
