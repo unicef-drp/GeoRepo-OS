@@ -154,7 +154,7 @@ const COLUMN_DESCRIPTION: {
   'Upgraded Privacy Level': 'Privacy level has been upgraded to dataset minimum privacy level',
 }
 
-const STATUS_LIST = ['Not Completed', 'Queued', 'Processing', 'Error', 'Valid', 'Approved', 'Rejected']
+const STATUS_LIST = ['Not Completed', 'Queued', 'Processing', 'Error', 'Valid', 'Approved', 'Rejected', 'Error Processing']
 const INCOMPLETE_STATUS_LIST = ['Started', 'Queued', 'Processing']
 const IN_PROGRES_STATUS_LIST = ['Processing']
 
@@ -260,6 +260,7 @@ export default function Step4(props: WizardStepInterface) {
         }
     }
   })
+  const [addNotCompletedFilter, setAddNotCompletedFilter] = useState(false)
 
   const getStatus = () => {
     axios.get(url).then(
@@ -309,12 +310,13 @@ export default function Step4(props: WizardStepInterface) {
     if (uploadData.length > 0 && !allFinished) {
       // set filter by 'Not Completed'
       let _statusFilter = {...customColumnOptions['status']} as any
-      if (!('filterList' in _statusFilter)) {
+      if (!addNotCompletedFilter) {
         _statusFilter['filterList'] = ['Not Completed']
         setCustomColumnOptions({
           ...customColumnOptions,
           'status': _statusFilter
         })
+        setAddNotCompletedFilter(true)
       }
 
       const interval = setInterval(() => {
@@ -420,24 +422,16 @@ export default function Step4(props: WizardStepInterface) {
   }
 
   const handleFilterChange = (applyFilters: any) => {
+    const idxStatusFilter = 3
     let filterList = applyFilters()
+    console.log('filterList ', filterList)
     let _statusFilter = {...customColumnOptions['status']} as any
     if ('filterList' in _statusFilter) {
-      // check if no filter applied, then remove filterList
-      let _allEmpty = true
-      for (let idx in filterList) {
-        if (filterList[idx] && filterList[idx].length) {
-          _allEmpty = false
-          break
-        }
-      }
-      if (_allEmpty) {
-        _statusFilter['filterList'] = []
-        setCustomColumnOptions({
-          ...customColumnOptions,
-          'status': {..._statusFilter}
-        })
-      }
+      _statusFilter['filterList'] = filterList[idxStatusFilter]
+      setCustomColumnOptions({
+        ...customColumnOptions,
+        'status': {..._statusFilter}
+      })
     }
   }
 

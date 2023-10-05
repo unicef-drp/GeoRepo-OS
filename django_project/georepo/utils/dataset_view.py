@@ -508,6 +508,12 @@ def get_view_tiling_status(view_resource_queryset):
         tiling_status = 'Done'
     elif tiling_progress > 0:
         tiling_status = 'Processing'
+    else:
+        resource_count = view_resource_queryset.filter(
+            entity_count__gt=0
+        ).count()
+        if resource_count == 0:
+            tiling_status = 'Done'
     return tiling_status, tiling_progress
 
 

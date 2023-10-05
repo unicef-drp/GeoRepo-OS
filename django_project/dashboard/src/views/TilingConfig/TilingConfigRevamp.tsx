@@ -35,6 +35,10 @@ import TilingConfigStatus from './TilingConfigStatus';
 const FETCH_TILING_CONFIG_URL = '/api/fetch-tiling-configs/'
 const APPLY_TILING_CONFIG_URL = '/api/tiling-configs/apply/'
 
+const TILING_CONFIG_NOTES = 'Use the matrix above to enable boundaries to be rendered into tiles at different zoom levels and with different simplification levels. ' + 
+'Enter 1 to enable rendering without simplification. Using too small a simplification factor may result polygons being rendered as triangles or overly simple shapes. ' +
+'Note that pressing save will result in the dataset and views that inherit it\'s tiling config to be marked as inconsistent. ' +
+'Inconsistent views will need their tile caches regenerated which you can do on the Sync Status tab of this dataset or of individual views. Note that cache regeneration is a CPU and time intensive operation.'
 
 interface AdminLevelTilingInterface {
     tiling_config_idx: number,
@@ -360,23 +364,17 @@ function TilingConfigMatrix(props: TilingConfigMatrixInterface) {
                 </Grid>
                 <Grid container flexDirection={'column'} alignItems={'flex-start'} sx={{marginTop: '10px'}}>
                     <Grid item>
-                        <CheckCircleOutlineIcon fontSize='small' color='success' /><span> : included in vector tile at current zoom level</span>
+                        <Grid container flexDirection={'row'} alignItems={'center'}>
+                            <CheckCircleOutlineIcon fontSize='small' color='success' /><span> : included in vector tile at current zoom level</span>
+                        </Grid>
                     </Grid>
                     <Grid item>
-                        <DoDisturbOnIcon color='error' fontSize='small' /><span> : excluded in vector tile at current zoom level</span>
+                        <Grid container flexDirection={'row'} alignItems={'center'}>
+                            <DoDisturbOnIcon color='error' fontSize='small' /><span> : excluded in vector tile at current zoom level</span>
+                        </Grid>
                     </Grid>
                     <Grid item sx={{width: '100%'}}>
-                        <Grid container flexDirection={'row'} justifyContent='space-between'>
-                            <Grid item sx={{marginTop: '10px', textAlign: 'left', width: '50%'}}>
-                                <p>
-                                    Use the matrix above to enable boundaries to be rendered into tiles at different zoom levels and with different simplification levels. 
-                                    Enter 1 to enable rendering without simplification. Using too small a simplification factor may result in artifacts such as slivers or polygons being rendered as triangles. 
-                                    Note that pressing save will result in the entire tileset to be rerendered to cache, a CPU and time intensive operation.
-                                </p>
-                            </Grid>
-                            <Grid item sx={{marginTop: '10px', textAlign: 'right', width: '50%'}}>
-                            </Grid>
-                        </Grid>
+                        <p className='tiling-desc-note'>{TILING_CONFIG_NOTES}</p>
                     </Grid>
                 </Grid>
             </Box>
@@ -580,16 +578,17 @@ function EditTilingConfigMatrix(props: EditTilingConfigMatrixInterface) {
                         </Button>
                     </Grid>
                     <Grid item>
-                        <CheckCircleOutlineIcon fontSize='small' color='success' /><span> : included in vector tile at current zoom level</span>
+                        <Grid container flexDirection={'row'} alignItems={'center'}>
+                            <CheckCircleOutlineIcon fontSize='small' color='success' /><span> : included in vector tile at current zoom level</span>
+                        </Grid>
                     </Grid>
                     <Grid item>
-                        <DoDisturbOnIcon color='error' fontSize='small' /><span> : excluded in vector tile at current zoom level</span>
+                        <Grid container flexDirection={'row'} alignItems={'center'}>
+                            <DoDisturbOnIcon color='error' fontSize='small' /><span> : excluded in vector tile at current zoom level</span>
+                        </Grid>
                     </Grid>
                     <Grid item sx={{width: '100%'}}>
-                        <p className='tiling-desc-note'>
-                            Use the matrix above to enable boundaries to be rendered into tiles at different zoom levels and with different simplification levels. Enter 1 to enable rendering without simplification. Using too small a simplification factor may result polygons being rendered as triangles or overly simple shapes. Note that pressing save will result in the dataset and views that inherit it's tiling config to be marked as inconsistent.
-                            Inconsistent views will need their tile caches regenerated which you can do on the Sync Status tab of this dataset or of individual views. Note that cache regeneration is a CPU and time intensive operation.
-                        </p>
+                        <p className='tiling-desc-note'>{TILING_CONFIG_NOTES}</p>
                     </Grid>
                 </Grid>
             </Box>

@@ -51,6 +51,9 @@ def on_task_invalidated(task: BackgroundTask):
 
 
 def handle_task_failure(task: BackgroundTask):
+    from dashboard.models import (
+        EntityUploadStatus, PROCESSING_ERROR
+    )
     task_name = task.name
     parameters = task.parameters
     task_param = make_tuple(parameters or '()')
@@ -94,10 +97,41 @@ def handle_task_failure(task: BackgroundTask):
             view_id = task_param[0]
             view = DatasetView.objects.get(id=view_id)
             view.status = DatasetView.DatasetViewStatus.ERROR
-            view.simplification_progress = 'Simplification error'
-            view.simplification_current_task = None
-            view.save()
+            has_custom_tiling_config = (
+                view.datasetviewtilingconfig_set.all().exists()
+            )
+            if has_custom_tiling_config:
+                view.simplification_progress = 'Simplification error'
+                view.simplification_current_task = None
+                view.simplification_sync_status = DatasetView.SyncStatus.ERROR
+                view.save(update_fields=['status', 'simplification_progress',
+                                         'simplification_current_task',
+                                         'simplification_sync_status'])
+            else:
+                view.save(update_fields=['status'])
+                # update dataset simplification status
+                dataset = view.dataset
+                dataset.simplification_progress = 'Simplification error'
+                dataset.simplification_sync_status = Dataset.SyncStatus.ERROR
+                dataset.is_simplified = False
+                dataset.save(update_fields=['simplification_progress',
+                                            'is_simplified',
+                                            'simplification_sync_status'])
         except DatasetView.DoesNotExist as ex:
+            logger.error(ex)
+    elif (
+        task_name == 'validate_ready_uploads' or
+        task_name == 'run_comparison_boundary'
+    ):
+        if len(task_param) == 0:
+            raise ValueError(
+                'Invalid parameter validate_ready_uploads')
+        try:
+            upload_id = task_param[0]
+            upload = EntityUploadStatus.objects.get(id=upload_id)
+            upload.status = PROCESSING_ERROR
+            upload.save(update_fields=['status'])
+        except EntityUploadStatus.DoesNotExist as ex:
             logger.error(ex)
     on_task_invalidated(task)
 
@@ -238,25 +272,27 @@ def handle_task_interrupted(task: BackgroundTask):
             upload = EntityUploadStatus.objects.get(id=upload_id)
             upload_session: LayerUploadSession = upload.upload_session
             dataset: Dataset = upload_session.dataset
-            # call ready_to_review func to reset state
-            uploads = EntityUploadStatus.objects.filter(
-                id=upload_id
-            )
-            ready_to_review_func = module_function(
-                dataset.module.code_name,
-                'prepare_review',
-                'ready_to_review')
-            ready_to_review_func(uploads)
-            # update upload session status to REVIEWING
-            upload_session.status = REVIEWING
-            upload_session.save(update_fields=['status'])
-            upload.refresh_from_db()
-            task_celery = run_comparison_boundary.apply_async(
-                (upload.id,),
-                queue='validation'
-            )
-            upload.task_id = task_celery.id
-            upload.save(update_fields=['task_id'])
+            # if boundary match ready, then skip
+            if not upload.comparison_data_ready:
+                # call ready_to_review func to reset state
+                uploads = EntityUploadStatus.objects.filter(
+                    id=upload_id
+                )
+                ready_to_review_func = module_function(
+                    dataset.module.code_name,
+                    'prepare_review',
+                    'ready_to_review')
+                ready_to_review_func(uploads)
+                # update upload session status to REVIEWING
+                upload_session.status = REVIEWING
+                upload_session.save(update_fields=['status'])
+                upload.refresh_from_db()
+                task_celery = run_comparison_boundary.apply_async(
+                    (upload.id,),
+                    queue='validation'
+                )
+                upload.task_id = task_celery.id
+                upload.save(update_fields=['task_id'])
         except EntityUploadStatus.DoesNotExist as ex:
             logger.error(ex)
     elif task_name == 'review_approval':
