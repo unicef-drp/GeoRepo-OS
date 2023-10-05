@@ -86,8 +86,7 @@ def task_prerun_handler(sender=None, task_id=None, task=None,
     task.started_at = timezone.now()
     task.status = BackgroundTask.BackgroundTaskStatus.RUNNING
     task.save(update_fields=['last_update', 'started_at', 'status'])
-    if is_created:
-        on_task_queued(task)
+    on_task_queued(task)
 
 
 @signals.task_success.connect

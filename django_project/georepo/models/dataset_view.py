@@ -33,6 +33,7 @@ class DatasetView(models.Model):
         OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
         SYNCING = 'syncing', _('Syncing')
         SYNCED = 'synced', _('Synced')
+        ERROR = 'error', _('Stopped with error')
 
     class DatasetViewStatus(models.TextChoices):
         PENDING = 'PE', _('Pending')
@@ -203,6 +204,12 @@ class DatasetView(models.Model):
         related_name='simplification_current_task'
     )
 
+    simplification_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
     def get_resource_level_for_user(self, user_privacy_level):
         """
         Return allowed resource based on user level
@@ -227,13 +234,23 @@ class DatasetView(models.Model):
         skip_signal=True,
         save=True
     ):
+        # any out of sync will need to check the simplification sync status
+        has_custom_tiling_config = (
+            self.datasetviewtilingconfig_set.all().exists()
+        )
+        if has_custom_tiling_config:
+            self.simplification_sync_status = self.SyncStatus.OUT_OF_SYNC
+        else:
+            self.simplification_sync_status = (
+                self.dataset.simplification_sync_status
+            )
         dsv_resources = self.datasetviewresource_set.all()
         if tiling_config:
             # Only set tiling config as out of sync if DatasetView
             # has no tiling config. Meaning it gets the tiling
             # config directly from Dataset. So, if Dataset tiling
             # config is updated, DatasetView tiling config just matches.
-            if self.datasetviewtilingconfig_set.all().exists():
+            if has_custom_tiling_config:
                 self.is_tiling_config_match = False
 
         for dsv_resource in dsv_resources:
@@ -478,6 +495,7 @@ class DatasetViewResource(models.Model):
         OUT_OF_SYNC = 'out_of_sync', _('Out of Sync')
         SYNCING = 'syncing', _('Syncing')
         SYNCED = 'synced', _('Synced')
+        ERROR = 'error', _('Stopped with error')
 
     dataset_view = models.ForeignKey(
         'georepo.DatasetView',
@@ -894,4 +912,6 @@ def view_res_post_save(sender, instance: DatasetViewResource,
     elif 'Done' in product_status:
         view.product_sync_status = sync_status_mapping['Done']
     view.product_progress = sum(product_progress) / len(product_progress)
-    view.save()
+    view.save(update_fields=['status', 'vector_tile_sync_status',
+                             'vector_tiles_progress', 'product_sync_status',
+                             'product_progress'])

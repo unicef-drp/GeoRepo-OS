@@ -11,6 +11,8 @@ import viewTableReducer from "../reducers/viewTable"
 import viewSyncTableReducer from "../reducers/viewSyncTable"
 import uploadTableReducer from "../reducers/uploadTable"
 import entitiesTableReducer from "../reducers/entitiesTable"
+import datasetTabsReducer from '../reducers/datasetTabs';
+import viewTabsReducer from '../reducers/viewTabs';
 
 export const store = configureStore({
   reducer: {
@@ -25,7 +27,9 @@ export const store = configureStore({
     viewSyncTable: viewSyncTableReducer,
     viewSyncAction: viewSyncActionReducer,
     uploadTable: uploadTableReducer,
-    entitiesTable: entitiesTableReducer
+    entitiesTable: entitiesTableReducer,
+    datasetTabs: datasetTabsReducer,
+    viewTabs: viewTabsReducer
   },
 });
 

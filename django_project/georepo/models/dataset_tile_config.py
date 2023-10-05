@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from georepo.models.dataset import Dataset
 
 
 class DatasetTilingConfig(models.Model):
@@ -18,10 +19,16 @@ class DatasetTilingConfig(models.Model):
     )
 
     def __str__(self):
-        return '{0} - {1}'.format(
-            self.dataset.label,
-            self.zoom_level
-        )
+        try:
+            return '{0} - {1}'.format(
+                self.dataset.label,
+                self.zoom_level
+            )
+        except Dataset.DoesNotExist:
+            return '{0} - {1}'.format(
+                self.dataset_id,
+                self.zoom_level
+            )
 
     class Meta:
         ordering = [

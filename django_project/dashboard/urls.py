@@ -106,10 +106,8 @@ from dashboard.api_views.views import (
 from dashboard.api_views.tiling_config import (
     FetchDatasetTilingConfig,
     FetchDatasetViewTilingConfig,
-    CreateTemporaryTilingConfig, TemporaryTilingConfigAPIView,
-    ConfirmTemporaryTilingConfigAPIView,
-    TilingConfigCheckStatus,
-    PreviewTempTilingConfigAPIView, FetchGeoJsonPreview
+    TilingConfigCheckStatus, FetchGeoJsonPreview,
+    CountriesTilingConfigAPIView, ApplyTilingConfigAPIView
 )
 from dashboard.api_views.permission import (
     PermissionActorList,
@@ -611,21 +609,17 @@ urlpatterns = [
     re_path(r'api/fetch-languages/',
             FetchLanguages.as_view(),
             name='fetch-languages'),
-    re_path(r'api/tiling-configs/temporary/create/?$',
-            CreateTemporaryTilingConfig.as_view(),
-            name='tiling-configs-temp-create'),
-    re_path(r'api/tiling-configs/temporary/detail/(?P<session>[\da-f-]+)/?$',
-            TemporaryTilingConfigAPIView.as_view(),
-            name='tiling-configs-temp-detail'),
-    re_path(r'api/tiling-configs/temporary/preview/(?P<session>[\da-f-]+)/?$',
-            PreviewTempTilingConfigAPIView.as_view(),
-            name='tiling-configs-temp-preview'),
     re_path(r'api/tiling-configs/temporary/geojson/?$',
             FetchGeoJsonPreview.as_view(),
             name='tiling-configs-temp-geojson'),
-    re_path(r'api/tiling-configs/temporary/apply/?$',
-            ConfirmTemporaryTilingConfigAPIView.as_view(),
-            name='tiling-configs-temp-apply'),
+    re_path(r'api/tiling-configs/preview/country/list/?$',
+            CountriesTilingConfigAPIView.as_view(),
+            name='tiling-configs-preview-country-list'),
+    re_path(r'api/tiling-configs/apply/'
+            r'(?P<object_type>(dataset|datasetview))/'
+            r'(?P<uuid>[\da-f-]+)/?$',
+            ApplyTilingConfigAPIView.as_view(),
+            name='tiling-configs-apply'),
     re_path(r'api/tiling-configs/status/'
             r'(?P<object_type>(dataset|datasetview))/'
             r'(?P<uuid>[\da-f-]+)/?$',

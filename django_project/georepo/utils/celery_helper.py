@@ -1,6 +1,8 @@
 import requests
 import logging
 from ast import literal_eval as make_tuple
+from celery.result import AsyncResult
+from core.celery import app
 from georepo.models.background_task import BackgroundTask
 from georepo.models.dataset_view import (
     DatasetView,
@@ -63,6 +65,14 @@ def on_task_queued(task: BackgroundTask):
         view = DatasetView.objects.get(id=view_id)
         view.simplification_current_task = task
         view.save(update_fields=['simplification_current_task'])
+    elif task.name == 'generate_view_export_data':
+        if len(task_param) == 0:
+            return
+        view_resource_id = task_param[0]
+        resource = DatasetViewResource.objects.get(
+            id=view_resource_id)
+        resource.product_current_task = task
+        resource.save(update_fields=['product_current_task'])
 
 
 def on_task_success(task: BackgroundTask):
@@ -90,3 +100,22 @@ def on_task_success(task: BackgroundTask):
         view = DatasetView.objects.get(id=view_id)
         view.simplification_current_task = None
         view.save(update_fields=['simplification_current_task'])
+    elif task.name == 'generate_view_export_data':
+        if len(task_param) == 0:
+            return
+        view_resource_id = task_param[0]
+        resource = DatasetViewResource.objects.get(
+            id=view_resource_id)
+        resource.product_current_task = None
+        resource.save(update_fields=['product_current_task'])
+
+
+def cancel_task(task_id: str):
+    res = AsyncResult(task_id)
+    if not res.ready():
+        # find if there is running task and stop it
+        app.control.revoke(
+            task_id,
+            terminate=True,
+            signal='SIGKILL'
+        )

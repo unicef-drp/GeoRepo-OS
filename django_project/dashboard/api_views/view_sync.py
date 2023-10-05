@@ -1,4 +1,6 @@
 import math
+from celery.result import AsyncResult
+from core.celery import app
 from django.db.models.expressions import Q
 from django.core.paginator import Paginator
 from rest_framework.permissions import IsAuthenticated
@@ -13,7 +15,7 @@ from dashboard.serializers.view import (
 )
 from dashboard.tasks import generate_view_export_data
 from georepo.models import (
-    DatasetView
+    DatasetView, DatasetViewResource
 )
 from georepo.utils.dataset_view import (
     trigger_generate_vector_tile_for_view
@@ -299,10 +301,51 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
                 )
         elif 'products' in sync_options:
             for view in views:
-                generate_view_export_data.delay(view.id)
                 view.product_sync_status = DatasetView.SyncStatus.SYNCING
                 view.save(
                     update_fields=['product_sync_status']
                 )
+                view_resources = DatasetViewResource.objects.filter(
+                    dataset_view=view
+                )
+                for view_resource in view_resources:
+                    if view_resource.product_task_id:
+                        res = AsyncResult(view_resource.product_task_id)
+                        if not res.ready():
+                            # find if there is running task and stop it
+                            app.control.revoke(
+                                view_resource.product_task_id,
+                                terminate=True,
+                                signal='SIGKILL'
+                            )
+                    view_resource.status = (
+                        DatasetView.DatasetViewStatus.PENDING
+                    )
+                    view_resource.geojson_progress = 0
+                    view_resource.shapefile_progress = 0
+                    view_resource.kml_progress = 0
+                    view_resource.topojson_progress = 0
+                    view_resource.geojson_sync_status = (
+                        DatasetView.SyncStatus.SYNCING
+                    )
+                    view_resource.shapefile_sync_status = (
+                        DatasetView.SyncStatus.SYNCING
+                    )
+                    view_resource.kml_sync_status = (
+                        DatasetView.SyncStatus.SYNCING
+                    )
+                    view_resource.topojson_sync_status = (
+                        DatasetView.SyncStatus.SYNCING
+                    )
+                    view_resource.save(update_fields=[
+                        'status', 'geojson_progress', 'shapefile_progress',
+                        'kml_progress', 'topojson_progress',
+                        'shapefile_sync_status', 'kml_sync_status',
+                        'topojson_sync_status', 'geojson_sync_status'
+                    ])
+                    task = generate_view_export_data.delay(
+                        view_resource.id)
+                    view_resource.product_task_id = task.id
+                    view_resource.save(update_fields=['product_task_id'])
 
         return Response({'status': 'OK'})
