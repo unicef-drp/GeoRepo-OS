@@ -63,7 +63,9 @@
             map.addSource('{{ label }}', {
               'type': 'vector',
               "tiles": ["{{ layer_tiles_base_url }}{{ vector_tiles_path }}&token="+apiKeyVal+"&georepo_user_key={{ user.email }}"],
-              "tolerance": 0
+              "tolerance": 0,
+              "minzoom": 0,
+              "maxzoom": {{ max_zoom }}
             });
 
           {% if bbox %}

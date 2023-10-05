@@ -12,8 +12,28 @@ from azure_auth.handlers import AzureAuthHandler
 
 from georepo.models import Dataset, DatasetView, GeographicalEntity,\
     DatasetViewResource
-from georepo.models.dataset_tile_config import AdminLevelTilingConfig
-from georepo.models.dataset_view_tile_config import ViewAdminLevelTilingConfig
+from georepo.models.dataset_tile_config import (
+    DatasetTilingConfig,
+    AdminLevelTilingConfig
+)
+from georepo.models.dataset_view_tile_config import (
+    DatasetViewTilingConfig,
+    ViewAdminLevelTilingConfig
+)
+
+
+def get_max_zoom_level(dataset_view: DatasetView):
+    tiling_configs = DatasetViewTilingConfig.objects.filter(
+        dataset_view=dataset_view
+    ).order_by('zoom_level')
+    if tiling_configs.exists():
+        return tiling_configs.last().zoom_level
+    tiling_configs = DatasetTilingConfig.objects.filter(
+        dataset=dataset_view.dataset
+    ).order_by('zoom_level')
+    if tiling_configs.exists():
+        return tiling_configs.last().zoom_level
+    return 8
 
 
 def get_view_zoom_level(level: int, dataset_view: DatasetView):
@@ -83,6 +103,8 @@ class LayerTestView(UserPassesTestMixin, TemplateView):
             ctx['center'] = json.loads(entity.geometry.centroid.json)
             levels = dataset.geographicalentity_set.values_list(
                 'level', flat=True).order_by('-level').distinct()
+            # add max zoom
+            ctx['max_zoom'] = 8
         else:
             if dataset_view_resource:
                 dataset_view_resource = DatasetViewResource.objects.get(
@@ -126,6 +148,8 @@ class LayerTestView(UserPassesTestMixin, TemplateView):
                 'level',
                 flat=True
             ).distinct()
+            # add max zoom
+            ctx['max_zoom'] = get_max_zoom_level(dataset_view)
 
         ctx['layer_tiles_base_url'] = settings.LAYER_TILES_BASE_URL
         if settings.DEBUG:
@@ -166,13 +190,9 @@ class LayerTestView(UserPassesTestMixin, TemplateView):
                     layers_config['minzoom'] = (
                         entity_conf.first().dataset_tiling_config.zoom_level
                     )
-                    layers_config['maxzoom'] = (
-                        entity_conf.last().dataset_tiling_config.zoom_level + 1
-                    )
             else:
                 zoom_configs = get_view_zoom_level(level, dataset_view)
                 layers_config['minzoom'] = zoom_configs['min']
-                layers_config['maxzoom'] = zoom_configs['max'] + 1
 
             ctx['layers_configs'].append(layers_config)
         # add map tiler api key
