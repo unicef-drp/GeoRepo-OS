@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {useSearchParams} from "react-router-dom";
 import {useNavigate} from "react-router-dom";
 import axios from "axios";
+import {RootState} from "../../app/store";
 import {useAppDispatch, useAppSelector} from "../../app/hooks";
 import {setModule} from "../../reducers/module";
 import {updateMenu, currentDataset, changeCurrentDataset} from "../../reducers/breadcrumbMenu";
@@ -9,10 +10,16 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
+import CircularProgress from '@mui/material/CircularProgress';
+import ErrorIcon from '@mui/icons-material/Error';
 import TabPanel, {a11yProps} from '../../components/TabPanel';
 import Skeleton from '@mui/material/Skeleton';
 import Dataset from '../../models/dataset';
 import { DatasetDetailItemInterface, DatasetTabElementInterface } from '../../models/dataset';
+import { SyncStatus } from "../../models/syncStatus";
+import { StatusAndProgress } from '../../models/syncStatus';
+import { fetchTilingStatusAPI } from '../../utils/api/TilingStatus';
+import {updateDatasetTabStatuses} from "../../reducers/datasetTabs";
 
 interface DatasetDetailInterface {
   tabs: DatasetTabElementInterface[],
@@ -26,12 +33,32 @@ const DatasetDetailTab = (Component: React.ElementType, givenProps: DatasetDetai
 export default function DatasetDetail(props: DatasetDetailInterface) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate()
+    const tilingTabStatus = useAppSelector((state: RootState) => state.datasetTabs.tilingConfigSyncStatus)
     const [loading, setLoading] = useState(false)
     const [searchParams, setSearchParams] = useSearchParams()
     const [dataset, setDataset] = useState<Dataset>(null)
     const [tabSelected, setTabSelected] = useState(0)
     let currentDatasetId = useAppSelector(currentDataset)
     const [filteredTabs, setFilteredTabs] = useState<DatasetTabElementInterface[]>([])
+
+    const fetchTilingStatus = () => {
+      if (dataset === null) return
+      let _object_type = 'dataset'
+      let _object_uuid = dataset.uuid
+      fetchTilingStatusAPI(_object_type, _object_uuid, (response: any, error: any) => {
+         if (response) {
+              let _simplification: StatusAndProgress = {
+                  progress: response['simplification']['progress'],
+                  status: response['simplification']['status']
+              }
+              let _tiling: StatusAndProgress = {
+                  progress: response['vector_tiles']['progress'],
+                  status: response['vector_tiles']['status']
+              }
+              dispatch(updateDatasetTabStatuses([_simplification, _tiling]))
+         }
+      })
+  }
 
     const fetchDatasetDetail = () => {
       setLoading(true)
@@ -74,6 +101,7 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
         return _has_all_perms
       })
       setFilteredTabs(_filtered_tabs)
+      fetchTilingStatus()
     }, [props.tabs, dataset])
 
     useEffect(() => {
@@ -103,9 +131,24 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
     return (
         <div style={{display:'flex', flex: 1, flexDirection: 'column'}}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                <Tabs value={tabSelected} onChange={handleChange} aria-label="Dataset Tab">
+                <Tabs className='DatasetTabs' value={tabSelected} onChange={handleChange} aria-label="Dataset Tab">
                   {
                     filteredTabs.map((tab, index) => {
+                      if (tab.title === 'TILING CONFIG') {
+                        if (tilingTabStatus === SyncStatus.Syncing) {
+                          return <Tab key={index} label={tab.title}
+                            icon={<CircularProgress size={18} />}
+                            iconPosition={'start'}
+                            {...a11yProps(index)}
+                          />
+                        } else if (tilingTabStatus === SyncStatus.Error) {
+                          return <Tab key={index} label={tab.title}
+                            icon={<ErrorIcon color='error' fontSize='small' />}
+                            iconPosition={'start'}
+                            {...a11yProps(index)}
+                          />
+                        }
+                      }
                       return <Tab key={index} label={tab.title} {...a11yProps(index)} />
                     })
                   }

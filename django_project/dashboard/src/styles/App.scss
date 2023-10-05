@@ -353,3 +353,11 @@ main {
     -webkit-text-fill-color: unset;
   }
 }
+
+.DatasetTabs {
+  &.MuiTabs-root {
+    .MuiTab-root {
+      min-height: 48px;
+    }
+  }
+}

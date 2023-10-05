@@ -10,8 +10,11 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import streamSaver from 'streamsaver';
+import ErrorIcon from '@mui/icons-material/Error';
+import CircularProgress from '@mui/material/CircularProgress';
 import TabPanel, {a11yProps} from '../../components/TabPanel';
-import {useAppDispatch} from "../../app/hooks";
+import {RootState} from "../../app/store";
+import {useAppDispatch, useAppSelector} from "../../app/hooks";
 import {updateMenu} from "../../reducers/breadcrumbMenu";
 import ViewCreate, {TempQueryCreateInterface} from './ViewCreate';
 import {postData} from "../../utils/Requests";
@@ -21,9 +24,12 @@ import ViewPermission from './ViewPermission';
 import ViewSync from './ViewSync';
 import '../../styles/ViewDetail.scss';
 import {useNavigate, useSearchParams} from "react-router-dom";
-import {setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
 import {parseInt} from "lodash";
 import TilingConfiguration from '../TilingConfig/TilingConfigRevamp';
+import { SyncStatus } from "../../models/syncStatus";
+import {updateViewTabStatuses} from "../../reducers/viewTabs";
+import { StatusAndProgress } from '../../models/syncStatus';
+import { fetchTilingStatusAPI } from '../../utils/api/TilingStatus';
 
 const QUERY_CHECK_URL = '/api/query-view-preview/'
 const DOWNLOAD_VIEW_URL = '/api/view-download/'
@@ -45,7 +51,27 @@ export default function ViewDetail() {
     const [isDownloading, setIsDownloading] = useState(false)
     const [searchParams, setSearchParams] = useSearchParams()
     const navigate = useNavigate()
+    const tilingTabStatus = useAppSelector((state: RootState) => state.viewTabs.tilingConfigSyncStatus)
     
+    const fetchTilingStatus = () => {
+        if (view === null || !view.id) return
+        let _object_type = 'datasetview'
+        let _object_uuid = view.uuid
+        fetchTilingStatusAPI(_object_type, _object_uuid, (response: any, error: any) => {
+           if (response) {
+                let _simplification: StatusAndProgress = {
+                    progress: response['simplification']['progress'],
+                    status: response['simplification']['status']
+                }
+                let _tiling: StatusAndProgress = {
+                    progress: response['vector_tiles']['progress'],
+                    status: response['vector_tiles']['status']
+                }
+                dispatch(updateViewTabStatuses([_simplification, _tiling]))
+           }
+        })
+    }
+
     useEffect(() => {
         if (view) {
             setPreviewSession(view.preview_session)
@@ -64,7 +90,8 @@ export default function ViewDetail() {
                         id: `view_edit`,
                         name: `Edit ${view.name}`
                     }))
-                }                
+                }
+                fetchTilingStatus()
             }
         }
     }, [view, searchParams])
@@ -166,18 +193,35 @@ export default function ViewDetail() {
         })
     }
 
+    const getTilingConfigTab = () => {
+        if (tilingTabStatus === SyncStatus.Syncing) {
+            return <Tab key={3} label="Tiling Config"
+              icon={<CircularProgress size={18} />}
+              iconPosition={'start'}
+              {...a11yProps(3)}
+              disabled={view === null}
+            />
+          } else if (tilingTabStatus === SyncStatus.Error) {
+            return <Tab key={3} label="Tiling Config"
+              icon={<ErrorIcon color='error' fontSize='small' />}
+              iconPosition={'start'}
+              {...a11yProps(3)}
+              disabled={view === null}
+            />
+          }
+        return <Tab label="Tiling Config" {...a11yProps(3)} disabled={view === null} />
+    }
+
     return (
         <div style={{display:'flex', flex: 1, flexDirection: 'column'}}>
             <Box display={'flex'} flexDirection={'row'} justifyContent={'space-between'} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                <Tabs value={tabSelected} onChange={handleChange} aria-label="Configuration Tab">
+                <Tabs className='DatasetTabs' value={tabSelected} onChange={handleChange} aria-label="Configuration Tab">
                     <Tab label={ "Detail" + (tempData != null ? "*" : "") } {...a11yProps(0)} />
                     <Tab label="Preview" {...a11yProps(1)} disabled={!isQueryValid} />
                     { view && view.permissions && view.permissions.includes('Manage') && (
                         <Tab label="Permission" {...a11yProps(2)} disabled={view === null} />
                     )}
-                    { view && view.permissions && view.permissions.includes('Manage') && (
-                        <Tab label="Tiling Config" {...a11yProps(3)} disabled={view === null} />
-                    )}
+                    { view && view.permissions && view.permissions.includes('Manage') && getTilingConfigTab()}
                     { view && view.permissions && view.permissions.includes('Manage') && (
                         <Tab label="Sync Status" {...a11yProps(4)} disabled={view === null} />
                     )}
