@@ -52,6 +52,16 @@ Set the value of `Default admin emails` that will be used for email notification
 
 ![](./img/admin-site-preferences-edit.png)
 
+## Configure Languages
+
+Go to the Django Admin Page and click on `Languages` tab.
+
+![](./img/admin-languages-tab.png)
+
+Click on the `Fetch Languages` button to fetch languages (iso639_1) from this [link](https://restcountries.com/v2/all?fields=name,languages).
+
+![](./img/admin-languages-fetch.png)
+
 ## Add Maintenance Message to the dashboard application
 
 Go to the Django Admin Page and click on `Maintenances` tab.
