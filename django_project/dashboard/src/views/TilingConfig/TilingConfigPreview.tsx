@@ -57,6 +57,7 @@ interface TilingConfigPreviewInterface {
     dataset?: Dataset;
     view?: View;
     onGeoJsonLoading?: (isLoading: boolean) => void;
+    disabled?: boolean;
 }
 
 
@@ -392,7 +393,7 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
                     </Grid>
                     <Grid item>
                         {mapLoaded && 
-                            <FormControl sx={{minWidth: '180px'}} disabled={loading}>
+                            <FormControl sx={{minWidth: '180px'}} disabled={loading || props.disabled}>
                                 <InputLabel id="zoom-select-label">Zoom Level</InputLabel>
                                 <Select
                                     labelId="zoom-select-label"
@@ -419,7 +420,7 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
                     </Grid>
                     <Grid item>
                         {mapLoaded && 
-                            <FormControl sx={{minWidth: '180px'}} disabled={loading}>
+                            <FormControl sx={{minWidth: '180px'}} disabled={loading || props.disabled}>
                                 <InputLabel id="country-select-label">Country</InputLabel>
                                 <Select
                                     labelId="country-select-label"

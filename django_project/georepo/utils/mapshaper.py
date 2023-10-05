@@ -243,7 +243,9 @@ def simplify_for_dataset(
     dataset.simplification_progress = (
         'Entity simplification starts'
     )
-    dataset.save(update_fields=['simplification_progress'])
+    dataset.simplification_sync_status = Dataset.SyncStatus.SYNCING
+    dataset.save(update_fields=['simplification_progress',
+                                'simplification_sync_status'])
     logger.info(dataset.simplification_progress)
     tolerances = get_dataset_simplification(dataset)
     logger.info(tolerances)
@@ -360,8 +362,10 @@ def simplify_for_dataset(
             'Entity simplification finished'
         )
         dataset.is_simplified = True
+        dataset.simplification_sync_status = Dataset.SyncStatus.SYNCED
         dataset.save(update_fields=[
-            'simplification_progress', 'is_simplified'])
+            'simplification_progress', 'is_simplified',
+            'simplification_sync_status'])
         logger.info(dataset.simplification_progress)
     else:
         # error
@@ -372,8 +376,10 @@ def simplify_for_dataset(
             f'at {dataset.simplification_progress}'
         )
         dataset.is_simplified = False
+        dataset.simplification_sync_status = Dataset.SyncStatus.ERROR
         dataset.save(update_fields=[
-            'simplification_progress', 'is_simplified'])
+            'simplification_progress', 'is_simplified',
+            'simplification_sync_status'])
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log('simplify_for_dataset', end - start)
@@ -392,12 +398,16 @@ def simplify_for_dataset_view(
         view.simplification_progress = (
             f'Entity simplification finished for {view}'
         )
-        view.save(update_fields=['simplification_progress'])
+        view.simplification_sync_status = DatasetView.SyncStatus.SYNCED
+        view.save(update_fields=['simplification_progress',
+                                 'simplification_sync_status'])
         return True
     view.simplification_progress = (
         'Entity simplification starts'
     )
-    view.save(update_fields=['simplification_progress'])
+    view.simplification_sync_status = DatasetView.SyncStatus.SYNCING
+    view.save(update_fields=['simplification_progress',
+                             'simplification_sync_status'])
     logger.info(view.simplification_progress)
     total_simplification = 0
     for level, values in tolerances.items():
@@ -514,7 +524,9 @@ def simplify_for_dataset_view(
         view.simplification_progress = (
             'Entity simplification finished'
         )
-        view.save(update_fields=['simplification_progress'])
+        view.simplification_sync_status = DatasetView.SyncStatus.SYNCED
+        view.save(update_fields=['simplification_progress',
+                                 'simplification_sync_status'])
         logger.info(view.simplification_progress)
     else:
         # error
@@ -524,7 +536,9 @@ def simplify_for_dataset_view(
             'Entity simplification error '
             f'at {view.simplification_progress}'
         )
-        view.save(update_fields=['simplification_progress'])
+        view.simplification_sync_status = DatasetView.SyncStatus.ERROR
+        view.save(update_fields=['simplification_progress',
+                                 'simplification_sync_status'])
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(

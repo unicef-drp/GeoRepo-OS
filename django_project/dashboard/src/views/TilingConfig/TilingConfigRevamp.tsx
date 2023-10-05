@@ -1,6 +1,5 @@
 import React, {useEffect, useState, useCallback} from 'react';
 import {useNavigate} from "react-router-dom";
-import toLower from "lodash/toLower";
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
@@ -22,19 +21,19 @@ import DoDisturbOnIcon from '@mui/icons-material/DoDisturbOn';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DeleteIcon from '@mui/icons-material/Delete';
-import CircularProgress from '@mui/material/CircularProgress';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import Dataset from '../../models/dataset';
 import View from '../../models/view';
 import '../../styles/TilingConfig.scss';
-import { AddButton } from '../../components/Elements/Buttons';
 import HtmlTooltip from '../../components/HtmlTooltip';
 import { TilingConfig, MAX_ZOOM } from '../../models/tiling';
 import TilingConfigPreview from './TilingConfigPreview';
 import StatusLoadingDialog from '../../components/StatusLoadingDialog';
+import LoadingButton from "@mui/lab/LoadingButton";
+import TilingConfigStatus from './TilingConfigStatus';
 
 
 const FETCH_TILING_CONFIG_URL = '/api/fetch-tiling-configs/'
+const APPLY_TILING_CONFIG_URL = '/api/tiling-configs/apply/'
 
 
 interface AdminLevelTilingInterface {
@@ -60,7 +59,8 @@ interface TilingConfigMatrixInterface {
 
 interface EditTilingConfigMatrixInterface {
     initialData: TilingConfig[],
-    onUpdated: (data: TilingConfig[]) => void
+    onUpdated: (data: TilingConfig[]) => void,
+    disabled: boolean
 }
 
 interface TilingConfigInterface {
@@ -486,11 +486,12 @@ function EditTilingConfigMatrix(props: EditTilingConfigMatrixInterface) {
     }
 
     const isItemReadOnly = useCallback((tilingConfigIdx: number, adminLevel: number) => {
+        if (props.disabled) return true
         if (isInEditMode) {
             return tilingConfigIdx !== editTilingIdx || adminLevel !== editTilingAdminLevel
         }
         return false
-    }, [isInEditMode, editTilingIdx, editTilingAdminLevel])
+    }, [isInEditMode, editTilingIdx, editTilingAdminLevel, props.disabled])
 
     const canAddMoreZoomLevel = () => {
         // find last zoom level
@@ -523,7 +524,7 @@ function EditTilingConfigMatrix(props: EditTilingConfigMatrixInterface) {
                                         <TableCell title={getZoomTooltip(tilingConfig.zoom_level)}>
                                             Zoom {tilingConfig.zoom_level}
                                             { index === data.length - 1 ?  
-                                                <IconButton aria-label="delete" title='Delete Zoom Level' disabled={loading || isInEditMode} onClick={deleteLastZoomLevel}>
+                                                <IconButton aria-label="delete" title='Delete Zoom Level' disabled={loading || isInEditMode || props.disabled} onClick={deleteLastZoomLevel}>
                                                     <DeleteIcon fontSize='small' />
                                                 </IconButton>
                                             : null}
@@ -573,7 +574,7 @@ function EditTilingConfigMatrix(props: EditTilingConfigMatrixInterface) {
                     <Grid item sx={{marginBottom: '10px'}}>
                         <Button
                             variant={"contained"}
-                            disabled={loading || isInEditMode || !canAddMoreZoomLevel()}
+                            disabled={loading || isInEditMode || !canAddMoreZoomLevel() || props.disabled}
                             onClick={addNewZoomLevel}>
                             Add New Zoom Level
                         </Button>
@@ -598,11 +599,14 @@ function EditTilingConfigMatrix(props: EditTilingConfigMatrixInterface) {
 }
 
 export default function TilingConfiguration(props: TilingConfigInterface) {
-    const [isEdit, setIsEdit] = useState(true)
+    const [isEdit, setIsEdit] = useState(false)
     const [loading, setLoading] = useState(true)
+    const [onSaveLoading, setOnSaveLoading] = useState(false)
     const [data, setData] = useState<TilingConfig[]>(null)
     const [originalData, setOriginalData] = useState<TilingConfig[]>(null)
     const [onGeoJsonLoading, setOnGeoJsonLoading] = useState(false)
+    const [alertMessage, setAlertMessage] = useState<string>('')
+    const navigate = useNavigate()
 
     const fetchTilingConfigs = () => {
         setLoading(true)
@@ -619,7 +623,9 @@ export default function TilingConfiguration(props: TilingConfigInterface) {
                 setData(_data)
                 setOriginalData(cloneTilingConfig(_data))
             }
-        )
+        ).catch((error) => {
+            console.log('Fetch Tiling config failed! ', error)
+        })
     }
 
     useEffect(() => {
@@ -634,17 +640,50 @@ export default function TilingConfiguration(props: TilingConfigInterface) {
         setIsEdit(false)
     }
 
+    const onSave = () => {
+        setOnSaveLoading(true)
+        let _save_url = APPLY_TILING_CONFIG_URL
+        if (props.dataset) {
+            _save_url = `${APPLY_TILING_CONFIG_URL}dataset/${props.dataset.uuid}/`
+        } else if (props.view) {
+            _save_url = `${APPLY_TILING_CONFIG_URL}datasetview/${props.view.uuid}/`
+        }
+        postData(_save_url, data).then(
+            response => {
+                setAlertMessage('Successfully saving tiling configs!')
+                setOnSaveLoading(false)
+                setIsEdit(false)
+                fetchTilingConfigs()
+            }
+          ).catch(error => {
+            setOnSaveLoading(false)
+            console.log('error ', error)
+            if (error.response) {
+                if (error.response.status == 403) {
+                  // TODO: use better way to handle 403
+                  navigate('/invalid_permission')
+                } else if (error.response.data && 'detail' in error.response.data) {
+                    setAlertMessage(error.response.data['detail'])
+                }
+            } else {
+                setAlertMessage('Error saving tiling configs...')
+            }
+          })
+    }
+
     return (
         <Box className='tiling-configuration-container'>
+            <AlertMessage message={alertMessage} onClose={() => setAlertMessage('')} />
             <StatusLoadingDialog open={onGeoJsonLoading} title={'Fetching Country Boundaries'} description={'Please wait while loading selected country geojson for the preview.'} />
             <Grid container flexDirection={'row'} justifyContent={'space-between'}>
                 <Grid item>
+                    {!isEdit && <TilingConfigStatus dataset={props.dataset} view={props.view} />}
                 </Grid>
                 <Grid item textAlign={'right'}>
                     {!isEdit && 
                         <Button
                             variant={"contained"}
-                            disabled={loading}
+                            disabled={loading || onSaveLoading}
                             className='action-button'
                             onClick={() => setIsEdit(true)}>
                             Edit
@@ -653,18 +692,22 @@ export default function TilingConfiguration(props: TilingConfigInterface) {
                     {isEdit &&
                         <Grid container flexDirection={'row'} justifyContent={'space-between'} spacing={1}>
                             <Grid item>
-                                <Button
-                                    variant={"contained"}
-                                    disabled={loading}
+                                <LoadingButton
+                                    size="small"
+                                    onClick={onSave}
+                                    loading={onSaveLoading}
+                                    variant="contained"
                                     className='action-button'
-                                    onClick={() => setIsEdit(false)}>
-                                    Save
-                                </Button>
+                                    disabled={loading}
+                                    loadingIndicator={'Saving...'}
+                                >
+                                    <span>Save</span>
+                                </LoadingButton>
                             </Grid>
                             <Grid item>
                                 <Button
                                     variant={"outlined"}
-                                    disabled={loading}
+                                    disabled={loading || onSaveLoading}
                                     className='action-button'
                                     onClick={onCancel}>
                                     Cancel
@@ -688,11 +731,13 @@ export default function TilingConfiguration(props: TilingConfigInterface) {
             { !loading && isEdit && 
                 <Grid container flexDirection={'row'} flex={1}>
                     <Grid item md={8} xs={12}>
-                        <EditTilingConfigMatrix initialData={data} onUpdated={(data: TilingConfig[]) => setData(data)} />
+                        <EditTilingConfigMatrix initialData={data} onUpdated={(data: TilingConfig[]) => setData(data)}
+                         disabled={onSaveLoading}/>
                     </Grid>
                     <Grid item md={4} xs={12} sx={{display: 'flex'}}>
                         <TilingConfigPreview configData={data} dataset={props.dataset} view={props.view}
-                          onGeoJsonLoading={(isLoading) => setOnGeoJsonLoading(isLoading)}/>
+                          onGeoJsonLoading={(isLoading) => setOnGeoJsonLoading(isLoading)}
+                          disabled={onSaveLoading} />
                     </Grid>
                 </Grid>
             }

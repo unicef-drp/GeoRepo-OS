@@ -4,9 +4,9 @@ import { DatasetTabElementInterface } from "../models/dataset"
 import DatasetStyle from "../views/Dataset/Configurations/DatasetStyles";
 import DatasetPermission from "../views/Dataset/Configurations/DatasetPermission";
 import DatasetGeneral from "./Configurations/DatasetGeneral";
-import DatasetTilingConfig from "../views/Dataset/Configurations/DatasetTilingConfig";
 import BoundaryTypes from "./Configurations/BoundaryTypes";
 import DatasetEntities from "../views/Dataset/DatasetEntities";
+import TilingConfiguration from "../views/TilingConfig/TilingConfigRevamp";
 
 
 export default function DatasetDetailWrapper() {
@@ -38,7 +38,7 @@ export default function DatasetDetailWrapper() {
         },
         {
             title: 'TILING CONFIG',
-            element: DatasetTilingConfig,
+            element: TilingConfiguration,
             permissions: ['Manage']
         }
     ])

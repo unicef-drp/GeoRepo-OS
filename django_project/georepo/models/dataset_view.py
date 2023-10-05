@@ -912,4 +912,6 @@ def view_res_post_save(sender, instance: DatasetViewResource,
     elif 'Done' in product_status:
         view.product_sync_status = sync_status_mapping['Done']
     view.product_progress = sum(product_progress) / len(product_progress)
-    view.save()
+    view.save(update_fields=['status', 'vector_tile_sync_status',
+                             'vector_tiles_progress', 'product_sync_status',
+                             'product_progress'])

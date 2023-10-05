@@ -17,13 +17,13 @@ import ViewCreate, {TempQueryCreateInterface} from './ViewCreate';
 import {postData} from "../../utils/Requests";
 import View, {isReadOnlyView} from "../../models/view";
 import DatasetEntities from '../Dataset/DatasetEntities';
-import DatasetTilingConfig from '../Dataset/Configurations/DatasetTilingConfig';
 import ViewPermission from './ViewPermission';
 import ViewSync from './ViewSync';
 import '../../styles/ViewDetail.scss';
 import {useNavigate, useSearchParams} from "react-router-dom";
 import {setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
 import {parseInt} from "lodash";
+import TilingConfiguration from '../TilingConfig/TilingConfigRevamp';
 
 const QUERY_CHECK_URL = '/api/query-view-preview/'
 const DOWNLOAD_VIEW_URL = '/api/view-download/'
@@ -251,7 +251,7 @@ export default function ViewDetail() {
                 )}
                 { view && view.permissions && view.permissions.includes('Manage') && (
                     <TabPanel value={tabSelected} index={3} padding={1}>
-                        <DatasetTilingConfig view={view} isReadOnly={view.is_read_only} />
+                        <TilingConfiguration view={view} isReadOnly={view.is_read_only} />
                     </TabPanel>
                 )}
                 { view && view.permissions && view.permissions.includes('Manage') && (

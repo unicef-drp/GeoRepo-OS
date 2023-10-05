@@ -122,4 +122,3 @@ def check_affected_views_from_tiling_config(
             vector_tile=True,
             product=False
         )
-
