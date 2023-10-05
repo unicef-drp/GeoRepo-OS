@@ -67,7 +67,7 @@ class TestViewSyncList(TestCase):
             'dataset': self.dataset_view_1.dataset_id,
             'name': self.dataset_view_1.name,
             'is_tiling_config_match': True,
-            'vector_tile_sync_status': 'out_of_sync',
+            'vector_tile_sync_status': 'synced',
             'product_sync_status': 'out_of_sync',
             'vector_tiles_progress': 0.0,
             'product_progress': 0.0,
