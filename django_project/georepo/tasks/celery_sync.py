@@ -105,8 +105,8 @@ def handle_task_failure(task: BackgroundTask):
                 view.simplification_current_task = None
                 view.simplification_sync_status = DatasetView.SyncStatus.ERROR
                 view.save(update_fields=['status', 'simplification_progress',
-                                        'simplification_current_task',
-                                        'simplification_sync_status'])
+                                         'simplification_current_task',
+                                         'simplification_sync_status'])
             else:
                 view.save(update_fields=['status'])
                 # update dataset simplification status
