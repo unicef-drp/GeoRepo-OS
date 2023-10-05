@@ -11,6 +11,11 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import Popover from '@mui/material/Popover';
 import Typography from '@mui/material/Typography';
+import Checkbox from '@mui/material/Checkbox';
+import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
 import axios from "axios";
 import IconButton from "@mui/material/IconButton";
@@ -25,6 +30,10 @@ import {
   setCurrentFilters as setInitialFilters
 } from "../../reducers/viewTable";
 import {RootState} from "../../app/store";
+
+
+const checkBoxOutlinedicon = <CheckBoxOutlineBlankIcon fontSize="small" />;
+const checkBoxCheckedIcon = <CheckBoxIcon fontSize="small" />;
 
 const VIEW_LIST_URL = '/api/view-list/'
 const FILTER_VALUES_API_URL = '/api/view-filter/values/'
@@ -46,6 +55,10 @@ const USER_COLUMNS = [
   'permissions',
   'layer_preview'
 ]
+
+const COLUMN_NAME_LABEL: any = {
+  'dataset': 'Dataset'
+}
 
 interface ViewTableRowInterface {
   id: number,
@@ -217,10 +230,11 @@ export default function Views() {
     try {
       dataset = searchParams.get('dataset') ? [searchParams.get('dataset')] : []
     } catch (error: any) {
-      dataset = currentFilters['dataset']
     }
-    setCurrentFilters({...currentFilters, 'dataset': dataset})
-    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'dataset': dataset})))
+    if (dataset) {
+      setCurrentFilters({...currentFilters, 'dataset': dataset})
+      dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'dataset': dataset})))
+    }
   }, [searchParams])
 
   const getExistingFilterValue = (colName: string): string[] => {
@@ -277,18 +291,58 @@ export default function Views() {
             </div>
           }
         }
-        if (['tags', 'mode', 'dataset', 'is_default', 'min_privacy', 'max_privacy'].includes(columnName)) {
+        if (columnName === 'dataset') {
+          _options.options.filter = true
+          // set existing filter values
+          _options.options.filterList = getExistingFilterValue(columnName)
+          _options.options.filterType = 'custom'
+          _options.options.filterOptions = {
+            names: filterVals[columnName],
+            fullWidth: true,
+            logic(val:any, filters:any) {
+              return false
+            },
+            display: (filterList: any, onChange: any, index: any, column: any) => (
+              <div>
+                <Autocomplete
+                  multiple
+                  id={`checkboxes-id-filter-${columnName}`}
+                  options={filterVals[columnName]}
+                  disableCloseOnSelect
+                  value={filterList[index]}
+                  onChange={(event: any, newValue: any | null) => {
+                    filterList[index] = newValue
+                    onChange(filterList[index], index, column)
+                  }}
+                  getOptionLabel={(option) => `${option}`}
+                  renderOption={(props, option, { selected }) => (
+                    <li {...props}>
+                      <Checkbox
+                        icon={checkBoxOutlinedicon}
+                        checkedIcon={checkBoxCheckedIcon}
+                        style={{ marginRight: 8 }}
+                        checked={selected}
+                      />
+                      {option}
+                    </li>
+                  )}
+                  renderInput={(params) => (
+                    <TextField {...params} label={COLUMN_NAME_LABEL[columnName]} variant="standard" />
+                  )}
+                />
+              </div>
+            )
+          }
+        } else if (['tags', 'mode', 'is_default', 'min_privacy', 'max_privacy'].includes(columnName)) {
           // set filter values in dropdown
           _options.options.filterOptions = {
             names: filterVals[columnName]
           }
           _options.options.filter = true
-        } else {
-          _options.options.filter = false
-        }
-        if (['tags', 'mode', 'dataset', 'is_default', 'min_privacy', 'max_privacy'].includes(columnName)) {
           // set existing filter values
           _options.options.filterList = getExistingFilterValue(columnName)
+        } else {
+          _options.options.filter = false
         }
         return _options
       })
@@ -349,7 +403,7 @@ export default function Views() {
 
   useEffect(() => {
     fetchViewList()
-  }, [pagination, filterValues, currentFilters])
+  }, [pagination, currentFilters])
 
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {

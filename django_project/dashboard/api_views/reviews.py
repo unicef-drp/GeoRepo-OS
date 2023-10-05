@@ -222,10 +222,13 @@ class ReviewFilterValue(
             if criteria == 'dataset':
                 return self.fetch_dataset()
             return self.fetch_status()
-
         filter_values = self.reviews_querysets.\
-            filter(**{f"{field}__isnull": False}).order_by().\
-            values_list(field, flat=True).distinct()
+            filter(**{f"{field}__isnull": False})
+        if criteria == 'upload':
+            filter_values = filter_values.order_by('upload_session_id')
+        else:
+            filter_values = filter_values.order_by()
+        filter_values = filter_values.values_list(field, flat=True).distinct()
         return [val for val in filter_values]
 
     def fetch_dataset(self):
