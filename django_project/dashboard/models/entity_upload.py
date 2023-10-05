@@ -291,7 +291,8 @@ class EntityUploadStatusLog(models.Model):
             if log_text in self.logs:
                 self.logs[log_text] = {
                     'count': self.logs[log_text]['count'] + 1,
-                    'avg_time': (self.logs[log_text]['avg_time'] + exec_time) / 2,
+                    'avg_time': (
+                        self.logs[log_text]['avg_time'] + exec_time) / 2,
                     'total_time': self.logs[log_text]['avg_time'] + exec_time
                 }
             else:
