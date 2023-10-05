@@ -27,7 +27,7 @@ import {useNavigate, useSearchParams} from "react-router-dom";
 import {parseInt} from "lodash";
 import TilingConfiguration from '../TilingConfig/TilingConfigRevamp';
 import { SyncStatus } from "../../models/syncStatus";
-import {updateViewTabStatuses} from "../../reducers/viewTabs";
+import {updateViewTabStatuses, resetViewTabStatuses} from "../../reducers/viewTabs";
 import { StatusAndProgress } from '../../models/syncStatus';
 import { fetchTilingStatusAPI } from '../../utils/api/TilingStatus';
 
@@ -71,6 +71,11 @@ export default function ViewDetail() {
            }
         })
     }
+
+    useEffect(() => {
+        // reset previous state from other view
+        dispatch(resetViewTabStatuses())
+    }, [])
 
     useEffect(() => {
         if (view) {

@@ -19,7 +19,7 @@ import { DatasetDetailItemInterface, DatasetTabElementInterface } from '../../mo
 import { SyncStatus } from "../../models/syncStatus";
 import { StatusAndProgress } from '../../models/syncStatus';
 import { fetchTilingStatusAPI } from '../../utils/api/TilingStatus';
-import {updateDatasetTabStatuses} from "../../reducers/datasetTabs";
+import {updateDatasetTabStatuses, resetDatasetTabStatuses} from "../../reducers/datasetTabs";
 
 interface DatasetDetailInterface {
   tabs: DatasetTabElementInterface[],
@@ -117,6 +117,11 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
       }
       fetchDatasetDetail()
     }, [searchParams])
+  
+    useEffect(() => {
+      // reset previous state from other dataset
+      dispatch(resetDatasetTabStatuses())
+  }, [])
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
       if (newValue == 6) {

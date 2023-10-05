@@ -44,11 +44,23 @@ export const datasetTabsSlice = createSlice({
             } else if (PROCESSING_STATUS_LIST.includes(state.simplificationStatus.status) || PROCESSING_STATUS_LIST.includes(state.tilingStatus.status)) {
                 state.tilingConfigSyncStatus = SyncStatus.Syncing
             }
+        },
+        resetDatasetTabStatuses: (state, action: PayloadAction<null>) => {
+            state.tilingConfigSyncStatus = SyncStatus.None
+            state.simplificationStatus = {
+                progress: '',
+                status: ''
+            }
+            state.tilingStatus = {
+                progress: '',
+                status: ''
+            }
         }
     }
 })
 
 export const {
-    updateDatasetTabStatuses
+    updateDatasetTabStatuses,
+    resetDatasetTabStatuses
 } = datasetTabsSlice.actions
 export default datasetTabsSlice.reducer;
