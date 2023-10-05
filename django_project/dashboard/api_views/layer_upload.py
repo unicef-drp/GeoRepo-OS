@@ -305,7 +305,8 @@ class LayerFileEntityTypeList(AzureAuthRequiredMixin, APIView):
         else:
             entity_types = LayerFile.objects.exclude(
                 entity_type=''
-            ).values_list('entity_type', flat=True).distinct()
+            ).order_by('entity_type').values_list(
+                'entity_type', flat=True).distinct()
         return Response(status=200, data=list(entity_types))
 
 

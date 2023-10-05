@@ -23,7 +23,7 @@ class IdTypeList(AzureAuthRequiredMixin, APIView):
     """
 
     def get(self, request, format=None):
-        id_types = IdType.objects.all().order_by('id')
+        id_types = IdType.objects.all().order_by('name')
         serializer = IdTypeSerializer(id_types, many=True)
         return Response(serializer.data)
 
