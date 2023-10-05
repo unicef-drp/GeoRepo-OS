@@ -49,6 +49,11 @@ const USER_COLUMNS = [
   'is_comparison_ready'
 ]
 
+const COLUMN_NAME_LABEL = {
+  'upload': 'Upload',
+  'dataset': 'Dataset'
+}
+
 interface reviewTableRowInterface {
   id: number,
   level_0_entity: string,
@@ -249,7 +254,7 @@ export default function ReviewList() {
         if (columnName === 'status') {
           _options.options.filterType = 'dropdown'
           _options.options.sort = false
-        } else if (columnName === 'upload') {
+        } else if (columnName === 'upload' || columnName === 'dataset') {
           _options.options.filterType = 'custom'
           _options.options.filterOptions = {
             names: filterVals[columnName],
@@ -261,8 +266,8 @@ export default function ReviewList() {
               <div>
                 <Autocomplete
                   multiple
-                  id="checkboxes-id-filter"
-                  options={filterVals['upload']}
+                  id={`checkboxes-id-filter-${columnName}`}
+                  options={filterVals[columnName]}
                   disableCloseOnSelect
                   value={filterList[index]}
                   onChange={(event: any, newValue: any | null) => {
@@ -281,16 +286,13 @@ export default function ReviewList() {
                       {option}
                     </li>
                   )}
-                  style={{ width: 500 }}
                   renderInput={(params) => (
-                    <TextField {...params} label="Uploads" variant="standard" />
+                    <TextField {...params} label={COLUMN_NAME_LABEL[columnName]} variant="standard" />
                   )}
                 />
               </div>
             )
           }
-        } else if (columnName === 'dataset') {
-          _options.options.filterOptions['fullWidth'] = true
         } else if (columnName === 'start_date') {
           _options.options.customBodyRender = (value: string) => {
               return new Date(value).toDateString()

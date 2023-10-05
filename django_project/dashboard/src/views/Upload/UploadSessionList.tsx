@@ -6,6 +6,11 @@ import {useNavigate, useSearchParams} from "react-router-dom";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import IconButton from '@mui/material/IconButton';
+import Checkbox from '@mui/material/Checkbox';
+import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import {setModule} from "../../reducers/module";
 import {modules} from "../../modules";
 import {ReviewListRoute} from "../routes";
@@ -31,6 +36,10 @@ import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import TaskStatus from '../../components/TaskStatus';
 
+
+const checkBoxOutlinedicon = <CheckBoxOutlineBlankIcon fontSize="small" />;
+const checkBoxCheckedIcon = <CheckBoxIcon fontSize="small" />;
+
 const DELETE_UPLOAD_SESSION_URL = '/api/delete-upload-session'
 
 interface UploadSessionInterface {
@@ -51,6 +60,13 @@ const USER_COLUMNS = [
   'uploaded_by',
   'status'
 ]
+
+const COLUMN_NAME_LABEL: any = {
+  'id': 'Upload',
+  'dataset': 'Dataset',
+  'level_0_entity': 'Level 0 Entity',
+  'uploaded_by': 'Uploaded By'
+}
 
 const FILTER_VALUES_API_URL = '/api/upload-session-filter/values/'
 const UPLOAD_SESSION_LIST_URL = '/api/upload-sessions/'
@@ -181,10 +197,11 @@ export default function UploadSessionList() {
     try {
       dataset = searchParams.get('dataset') ? [searchParams.get('dataset')] : []
     } catch (error: any) {
-      dataset = currentFilters['dataset']
     }
-    setCurrentFilters({...currentFilters, 'dataset': dataset})
-    dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'dataset': dataset})))
+    if (dataset) {
+      setCurrentFilters({...currentFilters, 'dataset': dataset})
+      dispatch(setInitialFilters(JSON.stringify({...currentFilters, 'dataset': dataset})))
+    }
   }, [searchParams])
   
   const getExistingFilterValue = (colName: string): string[] => {
@@ -240,18 +257,59 @@ export default function UploadSessionList() {
             sort: true
           }
         }
-        if (columnName != 'upload_date') {
+        
+        if (['id', 'dataset', 'uploaded_by', 'level_0_entity'].includes(columnName)) {
+          _options.options.filter = true
+          // set existing filter values
+          _options.options.filterList = getExistingFilterValue(columnName)
+          _options.options.filterType = 'custom'
+          _options.options.filterOptions = {
+            names: filterVals[columnName],
+            fullWidth: columnName === 'dataset',
+            logic(val:any, filters:any) {
+              return false
+            },
+            display: (filterList: any, onChange: any, index: any, column: any) => (
+              <div>
+                <Autocomplete
+                  multiple
+                  id={`checkboxes-id-filter-${columnName}`}
+                  options={filterVals[columnName]}
+                  disableCloseOnSelect
+                  value={filterList[index]}
+                  onChange={(event: any, newValue: any | null) => {
+                    filterList[index] = newValue
+                    onChange(filterList[index], index, column)
+                  }}
+                  getOptionLabel={(option) => `${option}`}
+                  renderOption={(props, option, { selected }) => (
+                    <li {...props}>
+                      <Checkbox
+                        icon={checkBoxOutlinedicon}
+                        checkedIcon={checkBoxCheckedIcon}
+                        style={{ marginRight: 8 }}
+                        checked={selected}
+                      />
+                      {option}
+                    </li>
+                  )}
+                  renderInput={(params) => (
+                    <TextField {...params} label={COLUMN_NAME_LABEL[columnName]} variant="standard" />
+                  )}
+                />
+              </div>
+            )
+          }
+        } else if (columnName != 'upload_date') {
           // set filter values in dropdown
           _options.options.filterOptions = {
             names: filterVals[columnName]
           }
+          // set existing filter values
+          _options.options.filterList = getExistingFilterValue(columnName)
           _options.options.filter = true
         } else {
           _options.options.filter = false
-        }
-        if (columnName != 'upload_date') {
-          // set existing filter values
-          _options.options.filterList = getExistingFilterValue(columnName)
         }
         return _options
       })
@@ -335,7 +393,7 @@ export default function UploadSessionList() {
 
   useEffect(() => {
     fetchUploadList()
-  }, [pagination, filterValues, currentFilters])
+  }, [pagination, currentFilters])
 
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
