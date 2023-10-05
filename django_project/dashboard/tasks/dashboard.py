@@ -70,9 +70,11 @@ def clear_temp_directory():
         return
     logger.info('Starting cleaning temp directory on azure env.')
     export_data_dir = os.path.join(settings.MEDIA_ROOT, 'export_data')
+    if os.path.exists(export_data_dir):
+        shutil.rmtree(export_data_dir)
     tmp_dir = os.path.join(settings.MEDIA_ROOT, 'tmp')
-    shutil.rmtree(export_data_dir)
-    shutil.rmtree(tmp_dir)
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
     layer_files = os.path.join(settings.MEDIA_ROOT, 'layer_files')
     if os.path.exists(layer_files):
         shutil.rmtree(layer_files)
@@ -81,8 +83,8 @@ def clear_temp_directory():
         shutil.rmtree(error_reports)
     # create export data and tmp
     if not os.path.exists(export_data_dir):
-        os.mkdir(export_data_dir)
+        os.makedirs(export_data_dir)
     if not os.path.exists(tmp_dir):
-        os.mkdir(tmp_dir)
+        os.makedirs(tmp_dir)
     logger.info('Finished cleaning temp directory on azure env.')
     calculate_temp_directory()

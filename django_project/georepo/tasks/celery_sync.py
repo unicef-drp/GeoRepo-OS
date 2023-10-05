@@ -8,7 +8,11 @@ from georepo.models import (
     DatasetView,
     Dataset
 )
-from georepo.utils.celery_helper import get_task_status, TASK_NOT_FOUND
+from georepo.utils.celery_helper import (
+    get_task_status,
+    TASK_NOT_FOUND,
+    cancel_task
+)
 from georepo.utils.module_import import module_function
 
 
@@ -35,19 +39,38 @@ def check_celery_background_tasks():
         try:
             # check using flower API
             status = get_task_status(task.task_id)
-            if status == states.FAILURE:
-                handle_task_failure(task)
-            elif status == TASK_NOT_FOUND:
-                handle_task_interrupted(task)
+            if status not in [states.FAILURE, TASK_NOT_FOUND]:
+                continue
+            handle_task_with_status(task, status)
         except Exception as ex:
-            logger.error(f'Failed to handle interrupted task: {str(task)}')
+            logger.error(f'Failed to get_task_status task: {str(task)}')
             logger.error(ex)
 
 
 def on_task_invalidated(task: BackgroundTask):
+    cancel_task(task.task_id)
     task.status = BackgroundTask.BackgroundTaskStatus.INVALIDATED
     task.last_update = timezone.now()
     task.save(update_fields=['status', 'last_update'])
+
+
+def handle_task_with_status(task: BackgroundTask, status: str):
+    if status == states.FAILURE:
+        try:
+            handle_task_failure(task)
+        except Exception as ex:
+            logger.error(f'Failed to handle failure task: {str(task)}')
+            logger.error(ex)
+        finally:
+            on_task_invalidated(task)
+    elif status == TASK_NOT_FOUND:
+        try:
+            handle_task_interrupted(task)
+        except Exception as ex:
+            logger.error(f'Failed to handle interrupted task: {str(task)}')
+            logger.error(ex)
+        finally:
+            on_task_invalidated(task)
 
 
 def handle_task_failure(task: BackgroundTask):
@@ -133,7 +156,6 @@ def handle_task_failure(task: BackgroundTask):
             upload.save(update_fields=['status'])
         except EntityUploadStatus.DoesNotExist as ex:
             logger.error(ex)
-    on_task_invalidated(task)
 
 
 def handle_task_interrupted(task: BackgroundTask):
@@ -359,4 +381,3 @@ def handle_task_interrupted(task: BackgroundTask):
             upload_session.save(update_fields=['task_id'])
         except LayerUploadSession.DoesNotExist as ex:
             logger.error(ex)
-    on_task_invalidated(task)
