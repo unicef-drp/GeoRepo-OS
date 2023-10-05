@@ -392,10 +392,10 @@ class TestApiViews(TestCase):
         response = id_type_list_view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 2)
-        self.assertEqual(response.data[0]['name'], 'PCode')
-        self.assertEqual(response.data[0]['id'], 1)
-        self.assertEqual(response.data[1]['name'], 'Id')
-        self.assertEqual(response.data[1]['id'], 2)
+        self.assertEqual(response.data[0]['name'], 'Id')
+        self.assertEqual(response.data[0]['id'], 2)
+        self.assertEqual(response.data[1]['name'], 'PCode')
+        self.assertEqual(response.data[1]['id'], 1)
         # add 1 new record, should success
         post_data = {
             'name': 'PCode_1'

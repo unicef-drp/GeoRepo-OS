@@ -168,6 +168,27 @@ def do_process_layer_files_for_parent_matching(
                     ),
                     feature_index=feature_idx
                 )
+                if parent_entity_id != matched_parent_entity.internal_code:
+                    # update EntityTemp level 1 and above
+                    EntityTemp.objects.filter(
+                        upload_session=upload_session,
+                        level=1,
+                        parent_entity_id=parent_entity_id
+                    ).update(
+                        parent_entity_id=matched_parent_entity.internal_code,
+                        ancestor_entity_id=(
+                            matched_parent_entity.internal_code
+                        ),
+                        is_parent_rematched=True,
+                        overlap_percentage=overlap_percentage
+                    )
+                    EntityTemp.objects.filter(
+                        upload_session=upload_session,
+                        level__gt=1,
+                        ancestor_entity_id=parent_entity_id
+                    ).update(
+                        ancestor_entity_id=matched_parent_entity.internal_code
+                    )
             upload_session.progress = (
                 'Auto parent matching admin level 1 entities '
                 f'({feature_idx + 1}/{total_features})'
