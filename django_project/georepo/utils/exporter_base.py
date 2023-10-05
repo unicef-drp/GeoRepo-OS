@@ -150,7 +150,7 @@ class DatasetViewExporterBase(object):
             f'temp_{str(resource.uuid)}'
         )
         if not os.path.exists(tmp_output_dir):
-            os.mkdir(tmp_output_dir)
+            os.makedirs(tmp_output_dir)
         return tmp_output_dir
 
     def update_progress(self, view_resource=None, progress=0):

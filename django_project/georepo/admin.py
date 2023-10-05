@@ -817,8 +817,11 @@ class BackgroundTaskAdmin(admin.ModelAdmin):
     list_per_page = 30
 
     def celery_status(self, obj: BackgroundTask):
-        if obj.is_possible_interrupted() and obj.task_id:
-            return get_task_status(obj.task_id)
+        from celery.result import AsyncResult
+        if obj.is_possible_interrupted(60) and obj.task_id:
+            res = AsyncResult(obj.task_id)
+            res2 = get_task_status(obj.task_id)
+            return f'{res.state} - {res2}'
         return '-'
 
 

@@ -1,3 +1,4 @@
+import logging
 from django.db import models
 from django.contrib.gis.db import models as GisModels
 from django.db.models.signals import pre_delete
@@ -6,6 +7,10 @@ from django.dispatch import receiver
 from georepo.models.dataset import Dataset
 from georepo.utils.permission import get_dataset_to_review
 from dashboard.models.layer_upload_session import LayerUploadSession
+
+
+logger = logging.getLogger(__name__)
+
 
 PROCESSING = 'Processing'
 VALID = 'Valid'
@@ -281,20 +286,24 @@ class EntityUploadStatusLog(models.Model):
         )
 
     def add_log(self, log_text, exec_time):
-        self.refresh_from_db()
-        if log_text in self.logs:
-            self.logs[log_text] = {
-                'count': self.logs[log_text]['count'] + 1,
-                'avg_time': (self.logs[log_text]['avg_time'] + exec_time) / 2,
-                'total_time': self.logs[log_text]['avg_time'] + exec_time
-            }
-        else:
-            self.logs[log_text] = {
-                'count': 1,
-                'avg_time': exec_time,
-                'total_time': exec_time
-            }
-        self.save(update_fields=['logs'])
+        try:
+            self.refresh_from_db()
+            if log_text in self.logs:
+                self.logs[log_text] = {
+                    'count': self.logs[log_text]['count'] + 1,
+                    'avg_time': (self.logs[log_text]['avg_time'] + exec_time) / 2,
+                    'total_time': self.logs[log_text]['avg_time'] + exec_time
+                }
+            else:
+                self.logs[log_text] = {
+                    'count': 1,
+                    'avg_time': exec_time,
+                    'total_time': exec_time
+                }
+            self.save(update_fields=['logs'])
+        except self.DoesNotExist as ex:
+            logger.error(f'Failed adding log {log_text}')
+            logger.error(ex)
 
     def save(self, **kwargs):
         if self.entity_upload_status and not self.layer_upload_session:

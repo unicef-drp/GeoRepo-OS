@@ -39,9 +39,8 @@ def get_task_status(task_id: str):
     return status
 
 
-def on_task_queued(task: BackgroundTask):
+def on_task_queued_or_running(task: BackgroundTask):
     task_param = make_tuple(task.parameters or '()')
-    logger.info(f'On Task Queued {task.name} - {task_param}')
     if task.name == 'generate_view_resource_vector_tiles_task':
         if len(task_param) == 0:
             return
@@ -111,11 +110,15 @@ def on_task_success(task: BackgroundTask):
 
 
 def cancel_task(task_id: str):
-    res = AsyncResult(task_id)
-    if not res.ready():
-        # find if there is running task and stop it
-        app.control.revoke(
-            task_id,
-            terminate=True,
-            signal='SIGKILL'
-        )
+    try:
+        res = AsyncResult(task_id)
+        if not res.ready():
+            # find if there is running task and stop it
+            app.control.revoke(
+                task_id,
+                terminate=True,
+                signal='SIGKILL'
+            )
+    except Exception as ex:
+        logger.error(f'Failed cancel_task: {task_id}')
+        logger.error(ex)

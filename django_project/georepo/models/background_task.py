@@ -24,10 +24,7 @@ class BackgroundTask(models.Model):
         blank=True
     )
 
-    last_update = models.DateTimeField(
-        auto_now=True,
-        editable=True
-    )
+    last_update = models.DateTimeField()
 
     status = models.CharField(
         max_length=255,
@@ -74,7 +71,7 @@ class BackgroundTask(models.Model):
         blank=True
     )
 
-    def is_possible_interrupted(self):
+    def is_possible_interrupted(self, delta = 1800):
         if (
             self.status == BackgroundTask.BackgroundTaskStatus.QUEUED or
             self.status == BackgroundTask.BackgroundTaskStatus.RUNNING
@@ -82,7 +79,7 @@ class BackgroundTask(models.Model):
             # check if last_update is more than 30mins than current date time
             if self.last_update:
                 diff_seconds = timezone.now() - self.last_update
-                return diff_seconds.total_seconds() >= 1800
+                return diff_seconds.total_seconds() >= delta
         return False
 
     def __str__(self) -> str:

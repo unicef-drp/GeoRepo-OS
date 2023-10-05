@@ -64,7 +64,7 @@ def validate_ready_uploads(entity_upload_id, log_obj_id=None):
     entity_upload.status = PROCESSING
     entity_upload.started_at = timezone.now()
     entity_upload.save(update_fields=['status', 'started_at'])
-
+    time.sleep(300)
     validate_layer_file(
         entity_upload,
         **{'log_object': upload_log}
