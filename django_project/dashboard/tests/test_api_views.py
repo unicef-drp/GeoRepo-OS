@@ -455,6 +455,41 @@ class TestApiViews(TestCase):
         add_id_type_view = AddIdType.as_view()
         response = add_id_type_view(request)
         self.assertEqual(response.status_code, 400)
+        # using ucode should return 400
+        post_data = {
+            'name': 'ucode'
+        }
+        request = self.factory.post(
+            reverse('add-id-type'), post_data,
+            format='json'
+        )
+        request.user = created_by
+        add_id_type_view = AddIdType.as_view()
+        response = add_id_type_view(request)
+        self.assertEqual(response.status_code, 400)
+        # case insensitive
+        post_data = {
+            'name': 'UCODE'
+        }
+        request = self.factory.post(
+            reverse('add-id-type'), post_data,
+            format='json'
+        )
+        request.user = created_by
+        add_id_type_view = AddIdType.as_view()
+        response = add_id_type_view(request)
+        self.assertEqual(response.status_code, 400)
+        post_data = {
+            'name': 'pcode'
+        }
+        request = self.factory.post(
+            reverse('add-id-type'), post_data,
+            format='json'
+        )
+        request.user = created_by
+        add_id_type_view = AddIdType.as_view()
+        response = add_id_type_view(request)
+        self.assertEqual(response.status_code, 400)
 
     def test_get_review_list(self):
         user = UserF.create(
