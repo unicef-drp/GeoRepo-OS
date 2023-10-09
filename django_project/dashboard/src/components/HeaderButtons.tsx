@@ -9,7 +9,6 @@ import Typography from '@mui/material/Typography';
 import {postData} from "../utils/Requests";
 import {currentModule, setModule} from "../reducers/module";
 import {toggleIsBatchReview, setPendingReviews, setCurrentReview, onBatchReviewSubmitted} from "../reducers/reviewAction";
-import {toggleIsBatchAction} from "../reducers/viewSyncAction";
 import {RootState} from "../app/store";
 import {useAppDispatch, useAppSelector} from "../app/hooks";
 import {modules} from "../modules";

@@ -15,8 +15,15 @@ import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import {getDefaultFilter, ReviewFilterInterface} from "./Filter"
 import {modules} from "../../modules";
 import {setModule} from "../../reducers/module";
-import {setSelectedReviews} from "../../reducers/reviewAction";
+import {
+  setSelectedReviews,
+  addSelectedReview,
+  removeSelectedReview,
+  resetSelectedReviews,
+  updateRowsSelectedInPage
+} from "../../reducers/reviewAction";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
+import { reviewTableRowInterface } from "../../models/review";
 import {
   setAvailableFilters,
   setCurrentFilters as setInitialFilters
@@ -31,6 +38,7 @@ import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import StatusLoadingDialog from '../../components/StatusLoadingDialog';
 
 
 const checkBoxOutlinedicon = <CheckBoxOutlineBlankIcon fontSize="small" />;
@@ -54,21 +62,9 @@ const COLUMN_NAME_LABEL = {
   'dataset': 'Dataset'
 }
 
-interface reviewTableRowInterface {
-  id: number,
-  level_0_entity: string,
-  upload: string,
-  dataset: string,
-  start_date: string,
-  revision: number,
-  status: string,
-  submitted_by: string,
-  module: string,
-  is_comparison_ready: string
-}
-
 const FILTER_VALUES_API_URL = '/api/review-filter/values/'
 const VIEW_LIST_URL = '/api/review-list/'
+const SELECT_ALL_LIST_URL = '/api/review-list-select-all/'
 const FilterIcon: any = FilterAlt
 
 function ViewPopover(props: any) {
@@ -111,7 +107,6 @@ export default function ReviewList() {
   const isBatchReviewAvailable = useAppSelector((state: RootState) => state.reviewAction.isBatchReviewAvailable)
   const pendingReviews = useAppSelector((state: RootState) => state.reviewAction.pendingReviews)
   const reviewUpdatedAt = useAppSelector((state: RootState) => state.reviewAction.updatedAt)
-  const selectedReviews = useAppSelector((state: RootState) => state.reviewAction.selectedReviews)
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
   const [selectedReview, setSelectedReview] = useState<any>(null)
 
@@ -128,9 +123,11 @@ export default function ReviewList() {
   const ref = useRef(null)
   const [tableHeight, setTableHeight] = useState(0)
   const [hasProcessingReview, setHasProcessingReview] = useState(false)
-  const [rowsSelectedInPage, setRowsSelectedInPage] = useState<number[]>([])
-
+  const rowsSelectedInPage = useAppSelector((state: RootState) => state.reviewAction.rowsSelectedInPage)
   let selectableRowsMode: any = isBatchReview ? 'multiple' : 'none'
+  const [statusDialogOpen, setStatusDialogOpen] = useState<boolean>(false)
+  const [statusDialogTitle, setStatusDialogTitle] = useState<string>('Selecting all uploads')
+  const [statusDialogDescription, setStatusDialogDescription] = useState<string>('Fetching all uploads that are ready for review...')
 
   const fetchFilterValues = async () => {
     let filters = []
@@ -181,6 +178,7 @@ export default function ReviewList() {
       setHasProcessingReview(_hasProcessingReview)
       setData(_data)
       setTotalCount(response.data.count)
+      dispatch(updateRowsSelectedInPage(_data))
     }).catch(error => {
       if (!axios.isCancel(error)) {
         console.log(error)
@@ -190,6 +188,27 @@ export default function ReviewList() {
             // TODO: use better way to handle 403
             navigate('/invalid_permission')
           }
+        }
+      }
+    })
+  }
+
+  const fetchSelectAllReviewList = () => {
+    const url = `${SELECT_ALL_LIST_URL}`
+    setStatusDialogOpen(true)
+    axios.post(
+      url,
+      currentFilters
+    ).then((response) => {
+      setStatusDialogOpen(false)
+      dispatch(setSelectedReviews([response.data, data]))
+    }).catch(error => {
+      console.log(error)
+      setStatusDialogOpen(false)
+      if (error.response) {
+        if (error.response.status == 403) {
+          // TODO: use better way to handle 403
+          navigate('/invalid_permission')
         }
       }
     })
@@ -342,25 +361,19 @@ export default function ReviewList() {
   }, [pagination, currentFilters])
 
   useEffect(() => {
+    // reset selection if filter is changed
+    dispatch(resetSelectedReviews())
+  }, [currentFilters])
+
+  useEffect(() => {
     if (data.length > 0 && hasProcessingReview) {
       const interval = setInterval(() => {
         fetchReviewList()
-      }, 2000);
+      }, 5000);
       return () => clearInterval(interval);
     }
   }, [data, hasProcessingReview])
 
-  useEffect(() => {
-    let _selectedIdx: number[] = []
-    if (data) {
-      for (let i=0; i<data.length; i++) {
-        if (selectedReviews.includes(data[i].id)) {
-          _selectedIdx.push(i)
-        }
-      }
-    }
-    setRowsSelectedInPage(_selectedIdx)
-  }, [data, selectedReviews])
 
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
@@ -445,17 +458,11 @@ export default function ReviewList() {
     }
   }, [reviewUpdatedAt])
 
-  const canRowBeSelected = (dataIndex: number, rowData: any) => {
+  const canRowBeSelected = useCallback((dataIndex: number, rowData: any) => {
     if (!isBatchReviewAvailable)
       return false
     return !pendingReviews.includes(rowData['id']) && rowData['is_comparison_ready'] && rowData['status'] === 'Ready for Review'
-  }
-
-  const selectionChanged = (data: number[], removedIds: number[]) => {
-    let _selected = selectedReviews.filter(number => !removedIds.includes(number))
-    data.forEach((number) => (_selected.indexOf(number) > -1) ? null: _selected.push(number))
-    dispatch(setSelectedReviews(_selected))
-  }
+  }, [isBatchReviewAvailable, pendingReviews])
 
   const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
     if (isBatchReview) return
@@ -476,6 +483,7 @@ export default function ReviewList() {
       loading ?
         <Loading/> :
           <Fragment>
+            <StatusLoadingDialog open={statusDialogOpen} title={statusDialogTitle} description={statusDialogDescription} />
             <div className='AdminList'>
               <div className='AdminTable'>
                 <MUIDataTable
@@ -491,18 +499,28 @@ export default function ReviewList() {
                     sortOrder: pagination.sortOrder as MUISortOptions,
                     jumpToPage: true,
                     isRowSelectable: (dataIndex: number, selectedRows: any) => {
-                      return canRowBeSelected(dataIndex, data[dataIndex])
+                      let _res = canRowBeSelected(dataIndex, data[dataIndex])
+                      return _res
                     },
                     onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
-                      // @ts-ignore
-                      const rowDataSelected = rowsSelected.map((index) => data[index]['id'])
-                      let _rowsRemoved = []
-                      for (let i=0; i<rowsSelectedInPage.length; ++i) {
-                        if (!rowsSelected.includes(rowsSelectedInPage[i])) {
-                          _rowsRemoved.push(data[rowsSelectedInPage[i]]['id'])
+                      if (currentRowsSelected.length > 1) {
+                        // select all
+                        // fetch available review id using current filter
+                        fetchSelectAllReviewList()
+                      } else if (currentRowsSelected.length === 1) {
+                        let _item = data[currentRowsSelected[0]['index']]
+                        // check/uncheck single
+                        if (rowsSelected.indexOf(currentRowsSelected[0]['index']) > -1) {
+                          // selected
+                          dispatch(addSelectedReview(_item['id']))
+                        } else {
+                          // deselected
+                          dispatch(removeSelectedReview(_item['id']))
                         }
+                      } else if (currentRowsSelected.length === 0) {
+                        // deselect all
+                        dispatch(resetSelectedReviews())
                       }
-                      selectionChanged(rowDataSelected, _rowsRemoved)
                     },
                     onRowClick: (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
                       handleRowClick(rowData, rowMeta)

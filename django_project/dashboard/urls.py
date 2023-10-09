@@ -7,7 +7,8 @@ from dashboard.api_views.reviews import (
     ApproveRevision,
     RejectRevision,
     BatchReviewAPI,
-    PendingBatchReviewUploads
+    PendingBatchReviewUploads,
+    ReviewSelectAllIdList
 )
 from dashboard.views.dashboard import DashboardView
 from dashboard.views.uploader import UploaderView
@@ -385,6 +386,11 @@ urlpatterns = [
         r'api/review-list/?$',
         ReviewList.as_view(),
         name='review-list'
+    ),
+    re_path(
+        r'api/review-list-select-all/?$',
+        ReviewSelectAllIdList.as_view(),
+        name='review-list-select-all'
     ),
     re_path(
         r'^api/review-filter/values/'
