@@ -129,7 +129,8 @@ from dashboard.api_views.view_sync import (
     ViewSyncList,
     ViewSyncFilterValue,
     ViewResourcesSyncList,
-    SynchronizeView
+    SynchronizeView,
+    FetchSyncStatus
 )
 from dashboard.api_views.logs import (
     ExportLogs
@@ -560,6 +561,11 @@ urlpatterns = [
     re_path(r'api/sync-view/?$',
             SynchronizeView.as_view(),
             name='sync-view'),
+    re_path(r'api/sync-status/'
+            r'(?P<object_type>(dataset|datasetview))/'
+            r'(?P<uuid>[\da-f-]+)/?$',
+            FetchSyncStatus.as_view(),
+            name='sync-status'),
     re_path(r'api/tag-list/?$',
             GetViewTags.as_view(),
             name='get-tag-list'),

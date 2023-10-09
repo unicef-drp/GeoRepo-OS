@@ -11,6 +11,7 @@ import Grid from '@mui/material/Grid';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import CircularProgress from '@mui/material/CircularProgress';
+import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import ErrorIcon from '@mui/icons-material/Error';
 import TabPanel, {a11yProps} from '../../components/TabPanel';
 import Skeleton from '@mui/material/Skeleton';
@@ -18,7 +19,7 @@ import Dataset from '../../models/dataset';
 import { DatasetDetailItemInterface, DatasetTabElementInterface } from '../../models/dataset';
 import { SyncStatus } from "../../models/syncStatus";
 import { StatusAndProgress } from '../../models/syncStatus';
-import { fetchTilingStatusAPI } from '../../utils/api/TilingStatus';
+import { fetchSyncStatusAPI } from '../../utils/api/TilingStatus';
 import {updateDatasetTabStatuses, resetDatasetTabStatuses} from "../../reducers/datasetTabs";
 
 interface DatasetDetailInterface {
@@ -33,7 +34,7 @@ const DatasetDetailTab = (Component: React.ElementType, givenProps: DatasetDetai
 export default function DatasetDetail(props: DatasetDetailInterface) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate()
-    const tilingTabStatus = useAppSelector((state: RootState) => state.datasetTabs.tilingConfigSyncStatus)
+    const objSyncStatus = useAppSelector((state: RootState) => state.datasetTabs.objSyncStatus)
     const [loading, setLoading] = useState(false)
     const [searchParams, setSearchParams] = useSearchParams()
     const [dataset, setDataset] = useState<Dataset>(null)
@@ -45,17 +46,17 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
       if (dataset === null) return
       let _object_type = 'dataset'
       let _object_uuid = dataset.uuid
-      fetchTilingStatusAPI(_object_type, _object_uuid, (response: any, error: any) => {
+      fetchSyncStatusAPI(_object_type, _object_uuid, (response: any, error: any) => {
          if (response) {
               let _simplification: StatusAndProgress = {
                   progress: response['simplification']['progress'],
                   status: response['simplification']['status']
               }
-              let _tiling: StatusAndProgress = {
-                  progress: response['vector_tiles']['progress'],
-                  status: response['vector_tiles']['status']
-              }
-              dispatch(updateDatasetTabStatuses([_simplification, _tiling]))
+              let _obj_status = response['sync_status']
+              dispatch(updateDatasetTabStatuses({
+                  objSyncStatus: _obj_status,
+                  simplificationStatus: _simplification
+              }))
          }
       })
   }
@@ -139,16 +140,22 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
                 <Tabs className='DatasetTabs' value={tabSelected} onChange={handleChange} aria-label="Dataset Tab">
                   {
                     filteredTabs.map((tab, index) => {
-                      if (tab.title === 'TILING CONFIG') {
-                        if (tilingTabStatus === SyncStatus.Syncing) {
+                      if (tab.title === 'SYNC STATUS') {
+                        if (objSyncStatus === SyncStatus.Syncing) {
                           return <Tab key={index} label={tab.title}
                             icon={<CircularProgress size={18} />}
                             iconPosition={'start'}
                             {...a11yProps(index)}
                           />
-                        } else if (tilingTabStatus === SyncStatus.Error) {
+                        } else if (objSyncStatus === SyncStatus.Error) {
                           return <Tab key={index} label={tab.title}
                             icon={<ErrorIcon color='error' fontSize='small' />}
+                            iconPosition={'start'}
+                            {...a11yProps(index)}
+                          />
+                        } else if (objSyncStatus === SyncStatus.OutOfSync) {
+                          return <Tab key={index} label={tab.title}
+                            icon={<SyncProblemIcon color='warning' fontSize='small' />}
                             iconPosition={'start'}
                             {...a11yProps(index)}
                           />

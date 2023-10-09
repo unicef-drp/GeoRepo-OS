@@ -29,7 +29,6 @@ import { TilingConfig, MAX_ZOOM } from '../../models/tiling';
 import TilingConfigPreview from './TilingConfigPreview';
 import StatusLoadingDialog from '../../components/StatusLoadingDialog';
 import LoadingButton from "@mui/lab/LoadingButton";
-import TilingConfigStatus from './TilingConfigStatus';
 
 
 const FETCH_TILING_CONFIG_URL = '/api/fetch-tiling-configs/'
@@ -71,6 +70,7 @@ interface TilingConfigInterface {
     dataset?: Dataset,
     view?: View,
     isReadOnly?: boolean,
+    onSyncStatusShouldBeUpdated?: () => void
 }
 
 
@@ -653,6 +653,9 @@ export default function TilingConfiguration(props: TilingConfigInterface) {
                 setOnSaveLoading(false)
                 setIsEdit(false)
                 fetchTilingConfigs()
+                if (props.onSyncStatusShouldBeUpdated) {
+                    props.onSyncStatusShouldBeUpdated()
+                }
             }
           ).catch(error => {
             setOnSaveLoading(false)
@@ -675,9 +678,7 @@ export default function TilingConfiguration(props: TilingConfigInterface) {
             <AlertMessage message={alertMessage} onClose={() => setAlertMessage('')} />
             <StatusLoadingDialog open={onGeoJsonLoading} title={'Fetching Country Boundaries'} description={'Please wait while loading selected country geojson for the preview.'} />
             <Grid container flexDirection={'row'} justifyContent={'space-between'}>
-                <Grid item>
-                    {!isEdit && <TilingConfigStatus dataset={props.dataset} view={props.view} />}
-                </Grid>
+                <Grid item></Grid>
                 <Grid item textAlign={'right'}>
                     {!isEdit && 
                         <Button

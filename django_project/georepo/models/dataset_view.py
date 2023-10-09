@@ -240,10 +240,12 @@ class DatasetView(models.Model):
         )
         if has_custom_tiling_config:
             self.simplification_sync_status = self.SyncStatus.OUT_OF_SYNC
+            self.simplification_progress = ''
         else:
             self.simplification_sync_status = (
                 self.dataset.simplification_sync_status
             )
+            self.simplification_progress = ''
         dsv_resources = self.datasetviewresource_set.all()
         if tiling_config:
             # Only set tiling config as out of sync if DatasetView

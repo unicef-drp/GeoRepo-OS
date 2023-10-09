@@ -297,227 +297,229 @@ export default function ViewSyncList() {
   }
 
   useEffect(() => {
-    const fetchFilterValuesData = async () => {
-      let filterVals: any = {}
-      if (filterValues.sync_status.length > 0) {
-        filterVals = filterValues
-      } else {
-        filterVals = await fetchFilterValues()
-      }
-      const getLabel = (columnName: string) : string => {
-        return columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' ')
-      }
-
-      let _columns = ['id', 'name', 'permissions', 'vector_tiles_progress', 'product_progress'].map((columnName) => {
-        let _options: any = {
-          name: columnName,
-          label: getLabel(columnName),
-          options: {
-            display: initialColumns.includes(columnName),
-            sort: columnName === 'name'
-          }
+    if (data.length > 0 && columns.length === 0) {
+      const fetchFilterValuesData = async () => {
+        let filterVals: any = {}
+        if (filterValues.sync_status.length > 0) {
+          filterVals = filterValues
+        } else {
+          filterVals = await fetchFilterValues()
         }
-        _options.options.filter = false
-        return _options
-      })
-
-      _columns.push({
-        name: 'is_tiling_config_match',
-        label: 'Tiling Config',
-        options: {
-          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-            let rowData = tableMeta.rowData
-            return (
-              <Button
-                aria-label={
-                  rowData[5] ? 'Tiling config matches dataset' : 'Click to update tiling config'
-                }
-                title={
-                  rowData[5] ? 'Tiling config matches dataset' : 'Click to update tiling config'
-                }
-                key={0}
-                disabled={!rowData[2].includes('Manage')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                }}
-                variant={'outlined'}
-              >
-                {
-                  rowData[5] ?
-                    'Tiling config matches dataset' :
-                    'View uses custom tiling config'
-                }
-              </Button>
-            )
-          },
-          filter: false
+        const getLabel = (columnName: string) : string => {
+          return columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' ')
         }
-      })
-
-      _columns.push({
-        name: 'vector_tile_sync_status',
-        label: 'Vector Tile',
-        options: {
-          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-            let rowData = tableMeta.rowData
-            const getButtonText = () => {
-              if (rowData[6] === 'out_of_sync') {
-                return 'Vector tiles need refresh'
-              } else if (rowData[6] === 'synced') {
-                return 'Vector tiles are synced'
-              } else if (rowData[6] === 'syncing') {
-                return (
-                  <span style={{display:'flex'}}>
-                      <CircularProgress size={18} />
-                      <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[3].toFixed(1)}%)`}</span>
-                  </span>
-                )
-              }
+  
+        let _columns = ['id', 'name', 'permissions', 'vector_tiles_progress', 'product_progress'].map((columnName) => {
+          let _options: any = {
+            name: columnName,
+            label: getLabel(columnName),
+            options: {
+              display: initialColumns.includes(columnName),
+              sort: columnName === 'name'
             }
-            return (
-              <Button
-                aria-label={
-                  rowData[6] ? 'Vector tiles are synced' : 'Click to update vector tiles'
-                }
-                title={
-                  rowData[6] ? 'Vector tiles are synced' : 'Click to update vector tiles'
-                }
-                key={0}
-                disabled={!rowData[2].includes('Manage')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (rowData[6] === 'synced') {
-                    return
-                  }
-                  syncView([rowData[0]], ['vector_tiles'])
-                }}
-                variant={rowData[6] === 'out_of_sync' ? 'contained': 'outlined'}
-              >
-                {getButtonText()}
-              </Button>
-            )
-          },
-          filter: false
-        }
-      })
-
-      _columns.push({
-        name: 'product_sync_status',
-        label: 'Data Product',
-        options: {
-          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-            let rowData = tableMeta.rowData
-            const getButtonText = () => {
-              if (rowData[7] === 'out_of_sync') {
-                return 'Data product needs refresh'
-              } else if (rowData[7] === 'synced') {
-                return 'Data product is synced'
-              } else if (rowData[7] === 'syncing') {
-                return (
-                  <span style={{display:'flex'}}>
-                      <CircularProgress size={18} />
-                      <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[4].toFixed(1)}%)`}</span>
-                  </span>
-                )
-              }
-            }
-            return (
-              <Button
-                aria-label={
-                  rowData[7] ? 'Data products are synced' : 'Click to update data products'
-                }
-                title={
-                  rowData[7] ? 'Data products are synced' : 'Click to update data products'
-                }
-                key={0}
-                disabled={!rowData[2].includes('Manage')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (rowData[7] === 'synced') {
-                    return
-                  }
-                  syncView([rowData[0]], ['products'])
-                }}
-                variant={rowData[7] === 'out_of_sync' ? 'contained': 'outlined'}
-              >
-                {getButtonText()}
-              </Button>
-            )
-          },
-          filter: false
-        }
-      })
-
-      _columns.push(
-        {
-          name: 'sync_status',
-          label: 'Sync Status',
-          options: {
-            display: false,
-            sort: false,
-            filter: true,
-            filterOptions: {
-              names: filterVals['sync_status']
-            },
-            filterList: getExistingFilterValue('sync_status')
           }
-        }
-      )
-      _columns.push({
-        name: '',
-        label: 'Action',
-        options: {
-          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-            let rowData = tableMeta.rowData
-            return (
-              <Stack spacing={2} direction="row">
+          _options.options.filter = false
+          return _options
+        })
+  
+        _columns.push({
+          name: 'is_tiling_config_match',
+          label: 'Tiling Config',
+          options: {
+            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              return (
                 <Button
-                  aria-label={'Details'}
-                  title={'Details'}
+                  aria-label={
+                    rowData[5] ? 'Tiling config matches dataset' : 'Click to update tiling config'
+                  }
+                  title={
+                    rowData[5] ? 'Tiling config matches dataset' : 'Click to update tiling config'
+                  }
                   key={0}
                   disabled={!rowData[2].includes('Manage')}
                   onClick={(e) => {
                     e.stopPropagation()
-                    navigate(`/view_edit?id=${rowData[0]}&tab=4`)
                   }}
-                  variant={'contained'}
+                  variant={'outlined'}
                 >
-                  Details
+                  {
+                    rowData[5] ?
+                      'Tiling config matches dataset' :
+                      'View uses custom tiling config'
+                  }
                 </Button>
-
+              )
+            },
+            filter: false
+          }
+        })
+  
+        _columns.push({
+          name: 'vector_tile_sync_status',
+          label: 'Vector Tile',
+          options: {
+            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              const getButtonText = () => {
+                if (rowData[6] === 'out_of_sync') {
+                  return 'Vector tiles need refresh'
+                } else if (rowData[6] === 'synced') {
+                  return 'Vector tiles are synced'
+                } else if (rowData[6] === 'syncing') {
+                  return (
+                    <span style={{display:'flex'}}>
+                        <CircularProgress size={18} />
+                        <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[3].toFixed(1)}%)`}</span>
+                    </span>
+                  )
+                }
+              }
+              return (
                 <Button
-                  aria-label={'Synchronize'}
-                  title={'Synchronize'}
+                  aria-label={
+                    rowData[6] ? 'Vector tiles are synced' : 'Click to update vector tiles'
+                  }
+                  title={
+                    rowData[6] ? 'Vector tiles are synced' : 'Click to update vector tiles'
+                  }
                   key={0}
-                  disabled={!rowData[2].includes('Manage') }
+                  disabled={!rowData[2].includes('Manage')}
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (rowData[6] === 'synced' && rowData[7] === 'synced') {
+                    if (rowData[6] === 'synced') {
                       return
                     }
-                    syncView(
-                      [rowData[0]],
-                      ['vector_tiles', 'products']
-                    )
+                    syncView([rowData[0]], ['vector_tiles'])
                   }}
-                  variant={
-                    rowData[6] === 'out_of_sync' || rowData[5] === 'out_of_sync' ?
-                      'contained' : 'outlined'
-                  }
+                  variant={rowData[6] === 'out_of_sync' ? 'contained': 'outlined'}
                 >
-                  Synchronize
+                  {getButtonText()}
                 </Button>
-              </Stack>
-            )
-          },
-          filter: false
-        }
-      })
-
-      setColumns(_columns)
+              )
+            },
+            filter: false
+          }
+        })
+  
+        _columns.push({
+          name: 'product_sync_status',
+          label: 'Data Product',
+          options: {
+            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              const getButtonText = () => {
+                if (rowData[7] === 'out_of_sync') {
+                  return 'Data product needs refresh'
+                } else if (rowData[7] === 'synced') {
+                  return 'Data product is synced'
+                } else if (rowData[7] === 'syncing') {
+                  return (
+                    <span style={{display:'flex'}}>
+                        <CircularProgress size={18} />
+                        <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[4].toFixed(1)}%)`}</span>
+                    </span>
+                  )
+                }
+              }
+              return (
+                <Button
+                  aria-label={
+                    rowData[7] ? 'Data products are synced' : 'Click to update data products'
+                  }
+                  title={
+                    rowData[7] ? 'Data products are synced' : 'Click to update data products'
+                  }
+                  key={0}
+                  disabled={!rowData[2].includes('Manage')}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (rowData[7] === 'synced') {
+                      return
+                    }
+                    syncView([rowData[0]], ['products'])
+                  }}
+                  variant={rowData[7] === 'out_of_sync' ? 'contained': 'outlined'}
+                >
+                  {getButtonText()}
+                </Button>
+              )
+            },
+            filter: false
+          }
+        })
+  
+        _columns.push(
+          {
+            name: 'sync_status',
+            label: 'Sync Status',
+            options: {
+              display: false,
+              sort: false,
+              filter: true,
+              filterOptions: {
+                names: filterVals['sync_status']
+              },
+              filterList: getExistingFilterValue('sync_status')
+            }
+          }
+        )
+        _columns.push({
+          name: '',
+          label: 'Action',
+          options: {
+            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              return (
+                <Stack spacing={2} direction="row">
+                  <Button
+                    aria-label={'Details'}
+                    title={'Details'}
+                    key={0}
+                    disabled={!rowData[2].includes('Manage')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/view_edit?id=${rowData[0]}&tab=4`)
+                    }}
+                    variant={'contained'}
+                  >
+                    Details
+                  </Button>
+  
+                  <Button
+                    aria-label={'Synchronize'}
+                    title={'Synchronize'}
+                    key={0}
+                    disabled={!rowData[2].includes('Manage') }
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (rowData[6] === 'synced' && rowData[7] === 'synced') {
+                        return
+                      }
+                      syncView(
+                        [rowData[0]],
+                        ['vector_tiles', 'products']
+                      )
+                    }}
+                    variant={
+                      rowData[6] === 'out_of_sync' || rowData[5] === 'out_of_sync' ?
+                        'contained' : 'outlined'
+                    }
+                  >
+                    Synchronize
+                  </Button>
+                </Stack>
+              )
+            },
+            filter: false
+          }
+        })
+  
+        setColumns(_columns)
+      }
+      fetchFilterValuesData()
     }
-    fetchFilterValuesData()
-  }, [pagination, currentFilters])
+  }, [data, pagination, currentFilters])
 
   useEffect(() => {
     if (!allFinished) {

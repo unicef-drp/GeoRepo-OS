@@ -538,6 +538,12 @@ def get_view_product_status(view_resource_queryset, product=None):
         product_status = 'Done'
     elif product_progress > 0:
         product_status = 'Processing'
+    else:
+        resource_count = view_resource_queryset.filter(
+            entity_count__gt=0
+        ).count()
+        if resource_count == 0:
+            product_status = 'Done'
     return product_status, product_progress
 
 

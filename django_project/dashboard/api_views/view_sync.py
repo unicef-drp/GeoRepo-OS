@@ -1,4 +1,6 @@
 import math
+from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
 from celery.result import AsyncResult
 from core.celery import app
 from django.db.models.expressions import Q
@@ -13,9 +15,14 @@ from dashboard.serializers.view import (
     DatasetViewResourceSyncSerializer,
     ViewSyncSerializer
 )
-from dashboard.tasks import generate_view_export_data
+from dashboard.tasks import (
+    generate_view_export_data,
+    view_simplification_task
+)
 from georepo.models import (
-    DatasetView, DatasetViewResource
+    Dataset,
+    DatasetView, DatasetViewResource,
+    DatasetViewTilingConfig
 )
 from georepo.utils.dataset_view import (
     trigger_generate_vector_tile_for_view
@@ -24,6 +31,7 @@ from georepo.utils.permission import (
     get_views_for_user
 )
 from georepo.utils.uuid_helper import is_valid_uuid
+from georepo.utils.celery_helper import cancel_task
 
 
 class ViewSyncList(AzureAuthRequiredMixin, APIView):
@@ -347,5 +355,145 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
                         view_resource.id)
                     view_resource.product_task_id = task.id
                     view_resource.save(update_fields=['product_task_id'])
-
+        elif 'simplify' in sync_options:
+            for view in views:
+                # check if view has custom tiling config
+                has_view_tile_configs = (
+                    DatasetViewTilingConfig.objects.filter(
+                        dataset_view=view
+                    ).exists()
+                )
+                if has_view_tile_configs:
+                    if view.simplification_task_id:
+                        cancel_task(view.simplification_task_id)
+                elif view.dataset.simplification_task_id:
+                    cancel_task(view.dataset.simplification_task_id)
+                task = view_simplification_task.delay(view.id)
+                if has_view_tile_configs:
+                    view.simplification_task_id = task.id
+                    view.save(update_fields=['simplification_task_id'])
+                else:
+                    view.dataset.simplification_task_id = task.id
+                    view.dataset.save(
+                        update_fields=['simplification_task_id'])
         return Response({'status': 'OK'})
+
+
+class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
+    """
+    Fetch sync status of view/dataset.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get_simplification_status(self, sync_status, simplification_progress):
+        status = ''
+        progress = '-'
+        if sync_status == 'synced':
+            status = 'synced'
+            progress = simplification_progress
+        elif sync_status == 'out_of_sync':
+            status = 'out_of_sync'
+        elif simplification_progress:
+            status = 'Processing'
+            if (
+                'finished' in simplification_progress or
+                '100.00%' in simplification_progress
+            ):
+                status = 'Done'
+            elif 'error' in simplification_progress:
+                status = 'Error'
+            progress = simplification_progress
+        return status, progress
+
+    def get_dataset_status(self, obj: Dataset):
+        vt_sync_status = set(
+            obj.datasetview_set.all().values_list(
+                'vector_tile_sync_status',
+                flat=True
+            ).distinct()
+        )
+        product_sync_status = set(
+            obj.datasetview_set.all().values_list(
+                'product_sync_status',
+                flat=True
+            ).distinct()
+        )
+        all_status = vt_sync_status.union(product_sync_status)
+        if all_status == {obj.SyncStatus.SYNCED}:
+            return obj.SyncStatus.SYNCED
+        elif all_status == {obj.SyncStatus.OUT_OF_SYNC}:
+            return obj.SyncStatus.OUT_OF_SYNC
+        elif obj.SyncStatus.SYNCING in all_status:
+            return obj.SyncStatus.SYNCING
+        return obj.SyncStatus.SYNCED
+    
+    def get_view_status(self, obj: DatasetView):
+        all_status = [
+            obj.vector_tile_sync_status,
+        ]
+        if obj.product_sync_status not in all_status:
+            all_status.append(obj.product_sync_status)
+        if all_status == [obj.SyncStatus.SYNCED]:
+            return obj.SyncStatus.SYNCED
+        elif obj.SyncStatus.OUT_OF_SYNC in all_status:
+            return obj.SyncStatus.OUT_OF_SYNC
+        elif obj.SyncStatus.SYNCING in all_status:
+            return obj.SyncStatus.SYNCING
+        return obj.SyncStatus.SYNCED
+
+    def get(self, request, *args, **kwargs):
+        object_type = kwargs.get('object_type')
+        object_uuid = kwargs.get('uuid')
+        sync_status = ''
+
+        if object_type == 'dataset':
+            dataset = get_object_or_404(
+                Dataset,
+                uuid=object_uuid
+            )
+            object_id = dataset.id
+            simplification_status, simplification_progress = (
+                self.get_simplification_status(
+                    dataset.simplification_sync_status,
+                    dataset.simplification_progress)
+            )
+            module = dataset.module.name
+            sync_status = self.get_dataset_status(dataset)
+        elif object_type == 'datasetview':
+            dataset_view = get_object_or_404(
+                DatasetView,
+                uuid=object_uuid
+            )
+            module = dataset_view.dataset.module.name
+            object_id = dataset_view.id
+            has_custom_tiling_config = (
+                dataset_view.datasetviewtilingconfig_set.all().exists()
+            )
+            if has_custom_tiling_config:
+                simplification_status, simplification_progress = (
+                    self.get_simplification_status(
+                        dataset_view.simplification_sync_status,
+                        dataset_view.simplification_progress)
+                )
+            else:
+                simplification_status, simplification_progress = (
+                    self.get_simplification_status(
+                        dataset_view.dataset.simplification_sync_status,
+                        dataset_view.dataset.simplification_progress)
+                )
+            sync_status = self.get_view_status(dataset_view)
+        else:
+            raise ValidationError(f'Invalid object type: {object_type}')
+        return Response(
+            status=200,
+            data={
+                'module': module,
+                'object_type': object_type,
+                'object_id': object_id,
+                'simplification': {
+                    'status': simplification_status,
+                    'progress': simplification_progress
+                },
+                'sync_status': sync_status
+            }
+        )

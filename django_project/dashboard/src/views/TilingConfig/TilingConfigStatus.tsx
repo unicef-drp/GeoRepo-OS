@@ -11,10 +11,11 @@ import HtmlTooltip from '../../components/HtmlTooltip';
 import Dataset from '../../models/dataset';
 import View from '../../models/view';
 import { StatusAndProgress } from '../../models/syncStatus';
-import { fetchTilingStatusAPI } from '../../utils/api/TilingStatus';
+import { fetchSyncStatusAPI } from '../../utils/api/TilingStatus';
+import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import '../../styles/TilingConfig.scss';
 
-const DONE_STATUS_LIST = ['Done', 'Error']
+const DONE_STATUS_LIST = ['Done', 'Error', 'synced']
 
 interface TilingConfigStatusInterface {
     dataset?: Dataset,
@@ -24,45 +25,44 @@ interface TilingConfigStatusInterface {
 export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
     const dispatch = useAppDispatch()
     const simplificationStatus = useAppSelector((state: RootState) => props.dataset ? state.datasetTabs.simplificationStatus : state.viewTabs.simplificationStatus)
-    const tilingStatus = useAppSelector((state: RootState) => props.dataset ? state.datasetTabs.tilingStatus : state.viewTabs.tilingStatus)
-    const [currentInterval, setCurrentInterval] = useState<any>(null)
-    const [allFinished, setAllFinished] = useState(false)
+    const [allFinished, setAllFinished] = useState(true)
 
     const fetchTilingStatus = () => {
         let _object_type = props.dataset ? 'dataset' : 'datasetview'
         let _object_uuid = props.dataset ? props.dataset.uuid : props.view?.uuid
-        fetchTilingStatusAPI(_object_type, _object_uuid, (response: any, error: any) => {
+        fetchSyncStatusAPI(_object_type, _object_uuid, (response: any, error: any) => {
            if (response) {
                 let _simplification: StatusAndProgress = {
                     progress: response['simplification']['progress'],
                     status: response['simplification']['status']
                 }
-                let _tiling: StatusAndProgress = {
-                    progress: response['vector_tiles']['progress'],
-                    status: response['vector_tiles']['status']
-                }
+                let _obj_status = response['sync_status']
                 if (props.dataset) {
-                    dispatch(updateDatasetTabStatuses([_simplification, _tiling]))
+                    dispatch(updateDatasetTabStatuses({
+                        objSyncStatus: _obj_status,
+                        simplificationStatus: _simplification
+                    }))
                 } else {
-                    dispatch(updateViewTabStatuses([_simplification, _tiling]))
+                    dispatch(updateViewTabStatuses({
+                        objSyncStatus: _obj_status,
+                        simplificationStatus: _simplification
+                    }))
                 }                
-                if (DONE_STATUS_LIST.includes(response['simplification']['status']) && DONE_STATUS_LIST.includes(response['vector_tiles']['status'])) {
+                if (DONE_STATUS_LIST.includes(response['simplification']['status']) && _obj_status === 'synced') {
                     setAllFinished(true)
+                } else {
+                    setAllFinished(false)
                 }
            } 
         })
     }
 
     useEffect(() => {
+        console.log('testeset useEffect')
         if (!allFinished) {
-            if (currentInterval) {
-                clearInterval(currentInterval)
-                setCurrentInterval(null)
-            }
             const interval = setInterval(() => {
                 fetchTilingStatus()
-            }, 3000);
-            setCurrentInterval(interval)
+            }, 5000);
             return () => clearInterval(interval);
         }
     }, [allFinished])
@@ -71,34 +71,8 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
         fetchTilingStatus()
     }, [])
 
-    const getTilingStatus = () => {
-        if (tilingStatus.status === 'Done') {
-            return (
-                <span className='tiling-status-desc-icon'>
-                    <CheckCircleIcon color='success' fontSize='small' />
-                    <span style={{marginLeft: '5px' }}>Done</span>
-                </span>
-            )
-        } else if (tilingStatus.status === 'Error') {
-            return (
-                <span className='tiling-status-desc-icon'>
-                    <ErrorIcon color='error' fontSize='small' />
-                    <span style={{marginLeft: '5px' }}>Stopped with Error</span>
-                </span>
-            )
-        } else if (tilingStatus.status === '') {
-            return <span>-</span>
-        }
-        return (
-            <span className='tiling-status-desc-icon margin-left-small'>
-                {tilingStatus.status === 'Processing' && <CircularProgress size={18} /> }
-                <span style={{marginLeft: '5px' }}>{tilingStatus.status}{tilingStatus.status === 'Processing' && tilingStatus.progress ? ` ${tilingStatus.progress}%`:''}</span>
-            </span>
-        )
-    }
-
     const getSimplificationStatus = () => {
-        if (simplificationStatus.status === 'Done') {
+        if (simplificationStatus.status === 'Done' || simplificationStatus.status === 'synced') {
             return (
                 <span className='tiling-status-desc-icon'>
                     <CheckCircleIcon color='success' fontSize='small' />
@@ -110,6 +84,13 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
                 <span className='tiling-status-desc-icon'>
                     <ErrorIcon color='error' fontSize='small' />
                     <span style={{marginLeft: '5px' }}>Stopped with Error</span>
+                </span>
+            )
+        } else if (simplificationStatus.status === 'out_of_sync') {
+            return (
+                <span className='tiling-status-desc-icon'>
+                    <SyncProblemIcon color='warning' fontSize='small' />
+                    <span style={{marginLeft: '5px' }}>Out of sync</span>
                 </span>
             )
         } else if (simplificationStatus.status === '') {
@@ -128,9 +109,6 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
         <Grid container flexDirection={'row'} sx={{height: '100%', alignItems: 'center'}}>
             <Grid item sx={{ display:'flex', flexDirection:'row' }}>
                 Simplification status: { getSimplificationStatus() }
-            </Grid>
-            <Grid item sx={{display:'flex', flexDirection:'row', marginLeft: '20px'}}>
-                Tiling status: { getTilingStatus() }
             </Grid>
         </Grid>
     )

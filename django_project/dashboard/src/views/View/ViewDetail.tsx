@@ -9,6 +9,7 @@ import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import streamSaver from 'streamsaver';
 import ErrorIcon from '@mui/icons-material/Error';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -29,7 +30,7 @@ import TilingConfiguration from '../TilingConfig/TilingConfigRevamp';
 import { SyncStatus } from "../../models/syncStatus";
 import {updateViewTabStatuses, resetViewTabStatuses} from "../../reducers/viewTabs";
 import { StatusAndProgress } from '../../models/syncStatus';
-import { fetchTilingStatusAPI } from '../../utils/api/TilingStatus';
+import { fetchSyncStatusAPI } from '../../utils/api/TilingStatus';
 
 const QUERY_CHECK_URL = '/api/query-view-preview/'
 const DOWNLOAD_VIEW_URL = '/api/view-download/'
@@ -51,23 +52,23 @@ export default function ViewDetail() {
     const [isDownloading, setIsDownloading] = useState(false)
     const [searchParams, setSearchParams] = useSearchParams()
     const navigate = useNavigate()
-    const tilingTabStatus = useAppSelector((state: RootState) => state.viewTabs.tilingConfigSyncStatus)
+    const objSyncStatus = useAppSelector((state: RootState) => state.viewTabs.objSyncStatus)
     
     const fetchTilingStatus = () => {
         if (view === null || !view.id) return
         let _object_type = 'datasetview'
         let _object_uuid = view.uuid
-        fetchTilingStatusAPI(_object_type, _object_uuid, (response: any, error: any) => {
+        fetchSyncStatusAPI(_object_type, _object_uuid, (response: any, error: any) => {
            if (response) {
                 let _simplification: StatusAndProgress = {
                     progress: response['simplification']['progress'],
                     status: response['simplification']['status']
                 }
-                let _tiling: StatusAndProgress = {
-                    progress: response['vector_tiles']['progress'],
-                    status: response['vector_tiles']['status']
-                }
-                dispatch(updateViewTabStatuses([_simplification, _tiling]))
+                let _obj_status = response['sync_status']
+                dispatch(updateViewTabStatuses({
+                    objSyncStatus: _obj_status,
+                    simplificationStatus: _simplification
+                }))
            }
         })
     }
@@ -198,23 +199,30 @@ export default function ViewDetail() {
         })
     }
 
-    const getTilingConfigTab = () => {
-        if (tilingTabStatus === SyncStatus.Syncing) {
-            return <Tab key={3} label="Tiling Config"
+    const getSyncStatusTab = () => {
+        if (objSyncStatus === SyncStatus.Syncing) {
+            return <Tab key={4} label="Sync Status"
               icon={<CircularProgress size={18} />}
               iconPosition={'start'}
-              {...a11yProps(3)}
+              {...a11yProps(4)}
               disabled={view === null}
             />
-          } else if (tilingTabStatus === SyncStatus.Error) {
-            return <Tab key={3} label="Tiling Config"
+          } else if (objSyncStatus === SyncStatus.Error) {
+            return <Tab key={4} label="Sync Status"
               icon={<ErrorIcon color='error' fontSize='small' />}
               iconPosition={'start'}
-              {...a11yProps(3)}
+              {...a11yProps(4)}
+              disabled={view === null}
+            />
+          } else if (objSyncStatus === SyncStatus.OutOfSync) {
+            return <Tab key={4} label="Sync Status"
+              icon={<SyncProblemIcon color='warning' fontSize='small' />}
+              iconPosition={'start'}
+              {...a11yProps(4)}
               disabled={view === null}
             />
           }
-        return <Tab label="Tiling Config" {...a11yProps(3)} disabled={view === null} />
+        return <Tab label="Sync Status" {...a11yProps(4)} disabled={view === null} />
     }
 
     return (
@@ -226,10 +234,10 @@ export default function ViewDetail() {
                     { view && view.permissions && view.permissions.includes('Manage') && (
                         <Tab label="Permission" {...a11yProps(2)} disabled={view === null} />
                     )}
-                    { view && view.permissions && view.permissions.includes('Manage') && getTilingConfigTab()}
                     { view && view.permissions && view.permissions.includes('Manage') && (
-                        <Tab label="Sync Status" {...a11yProps(4)} disabled={view === null} />
+                        <Tab label="Tiling Config" {...a11yProps(3)} disabled={view === null} />
                     )}
+                    { view && view.permissions && view.permissions.includes('Manage') && getSyncStatusTab()}
                 </Tabs>
                 { view && <Box flexDirection={'column'} justifyContent={'center'} display={'flex'} sx={{marginRight: '20px'}}>
                     <Tooltip title='Download view with possible filters: Country, Admin Level'>
@@ -300,12 +308,12 @@ export default function ViewDetail() {
                 )}
                 { view && view.permissions && view.permissions.includes('Manage') && (
                     <TabPanel value={tabSelected} index={3} padding={1}>
-                        <TilingConfiguration view={view} isReadOnly={view.is_read_only} />
+                        <TilingConfiguration view={view} isReadOnly={view.is_read_only} onSyncStatusShouldBeUpdated={fetchTilingStatus} />
                     </TabPanel>
                 )}
                 { view && view.permissions && view.permissions.includes('Manage') && (
                     <TabPanel value={tabSelected} index={4} noPadding>
-                        <ViewSync view={view} />
+                        <ViewSync view={view} onSyncStatusShouldBeUpdated={fetchTilingStatus} />
                     </TabPanel>
                 )}
             </Grid>

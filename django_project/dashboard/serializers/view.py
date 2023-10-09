@@ -377,7 +377,8 @@ class ViewSyncSerializer(serializers.Serializer):
         accepted_options = {
             'tiling_config',
             'vector_tiles',
-            'products'
+            'products',
+            'simplify'
         }
         if len(options - accepted_options) != 0:
             raise serializers.ValidationError(
