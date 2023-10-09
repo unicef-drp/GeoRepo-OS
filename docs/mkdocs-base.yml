@@ -82,7 +82,10 @@ nav:
                                  # Pages to render but exclude from navigation
                                  - "": developer/guide/templates/pull-request-template.md 
                                  - "": developer/guide/templates/commit-message-convention.md
-                        - Documentation: developer/documentation/index.md
+                        - Documentation: 
+                                 - developer/documentation/index.md
+                                 - "Overview": developer/documentation/overview.md
+                                 - "Context Help": developer/documentation/context-help.md
                         - Manual:
                                 - developer/manual/index.md
                         - License: about/license.md
