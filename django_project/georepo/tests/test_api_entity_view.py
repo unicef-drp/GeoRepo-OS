@@ -350,6 +350,12 @@ class EntityViewTestSuite(EntityResponseChecker):
             'assert_view_entity_containment_check_intersects'
         )
 
+    def assert_view_entity_containment_check_intersects_cucode(self,
+                                                               response):
+        raise NotImplementedError(
+            'assert_view_entity_containment_check_intersects_cucode'
+        )
+
     def assert_view_entity_containment_check_intersects_not_found(self,
                                                                   response):
         raise NotImplementedError(
@@ -968,6 +974,11 @@ class EntityViewTestSuite(EntityResponseChecker):
             'geojson_dataset', 'spatial_query_test_3.geojson')
         with open(geojson_3_path) as geojson:
             data_3 = json.load(geojson)
+        geojson_4_path = absolute_path(
+            'georepo', 'tests',
+            'geojson_dataset', 'spatial_query_test_4.geojson')
+        with open(geojson_4_path) as geojson:
+            data_4 = json.load(geojson)
         # ST_Intersects
         level_0 = 'Country'
         spatial_query_0 = 'ST_Intersects'
@@ -1169,6 +1180,27 @@ class EntityViewTestSuite(EntityResponseChecker):
         request.user = self.dan_user
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
+        # test ST_Intersects ucode level 1, wrong result
+        spatial_query_1 = 'ST_Intersects'
+        kwargs = {
+            'uuid': str(self.dataset_view.uuid),
+            'spatial_query': spatial_query_1,
+            'distance': 0,
+            'id_type': 'concept_ucode'
+        }
+        request = self.factory.post(
+            reverse(
+                'v1:view-entity-containment-check',
+                kwargs=kwargs
+            ) + f'/?admin_level=1',
+            data=data_4,
+            format='json'
+        )
+        request.user = self.superuser
+        view = ViewEntityContainmentCheck.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assert_view_entity_containment_check_intersects_cucode(response)
 
     def run_test_search_view_fuzzy_text(self):
         kwargs = {
@@ -1608,6 +1640,11 @@ class TestApiEntityLatestView(EntityViewTestSuite, TestCase):
         self.assertEqual(len(pcodes_res), 1)
         self.assertEqual(pcodes_res[0], 'PAK')
 
+    def assert_view_entity_containment_check_intersects_cucode(self,
+                                                               response):
+        self.assertIn('concept_ucode',
+                      response.data['features'][0]['properties'])
+
     def assert_view_entity_containment_check_intersects_not_found(self,
                                                                   response):
         self.assertNotIn('PCode', response.data['features'][0]['properties'])
@@ -1930,6 +1967,34 @@ class TestApiEntityAllVersionsView(EntityViewTestSuite, TestCase):
                             self.entities_2[2],
                             excluded_columns=['centroid', 'geometry'])
 
+    def assert_view_entity_containment_check_intersects(self, response):
+        self.assertIn('PCode', response.data['features'][0]['properties'])
+        pcodes_res = response.data['features'][0]['properties']['PCode']
+        self.assertEqual(len(pcodes_res), 2)
+        self.assertEqual(pcodes_res[0], 'PAK')
+
+    def assert_view_entity_containment_check_within_found(self, response):
+        self.assert_view_entity_containment_check_intersects(response)
+
+    def assert_view_entity_containment_check_dwithin_found(self, response):
+        self.assert_view_entity_containment_check_intersects(response)
+
+    def assert_view_entity_containment_check_within_centroid_found(self,
+                                                                   response):
+        self.assert_view_entity_containment_check_intersects(response)
+
+    def assert_view_entity_containment_check_hierarchy(self, response):
+        self.assertIn('ucode', response.data['features'][0]['properties'])
+
+    def assert_view_entity_containment_check_intersects_cucode(self,
+                                                               response):
+        self.assertIn('concept_ucode',
+                      response.data['features'][0]['properties'])
+
+    def assert_view_entity_containment_check_intersects_not_found(self,
+                                                                  response):
+        self.assertNotIn('PCode', response.data['features'][0]['properties'])
+
     def test_find_view_entity_by_id(self):
         self.run_test_find_view_entity_by_id()
 
@@ -1944,6 +2009,9 @@ class TestApiEntityAllVersionsView(EntityViewTestSuite, TestCase):
 
     def test_view_entity_bbox(self):
         self.run_test_view_entity_bbox()
+
+    def test_view_entity_containment_check(self):
+        self.run_test_view_entity_containment_check()
 
     def test_pagination_level1(self):
         self.run_test_pagination()
