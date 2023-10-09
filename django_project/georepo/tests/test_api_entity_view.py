@@ -1192,7 +1192,7 @@ class EntityViewTestSuite(EntityResponseChecker):
             reverse(
                 'v1:view-entity-containment-check',
                 kwargs=kwargs
-            ) + f'/?admin_level=1',
+            ) + '/?admin_level=1',
             data=data_4,
             format='json'
         )
