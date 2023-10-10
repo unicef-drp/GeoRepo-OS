@@ -212,7 +212,9 @@ export default function ViewSyncList() {
   const fetchViewSyncList = () => {
     if (axiosSource.current) axiosSource.current.cancel()
     let cancelFetchToken = newCancelToken()
-    setLoading(true)
+    if (allFinished) {
+      setLoading(true)
+    }
     let sortBy = pagination.sortOrder.name ? pagination.sortOrder.name : ''
     let sortDirection = pagination.sortOrder.direction ? pagination.sortOrder.direction : ''
     const datasetId = searchParams.get('id')
@@ -225,6 +227,7 @@ export default function ViewSyncList() {
         cancelToken: cancelFetchToken
       }
     ).then((response) => {
+      setLoading(false)
       const productSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
           if (!res.includes(row.product_sync_status)) {
               res.push(row.product_sync_status)
@@ -242,9 +245,10 @@ export default function ViewSyncList() {
       } else {
         setAllFinished(false)
       }
-      setLoading(false)
-      setData(response.data.results as ViewSyncRowInterface[])
       setTotalCount(response.data.count)
+      if (response.data.page === pagination.page + 1 && response.data.page_size === pagination.rowsPerPage) {
+        setData(response.data.results as ViewSyncRowInterface[])
+      }
     }).catch(error => {
       if (!axios.isCancel(error)) {
         console.log(error)
@@ -336,7 +340,6 @@ export default function ViewSyncList() {
                   title={
                     rowData[5] ? 'Tiling config matches dataset' : 'Click to update tiling config'
                   }
-                  key={0}
                   disabled={!rowData[2].includes('Manage')}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -383,7 +386,6 @@ export default function ViewSyncList() {
                   title={
                     rowData[6] ? 'Vector tiles are synced' : 'Click to update vector tiles'
                   }
-                  key={0}
                   disabled={!rowData[2].includes('Manage')}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -430,7 +432,6 @@ export default function ViewSyncList() {
                   title={
                     rowData[7] ? 'Data products are synced' : 'Click to update data products'
                   }
-                  key={0}
                   disabled={!rowData[2].includes('Manage')}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -475,7 +476,6 @@ export default function ViewSyncList() {
                   <Button
                     aria-label={'Details'}
                     title={'Details'}
-                    key={0}
                     disabled={!rowData[2].includes('Manage')}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -489,7 +489,6 @@ export default function ViewSyncList() {
                   <Button
                     aria-label={'Synchronize'}
                     title={'Synchronize'}
-                    key={0}
                     disabled={!rowData[2].includes('Manage') }
                     onClick={(e) => {
                       e.stopPropagation()
@@ -537,7 +536,7 @@ export default function ViewSyncList() {
 
   useEffect(() => {
     fetchViewSyncList()
-  }, [pagination, filterValues, currentFilters, initialFilters, searchParams])
+  }, [pagination, currentFilters, initialFilters, searchParams])
 
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {

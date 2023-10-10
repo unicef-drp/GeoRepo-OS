@@ -106,7 +106,7 @@ from dashboard.api_views.views import (
 from dashboard.api_views.tiling_config import (
     FetchDatasetTilingConfig,
     FetchDatasetViewTilingConfig,
-    TilingConfigCheckStatus, FetchGeoJsonPreview,
+    FetchGeoJsonPreview,
     CountriesTilingConfigAPIView, ApplyTilingConfigAPIView
 )
 from dashboard.api_views.permission import (
@@ -626,11 +626,6 @@ urlpatterns = [
             r'(?P<uuid>[\da-f-]+)/?$',
             ApplyTilingConfigAPIView.as_view(),
             name='tiling-configs-apply'),
-    re_path(r'api/tiling-configs/status/'
-            r'(?P<object_type>(dataset|datasetview))/'
-            r'(?P<uuid>[\da-f-]+)/?$',
-            TilingConfigCheckStatus.as_view(),
-            name='tiling-configs-status'),
     re_path(r'api/fetch-tiling-configs/dataset/(?P<uuid>[\da-f-]+)/?$',
             FetchDatasetTilingConfig.as_view(),
             name='fetch-tiling-configs'),

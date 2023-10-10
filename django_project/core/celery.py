@@ -76,11 +76,13 @@ def task_sent_handler(sender=None, headers=None, body=None, **kwargs):
 def task_received_handler(sender, request=None, **kwargs):
     from georepo.models.background_task import BackgroundTask
     task_id = request.id if request else None
+    task_args = request.args
     task, _ = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
             'name': request.name if request else '',
             'last_update': timezone.now(),
+            'parameters': str(task_args)
         }
     )
     task.last_update = timezone.now()

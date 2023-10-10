@@ -26,9 +26,6 @@ from dashboard.serializers.tiling_config import (
     TilingConfigSerializer,
     ViewTilingConfigSerializer
 )
-from georepo.utils.dataset_view import (
-    get_view_tiling_status
-)
 from dashboard.api_views.common import (
     DatasetManagePermission
 )
@@ -320,89 +317,3 @@ class ApplyTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
         else:
             raise ValidationError(f'Invalid object type: {object_type}')
         return Response(status=204)
-
-
-class TilingConfigCheckStatus(AzureAuthRequiredMixin, APIView):
-    """
-    Check simplification and vector tiles status.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get_simplification_status(self, simplification_progress):
-        status = 'Processing'
-        if simplification_progress:
-            if (
-                'finished' in simplification_progress or
-                '100.00%' in simplification_progress
-            ):
-                status = 'Done'
-            elif 'error' in simplification_progress:
-                status = 'Error'
-            progress = simplification_progress
-        else:
-            status = ''
-            progress = '-'
-        return status, progress
-
-    def get(self, request, *args, **kwargs):
-        object_type = kwargs.get('object_type')
-        object_uuid = kwargs.get('uuid')
-
-        if object_type == 'dataset':
-            dataset = get_object_or_404(
-                Dataset,
-                uuid=object_uuid
-            )
-            object_id = dataset.id
-            simplification_status, simplification_progress = (
-                self.get_simplification_status(
-                    dataset.simplification_progress)
-            )
-            view_resources = DatasetViewResource.objects.filter(
-                dataset_view__dataset=dataset
-            )
-            module = dataset.module.name
-        elif object_type == 'datasetview':
-            dataset_view = get_object_or_404(
-                DatasetView,
-                uuid=object_uuid
-            )
-            module = dataset_view.dataset.module.name
-            object_id = dataset_view.id
-            has_custom_tiling_config = (
-                dataset_view.datasetviewtilingconfig_set.all().exists()
-            )
-            if has_custom_tiling_config:
-                simplification_status, simplification_progress = (
-                    self.get_simplification_status(
-                        dataset_view.simplification_progress)
-                )
-            else:
-                simplification_status, simplification_progress = (
-                    self.get_simplification_status(
-                        dataset_view.dataset.simplification_progress)
-                )
-            view_resources = DatasetViewResource.objects.filter(
-                dataset_view=dataset_view
-            )
-        else:
-            raise ValidationError(f'Invalid object type: {object_type}')
-        tiling_status, tiling_progress = (
-            get_view_tiling_status(view_resources)
-        )
-        return Response(
-            status=200,
-            data={
-                'module': module,
-                'object_type': object_type,
-                'object_id': object_id,
-                'simplification': {
-                    'status': simplification_status,
-                    'progress': simplification_progress
-                },
-                'vector_tiles': {
-                    'status': tiling_status,
-                    'progress': round(tiling_progress, 2)
-                }
-            }
-        )

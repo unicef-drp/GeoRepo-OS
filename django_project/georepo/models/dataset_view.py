@@ -883,36 +883,29 @@ def view_res_post_save(sender, instance: DatasetViewResource,
     ]
 
     tiling_status_mapping = {
-        'Pending': DatasetView.DatasetViewStatus.PENDING,
-        'Error': DatasetView.DatasetViewStatus.ERROR,
-        'Processing': DatasetView.DatasetViewStatus.PROCESSING,
-        'Done': DatasetView.DatasetViewStatus.DONE,
+        'out_of_sync': DatasetView.DatasetViewStatus.PENDING,
+        'error': DatasetView.DatasetViewStatus.ERROR,
+        'syncing': DatasetView.DatasetViewStatus.PROCESSING,
+        'synced': DatasetView.DatasetViewStatus.DONE,
     }
 
-    sync_status_mapping = {
-        'Pending': DatasetView.SyncStatus.OUT_OF_SYNC,
-        'Error': DatasetView.SyncStatus.OUT_OF_SYNC,
-        'Processing': DatasetView.SyncStatus.SYNCING,
-        'Done': DatasetView.SyncStatus.SYNCED,
-    }
-
-    if tiling_status != 'Queued':
-        view.status = tiling_status_mapping[tiling_status]
-        view.vector_tile_sync_status = sync_status_mapping[tiling_status]
-        if view.vector_tile_sync_status not in ['Error', 'Done']:
-            view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
-        view.vector_tiles_progress = vt_progresss
-    else:
-        view.status = DatasetView.DatasetViewStatus.PENDING
-
-    if 'Processing' in product_status:
-        view.product_sync_status = sync_status_mapping['Processing']
+    view.status = tiling_status_mapping[tiling_status]
+    view.vector_tile_sync_status = tiling_status
+    if view.vector_tile_sync_status not in ['error', 'synced']:
         view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
-    elif 'Pending' in product_status or 'Error' in product_status:
-        view.product_sync_status = sync_status_mapping['Pending']
+    view.vector_tiles_progress = vt_progresss
+
+    if 'syncing' in product_status:
+        view.product_sync_status = DatasetView.SyncStatus.SYNCING
         view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
-    elif 'Done' in product_status:
-        view.product_sync_status = sync_status_mapping['Done']
+    elif 'error' in product_status:
+        view.product_sync_status = DatasetView.SyncStatus.ERROR
+        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
+    elif 'out_of_sync' in product_status:
+        view.product_sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
+        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
+    elif 'synced' in product_status:
+        view.product_sync_status = DatasetView.SyncStatus.SYNCED
     view.product_progress = sum(product_progress) / len(product_progress)
     view.save(update_fields=['status', 'vector_tile_sync_status',
                              'vector_tiles_progress', 'product_sync_status',

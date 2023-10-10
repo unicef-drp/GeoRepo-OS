@@ -47,7 +47,7 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
                         objSyncStatus: _obj_status,
                         simplificationStatus: _simplification
                     }))
-                }                
+                }
                 if (DONE_STATUS_LIST.includes(response['simplification']['status']) && _obj_status === 'synced') {
                     setAllFinished(true)
                 } else {
