@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from georepo.models import (
-    IdType
+    IdType, MAIN_ENTITY_ID_LIST
 )
 
 from dashboard.serializers.id_type import (
@@ -40,8 +40,10 @@ class AddIdType(AzureAuthRequiredMixin, APIView):
         pattern = re.compile(r'^[\w-]+$')
         if not pattern.match(req_name):
             return HttpResponseBadRequest('Invalid name!')
+        if req_name.lower() in MAIN_ENTITY_ID_LIST:
+            return HttpResponseBadRequest('Cannot use system ids!')
         check_exist = IdType.objects.filter(
-            name=req_name
+            name__iexact=req_name
         ).exists()
         if check_exist:
             return HttpResponseBadRequest('Name already exists!')

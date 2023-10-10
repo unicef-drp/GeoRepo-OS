@@ -434,6 +434,8 @@ class EntityContainmentCheck(APIView, DatasetDetailCheckPermission):
         idx = 0
         if isinstance(id_type, IdType):
             idx = 0
+        elif id_type == CONCEPT_UCODE_ENTITY_ID:
+            idx = 4
         elif id_type == CODE_ENTITY_ID:
             idx = 3
         elif id_type == UUID_ENTITY_ID:
@@ -480,7 +482,7 @@ class EntityContainmentCheck(APIView, DatasetDetailCheckPermission):
             "gg.id, gg.unique_code || '_V' || CASE WHEN "
             'gg.unique_code_version IS NULL THEN 1 ELSE '
             'gg.unique_code_version END, '
-            'gg.uuid, gg.internal_code '
+            'gg.uuid, gg.internal_code, gg.concept_ucode '
             'FROM georepo_geographicalentity gg '
         )
         if isinstance(id_type, IdType):
@@ -555,7 +557,7 @@ class EntityContainmentCheck(APIView, DatasetDetailCheckPermission):
         # initial fields to select
         values = [
             'id', 'internal_code', 'unique_code', 'uuid',
-            'uuid_revision', 'unique_code_version'
+            'uuid_revision', 'unique_code_version', 'concept_ucode'
         ]
         entities = GeographicalEntity.objects.filter(
             parent__id=parent_entity_id,
@@ -584,6 +586,8 @@ class EntityContainmentCheck(APIView, DatasetDetailCheckPermission):
                 key = entity.get('uuid', None)
             elif id_type == CODE_ENTITY_ID:
                 key = entity.get('internal_code', None)
+            elif id_type == CONCEPT_UCODE_ENTITY_ID:
+                key = entity.get('concept_ucode', None)
             elif id_type == UCODE_ENTITY_ID:
                 key_1 = entity.get('unique_code', None)
                 key_2 = entity.get('unique_code_version', 1)
