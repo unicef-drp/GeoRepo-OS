@@ -200,6 +200,39 @@ class ReviewList(AzureAuthRequiredMixin, APIView):
         })
 
 
+class ReviewSelectAllIdList(ReviewList):
+    """Api to fetch ids when user select alls."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        review_querysets = EntityUploadStatus.get_user_entity_upload_status(
+            request.user
+        )
+        review_querysets = self._search_queryset(
+            review_querysets, self.request
+        )
+        review_querysets = self._filter_queryset(
+            review_querysets, self.request
+        )
+        # filter with status ready to review or boundary available
+        review_querysets = review_querysets.filter(
+            comparison_data_ready=True,
+            status=REVIEWING
+        )
+        # exclude in current batch reviews
+        reviews = BatchReview.objects.filter(
+            status__in=[PENDING, PROCESSING]
+        )
+        pending_reviews = set()
+        for review in reviews:
+            pending_reviews.update(review.upload_ids)
+        review_querysets = review_querysets.exclude(
+            id__in=pending_reviews
+        )
+        review_querysets = review_querysets.values_list('id', flat=True)
+        return Response(status=200, data=review_querysets)
+
+
 class ReviewFilterValue(
     AzureAuthRequiredMixin,
     APIView
