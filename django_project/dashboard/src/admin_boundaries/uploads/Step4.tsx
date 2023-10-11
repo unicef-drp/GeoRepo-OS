@@ -461,7 +461,6 @@ export default function Step4(props: WizardStepInterface) {
   const handleFilterChange = (applyFilters: any) => {
     const idxStatusFilter = 3
     let filterList = applyFilters()
-    console.log('filterList ', filterList)
     let _statusFilter = {...customColumnOptions['status']} as any
     if ('filterList' in _statusFilter) {
       _statusFilter['filterList'] = filterList[idxStatusFilter]

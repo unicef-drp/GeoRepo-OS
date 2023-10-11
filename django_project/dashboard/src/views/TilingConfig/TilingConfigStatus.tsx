@@ -14,6 +14,7 @@ import { StatusAndProgress } from '../../models/syncStatus';
 import { fetchSyncStatusAPI } from '../../utils/api/TilingStatus';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import '../../styles/TilingConfig.scss';
+import CircularProgressWithLabel from '../../components/CircularProgressWithLabel';
 
 const DONE_STATUS_LIST = ['Done', 'Error', 'synced']
 
@@ -58,7 +59,6 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
     }
 
     useEffect(() => {
-        console.log('testeset useEffect')
         if (!allFinished) {
             const interval = setInterval(() => {
                 fetchTilingStatus()
@@ -98,8 +98,8 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
         }
         return (
             <span className='tiling-status-desc-icon margin-left-small'>
-                {simplificationStatus.status === 'syncing' && <CircularProgress size={18} /> }
-                <span style={{marginLeft: '5px' }}>{simplificationStatus.status === 'syncing' ? ` ${simplificationStatus.progress}%`:'Syncing'}</span>
+                {simplificationStatus.status === 'syncing' && <CircularProgressWithLabel value={parseFloat(simplificationStatus.progress)} /> }
+                <span style={{marginLeft: '5px' }}>{simplificationStatus.status === 'syncing' ? 'Syncing' : simplificationStatus.status}</span>
                 {simplificationStatus.status === 'syncing' && <HtmlTooltip tooltipDescription={<p>Preview might be unavailable due to simplified geometries are being generated</p>} /> }
             </span>
         )
@@ -107,7 +107,7 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
 
     return (
         <Grid container flexDirection={'row'} sx={{height: '100%', alignItems: 'center'}}>
-            <Grid item sx={{ display:'flex', flexDirection:'row' }}>
+            <Grid item sx={{ display:'flex', flexDirection:'row', alignItems: 'center'}}>
                 Simplification status: { getSimplificationStatus() }
             </Grid>
         </Grid>
