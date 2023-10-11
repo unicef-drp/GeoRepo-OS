@@ -13,7 +13,7 @@ import ResizeTableEvent from "../../components/ResizeTableEvent";
 import {RootState} from "../../app/store";
 import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import {getDefaultFilter, ViewSyncFilterInterface} from "./Filter"
-import {setSelectedViews, toggleIsBatchAction} from "../../reducers/viewSyncAction";
+import {setSelectedViews, toggleIsBatchAction, setIsBatchActionAvailable} from "../../reducers/viewSyncAction";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {setAvailableFilters, setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
 import Stack from '@mui/material/Stack';
@@ -53,6 +53,8 @@ export function ViewSyncActionButtons() {
   }
 
   const alertConfirmed = () => {
+    onToggleBatchAction()
+    setAlertLoading(true)
     const data = {
       view_ids: selectedViews,
       sync_options: syncOptions
@@ -64,6 +66,7 @@ export function ViewSyncActionButtons() {
           dispatch(setInitialFilters(JSON.stringify({...initialFilters})))
         }
       ).catch(error => {
+            onToggleBatchAction()
             setAlertLoading(false)
             setAlertOpen(false)
             console.log('error ', error)
@@ -265,10 +268,10 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
     return filterVals
   }
 
-  const fetchViewSyncList = () => {
+  const fetchViewSyncList = (interval: boolean = false) => {
     if (axiosSource.current) axiosSource.current.cancel()
     let cancelFetchToken = newCancelToken()
-    if (allFinished) {
+    if (!interval) {
       setLoading(true)
     }
     let sortBy = pagination.sortOrder.name ? pagination.sortOrder.name : ''
@@ -610,7 +613,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
             setCurrentInterval(null)
         }
         const interval = setInterval(() => {
-            fetchViewSyncList()
+            fetchViewSyncList(true)
         }, 5000);
         setCurrentInterval(interval)
         return () => clearInterval(interval);
