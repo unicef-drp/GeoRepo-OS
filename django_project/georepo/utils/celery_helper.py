@@ -8,7 +8,6 @@ from georepo.models.dataset_view import (
     DatasetView,
     DatasetViewResource
 )
-from georepo.models.dataset_view_tile_config import DatasetViewTilingConfig
 
 
 logger = logging.getLogger(__name__)

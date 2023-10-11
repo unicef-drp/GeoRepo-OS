@@ -414,7 +414,7 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
         elif obj.SyncStatus.OUT_OF_SYNC in all_status:
             return obj.SyncStatus.OUT_OF_SYNC
         return obj.SyncStatus.SYNCED
-    
+
     def get_view_status(self, obj: DatasetView):
         all_status = [
             obj.vector_tile_sync_status,

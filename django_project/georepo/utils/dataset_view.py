@@ -1,6 +1,5 @@
 import re
 import time
-from math import isclose
 from typing import List
 from django.db import connection
 from django.db.models import Avg
@@ -512,7 +511,7 @@ def get_view_tiling_status(view_resource_queryset):
     if resource_count == 0:
         tiling_status = 'synced'
     elif 'syncing' in vt_statuses:
-        tiling_status =  'syncing'
+        tiling_status = 'syncing'
     elif len(vt_statuses) == 1:
         tiling_status = vt_statuses[0]
     return tiling_status, tiling_progress
@@ -545,7 +544,7 @@ def get_view_product_status(view_resource_queryset, product=None):
     if resource_count == 0:
         product_status = 'synced'
     elif 'syncing' in pt_statuses:
-        product_status =  'syncing'
+        product_status = 'syncing'
     elif len(pt_statuses) == 1:
         product_status = pt_statuses[0]
     return product_status, product_progress

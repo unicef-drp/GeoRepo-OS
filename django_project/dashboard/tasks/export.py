@@ -115,7 +115,7 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
                            overwrite: bool = True):
     """
     Entrypoint of view vector tile generation.
-    
+
     Pre-requisites: Simplification process.
     """
     from georepo.models.dataset_view import (
