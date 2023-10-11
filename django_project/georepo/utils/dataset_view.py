@@ -1,6 +1,5 @@
 import re
 import time
-from math import isclose
 from typing import List
 from django.db import connection
 from django.db.models import Avg
@@ -487,14 +486,15 @@ def generate_view_resource_bbox(view_resource: DatasetViewResource,
 
 
 def get_view_tiling_status(view_resource_queryset):
-    """Get tiling status of dataset view."""
+    """Get tiling sync status of dataset view."""
+    available_resources = view_resource_queryset.filter(
+        entity_count__gt=0
+    )
     # check for error
-    error_queryset = view_resource_queryset.filter(
+    error_queryset = available_resources.filter(
         status=DatasetView.DatasetViewStatus.ERROR
     )
-    view_resources = view_resource_queryset.filter(
-        entity_count__gt=0
-    ).aggregate(
+    view_resources = available_resources.aggregate(
         Avg('vector_tiles_progress')
     )
     tiling_progress = (
@@ -502,29 +502,33 @@ def get_view_tiling_status(view_resource_queryset):
         view_resources['vector_tiles_progress__avg'] else 0
     )
     if error_queryset.exists():
-        return 'Error', tiling_progress
-    tiling_status = 'Queued'
-    if isclose(tiling_progress, 100, abs_tol=1e-4):
-        tiling_status = 'Done'
-    elif tiling_progress > 0:
-        tiling_status = 'Processing'
-    else:
-        resource_count = view_resource_queryset.filter(
-            entity_count__gt=0
-        ).count()
-        if resource_count == 0:
-            tiling_status = 'Done'
+        return 'error', tiling_progress
+    vt_statuses = available_resources.order_by(
+        'vector_tile_sync_status').values_list(
+            'vector_tile_sync_status', flat=True).distinct()
+    tiling_status = 'out_of_sync'
+    resource_count = available_resources.count()
+    if resource_count == 0:
+        tiling_status = 'synced'
+    elif 'syncing' in vt_statuses:
+        tiling_status = 'syncing'
+    elif len(vt_statuses) == 1:
+        tiling_status = vt_statuses[0]
     return tiling_status, tiling_progress
 
 
 def get_view_product_status(view_resource_queryset, product=None):
     """Get product status of dataset view."""
+    available_resources = view_resource_queryset.filter(
+        entity_count__gt=0
+    )
     # check for error
-    error_queryset = view_resource_queryset.filter(
+    error_queryset = available_resources.filter(
         status=DatasetView.DatasetViewStatus.ERROR
     )
     field = f'{product}_progress' if product else 'data_product_progress'
-    view_resources = view_resource_queryset.aggregate(
+    pt_field = f'{product}_sync_status' if product else 'product_sync_status'
+    view_resources = available_resources.aggregate(
         Avg(field)
     )
     product_progress = (
@@ -532,12 +536,17 @@ def get_view_product_status(view_resource_queryset, product=None):
         view_resources[f'{field}__avg'] else 0
     )
     if error_queryset.exists():
-        return 'Error', product_progress
-    product_status = 'Queued'
-    if isclose(product_progress, 100, abs_tol=1e-4):
-        product_status = 'Done'
-    elif product_progress > 0:
-        product_status = 'Processing'
+        return 'error', product_progress
+    pt_statuses = available_resources.order_by(pt_field).values_list(
+        pt_field, flat=True).distinct()
+    product_status = 'out_of_sync'
+    resource_count = available_resources.count()
+    if resource_count == 0:
+        product_status = 'synced'
+    elif 'syncing' in pt_statuses:
+        product_status = 'syncing'
+    elif len(pt_statuses) == 1:
+        product_status = pt_statuses[0]
     return product_status, product_progress
 
 

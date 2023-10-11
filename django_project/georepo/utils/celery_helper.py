@@ -57,7 +57,7 @@ def on_task_queued_or_running(task: BackgroundTask):
             resource.product_current_task = task
         resource.save(update_fields=['tiling_current_task',
                                      'product_current_task'])
-    elif task.name == 'view_vector_tiles_task':
+    elif task.name == 'view_simplification_task':
         if len(task_param) == 0:
             return
         view_id = task_param[0]
@@ -92,7 +92,7 @@ def on_task_success(task: BackgroundTask):
         if export_data:
             resource.product_current_task = None
             resource.save(update_fields=['product_current_task'])
-    elif task.name == 'view_vector_tiles_task':
+    elif task.name == 'view_simplification_task':
         if len(task_param) == 0:
             return
         view_id = task_param[0]

@@ -84,7 +84,12 @@ def check_affected_dataset_views(
                     product=True,
                     skip_signal=False
                 )
+                # update dataset simplification to out of sync
                 view.dataset.sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
+                view.dataset.simplification_sync_status = (
+                    DatasetView.SyncStatus.OUT_OF_SYNC
+                )
+                view.dataset.is_simplified = False
                 view.dataset.save()
 
 

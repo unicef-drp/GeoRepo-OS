@@ -1,15 +1,15 @@
 import axios from "axios";
 
-const TILING_CONFIGS_STATUS_URL = '/api/tiling-configs/status/'
+const SYNC_STATUS_URL = '/api/sync-status/'
 
-export const fetchTilingStatusAPI = (object_type: string, object_uuid: string, callback: (response: any, error: any) => void) => {
-    let _fetch_url = `${TILING_CONFIGS_STATUS_URL}${object_type}/${object_uuid}/`
+export const fetchSyncStatusAPI = (object_type: string, object_uuid: string, callback: (response: any, error: any) => void) => {
+    let _fetch_url = `${SYNC_STATUS_URL}${object_type}/${object_uuid}/`
     axios.get(_fetch_url).then(
         response => {
             callback(response.data, null)
         }
     ).catch((error) => {
-        console.log('Fetch Tiling status failed! ', error)
+        console.log('Fetch sync status failed! ', error)
         callback(null, error)
     })
 }

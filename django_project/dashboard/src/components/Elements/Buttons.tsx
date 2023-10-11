@@ -14,7 +14,8 @@ interface ThemeButtonInterface {
   disabled?: boolean,
   onClick?: any,
   additionalClass?: string,
-  sx?: any
+  sx?: any,
+  disabledTitle?: string
 }
 interface ButtonInterface {
   text?: string,
@@ -33,13 +34,15 @@ interface ButtonInterface {
  * @param disabled
  * @param onClick
  */
-export function ThemeButton({ icon, title, variant, disabled = false, onClick = null, additionalClass = null, sx = null } : ThemeButtonInterface) {
+export function ThemeButton({ icon, title, variant, disabled = false, onClick = null, additionalClass = null, sx = null, disabledTitle = null } : ThemeButtonInterface) {
   return (
     <Button
       disabled={disabled}
       className={'ThemeButton ' + (variant ? 'MuiButton-' + variant : '') + (additionalClass ? ' ' + additionalClass : '')}
       onClick={onClick}
       sx={sx}
+      aria-label={disabled && disabledTitle ? disabledTitle : title}
+      title={disabled && disabledTitle ? disabledTitle : title}
     >
       {icon} {title}
     </Button>

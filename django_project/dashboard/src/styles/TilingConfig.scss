@@ -37,6 +37,9 @@
 .tiling-status-desc-icon {
     display: flex;
     align-items: center;
+    min-width: 125px;
+    padding-left: 10px;
+    padding-right: 10px;
 
     &.margin-left-small {
         margin-left: 5px;

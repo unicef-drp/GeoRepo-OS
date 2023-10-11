@@ -107,7 +107,7 @@ from dashboard.api_views.views import (
 from dashboard.api_views.tiling_config import (
     FetchDatasetTilingConfig,
     FetchDatasetViewTilingConfig,
-    TilingConfigCheckStatus, FetchGeoJsonPreview,
+    FetchGeoJsonPreview,
     CountriesTilingConfigAPIView, ApplyTilingConfigAPIView
 )
 from dashboard.api_views.permission import (
@@ -130,7 +130,8 @@ from dashboard.api_views.view_sync import (
     ViewSyncList,
     ViewSyncFilterValue,
     ViewResourcesSyncList,
-    SynchronizeView
+    SynchronizeView,
+    FetchSyncStatus
 )
 from dashboard.api_views.logs import (
     ExportLogs
@@ -566,6 +567,11 @@ urlpatterns = [
     re_path(r'api/sync-view/?$',
             SynchronizeView.as_view(),
             name='sync-view'),
+    re_path(r'api/sync-status/'
+            r'(?P<object_type>(dataset|datasetview))/'
+            r'(?P<uuid>[\da-f-]+)/?$',
+            FetchSyncStatus.as_view(),
+            name='sync-status'),
     re_path(r'api/tag-list/?$',
             GetViewTags.as_view(),
             name='get-tag-list'),
@@ -626,11 +632,6 @@ urlpatterns = [
             r'(?P<uuid>[\da-f-]+)/?$',
             ApplyTilingConfigAPIView.as_view(),
             name='tiling-configs-apply'),
-    re_path(r'api/tiling-configs/status/'
-            r'(?P<object_type>(dataset|datasetview))/'
-            r'(?P<uuid>[\da-f-]+)/?$',
-            TilingConfigCheckStatus.as_view(),
-            name='tiling-configs-status'),
     re_path(r'api/fetch-tiling-configs/dataset/(?P<uuid>[\da-f-]+)/?$',
             FetchDatasetTilingConfig.as_view(),
             name='fetch-tiling-configs'),

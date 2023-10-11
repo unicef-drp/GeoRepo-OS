@@ -1,19 +1,14 @@
 import {createSlice, PayloadAction} from "@reduxjs/toolkit";
-import { SyncStatus, StatusAndProgress } from "../models/syncStatus";
+import { SyncStatus, StatusAndProgress, StatusUpdate } from "../models/syncStatus";
 
 export interface DatasetTabsState {
-    tilingConfigSyncStatus: SyncStatus;
+    objSyncStatus: SyncStatus;
     simplificationStatus: StatusAndProgress;
-    tilingStatus: StatusAndProgress;
 }
 
 const initialState: DatasetTabsState = {
-    tilingConfigSyncStatus: SyncStatus.None,
+    objSyncStatus: SyncStatus.None,
     simplificationStatus: {
-        progress: '',
-        status: ''
-    },
-    tilingStatus: {
         progress: '',
         status: ''
     }
@@ -26,32 +21,13 @@ export const datasetTabsSlice = createSlice({
     name: 'datasetTabs',
     initialState,
     reducers: {
-        updateDatasetTabStatuses: (state, action: PayloadAction<StatusAndProgress[]>) => {
-            let _simplification = action.payload[0]
-            let _tiling = action.payload[1]
-
-            state.simplificationStatus = {..._simplification}
-            state.tilingStatus = {..._tiling}
-            if (state.tilingConfigSyncStatus === SyncStatus.Syncing) {
-                if (DONE_STATUS_LIST.includes(state.simplificationStatus.status) &&
-                    DONE_STATUS_LIST.includes(state.tilingStatus.status)) {
-                    if (state.simplificationStatus.status === 'Error' || state.tilingStatus.status === 'Error') {
-                        state.tilingConfigSyncStatus = SyncStatus.Error
-                    } else {
-                        state.tilingConfigSyncStatus = SyncStatus.Synced
-                    }
-                }
-            } else if (PROCESSING_STATUS_LIST.includes(state.simplificationStatus.status) || PROCESSING_STATUS_LIST.includes(state.tilingStatus.status)) {
-                state.tilingConfigSyncStatus = SyncStatus.Syncing
-            }
+        updateDatasetTabStatuses: (state, action: PayloadAction<StatusUpdate>) => {
+            state.simplificationStatus = {...action.payload.simplificationStatus}
+            state.objSyncStatus = action.payload.objSyncStatus
         },
         resetDatasetTabStatuses: (state, action: PayloadAction<null>) => {
-            state.tilingConfigSyncStatus = SyncStatus.None
+            state.objSyncStatus = SyncStatus.None
             state.simplificationStatus = {
-                progress: '',
-                status: ''
-            }
-            state.tilingStatus = {
                 progress: '',
                 status: ''
             }

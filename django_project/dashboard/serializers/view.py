@@ -55,7 +55,8 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
                 dataset_view=obj
             )
         )
-        return tiling_status
+        statuses = dict(DatasetView.SyncStatus.choices)
+        return statuses[tiling_status] if tiling_status in statuses else ''
 
     def get_layer_tiles(self, obj: DatasetView):
         user = self.context.get('user', None)
@@ -240,6 +241,8 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
     # vector_tile_sync_progress = serializers.SerializerMethodField()
     # product_sync_progress = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
+    simplification_status = serializers.SerializerMethodField()
+    simplification_progress = serializers.SerializerMethodField()
 
     def get_dataset(self, obj):
         return obj.dataset_id
@@ -268,6 +271,16 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
         user = self.context['user']
         return PermissionType.get_permissions_for_datasetview(obj, user)
 
+    def get_simplification_status(self, obj: DatasetView):
+        if obj.is_tiling_config_match:
+            return obj.dataset.simplification_sync_status
+        return obj.simplification_sync_status
+
+    def get_simplification_progress(self, obj: DatasetView):
+        if obj.is_tiling_config_match:
+            return obj.dataset.simplification_progress_num
+        return obj.simplification_progress_num
+
     class Meta:
         model = DatasetView
         fields = [
@@ -275,8 +288,10 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
             'dataset',
             'name',
             'is_tiling_config_match',
+            'simplification_status',
             'vector_tile_sync_status',
             'product_sync_status',
+            'simplification_progress',
             'vector_tiles_progress',
             'product_progress',
             'permissions'
@@ -377,7 +392,8 @@ class ViewSyncSerializer(serializers.Serializer):
         accepted_options = {
             'tiling_config',
             'vector_tiles',
-            'products'
+            'products',
+            'simplify'
         }
         if len(options - accepted_options) != 0:
             raise serializers.ValidationError(

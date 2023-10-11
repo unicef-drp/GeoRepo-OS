@@ -1,0 +1,17 @@
+@import '../styles/variables';
+
+
+.view-sync-list {
+    .running-status {
+        display: flex;
+        flex-direction: column;
+    }
+    .sync-status-desc-container {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+    .sync-status-desc {
+        margin-left: 5px;
+    }
+}

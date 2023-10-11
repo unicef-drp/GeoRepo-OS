@@ -213,6 +213,12 @@ class Dataset(models.Model):
         default='Entity simplification finished'
     )
 
+    simplification_progress_num = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
     is_simplified = models.BooleanField(
         default=False
     )

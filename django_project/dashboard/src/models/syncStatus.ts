@@ -10,3 +10,8 @@ export interface StatusAndProgress {
     status: string;
     progress: string;
 }
+
+export interface StatusUpdate {
+    objSyncStatus: SyncStatus,
+    simplificationStatus: StatusAndProgress
+}

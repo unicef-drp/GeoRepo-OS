@@ -2,6 +2,7 @@ import React, {Fragment, useCallback, useEffect, useRef, useState} from "react";
 import {useNavigate, useSearchParams} from "react-router-dom";
 
 import {Button} from '@mui/material';
+import IconButton from '@mui/material/IconButton';
 import FilterAlt from "@mui/icons-material/FilterAlt";
 import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
 import axios from "axios";
@@ -12,7 +13,7 @@ import ResizeTableEvent from "../../components/ResizeTableEvent";
 import {RootState} from "../../app/store";
 import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import {getDefaultFilter, ViewSyncFilterInterface} from "./Filter"
-import {setSelectedViews, toggleIsBatchAction} from "../../reducers/viewSyncAction";
+import {setSelectedViews, toggleIsBatchAction, setIsBatchActionAvailable} from "../../reducers/viewSyncAction";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {setAvailableFilters, setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
 import Stack from '@mui/material/Stack';
@@ -23,8 +24,14 @@ import {AddButton, CancelButton, ThemeButton} from "../../components/Elements/Bu
 import GradingIcon from "@mui/icons-material/Grading";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
 import Grid from "@mui/material/Grid";
+import '../../styles/ViewSync.scss';
+import LinearProgress from '@mui/material/LinearProgress';
+import SyncIcon from '@mui/icons-material/Sync';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import SyncProblemIcon from '@mui/icons-material/SyncProblem';
+import { DatasetDetailItemInterface } from "../../models/dataset";
 
 
 export function ViewSyncActionButtons() {
@@ -46,6 +53,8 @@ export function ViewSyncActionButtons() {
   }
 
   const alertConfirmed = () => {
+    onToggleBatchAction()
+    setAlertLoading(true)
     const data = {
       view_ids: selectedViews,
       sync_options: syncOptions
@@ -57,6 +66,7 @@ export function ViewSyncActionButtons() {
           dispatch(setInitialFilters(JSON.stringify({...initialFilters})))
         }
       ).catch(error => {
+            onToggleBatchAction()
             setAlertLoading(false)
             setAlertOpen(false)
             console.log('error ', error)
@@ -153,8 +163,10 @@ interface ViewSyncRowInterface {
   id: number,
   name: string,
   is_tiling_config_match: boolean,
+  simplification_status: string,
   vector_tile_sync_status: string,
   product_sync_status: string,
+  simplification_progress: number,
   vector_tiles_progress: number,
   product_progress: number,
   permissions: string[]
@@ -165,8 +177,54 @@ const VIEW_LIST_URL = '/api/view-sync-list/'
 const TRIGGER_SYNC_API_URL = '/api/sync-view/'
 const FilterIcon: any = FilterAlt
 
+const getSyncing = (progress: number) => {
+  return (
+    <span className='running-status'>
+        <span className='sync-status-desc-container'>
+          <SyncIcon color='info' fontSize='small' />
+          <span className='sync-status-desc'>{`Actively being processed`}</span>                      
+        </span>
+        <LinearProgress variant="determinate" value={progress} />
+    </span>
+  )
+}
+const getSynced = (text: string) => {
+  return (
+    <span className='sync-status-desc-container'>
+      <CheckCircleIcon color='success' fontSize='small' />
+      <span className='sync-status-desc'>{text}</span>
+    </span>
+  )
+}
+const getOutOfSync = (text: string, syncButtonText: string, syncButtonDisabled: boolean, syncButtonOnClick: any) => {
+  return (
+    <span className='sync-status-desc-container'>
+      <SyncProblemIcon color='warning' fontSize='small' />
+      <span className='sync-status-desc'>{text}</span>
+      { !syncButtonDisabled &&
+      <IconButton aria-label={syncButtonText} title={syncButtonText} onClick={syncButtonOnClick} disabled={syncButtonDisabled}>
+          <SyncIcon color='info' fontSize='small' />
+      </IconButton>
+      }
+    </span>
+  )
+}
+const getError = (syncButtonText: string, syncButtonDisabled: boolean, syncButtonOnClick: any) => {
+  return (
+    <span className='sync-status-desc-container'>
+      <ErrorIcon color='error' fontSize='small' />
+      <span className='sync-status-desc'>{`Terminated unexpectedly`}</span>
+      { !syncButtonDisabled &&
+      <IconButton aria-label={syncButtonText} title={syncButtonText} onClick={syncButtonOnClick} disabled={syncButtonDisabled}>
+          <SyncIcon color='info' fontSize='small' />
+      </IconButton>
+      }
+    </span>
+  )
+}
 
-export default function ViewSyncList() {
+
+export default function ViewSyncList(props: DatasetDetailItemInterface) {
   const initialColumns = useAppSelector((state: RootState) => state.viewSyncTable.currentColumns)
   const initialFilters = useAppSelector((state: RootState) => state.viewSyncTable.currentFilters)
   const availableFilters = useAppSelector((state: RootState) => state.viewSyncTable.availableFilters)
@@ -193,6 +251,7 @@ export default function ViewSyncList() {
   }, [])
   const ref = useRef(null)
   const [tableHeight, setTableHeight] = useState(0)
+  const fetchViewSyncListFuncRef = useRef(null)
 
   let selectableRowsMode: any = isBatchAction ? 'multiple' : 'none'
 
@@ -209,10 +268,12 @@ export default function ViewSyncList() {
     return filterVals
   }
 
-  const fetchViewSyncList = () => {
+  const fetchViewSyncList = (interval: boolean = false) => {
     if (axiosSource.current) axiosSource.current.cancel()
     let cancelFetchToken = newCancelToken()
-    setLoading(true)
+    if (!interval) {
+      setLoading(true)
+    }
     let sortBy = pagination.sortOrder.name ? pagination.sortOrder.name : ''
     let sortDirection = pagination.sortOrder.direction ? pagination.sortOrder.direction : ''
     const datasetId = searchParams.get('id')
@@ -225,6 +286,13 @@ export default function ViewSyncList() {
         cancelToken: cancelFetchToken
       }
     ).then((response) => {
+      setLoading(false)
+      const simplificationSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
+          if (!res.includes(row.simplification_status)) {
+              res.push(row.simplification_status)
+          }
+          return res
+      }, [] as string[])
       const productSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
           if (!res.includes(row.product_sync_status)) {
               res.push(row.product_sync_status)
@@ -237,14 +305,14 @@ export default function ViewSyncList() {
           }
           return res
       }, [] as string[])
-      if (!productSyncStatus.includes('syncing') && !vectorTileSyncStatus.includes('syncing')) {
+      if (!simplificationSyncStatus.includes('syncing') && !productSyncStatus.includes('syncing') && !vectorTileSyncStatus.includes('syncing')) {
           setAllFinished(true)
+          props.onSyncStatusShouldBeUpdated()
       } else {
         setAllFinished(false)
       }
-      setLoading(false)
-      setData(response.data.results as ViewSyncRowInterface[])
       setTotalCount(response.data.count)
+      setData(response.data.results as ViewSyncRowInterface[])
     }).catch(error => {
       if (!axios.isCancel(error)) {
         console.log(error)
@@ -258,8 +326,11 @@ export default function ViewSyncList() {
       }
     })
   }
+  // store ref of fetchViewSyncList
+  fetchViewSyncListFuncRef.current = fetchViewSyncList
 
   const syncView = (viewIds: number[], syncOptions: string[]) => {
+    setLoading(true)
     axios.post(
       TRIGGER_SYNC_API_URL,
       {
@@ -269,7 +340,10 @@ export default function ViewSyncList() {
     ).then((response) => {
       setLoading(false)
       setConfirmMessage('Successfully submitting data regeneration. Your request will be processed in the background.')
-      fetchViewSyncList()
+      if (fetchViewSyncListFuncRef.current) {
+        fetchViewSyncListFuncRef.current()
+      }
+      props.onSyncStatusShouldBeUpdated()
     }).catch(error => {
       if (!axios.isCancel(error)) {
         console.log(error)
@@ -297,227 +371,240 @@ export default function ViewSyncList() {
   }
 
   useEffect(() => {
-    const fetchFilterValuesData = async () => {
-      let filterVals: any = {}
-      if (filterValues.sync_status.length > 0) {
-        filterVals = filterValues
-      } else {
-        filterVals = await fetchFilterValues()
-      }
-      const getLabel = (columnName: string) : string => {
-        return columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' ')
-      }
-
-      let _columns = ['id', 'name', 'permissions', 'vector_tiles_progress', 'product_progress'].map((columnName) => {
-        let _options: any = {
-          name: columnName,
-          label: getLabel(columnName),
-          options: {
-            display: initialColumns.includes(columnName),
-            sort: columnName === 'name'
+    if (data.length > 0 && columns.length === 0) {
+      const fetchFilterValuesData = async () => {
+        let filterVals: any = {}
+        if (filterValues.sync_status.length > 0) {
+          filterVals = filterValues
+        } else {
+          filterVals = await fetchFilterValues()
+        }
+        const getLabel = (columnName: string) : string => {
+          return columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' ')
+        }
+  
+        let _columns = ['id', 'name', 'permissions', 'simplification_progress', 'vector_tiles_progress', 'product_progress'].map((columnName) => {
+          let _options: any = {
+            name: columnName,
+            label: getLabel(columnName),
+            options: {
+              display: initialColumns.includes(columnName),
+              sort: columnName === 'name'
+            }
           }
-        }
-        _options.options.filter = false
-        return _options
-      })
-
-      _columns.push({
-        name: 'is_tiling_config_match',
-        label: 'Tiling Config',
-        options: {
-          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-            let rowData = tableMeta.rowData
-            return (
-              <Button
-                aria-label={
-                  rowData[5] ? 'Tiling config matches dataset' : 'Click to update tiling config'
-                }
-                title={
-                  rowData[5] ? 'Tiling config matches dataset' : 'Click to update tiling config'
-                }
-                key={0}
-                disabled={!rowData[2].includes('Manage')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                }}
-                variant={'outlined'}
-              >
-                {
-                  rowData[5] ?
-                    'Tiling config matches dataset' :
-                    'View uses custom tiling config'
-                }
-              </Button>
-            )
-          },
-          filter: false
-        }
-      })
-
-      _columns.push({
-        name: 'vector_tile_sync_status',
-        label: 'Vector Tile',
-        options: {
-          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-            let rowData = tableMeta.rowData
-            const getButtonText = () => {
-              if (rowData[6] === 'out_of_sync') {
-                return 'Vector tiles need refresh'
-              } else if (rowData[6] === 'synced') {
-                return 'Vector tiles are synced'
-              } else if (rowData[6] === 'syncing') {
-                return (
-                  <span style={{display:'flex'}}>
-                      <CircularProgress size={18} />
-                      <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[3].toFixed(1)}%)`}</span>
-                  </span>
-                )
-              }
-            }
-            return (
-              <Button
-                aria-label={
-                  rowData[6] ? 'Vector tiles are synced' : 'Click to update vector tiles'
-                }
-                title={
-                  rowData[6] ? 'Vector tiles are synced' : 'Click to update vector tiles'
-                }
-                key={0}
-                disabled={!rowData[2].includes('Manage')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (rowData[6] === 'synced') {
-                    return
-                  }
-                  syncView([rowData[0]], ['vector_tiles'])
-                }}
-                variant={rowData[6] === 'out_of_sync' ? 'contained': 'outlined'}
-              >
-                {getButtonText()}
-              </Button>
-            )
-          },
-          filter: false
-        }
-      })
-
-      _columns.push({
-        name: 'product_sync_status',
-        label: 'Data Product',
-        options: {
-          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-            let rowData = tableMeta.rowData
-            const getButtonText = () => {
-              if (rowData[7] === 'out_of_sync') {
-                return 'Data product needs refresh'
-              } else if (rowData[7] === 'synced') {
-                return 'Data product is synced'
-              } else if (rowData[7] === 'syncing') {
-                return (
-                  <span style={{display:'flex'}}>
-                      <CircularProgress size={18} />
-                      <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[4].toFixed(1)}%)`}</span>
-                  </span>
-                )
-              }
-            }
-            return (
-              <Button
-                aria-label={
-                  rowData[7] ? 'Data products are synced' : 'Click to update data products'
-                }
-                title={
-                  rowData[7] ? 'Data products are synced' : 'Click to update data products'
-                }
-                key={0}
-                disabled={!rowData[2].includes('Manage')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (rowData[7] === 'synced') {
-                    return
-                  }
-                  syncView([rowData[0]], ['products'])
-                }}
-                variant={rowData[7] === 'out_of_sync' ? 'contained': 'outlined'}
-              >
-                {getButtonText()}
-              </Button>
-            )
-          },
-          filter: false
-        }
-      })
-
-      _columns.push(
-        {
-          name: 'sync_status',
-          label: 'Sync Status',
+          _options.options.filter = false
+          return _options
+        })
+  
+        _columns.push({
+          name: 'is_tiling_config_match',
+          label: 'Tiling Config',
           options: {
-            display: false,
-            sort: false,
-            filter: true,
-            filterOptions: {
-              names: filterVals['sync_status']
+            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              return (
+                <span>{rowData[6] ? 'Tiling config matches dataset' : 'View uses custom tiling config'}</span>
+              )
             },
-            filterList: getExistingFilterValue('sync_status')
+            filter: false
           }
-        }
-      )
-      _columns.push({
-        name: '',
-        label: 'Action',
-        options: {
-          customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-            let rowData = tableMeta.rowData
-            return (
-              <Stack spacing={2} direction="row">
-                <Button
-                  aria-label={'Details'}
-                  title={'Details'}
-                  key={0}
-                  disabled={!rowData[2].includes('Manage')}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigate(`/view_edit?id=${rowData[0]}&tab=4`)
-                  }}
-                  variant={'contained'}
-                >
-                  Details
-                </Button>
+        })
 
-                <Button
-                  aria-label={'Synchronize'}
-                  title={'Synchronize'}
-                  key={0}
-                  disabled={!rowData[2].includes('Manage') }
-                  onClick={(e) => {
+        _columns.push({
+          name: 'simplification_status',
+          label: 'Simplification',
+          options: {
+            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              let _status = rowData[7]
+              let _progress = rowData[3] as number
+
+              if (_status === 'out_of_sync') {
+                return (
+                  getOutOfSync('Out of Sync', 'Click to trigger simplification', !rowData[2].includes('Manage'), (e: any) => {
                     e.stopPropagation()
-                    if (rowData[6] === 'synced' && rowData[7] === 'synced') {
-                      return
+                    syncView([rowData[0]], ['simplify'])
+                  })
+                )
+              } else if (_status === 'synced') {
+                return getSynced('Done')
+              } else if (_status === 'syncing') {
+                return getSyncing(_progress)
+              } else if (_status === 'error') {
+                return (
+                  getError('Click to retrigger simplification', !rowData[2].includes('Manage'), (e: any) => {
+                    e.stopPropagation()
+                    syncView([rowData[0]], ['simplify'])
+                  })
+                )
+              }
+              return (
+                <span>{_status}</span>
+              )
+            },
+            filter: false
+          }
+        })
+  
+        _columns.push({
+          name: 'vector_tile_sync_status',
+          label: 'Vector Tile',
+          options: {
+            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              let _status = rowData[8]
+              let _progress = rowData[4] as number
+              let _simplificationStatus = rowData[7]
+              if (_status === 'out_of_sync') {
+                if (_simplificationStatus !== 'synced') {
+                  return (
+                    getOutOfSync('Vector tiles need refresh', 'Please trigger simplification before regenerate vector tiles!', true, () => {})
+                  )
+                }
+                return (
+                  getOutOfSync('Vector tiles need refresh', 'Click to update vector tiles', !rowData[2].includes('Manage'), (e: any) => {
+                    e.stopPropagation()
+                    syncView([rowData[0]], ['vector_tiles'])
+                  })
+                )
+              } else if (_status === 'synced') {
+                return getSynced('Vector tiles are synced')
+              } else if (_status === 'syncing') {
+                return getSyncing(_progress)
+              } else if (_status === 'error') {
+                if (_simplificationStatus !== 'synced') {
+                  return (
+                    getOutOfSync('Vector tiles need refresh', 'Please trigger simplification before regenerate vector tiles!', true, () => {})
+                  )
+                }
+                return (
+                  getError('Click to retrigger vector tiles generation', !rowData[2].includes('Manage'), (e: any) => {
+                    e.stopPropagation()
+                    syncView([rowData[0]], ['vector_tiles'])
+                  })
+                )
+              }
+              return (
+                <span>{_status}</span>
+              )
+            },
+            filter: false
+          }
+        })
+  
+        _columns.push({
+          name: 'product_sync_status',
+          label: 'Data Product',
+          options: {
+            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              let _status = rowData[9]
+              let _progress = rowData[5] as number
+              if (_status === 'out_of_sync') {
+                return (
+                  getOutOfSync('Data products need refresh', 'Click to update data products', !rowData[2].includes('Manage'), (e: any) => {
+                    e.stopPropagation()
+                    syncView([rowData[0]], ['products'])
+                  })
+                )
+              } else if (_status === 'synced') {
+                return getSynced('Data products are synced')
+              } else if (_status === 'syncing') {
+                return getSyncing(_progress)
+              } else if (_status === 'error') {
+                return (
+                  getError('Click to retrigger data products generation', !rowData[2].includes('Manage'), (e: any) => {
+                    e.stopPropagation()
+                    syncView([rowData[0]], ['products'])
+                  })
+                )
+              }
+              return (
+                <span>{_status}</span>
+              )
+            },
+            filter: false
+          }
+        })
+  
+        _columns.push(
+          {
+            name: 'sync_status',
+            label: 'Sync Status',
+            options: {
+              display: false,
+              sort: false,
+              filter: false,
+              filterOptions: {
+                names: filterVals['sync_status']
+              },
+              filterList: getExistingFilterValue('sync_status')
+            }
+          }
+        )
+        _columns.push({
+          name: '',
+          label: 'Action',
+          options: {
+            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              let _simplificationStatus = rowData[7]
+              let _syncButtonDisabled = (rowData[8] === 'synced' && rowData[9] === 'synced') || (rowData[8] === 'syncing' || rowData[9] === 'syncing')
+              const getSyncText = () => {
+                if (_syncButtonDisabled) {
+                  return 'Vector Tile and Data Product are synchronized'
+                }
+                if (_simplificationStatus !== 'synced') return 'Please trigger simplification before regenerate vector tiles!'
+                return 'Synchronize'
+              }
+              return (
+                <Stack spacing={2} direction="row">
+                  <Button
+                    aria-label={'Details'}
+                    title={'Details'}
+                    disabled={!rowData[2].includes('Manage')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/view_edit?id=${rowData[0]}&tab=4`)
+                    }}
+                    variant={'contained'}
+                  >
+                    Details
+                  </Button>
+  
+                  <Button
+                    aria-label={'Synchronize'}
+                    title={getSyncText()}
+                    disabled={!rowData[2].includes('Manage') || _syncButtonDisabled || _simplificationStatus !== 'synced' }
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (_syncButtonDisabled || _simplificationStatus !== 'synced') {
+                        return
+                      }
+                      syncView(
+                        [rowData[0]],
+                        ['vector_tiles', 'products']
+                      )
+                    }}
+                    variant={
+                      rowData[8] === 'out_of_sync' || rowData[9] === 'out_of_sync' ?
+                        'contained' : 'outlined'
                     }
-                    syncView(
-                      [rowData[0]],
-                      ['vector_tiles', 'products']
-                    )
-                  }}
-                  variant={
-                    rowData[6] === 'out_of_sync' || rowData[5] === 'out_of_sync' ?
-                      'contained' : 'outlined'
-                  }
-                >
-                  Synchronize
-                </Button>
-              </Stack>
-            )
-          },
-          filter: false
-        }
-      })
-
-      setColumns(_columns)
+                  >
+                    Synchronize
+                  </Button>
+                </Stack>
+              )
+            },
+            filter: false
+          }
+        })
+  
+        setColumns(_columns)
+      }
+      fetchFilterValuesData()
     }
-    fetchFilterValuesData()
-  }, [pagination, currentFilters])
+  }, [data, pagination, currentFilters])
 
   useEffect(() => {
     if (!allFinished) {
@@ -526,7 +613,7 @@ export default function ViewSyncList() {
             setCurrentInterval(null)
         }
         const interval = setInterval(() => {
-            fetchViewSyncList()
+            fetchViewSyncList(true)
         }, 5000);
         setCurrentInterval(interval)
         return () => clearInterval(interval);
@@ -535,7 +622,7 @@ export default function ViewSyncList() {
 
   useEffect(() => {
     fetchViewSyncList()
-  }, [pagination, filterValues, currentFilters, initialFilters, searchParams])
+  }, [pagination, currentFilters, initialFilters, searchParams])
 
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
@@ -670,9 +757,7 @@ export default function ViewSyncList() {
                   },
                   searchText: currentFilters.search_text,
                   searchOpen: (currentFilters.search_text != null && currentFilters.search_text.length > 0),
-                  filter: true,
-                  filterType: 'multiselect',
-                  confirmFilters: true,
+                  filter: false,
                   tableBodyHeight: `${tableHeight}px`,
                   tableBodyMaxHeight: `${tableHeight}px`,
                 }}

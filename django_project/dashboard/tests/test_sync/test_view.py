@@ -31,6 +31,7 @@ class TestViewSyncList(TestCase):
         self.superuser = UserF.create(is_superuser=True)
         self.creator = UserF.create()
         self.dataset_view_1 = DatasetViewF.create(
+            dataset=self.dataset,
             created_by=self.creator
         )
         grant_dataset_manager(self.dataset_view_1.dataset, self.creator)
@@ -68,7 +69,9 @@ class TestViewSyncList(TestCase):
             'name': self.dataset_view_1.name,
             'is_tiling_config_match': True,
             'vector_tile_sync_status': 'synced',
-            'product_sync_status': 'out_of_sync',
+            'product_sync_status': 'synced',
+            'simplification_status': 'out_of_sync',
+            'simplification_progress': 0.0,
             'vector_tiles_progress': 0.0,
             'product_progress': 0.0,
             'permissions': ['Manage', 'Read']

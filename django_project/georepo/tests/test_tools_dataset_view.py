@@ -367,3 +367,83 @@ class TestToolsDatasetView(TestCase):
         result = get_view_resource_from_view(view, 4)
         self.assertTrue(result)
         self.assertEqual(result.resource_id, resource_2.resource_id)
+
+    def test_get_view_tiling_status(self):
+        # create 1 view
+        dataset = DatasetF.create(
+            label='World',
+            description='Test'
+        )
+        generate_default_view_dataset_latest(dataset)
+        views = DatasetView.objects.filter(
+            dataset=dataset,
+            is_static=False
+        ).exclude(default_type__isnull=True)
+        self.assertEqual(views.count(), 1)
+        view = views.first()
+        # update view_resource with privacy_level 4, entity_count = 2
+        vr_4 = DatasetViewResource.objects.filter(
+            dataset_view=view,
+            privacy_level=4
+        ).first()
+        vr_4.entity_count = 2
+        vr_4.skip_signal = True
+        vr_4.save()
+        # update view_resource with privacy_level 3, entity_count = 1
+        vr_3 = DatasetViewResource.objects.filter(
+            dataset_view=view,
+            privacy_level=3
+        ).first()
+        vr_3.entity_count = 1
+        vr_3.skip_signal = True
+        vr_3.save()
+        # simulate out of sync of the vr with privacy level 4 and 3
+        #   status should be out_of_sync
+        vr_3.skip_signal = False
+        vr_3.vector_tile_sync_status = (
+            DatasetViewResource.SyncStatus.OUT_OF_SYNC
+        )
+        vr_3.save()
+        vr_4.skip_signal = False
+        vr_4.vector_tile_sync_status = (
+            DatasetViewResource.SyncStatus.OUT_OF_SYNC
+        )
+        vr_4.save()
+        view.refresh_from_db()
+        self.assertEqual(view.vector_tile_sync_status,
+                         DatasetView.SyncStatus.OUT_OF_SYNC)
+        # simulate syncing of the vr with privacy level 4 and 3
+        #   status should be syncing
+        vr_3.skip_signal = False
+        vr_3.vector_tile_sync_status = (
+            DatasetViewResource.SyncStatus.SYNCING
+        )
+        vr_3.save()
+        vr_4.skip_signal = False
+        vr_4.vector_tile_sync_status = (
+            DatasetViewResource.SyncStatus.SYNCING
+        )
+        vr_4.save()
+        view.refresh_from_db()
+        self.assertEqual(view.vector_tile_sync_status,
+                         DatasetView.SyncStatus.SYNCING)
+        # simulate synced of the vr with privacy level 4
+        #   status should be syncing
+        vr_4.skip_signal = False
+        vr_4.vector_tile_sync_status = (
+            DatasetViewResource.SyncStatus.SYNCED
+        )
+        vr_4.save()
+        view.refresh_from_db()
+        self.assertEqual(view.vector_tile_sync_status,
+                         DatasetView.SyncStatus.SYNCING)
+        # simulate synced of the vr with privacy level 3
+        #   status should be synced
+        vr_3.skip_signal = False
+        vr_3.vector_tile_sync_status = (
+            DatasetViewResource.SyncStatus.SYNCED
+        )
+        vr_3.save()
+        view.refresh_from_db()
+        self.assertEqual(view.vector_tile_sync_status,
+                         DatasetView.SyncStatus.SYNCED)

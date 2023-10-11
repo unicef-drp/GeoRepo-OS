@@ -58,17 +58,68 @@ def clean_resource_export_data_directory(resource_id):
             shutil.rmtree(temp_export_data)
 
 
-@shared_task(name="view_vector_tiles_task")
-def view_vector_tiles_task(view_id: str, export_data: bool = True,
-                           export_vector_tile: bool = True,
-                           overwrite: bool = True):
-    """Entrypoint of view vector tile generation."""
+@shared_task(name="view_simplification_task")
+def view_simplification_task(view_id: str):
+    """Entrypoint of view/dataset simplification task."""
     from georepo.models.dataset_view import (
         DatasetView, DatasetViewResource
     )
     from georepo.utils.mapshaper import (
         simplify_for_dataset,
         simplify_for_dataset_view
+    )
+    view = DatasetView.objects.get(id=view_id)
+    if view.task_id:
+        cancel_task(view.task_id)
+    view_resources = DatasetViewResource.objects.filter(
+        dataset_view=view
+    )
+    for view_resource in view_resources:
+        if view_resource.vector_tiles_task_id:
+            cancel_task(view_resource.vector_tiles_task_id)
+    # cancel any ongoing task for vector tile generation or
+    # simplification task
+    obj_log, _ = DatasetViewResourceLog.objects.get_or_create(
+        dataset_view=view
+    )
+    kwargs = {
+        'log_object': obj_log
+    }
+    has_view_tile_configs = DatasetViewTilingConfig.objects.filter(
+        dataset_view=view
+    ).exists()
+    # NOTE: need to handle on how to scale the simplification
+    # before vector tile because right now tile queue is only set
+    # to 1 concurrency.
+    if not view.dataset.is_simplified and not has_view_tile_configs:
+        # simplification for dataset if tiling config is updated
+        is_simplification_success = simplify_for_dataset(
+            view.dataset,
+            **kwargs
+        )
+        if not is_simplification_success:
+            raise RuntimeError('Dataset Simplification Failed!')
+    else:
+        # trigger simplification for view
+        is_simplification_success = simplify_for_dataset_view(
+            view,
+            **kwargs
+        )
+        if not is_simplification_success:
+            raise RuntimeError('View Simplification Failed!')
+
+
+@shared_task(name="view_vector_tiles_task")
+def view_vector_tiles_task(view_id: str, export_data: bool = True,
+                           export_vector_tile: bool = True,
+                           overwrite: bool = True):
+    """
+    Entrypoint of view vector tile generation.
+
+    Pre-requisites: Simplification process.
+    """
+    from georepo.models.dataset_view import (
+        DatasetView, DatasetViewResource
     )
     from georepo.utils.vector_tile import (
         reset_pending_tile_cache_keys,
@@ -137,28 +188,6 @@ def view_vector_tiles_task(view_id: str, export_data: bool = True,
             'shapefile_sync_status', 'kml_sync_status',
             'topojson_sync_status', 'geojson_sync_status'
         ])
-
-    has_view_tile_configs = DatasetViewTilingConfig.objects.filter(
-        dataset_view=view
-    ).exists()
-    # NOTE: need to handle on how to scale the simplification
-    # before vector tile because right now tile queue is only set
-    # to 1 concurrency.
-    if not view.dataset.is_simplified and not has_view_tile_configs:
-        # simplification for dataset if tiling config is updated
-        is_simplification_success = simplify_for_dataset(
-            view.dataset,
-            **kwargs
-        )
-        if not is_simplification_success:
-            raise RuntimeError('Dataset Simplification Failed!')
-    # trigger simplification for view
-    is_simplification_success = simplify_for_dataset_view(
-        view,
-        **kwargs
-    )
-    if not is_simplification_success:
-        raise RuntimeError('View Simplification Failed!')
 
     for view_resource in view_resources:
         reset_pending_tile_cache_keys(view_resource)
@@ -334,6 +363,34 @@ def generate_view_export_data(view_resource_id: str):
             ])
             clean_resource_export_data_directory(resource.resource_id)
             return
+        else:
+            resource.entity_count = entity_count
+            resource.status = (
+                DatasetView.DatasetViewStatus.PENDING
+            )
+            resource.geojson_progress = 0
+            resource.shapefile_progress = 0
+            resource.kml_progress = 0
+            resource.topojson_progress = 0
+            resource.geojson_sync_status = (
+                DatasetView.SyncStatus.SYNCING
+            )
+            resource.shapefile_sync_status = (
+                DatasetView.SyncStatus.SYNCING
+            )
+            resource.kml_sync_status = (
+                DatasetView.SyncStatus.SYNCING
+            )
+            resource.topojson_sync_status = (
+                DatasetView.SyncStatus.SYNCING
+            )
+            resource.save(update_fields=[
+                'entity_count', 'status', 'geojson_progress',
+                'shapefile_progress',
+                'kml_progress', 'topojson_progress',
+                'shapefile_sync_status', 'kml_sync_status',
+                'topojson_sync_status', 'geojson_sync_status'
+            ])
         logger.info(
             f'Extracting geojson from view {view.name} - '
             f'{resource.privacy_level}...'

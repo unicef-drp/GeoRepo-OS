@@ -1,21 +1,31 @@
 import React, {Fragment, useCallback, useEffect, useRef, useState} from 'react';
+import Grid from '@mui/material/Grid';
 import View from "../../models/view";
-import {useAppDispatch} from "../../app/hooks";
+import {useAppDispatch, useAppSelector} from "../../app/hooks";
 import {useNavigate} from "react-router-dom";
 import {rowsPerPageOptions} from "../../models/pagination";
 import axios from "axios";
+import {RootState} from "../../app/store";
+import LinearProgress from '@mui/material/LinearProgress';
 import Loading from "../../components/Loading";
 import ResizeTableEvent from "../../components/ResizeTableEvent";
 import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import MUIDataTable, {debounceSearchRender} from "mui-datatables";
-import Box from "@mui/material/Box";
 import {ThemeButton} from "../../components/Elements/Buttons";
-import CircularProgress from "@mui/material/CircularProgress";
 import AlertMessage from "../../components/AlertMessage";
+import '../../styles/ViewSync.scss';
+import SyncIcon from '@mui/icons-material/Sync';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import SyncProblemIcon from '@mui/icons-material/SyncProblem';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import TilingConfigStatus from '../TilingConfig/TilingConfigStatus';
+import { SyncStatus } from '../../models/syncStatus';
 
 
 interface ViewResourceInterface {
-    view: View
+    view: View,
+    onSyncStatusShouldBeUpdated: () => void
 }
 
 const VIEW_RESOURCE_SYNC_LIST_URL = '/api/view-resource-sync-list/'
@@ -68,6 +78,7 @@ export default function ViewSync(props: ViewResourceInterface) {
     }, [])
     const ref = useRef(null)
     const [tableHeight, setTableHeight] = useState(0)
+    const simplificationStatus = useAppSelector((state: RootState) => state.viewTabs.simplificationStatus)
 
     const getColumnDef = () => {
       const getLabel = (columnName: string) : string => {
@@ -92,20 +103,43 @@ export default function ViewSync(props: ViewResourceInterface) {
           col.options.customBodyRender = (value: any, tableMeta: any, updateValue: any) => {
             let rowData = tableMeta.rowData
             if (rowData[i] === 'out_of_sync') {
-              return 'Out of sync'
-            } else if (rowData[i] === 'Running') {
               return (
-                <span style={{display:'flex'}}>
-                    <CircularProgress size={18} />
-                    <span style={{marginLeft: '5px' }}>{`Syncing (${rowData[i+5].toFixed(1)}%)`}</span>
+                <span className='sync-status-desc-container'>
+                  <SyncProblemIcon color='warning' fontSize='small' />
+                  <span className='sync-status-desc'>{`Out of sync`}</span>
                 </span>
               )
-            } else if (rowData[i] === 'syncing') {
-              return 'Queued'
-            } else if (rowData[i] === 'Stopped' || rowData[i] === 'Queued') {
-              return rowData[i]
+            } else if (rowData[i] === 'Running') {
+              return (
+                <span className='running-status'>
+                    <span className='sync-status-desc-container'>
+                      <SyncIcon color='info' fontSize='small' />
+                      <span className='sync-status-desc'>{`Actively being processed`}</span>                      
+                    </span>
+                    <LinearProgress variant="determinate" value={rowData[i+5]} />
+                </span>
+              )
+            } else if (rowData[i] === 'syncing' || rowData[i] === 'Queued') {
+              return (
+                <span className='sync-status-desc-container'>
+                  <HourglassEmptyIcon color='info' fontSize='small' />
+                  <span className='sync-status-desc'>{`Queued but not running yet`}</span>
+                </span>
+              )
+            } else if (rowData[i] === 'Stopped' || rowData[i] === 'error') {
+              return (
+                <span className='sync-status-desc-container'>
+                  <ErrorIcon color='error' fontSize='small' />
+                  <span className='sync-status-desc'>{`Terminated unexpectedly`}</span>
+                </span>
+              )
             } else {
-              return `Synced (${rowData[i+10]})`
+              return (
+                <span className='sync-status-desc-container'>
+                  <CheckCircleIcon color='success' fontSize='small' />
+                  <span className='sync-status-desc'>{`Completed successfully (${rowData[i+10]})`}</span>
+                </span>
+              )
             }
           }
           _columns[i] = col
@@ -130,7 +164,7 @@ export default function ViewSync(props: ViewResourceInterface) {
           })
         });
         if (!allStatus.includes('syncing') && !allStatus.includes('Running')  && !allStatus.includes('Queued')) {
-            setAllFinished(true)
+          setAllFinished(true)
         } else {
           setAllFinished(false)
         }
@@ -179,6 +213,7 @@ export default function ViewSync(props: ViewResourceInterface) {
         setLoading(false)
         setConfirmMessage('Successfully submitting data regeneration. Your request will be processed in the background.')
         fetchViewResource()
+        props.onSyncStatusShouldBeUpdated()
       }).catch(error => {
         if (!axios.isCancel(error)) {
           console.log(error)
@@ -214,6 +249,13 @@ export default function ViewSync(props: ViewResourceInterface) {
       )
     }
 
+    const simplifyView = () => {
+      syncView(
+        [props.view.id],
+        ['simplify']
+      )
+    }
+
     return (
     loading ?
       <div className={"loading-container"}><Loading/></div> :
@@ -226,31 +268,47 @@ export default function ViewSync(props: ViewResourceInterface) {
               <div className='AdminTable'>
                 <MUIDataTable
                   title={
-                    <Box sx={{textAlign:'left'}}>
-                      <ThemeButton
-                        variant={'secondary'}
-                        onClick={regenerateVectorTiles}
-                        title={'Regenerate Vector Tiles'}
-                        icon={null}
-                        sx={{marginRight:'10px'}}
-                      />
-
-                      <ThemeButton
-                        variant={'secondary'}
-                        onClick={regenerateProductData}
-                        title={'Regenerate Product Data'}
-                        icon={null}
-                        sx={{marginRight:'10px'}}
-                      />
-
-                      <ThemeButton
-                        variant={'secondary'}
-                        onClick={regenerateAll}
-                        title={'Regenerate All'}
-                        icon={null}
-                        sx={{marginRight:'10px'}}
-                      />
-                    </Box>
+                    <Grid container flexDirection={'row'} spacing={1} >
+                      <Grid item>
+                        <TilingConfigStatus view={props.view} />
+                      </Grid>
+                      { (simplificationStatus.status === SyncStatus.OutOfSync || simplificationStatus.status === SyncStatus.Error) && (
+                        <Grid item>
+                          <ThemeButton
+                            variant={'secondary'}
+                            onClick={simplifyView}
+                            title={'Simplify View'}
+                            icon={null}
+                          />
+                        </Grid>
+                      )}
+                      <Grid item>
+                        <ThemeButton
+                          variant={'secondary'}
+                          onClick={regenerateVectorTiles}
+                          title={'Regenerate Vector Tiles'}
+                          disabledTitle='Please trigger simplification before regenerate vector tiles!'
+                          disabled={simplificationStatus.status !== SyncStatus.Synced}
+                          icon={null}
+                        />
+                      </Grid>
+                      <Grid item>
+                        <ThemeButton
+                          variant={'secondary'}
+                          onClick={regenerateProductData}
+                          title={'Regenerate Product Data'}
+                          icon={null}
+                        />
+                      </Grid>
+                      <Grid item>
+                        <ThemeButton
+                          variant={'secondary'}
+                          onClick={regenerateAll}
+                          title={'Regenerate All'}
+                          icon={null}
+                        />
+                      </Grid>
+                    </Grid>
                   }
                   data={data}
                   columns={columns}

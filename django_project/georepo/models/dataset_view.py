@@ -196,6 +196,12 @@ class DatasetView(models.Model):
         blank=True
     )
 
+    simplification_progress_num = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
     simplification_current_task = models.ForeignKey(
         'georepo.BackgroundTask',
         null=True,
@@ -240,10 +246,14 @@ class DatasetView(models.Model):
         )
         if has_custom_tiling_config:
             self.simplification_sync_status = self.SyncStatus.OUT_OF_SYNC
+            self.simplification_progress = ''
+            self.simplification_progress_num = 0
         else:
             self.simplification_sync_status = (
                 self.dataset.simplification_sync_status
             )
+            self.simplification_progress = ''
+            self.simplification_progress_num = 0
         dsv_resources = self.datasetviewresource_set.all()
         if tiling_config:
             # Only set tiling config as out of sync if DatasetView
@@ -334,40 +344,14 @@ class DatasetView(models.Model):
 
     def match_tiling_config(self):
         from georepo.models.dataset_view_tile_config import (
-            DatasetViewTilingConfig,
-            ViewAdminLevelTilingConfig
+            DatasetViewTilingConfig
         )
-        from georepo.models.dataset_tile_config import (
-            DatasetTilingConfig, AdminLevelTilingConfig
-        )
-
-        ds_tiling_configs = DatasetTilingConfig.objects.filter(
-            dataset=self.dataset
-        )
-        deleted_count, count_details = DatasetViewTilingConfig.objects.filter(
+        deleted_count, _ = DatasetViewTilingConfig.objects.filter(
             dataset_view=self
         ).delete()
-
-        # If deleted_count is 0, it means DatasetView does not have specific
-        # tiling config or use Dataset tiling config. We do not need to
-        # create tiling config for this DatasetView.
-        if deleted_count == 0:
-            return
-        for ds_tiling_config in ds_tiling_configs:
-            tiling_config = DatasetViewTilingConfig.objects.create(
-                dataset_view=self,
-                zoom_level=ds_tiling_config.zoom_level
-            )
-            ds_level_configs = AdminLevelTilingConfig.objects.filter(
-                dataset_tiling_config=ds_tiling_config
-            )
-            for level_config in ds_level_configs:
-                ViewAdminLevelTilingConfig.objects.create(
-                    view_tiling_config=tiling_config,
-                    level=level_config.level,
-                    simplify_tolerance=level_config.simplify_tolerance
-                )
         self.is_tiling_config_match = True
+        if deleted_count > 0:
+            self.set_out_of_sync(tiling_config=True, vector_tile=True)
         self.save()
 
     def __str__(self):
@@ -881,36 +865,29 @@ def view_res_post_save(sender, instance: DatasetViewResource,
     ]
 
     tiling_status_mapping = {
-        'Pending': DatasetView.DatasetViewStatus.PENDING,
-        'Error': DatasetView.DatasetViewStatus.ERROR,
-        'Processing': DatasetView.DatasetViewStatus.PROCESSING,
-        'Done': DatasetView.DatasetViewStatus.DONE,
+        'out_of_sync': DatasetView.DatasetViewStatus.PENDING,
+        'error': DatasetView.DatasetViewStatus.ERROR,
+        'syncing': DatasetView.DatasetViewStatus.PROCESSING,
+        'synced': DatasetView.DatasetViewStatus.DONE,
     }
 
-    sync_status_mapping = {
-        'Pending': DatasetView.SyncStatus.OUT_OF_SYNC,
-        'Error': DatasetView.SyncStatus.OUT_OF_SYNC,
-        'Processing': DatasetView.SyncStatus.SYNCING,
-        'Done': DatasetView.SyncStatus.SYNCED,
-    }
-
-    if tiling_status != 'Queued':
-        view.status = tiling_status_mapping[tiling_status]
-        view.vector_tile_sync_status = sync_status_mapping[tiling_status]
-        if view.vector_tile_sync_status not in ['Error', 'Done']:
-            view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
-        view.vector_tiles_progress = vt_progresss
-    else:
-        view.status = DatasetView.DatasetViewStatus.PENDING
-
-    if 'Processing' in product_status:
-        view.product_sync_status = sync_status_mapping['Processing']
+    view.status = tiling_status_mapping[tiling_status]
+    view.vector_tile_sync_status = tiling_status
+    if view.vector_tile_sync_status not in ['error', 'synced']:
         view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
-    elif 'Pending' in product_status or 'Error' in product_status:
-        view.product_sync_status = sync_status_mapping['Pending']
+    view.vector_tiles_progress = vt_progresss
+
+    if 'syncing' in product_status:
+        view.product_sync_status = DatasetView.SyncStatus.SYNCING
         view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
-    elif 'Done' in product_status:
-        view.product_sync_status = sync_status_mapping['Done']
+    elif 'error' in product_status:
+        view.product_sync_status = DatasetView.SyncStatus.ERROR
+        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
+    elif 'out_of_sync' in product_status:
+        view.product_sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
+        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
+    elif 'synced' in product_status:
+        view.product_sync_status = DatasetView.SyncStatus.SYNCED
     view.product_progress = sum(product_progress) / len(product_progress)
     view.save(update_fields=['status', 'vector_tile_sync_status',
                              'vector_tiles_progress', 'product_sync_status',
