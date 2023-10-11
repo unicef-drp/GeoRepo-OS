@@ -276,7 +276,7 @@ export default function ViewSync(props: ViewResourceInterface) {
                       <Grid item>
                         <TilingConfigStatus view={props.view} />
                       </Grid>
-                      { simplificationStatus.status === SyncStatus.OutOfSync && (
+                      { (simplificationStatus.status === SyncStatus.OutOfSync || simplificationStatus.status === SyncStatus.Error) && (
                         <Grid item>
                           <ThemeButton
                             variant={'secondary'}

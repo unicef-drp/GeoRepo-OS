@@ -386,23 +386,11 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def get_simplification_status(self, sync_status, simplification_progress):
-        status = ''
-        progress = '-'
-        if sync_status == 'synced':
-            status = 'synced'
-            progress = simplification_progress
-        elif sync_status == 'out_of_sync':
-            status = 'out_of_sync'
-        elif simplification_progress:
-            status = 'Processing'
-            if (
-                'finished' in simplification_progress or
-                '100.00%' in simplification_progress
-            ):
-                status = 'Done'
-            elif 'error' in simplification_progress:
-                status = 'Error'
-            progress = simplification_progress
+        status = sync_status
+        progress = (
+            round(simplification_progress, 2) if
+            simplification_progress is not None else 0
+        )
         return status, progress
 
     def get_dataset_status(self, obj: Dataset):
@@ -455,7 +443,7 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
             simplification_status, simplification_progress = (
                 self.get_simplification_status(
                     dataset.simplification_sync_status,
-                    dataset.simplification_progress)
+                    dataset.simplification_progress_num)
             )
             module = dataset.module.name
             sync_status = self.get_dataset_status(dataset)
@@ -473,13 +461,13 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
                 simplification_status, simplification_progress = (
                     self.get_simplification_status(
                         dataset_view.simplification_sync_status,
-                        dataset_view.simplification_progress)
+                        dataset_view.simplification_progress_num)
                 )
             else:
                 simplification_status, simplification_progress = (
                     self.get_simplification_status(
                         dataset_view.dataset.simplification_sync_status,
-                        dataset_view.dataset.simplification_progress)
+                        dataset_view.dataset.simplification_progress_num)
                 )
             sync_status = self.get_view_status(dataset_view)
         else:

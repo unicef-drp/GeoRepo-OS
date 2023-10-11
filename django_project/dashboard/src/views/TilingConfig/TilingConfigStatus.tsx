@@ -72,14 +72,14 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
     }, [])
 
     const getSimplificationStatus = () => {
-        if (simplificationStatus.status === 'Done' || simplificationStatus.status === 'synced') {
+        if (simplificationStatus.status === 'synced') {
             return (
                 <span className='tiling-status-desc-icon'>
                     <CheckCircleIcon color='success' fontSize='small' />
                     <span style={{marginLeft: '5px' }}>Done</span>
                 </span>
             )
-        } else if (simplificationStatus.status === 'Error') {
+        } else if (simplificationStatus.status === 'error') {
             return (
                 <span className='tiling-status-desc-icon'>
                     <ErrorIcon color='error' fontSize='small' />
@@ -98,9 +98,9 @@ export default function TilingConfigStatus(props: TilingConfigStatusInterface) {
         }
         return (
             <span className='tiling-status-desc-icon margin-left-small'>
-                {simplificationStatus.status === 'Processing' && <CircularProgress size={18} /> }
-                <span style={{marginLeft: '5px' }}>{simplificationStatus.status === 'Processing' && simplificationStatus.progress ? ` ${simplificationStatus.progress}`:''}</span>
-                {simplificationStatus.status === 'Processing' && <HtmlTooltip tooltipDescription={<p>Preview might be unavailable due to simplified geometries are being generated</p>} /> }
+                {simplificationStatus.status === 'syncing' && <CircularProgress size={18} /> }
+                <span style={{marginLeft: '5px' }}>{simplificationStatus.status === 'syncing' ? ` ${simplificationStatus.progress}%`:'Syncing'}</span>
+                {simplificationStatus.status === 'syncing' && <HtmlTooltip tooltipDescription={<p>Preview might be unavailable due to simplified geometries are being generated</p>} /> }
             </span>
         )
     }

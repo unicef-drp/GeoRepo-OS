@@ -257,9 +257,12 @@ class ApplyTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
         dataset.is_simplified = False
         dataset.sync_status = dataset.SyncStatus.OUT_OF_SYNC
         dataset.simplification_sync_status = dataset.SyncStatus.OUT_OF_SYNC
+        dataset.simplification_progress = ''
+        dataset.simplification_progress_num = 0
         dataset.save(update_fields=[
             'styles', 'style_source_name', 'is_simplified', 'sync_status',
-            'simplification_sync_status'
+            'simplification_sync_status', 'simplification_progress',
+            'simplification_progress_num'
         ])
         # trigger check affected views from dataset tiling config
         check_affected_views_from_tiling_config.delay(dataset.id)

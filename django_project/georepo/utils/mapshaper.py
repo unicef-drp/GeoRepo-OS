@@ -243,9 +243,11 @@ def simplify_for_dataset(
     dataset.simplification_progress = (
         'Entity simplification starts'
     )
+    dataset.simplification_progress_num = 0
     dataset.simplification_sync_status = Dataset.SyncStatus.SYNCING
     dataset.save(update_fields=['simplification_progress',
-                                'simplification_sync_status'])
+                                'simplification_sync_status',
+                                'simplification_progress_num'])
     logger.info(dataset.simplification_progress)
     tolerances = get_dataset_simplification(dataset)
     logger.info(tolerances)
@@ -260,7 +262,9 @@ def simplify_for_dataset(
         total_simplification += len(values)
     processed_count = 0
     dataset.simplification_progress = '0%'
-    dataset.save(update_fields=['simplification_progress'])
+    dataset.simplification_progress_num = 0
+    dataset.save(update_fields=['simplification_progress',
+                                'simplification_progress_num'])
     for level, values in tolerances.items():
         input_file = None
         try:
@@ -299,8 +303,10 @@ def simplify_for_dataset(
                     (100 * processed_count) / total_simplification
                 )
                 dataset.simplification_progress = f'{progress:.2f}%'
+                dataset.simplification_progress_num = progress
                 dataset.save(
-                    update_fields=['simplification_progress']
+                    update_fields=['simplification_progress',
+                                   'simplification_progress_num']
                 )
                 logger.info(f'Simplification for dataset {dataset} '
                             f'{progress:.2f}%')
@@ -332,8 +338,10 @@ def simplify_for_dataset(
                             (100 * processed_count) / total_simplification
                         )
                         dataset.simplification_progress = f'{progress:.2f}%'
+                        dataset.simplification_progress_num = progress
                         dataset.save(
-                            update_fields=['simplification_progress']
+                            update_fields=['simplification_progress',
+                                           'simplification_progress_num']
                         )
                         logger.info(f'Simplification for dataset {dataset} '
                                     f'{progress:.2f}%')
@@ -398,16 +406,20 @@ def simplify_for_dataset_view(
         view.simplification_progress = (
             f'Entity simplification finished for {view}'
         )
+        view.simplification_progress_num = 100
         view.simplification_sync_status = DatasetView.SyncStatus.SYNCED
         view.save(update_fields=['simplification_progress',
-                                 'simplification_sync_status'])
+                                 'simplification_sync_status',
+                                 'simplification_progress_num'])
         return True
     view.simplification_progress = (
         'Entity simplification starts'
     )
+    view.simplification_progress_num = 0
     view.simplification_sync_status = DatasetView.SyncStatus.SYNCING
     view.save(update_fields=['simplification_progress',
-                             'simplification_sync_status'])
+                             'simplification_sync_status',
+                             'simplification_progress_num'])
     logger.info(view.simplification_progress)
     total_simplification = 0
     for level, values in tolerances.items():
@@ -421,7 +433,9 @@ def simplify_for_dataset_view(
         total_simplification += len(values)
     processed_count = 0
     view.simplification_progress = '0%'
-    view.save(update_fields=['simplification_progress'])
+    view.simplification_progress_num = 0
+    view.save(update_fields=['simplification_progress',
+                             'simplification_progress_num'])
     for level, values in tolerances.items():
         input_file = None
         try:
@@ -461,8 +475,10 @@ def simplify_for_dataset_view(
                     (100 * processed_count) / total_simplification
                 )
                 view.simplification_progress = f'{progress:.2f}%'
+                view.simplification_progress_num = progress
                 view.save(
-                    update_fields=['simplification_progress']
+                    update_fields=['simplification_progress',
+                                   'simplification_progress_num']
                 )
                 logger.info(f'Simplification for view {view} '
                             f'{progress:.2f}%')
@@ -495,8 +511,10 @@ def simplify_for_dataset_view(
                             (100 * processed_count) / total_simplification
                         )
                         view.simplification_progress = f'{progress:.2f}%'
+                        view.simplification_progress_num = progress
                         view.save(
-                            update_fields=['simplification_progress']
+                            update_fields=['simplification_progress',
+                                           'simplification_progress_num']
                         )
                         logger.info(f'Simplification for view {view} '
                                     f'{progress:.2f}%')

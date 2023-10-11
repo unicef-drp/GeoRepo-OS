@@ -55,7 +55,8 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
                 dataset_view=obj
             )
         )
-        return tiling_status
+        statuses = dict(DatasetView.SyncStatus.choices)
+        return statuses[tiling_status] if tiling_status in statuses else ''
 
     def get_layer_tiles(self, obj: DatasetView):
         user = self.context.get('user', None)
@@ -277,8 +278,8 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
 
     def get_simplification_progress(self, obj: DatasetView):
         if obj.is_tiling_config_match:
-            return obj.dataset.simplification_progress
-        return obj.simplification_progress
+            return obj.dataset.simplification_progress_num
+        return obj.simplification_progress_num
 
     class Meta:
         model = DatasetView

@@ -196,6 +196,12 @@ class DatasetView(models.Model):
         blank=True
     )
 
+    simplification_progress_num = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
     simplification_current_task = models.ForeignKey(
         'georepo.BackgroundTask',
         null=True,
@@ -241,11 +247,13 @@ class DatasetView(models.Model):
         if has_custom_tiling_config:
             self.simplification_sync_status = self.SyncStatus.OUT_OF_SYNC
             self.simplification_progress = ''
+            self.simplification_progress_num = 0
         else:
             self.simplification_sync_status = (
                 self.dataset.simplification_sync_status
             )
             self.simplification_progress = ''
+            self.simplification_progress_num = 0
         dsv_resources = self.datasetviewresource_set.all()
         if tiling_config:
             # Only set tiling config as out of sync if DatasetView
