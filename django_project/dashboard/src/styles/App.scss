@@ -362,3 +362,9 @@ main {
     }
   }
 }
+
+p {
+  &.compact {
+    margin-block: 0;
+  }
+}

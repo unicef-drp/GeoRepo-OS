@@ -23,6 +23,7 @@ import { WizardStepInterface } from "../../models/upload";
 import {utcToLocalDateTimeString} from '../../utils/Helpers';
 import UploadActionStatus from "../../components/UploadActionStatus";
 import AlertMessage from '../../components/AlertMessage';
+import LinearProgressWithLabel from "../../components/LinearProgressWithLabel";
 
 const URL = '/api/entity-upload-status-list/'
 const READY_TO_REVIEW_URL = '/api/ready-to-review/'
@@ -157,8 +158,13 @@ const COLUMN_DESCRIPTION: {
 const STATUS_LIST = ['Not Completed', 'Queued', 'Processing', 'Error', 'Valid', 'Approved', 'Rejected', 'Error Processing']
 const INCOMPLETE_STATUS_LIST = ['Started', 'Queued', 'Processing']
 const IN_PROGRES_STATUS_LIST = ['Processing']
+const COMPLETED_STATUS_LIST = ['Error', 'Valid', 'Approved', 'Rejected', 'Error Processing']
 
 const DOWNLOAD_ERROR_REPORT_URL = '/api/entity-upload-error-download/'
+
+interface StatusSummaryDict {
+  [Key: string]: number;
+}
 
 export default function Step4(props: WizardStepInterface) {
   const [uploadData, setUploadData] = useState<any[]>([])
@@ -261,6 +267,9 @@ export default function Step4(props: WizardStepInterface) {
     }
   })
   const [addNotCompletedFilter, setAddNotCompletedFilter] = useState(false)
+  const [statusSummary, setStatusSummary] = useState<StatusSummaryDict>({})
+  const [jobSummaryText, setJobSummaryText] = useState('-')
+  const [jobSummaryProgress, setJobSummaryProgress] = useState(0)
 
   const getStatus = () => {
     axios.get(url).then(
@@ -293,14 +302,21 @@ export default function Step4(props: WizardStepInterface) {
           } else {
             props.setEditable(false)
           }
+          let _statusSummary:StatusSummaryDict = {}
           setUploadData(_results.map((responseData: any) => {
             const uploadRow: any = {}
             for (let key of Object.keys(responseData)) {
                 uploadRow[key] = responseData[key]
             }
+            if (responseData['status'] in _statusSummary) {
+              _statusSummary[responseData['status']] += 1
+            } else {
+              _statusSummary[responseData['status']] = 1
+            }
             uploadRow['started at'] = utcToLocalDateTimeString(new Date(uploadRow['started at']))
             return uploadRow
           }))
+          setStatusSummary(_statusSummary)
         }
       }
     )
@@ -329,6 +345,27 @@ export default function Step4(props: WizardStepInterface) {
   useEffect(() => {
     getStatus()
   }, [searchParams])
+
+  useEffect(() => {
+    let _totalJob = 0
+    let _completedJob = 0
+    let _summaries = []
+
+    for (const [key, value] of Object.entries(statusSummary)) {
+      _totalJob += value
+      _summaries.push(`${value} ${key.toLowerCase()}`)
+      if (COMPLETED_STATUS_LIST.indexOf(key) > -1) {
+        _completedJob += value
+      }
+    }
+    if (_totalJob > 0) {
+      setJobSummaryText(_summaries.join(', '))
+      setJobSummaryProgress(_completedJob * 100/_totalJob)
+    } else {
+      setJobSummaryProgress(0)
+      setJobSummaryText('-')
+    }
+  }, [statusSummary])
 
   const showError = async (id: any, errorSummariesData: any[], errorPath: string, is_importable: boolean) => {
     setErrorSummaries(errorSummariesData)
@@ -534,6 +571,19 @@ export default function Step4(props: WizardStepInterface) {
                 Back
               </Button>
             </Grid>
+            { !props.isReadOnly && (
+              <Grid item sx={{minWidth: '200px'}}>
+                <Grid container flexDirection={'column'}>
+                  <Grid item>
+                    <p className="compact">Job summary: {jobSummaryText}.</p>
+                    <p className="compact">Note: you can safely disconnect your computer while processing and return later to view progress</p>
+                  </Grid>
+                  <Grid item>
+                    <LinearProgressWithLabel value={jobSummaryProgress} />
+                  </Grid>
+                </Grid>
+              </Grid>
+            )}
             <Grid item>
               { !props.isReadOnly && (
                 <Button variant="contained"
