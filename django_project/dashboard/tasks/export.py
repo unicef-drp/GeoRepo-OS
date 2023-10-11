@@ -363,6 +363,34 @@ def generate_view_export_data(view_resource_id: str):
             ])
             clean_resource_export_data_directory(resource.resource_id)
             return
+        else:
+            resource.entity_count = entity_count
+            resource.status = (
+                DatasetView.DatasetViewStatus.PENDING
+            )
+            resource.geojson_progress = 0
+            resource.shapefile_progress = 0
+            resource.kml_progress = 0
+            resource.topojson_progress = 0
+            resource.geojson_sync_status = (
+                DatasetView.SyncStatus.SYNCING
+            )
+            resource.shapefile_sync_status = (
+                DatasetView.SyncStatus.SYNCING
+            )
+            resource.kml_sync_status = (
+                DatasetView.SyncStatus.SYNCING
+            )
+            resource.topojson_sync_status = (
+                DatasetView.SyncStatus.SYNCING
+            )
+            resource.save(update_fields=[
+                'entity_count', 'status', 'geojson_progress',
+                'shapefile_progress',
+                'kml_progress', 'topojson_progress',
+                'shapefile_sync_status', 'kml_sync_status',
+                'topojson_sync_status', 'geojson_sync_status'
+            ])
         logger.info(
             f'Extracting geojson from view {view.name} - '
             f'{resource.privacy_level}...'

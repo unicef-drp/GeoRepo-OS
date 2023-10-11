@@ -21,7 +21,8 @@ export default interface Dataset {
 export interface DatasetDetailItemInterface {
     dataset: Dataset,
     onDatasetUpdated: () => void,
-    isReadOnly?: boolean
+    isReadOnly?: boolean,
+    onSyncStatusShouldBeUpdated: () => void
 }
 
 export interface DatasetTabElementInterface {

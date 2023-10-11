@@ -175,7 +175,8 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
                     {DatasetDetailTab(tab.element, {
                       dataset: dataset,
                       onDatasetUpdated: fetchDatasetDetail,
-                      isReadOnly: !dataset.is_active
+                      isReadOnly: !dataset.is_active,
+                      onSyncStatusShouldBeUpdated: fetchTilingStatus
                     })}
                   </TabPanel>
                 })

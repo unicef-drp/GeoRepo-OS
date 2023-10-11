@@ -344,40 +344,14 @@ class DatasetView(models.Model):
 
     def match_tiling_config(self):
         from georepo.models.dataset_view_tile_config import (
-            DatasetViewTilingConfig,
-            ViewAdminLevelTilingConfig
+            DatasetViewTilingConfig
         )
-        from georepo.models.dataset_tile_config import (
-            DatasetTilingConfig, AdminLevelTilingConfig
-        )
-
-        ds_tiling_configs = DatasetTilingConfig.objects.filter(
-            dataset=self.dataset
-        )
-        deleted_count, count_details = DatasetViewTilingConfig.objects.filter(
+        deleted_count, _ = DatasetViewTilingConfig.objects.filter(
             dataset_view=self
         ).delete()
-
-        # If deleted_count is 0, it means DatasetView does not have specific
-        # tiling config or use Dataset tiling config. We do not need to
-        # create tiling config for this DatasetView.
-        if deleted_count == 0:
-            return
-        for ds_tiling_config in ds_tiling_configs:
-            tiling_config = DatasetViewTilingConfig.objects.create(
-                dataset_view=self,
-                zoom_level=ds_tiling_config.zoom_level
-            )
-            ds_level_configs = AdminLevelTilingConfig.objects.filter(
-                dataset_tiling_config=ds_tiling_config
-            )
-            for level_config in ds_level_configs:
-                ViewAdminLevelTilingConfig.objects.create(
-                    view_tiling_config=tiling_config,
-                    level=level_config.level,
-                    simplify_tolerance=level_config.simplify_tolerance
-                )
         self.is_tiling_config_match = True
+        if deleted_count > 0:
+            self.set_out_of_sync(tiling_config=True, vector_tile=True)
         self.save()
 
     def __str__(self):

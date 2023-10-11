@@ -20,9 +20,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import TilingConfigStatus from '../TilingConfig/TilingConfigStatus';
-import { SyncStatus, StatusAndProgress } from '../../models/syncStatus';
-import { fetchSyncStatusAPI } from '../../utils/api/TilingStatus';
-import {updateViewTabStatuses} from "../../reducers/viewTabs";
+import { SyncStatus } from '../../models/syncStatus';
 
 
 interface ViewResourceInterface {
@@ -107,7 +105,7 @@ export default function ViewSync(props: ViewResourceInterface) {
             if (rowData[i] === 'out_of_sync') {
               return (
                 <span className='sync-status-desc-container'>
-                  <span><SyncProblemIcon color='warning' fontSize='small' /></span>
+                  <SyncProblemIcon color='warning' fontSize='small' />
                   <span className='sync-status-desc'>{`Out of sync`}</span>
                 </span>
               )
@@ -115,7 +113,7 @@ export default function ViewSync(props: ViewResourceInterface) {
               return (
                 <span className='running-status'>
                     <span className='sync-status-desc-container'>
-                      <span><SyncIcon color='info' fontSize='small' /></span>
+                      <SyncIcon color='info' fontSize='small' />
                       <span className='sync-status-desc'>{`Actively being processed`}</span>                      
                     </span>
                     <LinearProgress variant="determinate" value={rowData[i+5]} />
@@ -124,21 +122,21 @@ export default function ViewSync(props: ViewResourceInterface) {
             } else if (rowData[i] === 'syncing' || rowData[i] === 'Queued') {
               return (
                 <span className='sync-status-desc-container'>
-                  <span><HourglassEmptyIcon color='info' fontSize='small' /></span>
+                  <HourglassEmptyIcon color='info' fontSize='small' />
                   <span className='sync-status-desc'>{`Queued but not running yet`}</span>
                 </span>
               )
-            } else if (rowData[i] === 'Stopped') {
+            } else if (rowData[i] === 'Stopped' || rowData[i] === 'error') {
               return (
                 <span className='sync-status-desc-container'>
-                  <span><ErrorIcon color='error' fontSize='small' /></span>
+                  <ErrorIcon color='error' fontSize='small' />
                   <span className='sync-status-desc'>{`Terminated unexpectedly`}</span>
                 </span>
               )
             } else {
               return (
                 <span className='sync-status-desc-container'>
-                  <span><CheckCircleIcon color='success' fontSize='small' /></span>
+                  <CheckCircleIcon color='success' fontSize='small' />
                   <span className='sync-status-desc'>{`Completed successfully (${rowData[i+10]})`}</span>
                 </span>
               )
@@ -215,9 +213,7 @@ export default function ViewSync(props: ViewResourceInterface) {
         setLoading(false)
         setConfirmMessage('Successfully submitting data regeneration. Your request will be processed in the background.')
         fetchViewResource()
-        if (syncOptions.includes('simplify')) {
-          props.onSyncStatusShouldBeUpdated()
-        }
+        props.onSyncStatusShouldBeUpdated()
       }).catch(error => {
         if (!axios.isCancel(error)) {
           console.log(error)
@@ -291,6 +287,7 @@ export default function ViewSync(props: ViewResourceInterface) {
                           variant={'secondary'}
                           onClick={regenerateVectorTiles}
                           title={'Regenerate Vector Tiles'}
+                          disabledTitle='Please trigger simplification before regenerate vector tiles!'
                           disabled={simplificationStatus.status !== SyncStatus.Synced}
                           icon={null}
                         />

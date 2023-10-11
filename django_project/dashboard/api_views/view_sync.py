@@ -409,10 +409,10 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
         all_status = vt_sync_status.union(product_sync_status)
         if all_status == {obj.SyncStatus.SYNCED}:
             return obj.SyncStatus.SYNCED
-        elif all_status == {obj.SyncStatus.OUT_OF_SYNC}:
-            return obj.SyncStatus.OUT_OF_SYNC
         elif obj.SyncStatus.SYNCING in all_status:
             return obj.SyncStatus.SYNCING
+        elif obj.SyncStatus.OUT_OF_SYNC in all_status:
+            return obj.SyncStatus.OUT_OF_SYNC
         return obj.SyncStatus.SYNCED
     
     def get_view_status(self, obj: DatasetView):
