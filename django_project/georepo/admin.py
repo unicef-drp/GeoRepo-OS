@@ -513,7 +513,8 @@ def fix_view_entity_count(modeladmin, request, queryset):
 class DatasetViewAdmin(GuardedModelAdmin):
     list_display = (
         'name', 'dataset', 'is_static', 'min_privacy_level',
-        'max_privacy_level', 'tiling_status', 'uuid')
+        'max_privacy_level', 'tiling_status', 
+        'vector_tile_sync_status', 'product_sync_status', 'uuid')
     search_fields = ['name', 'dataset__label', 'uuid']
     list_filter = ["dataset"]
     actions = [generate_view_vector_tiles, create_sql_view_action,
@@ -751,8 +752,8 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
         def size(obj: DatasetViewResource):
             return convert_size(obj.vector_tiles_size)
         return ('dataset_view', 'privacy_level', 'entity_count', 'uuid',
-                'status', 'vector_tiles_progress', size,
-                layer_preview)
+                'status', 'vector_tile_sync_status',
+                'vector_tiles_progress', size, layer_preview)
 
 
 class DatasetViewResourceLogAdmin(admin.ModelAdmin):
