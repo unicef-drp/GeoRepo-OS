@@ -7,6 +7,7 @@ from georepo.tests.model_factories import (
 from dashboard.tests.model_factories import LayerFileF, LayerUploadSessionF
 from dashboard.tools.validate_layer_file_0 import \
     validate_layer_file_0, preprocess_layer_file_0
+from georepo.utils.layers import read_layer_files_entity_temp
 
 
 class TestValidateLayerFile0(TestCase):
@@ -94,6 +95,7 @@ class TestValidateLayerFile0(TestCase):
             is_approved=True,
             internal_code='AGO'
         )
+        read_layer_files_entity_temp(upload_session)
         entity_uploads = preprocess_layer_file_0(upload_session)
         self.assertEqual(len(entity_uploads), 2)
         self.assertTrue(entity_uploads[0].original_geographical_entity)
