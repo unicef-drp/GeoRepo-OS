@@ -1,9 +1,7 @@
 import time
-import json
 from typing import Tuple
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
-from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from core.celery import app
 from dashboard.models.layer_upload_session import (
     LayerUploadSession, PRE_PROCESSING, PENDING, CANCELED
@@ -24,92 +22,7 @@ from dashboard.tools.admin_level_names import (
     fetch_default_dataset_admin_level_names,
     fetch_dataset_admin_level_names_prev_revision
 )
-from georepo.utils.fiona_utils import (
-    open_collection_by_file,
-    delete_tmp_shapefile
-)
-from georepo.utils.layers import get_feature_value
-
-
-def read_temp_layer_file(upload_session: LayerUploadSession,
-                         layer_file: LayerFile):
-    """Read layer file and store to EntityTemp table."""
-    level = int(layer_file.level)
-    # clear existing
-    existing_entities = EntityTemp.objects.filter(
-        level=level,
-        layer_file=layer_file,
-        upload_session=upload_session
-    )
-    existing_entities._raw_delete(existing_entities.db)
-    if not layer_file.layer_file.storage.exists(layer_file.layer_file.name):
-        return
-    id_field = (
-        [id_field['field'] for id_field in layer_file.id_fields
-            if id_field['default']][0]
-    )
-    name_field = (
-        [name_field['field'] for name_field in layer_file.name_fields
-            if name_field['default']][0]
-    )
-    with open_collection_by_file(layer_file.layer_file,
-                                 layer_file.layer_type) as features:
-        data = []
-        for feature_idx, feature in enumerate(features):
-            # default code
-            entity_id = get_feature_value(
-                feature, id_field
-            )
-            # default name
-            entity_name = get_feature_value(
-                feature, name_field
-            )
-            # parent code
-            feature_parent_code = None
-            # find ancestor
-            ancestor = None
-            if level > 0:
-                feature_parent_code = (
-                    get_feature_value(
-                        feature, layer_file.parent_id_field
-                    )
-                )
-                if feature_parent_code:
-                    if level == 1:
-                        ancestor = feature_parent_code
-                    else:
-                        parent = EntityTemp.objects.filter(
-                            upload_session=upload_session,
-                            level=level - 1,
-                            entity_id=feature_parent_code
-                        ).first()
-                        if parent:
-                            ancestor = parent.ancestor_entity_id
-            # add geom
-            # create geometry
-            geom_str = json.dumps(feature['geometry'])
-            geom = GEOSGeometry(geom_str)
-            if isinstance(geom, Polygon):
-                geom = MultiPolygon([geom])
-            data.append(
-                EntityTemp(
-                    level=level,
-                    layer_file=layer_file,
-                    upload_session=upload_session,
-                    feature_index=feature_idx,
-                    entity_name=entity_name,
-                    entity_id=entity_id,
-                    parent_entity_id=feature_parent_code,
-                    ancestor_entity_id=ancestor,
-                    geometry=geom
-                )
-            )
-            if len(data) == 5:
-                EntityTemp.objects.bulk_create(data, batch_size=5)
-                data.clear()
-        if len(data) > 0:
-            EntityTemp.objects.bulk_create(data)
-        delete_tmp_shapefile(features.path)
+from georepo.utils.layers import read_temp_layer_file
 
 
 def is_valid_upload_session(

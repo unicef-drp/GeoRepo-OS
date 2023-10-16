@@ -16,9 +16,7 @@ from dashboard.tests.model_factories import LayerFileF, LayerUploadSessionF
 from dashboard.tools.validate_layer_file_0 import (
     preprocess_layer_file_0
 )
-from modules.admin_boundaries.upload_preprocessing import (
-    read_temp_layer_file
-)
+from georepo.utils.layers import read_temp_layer_file
 from modules.admin_boundaries.entity_parent_matching import (
     do_search_parent_entity_by_geometry,
     do_process_layer_files_for_parent_matching,

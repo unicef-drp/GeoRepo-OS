@@ -33,6 +33,7 @@ from georepo.validation.layer_validation import (
     read_layer_files
 )
 from georepo.tasks.validation import find_entity_upload
+from georepo.utils.layers import read_layer_files_entity_temp
 
 ERROR_REPORT_PATH = '/home/web/django_project/georepo/error_reports/'
 
@@ -652,7 +653,8 @@ class TestValidation(TestCase):
                               'geojson_dataset', 'level_0.geojson')
             )
         )
-        result = retrieve_layer0_default_codes(upload_session)
+        read_layer_files_entity_temp(upload_session)
+        result = retrieve_layer0_default_codes(upload_session, overwrite=True)
         self.assertEqual(len(result), 1)
         pak = [d for d in result if d['layer0_id'] == 'PAK']
         self.assertEqual(len(pak), 1)

@@ -9,7 +9,8 @@ from dashboard.models import (
     LayerUploadSession,
     CANCELED,
     LayerUploadSessionMetadata,
-    LayerFile
+    LayerFile,
+    EntityTemp
 )
 from dashboard.models.entity_upload import EntityUploadStatus
 from georepo.utils.module_import import module_function
@@ -231,32 +232,19 @@ def retrieve_layer0_default_codes(
         if session_metadata and session_metadata.adm0_default_codes:
             return session_metadata.adm0_default_codes
     layer_file: LayerFile = layer_files.first()
-    id_field = (
-        [id_field['field'] for id_field in layer_file.id_fields
-            if id_field['default']][0]
+    entity_temps = EntityTemp.objects.filter(
+        layer_file=layer_file
     )
-    name_field = (
-        [name_field['field'] for name_field in layer_file.name_fields
-            if name_field['default']][0]
-    )
-    if not layer_file.layer_file.storage.exists(layer_file.layer_file.name):
-        return layer0_default_codes
-    with open_collection_by_file(layer_file.layer_file,
-                                 layer_file.layer_type) as features:
-        for feature in features:
-            layer0_default_codes.append({
-                'id': str(uuid.uuid4()),
-                'country': get_feature_value(feature, name_field, 'Unknown'),
-                'layer0_id': (
-                    str(feature['properties'][id_field]) if
-                    id_field in feature['properties'] else None
-                ),
-                'country_entity_id': None,
-                'layer0_file': layer_file.layer_file.name.split('/')[-1],
-                'revision': None,
-                'max_level': default_max_level
-            })
-        delete_tmp_shapefile(features.path)
+    for entity_temp in entity_temps:
+        layer0_default_codes.append({
+            'id': str(uuid.uuid4()),
+            'country': entity_temp.entity_name,
+            'layer0_id': entity_temp.entity_id,
+            'country_entity_id': None,
+            'layer0_file': layer_file.layer_file.name.split('/')[-1],
+            'revision': None,
+            'max_level': default_max_level
+        })
     session_metadata, _ = LayerUploadSessionMetadata.objects.get_or_create(
         session=upload_session
     )
