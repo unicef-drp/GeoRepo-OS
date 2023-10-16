@@ -73,7 +73,7 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
                 privacy_level__lte=privacy_level,
                 entity_count__gt=0
             ).first()
-            if resource:
+            if resource and resource.vector_tiles_size > 0:
                 updated_at = (
                     int(resource.vector_tiles_updated_at.timestamp())
                 )
@@ -83,7 +83,7 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
                     f'?t={updated_at}&'
                     'token={{YOUR_TOKEN}}&georepo_user_key={{YOUR_EMAIL}}'
                 )
-        return '-'
+        return None
 
     def get_layer_preview(self, obj: DatasetView):
         user = self.context.get('user', None)
@@ -100,7 +100,7 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
                 privacy_level__lte=privacy_level,
                 entity_count__gt=0
             ).first()
-            if resource:
+            if resource and resource.vector_tiles_size > 0:
                 return f'/layer-test/?dataset_view_resource={str(resource.id)}'
         return None
 
@@ -333,13 +333,14 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
             obj.vector_tile_sync_status ==
             DatasetViewResource.SyncStatus.SYNCING
         ):
-            if obj.tiling_current_task:
+            # task status may be empty when it is still in broker
+            if obj.tiling_current_task and obj.tiling_current_task.status:
                 return obj.tiling_current_task.status
         return obj.vector_tile_sync_status
 
     def product_sync_status(self, obj: DatasetViewResource, default: str):
         if default == DatasetViewResource.SyncStatus.SYNCING:
-            if obj.product_current_task:
+            if obj.product_current_task and obj.product_current_task.status:
                 return obj.product_current_task.status
         return default
 

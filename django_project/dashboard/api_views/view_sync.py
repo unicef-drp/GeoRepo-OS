@@ -423,10 +423,10 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
             all_status.append(obj.product_sync_status)
         if all_status == [obj.SyncStatus.SYNCED]:
             return obj.SyncStatus.SYNCED
-        elif obj.SyncStatus.OUT_OF_SYNC in all_status:
-            return obj.SyncStatus.OUT_OF_SYNC
         elif obj.SyncStatus.SYNCING in all_status:
             return obj.SyncStatus.SYNCING
+        elif obj.SyncStatus.OUT_OF_SYNC in all_status:
+            return obj.SyncStatus.OUT_OF_SYNC
         return obj.SyncStatus.SYNCED
 
     def get(self, request, *args, **kwargs):

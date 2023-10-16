@@ -104,33 +104,44 @@ function ViewPopover(props: any) {
       <Grid item>
         <Typography sx={{pb: 1}}>Layer Tiles:</Typography>
       </Grid>
+      {props.view.layer_tiles &&
       <Grid item>
-        <Grid container flexDirection={'row'} justifyContent={'space-between'} spacing={2}>
+        <Grid container flexDirection={'row'} justifyContent={'space-between'} spacing={2} sx={{pb: 1}}>
           <Grid item>
-            <Button variant={'outlined'} onClick={() => copyToClipboard(props.view.layer_tiles)}>Copy Vector Tile URL</Button>
+            {props.view.layer_tiles && (
+              <Button variant={'outlined'} onClick={() => copyToClipboard(props.view.layer_tiles)}>Copy Vector Tile URL</Button>
+            )}            
           </Grid>
           <Grid item>
-            <Button variant={'outlined'} href={props.view.layer_preview} target='_blank'>Preview</Button>
+            {props.view.layer_preview && (
+              <Button variant={'outlined'} href={props.view.layer_preview} target='_blank'>Preview</Button>
+            )}
           </Grid>
         </Grid>
       </Grid>
+      }
+      {!props.view.layer_tiles &&
       <Grid item>
-        <Grid container flexDirection={'row'} justifyContent={'space-between'} spacing={2}>
+        <Typography sx={{pb: 1}}>Tiles not available yet. Go to sync tab to generate.</Typography>
+      </Grid>
+      }
+      {props.view.layer_tiles &&
+      <Grid item>
+        <Grid container flexDirection={'column'}>
           <Grid item>
             <Typography sx={{pb: 1}}>Logs:</Typography>
           </Grid>
+          <Grid item>
+            <Button
+              variant={'outlined'}
+              onClick={() => window.open(`/api/logs/dataset_view/${props.view.id}`, '_blank')}
+            >
+              Logs
+            </Button>
+          </Grid>
         </Grid>
       </Grid>
-      <Grid item>
-        <Grid item>
-          <Button
-            variant={'outlined'}
-            onClick={() => window.open(`/api/logs/dataset_view/${props.view.id}`, '_blank')}
-          >
-            Logs
-          </Button>
-        </Grid>
-      </Grid>
+      }
     </Grid>
   )
 }
