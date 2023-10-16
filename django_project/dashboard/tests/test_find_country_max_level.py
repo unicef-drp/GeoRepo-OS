@@ -1,7 +1,10 @@
 from django.test import TestCase, override_settings
 
 from core.settings.utils import absolute_path
+from django.db.models import IntegerField
+from django.db.models.functions import Cast
 from georepo.models.id_type import IdType
+from dashboard.models.layer_file import LayerFile
 from dashboard.models.entity_upload import (
     EntityUploadStatus
 )
@@ -16,6 +19,9 @@ from dashboard.tests.model_factories import (
 from dashboard.tools.find_country_max_level import (
     find_country_max_level
 )
+from modules.admin_boundaries.upload_preprocessing import (
+    read_temp_layer_file
+)
 
 
 class TestFindCountryMaxLevel(TestCase):
@@ -25,6 +31,15 @@ class TestFindCountryMaxLevel(TestCase):
         self.idType = IdType.objects.create(
             name='PCode'
         )
+
+    def read_temp_entities(self, upload_session):
+        layer_files = LayerFile.objects.annotate(
+        level_int=Cast('level', IntegerField())
+        ).filter(
+            layer_upload_session=upload_session
+        ).order_by('level_int')
+        for layer_file in layer_files:
+            read_temp_layer_file(upload_session, layer_file)
 
     @override_settings(MEDIA_ROOT='/home/web/django_project/georepo')
     def test_find_country_max_level(self):
@@ -83,6 +98,7 @@ class TestFindCountryMaxLevel(TestCase):
                 }
             ],
         )
+        self.read_temp_entities(upload_session)
         geo_1 = GeographicalEntityF.create(
             dataset=upload_session.dataset,
             level=0,
@@ -168,6 +184,7 @@ class TestFindCountryMaxLevel(TestCase):
                               'geojson_dataset', 'level_1_1.geojson')
             )
         )
+        self.read_temp_entities(upload_session)
         geo_1 = GeographicalEntityF.create(
             dataset=upload_session.dataset,
             level=0,
