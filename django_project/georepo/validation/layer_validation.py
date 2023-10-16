@@ -14,7 +14,6 @@ from dashboard.models import (
 )
 from dashboard.models.entity_upload import EntityUploadStatus
 from georepo.utils.module_import import module_function
-from georepo.utils.layers import get_feature_value
 from georepo.utils.fiona_utils import (
     open_collection_by_file,
     delete_tmp_shapefile

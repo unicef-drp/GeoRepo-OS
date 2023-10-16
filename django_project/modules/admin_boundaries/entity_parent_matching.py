@@ -1,9 +1,8 @@
 import time
 from typing import Tuple, List
-import json
 import logging
 
-from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
+from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.db.models.functions import Intersection, Area
 from django.db.models import (
     FloatField, ExpressionWrapper
@@ -16,12 +15,7 @@ from dashboard.models import (
     LayerFile,
     EntityTemp
 )
-from georepo.utils.layers import get_feature_value
 from georepo.utils.unique_code import get_latest_revision_number
-from georepo.utils.fiona_utils import (
-    open_collection_by_file,
-    delete_tmp_shapefile
-)
 
 
 logger = logging.getLogger(__name__)
@@ -147,10 +141,17 @@ def do_process_layer_files_for_parent_matching(
                 ),
                 feature_index=temp_entity.feature_index
             )
-            if temp_entity.parent_entity_id != matched_parent_entity.internal_code:
+            if (
+                temp_entity.parent_entity_id !=
+                matched_parent_entity.internal_code
+            ):
                 # update EntityTemp level 1 and above
-                temp_entity.parent_entity_id = matched_parent_entity.internal_code
-                temp_entity.ancestor_entity_id = matched_parent_entity.internal_code
+                temp_entity.parent_entity_id = (
+                    matched_parent_entity.internal_code
+                )
+                temp_entity.ancestor_entity_id = (
+                    matched_parent_entity.internal_code
+                )
                 temp_entity.is_parent_rematched = True
                 temp_entity.overlap_percentage = overlap_percentage
                 temp_entity.save(update_fields=['parent_entity_id',
@@ -246,10 +247,17 @@ def do_process_layer_files_for_parent_matching_level0(
                 ),
                 feature_index=temp_entity.feature_index
             )
-            if temp_entity.parent_entity_id != matched_parent_entity.entity_id:
+            if (
+                temp_entity.parent_entity_id !=
+                matched_parent_entity.entity_id
+            ):
                 # update EntityTemp level 1 and above
-                temp_entity.parent_entity_id = matched_parent_entity.entity_id
-                temp_entity.ancestor_entity_id = matched_parent_entity.entity_id
+                temp_entity.parent_entity_id = (
+                    matched_parent_entity.entity_id
+                )
+                temp_entity.ancestor_entity_id = (
+                    matched_parent_entity.entity_id
+                )
                 temp_entity.is_parent_rematched = True
                 temp_entity.overlap_percentage = overlap_percentage
                 temp_entity.save(update_fields=['parent_entity_id',

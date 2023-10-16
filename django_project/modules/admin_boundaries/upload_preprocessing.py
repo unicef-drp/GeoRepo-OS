@@ -1,13 +1,10 @@
 import time
 from typing import Tuple
-from django.db.models import IntegerField
-from django.db.models.functions import Cast
 from core.celery import app
 from dashboard.models.layer_upload_session import (
     LayerUploadSession, PRE_PROCESSING, PENDING, CANCELED
 )
 from dashboard.models.entity_upload import EntityTemp
-from dashboard.models.layer_file import LayerFile
 from modules.admin_boundaries.entity_parent_matching import (
     do_process_layer_files_for_parent_matching,
     do_process_layer_files_for_parent_matching_level0
@@ -118,7 +115,7 @@ def prepare_validation(
                 )
             )
         else:
-            entity_upload.admin_level_names = default_adm_level_names        
+            entity_upload.admin_level_names = default_adm_level_names
         entity_upload.save(update_fields=['admin_level_names'])
     # find max level for each country
     find_country_max_level(
