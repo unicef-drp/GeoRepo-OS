@@ -79,77 +79,56 @@ class LayerTestView(UserPassesTestMixin, TemplateView):
                 return False
         return True
 
+    def validate_resource_id(self, resource_id_any):
+        resource_id = 0
+        try:
+            resource_id = int(resource_id_any)
+        except ValueError:
+            pass
+        return resource_id
+
     def get_context_data(self, **kwargs):
         ctx = super(LayerTestView, self).get_context_data(**kwargs)
-        dataset_string = self.request.GET.get('dataset')
-        dataset_view = self.request.GET.get('dataset_view')
-        dataset_view_resource = self.request.GET.get('dataset_view_resource')
+        resource_id_any = self.request.GET.get('dataset_view_resource')
+        dataset_view_resource = self.validate_resource_id(resource_id_any)
         entity_type = None
         dataset = None
-        if (not dataset_string and not dataset_view and
-                not dataset_view_resource):
+        ctx['max_zoom'] = 8
+        if not dataset_view_resource:
+            ctx['page_error'] = 'Please enter valid resource id!'
             return ctx
-
-        if dataset_string:
-            dataset = Dataset.objects.filter(
-                label__iexact=dataset_string
-            ).first()
-            entity = dataset.geographicalentity_set.filter(
-                level=0
-            ).first()
-            ctx['label'] = dataset.label.replace(' ', '_')
-            ctx['dataset'] = dataset
-            ctx['vector_tiles_path'] = dataset.vector_tiles_path
-            ctx['center'] = json.loads(entity.geometry.centroid.json)
-            levels = dataset.geographicalentity_set.values_list(
-                'level', flat=True).order_by('-level').distinct()
-            # add max zoom
-            ctx['max_zoom'] = 8
-        else:
-            if dataset_view_resource:
-                dataset_view_resource = DatasetViewResource.objects.get(
-                    id=dataset_view_resource
-                )
-                ctx['vector_tiles_path'] = (
-                    '/layer_tiles/{name}/{{z}}/{{x}}/{{y}}?t={time}'.format(
-                        name=dataset_view_resource.uuid,
-                        time=int(time.time())
-                    )
-                )
-                dataset_view = dataset_view_resource.dataset_view
-                if dataset_view_resource.bbox:
-                    ctx['bbox'] = dataset_view_resource.bbox.split(',')
-            else:
-                dataset_view = DatasetView.objects.get(
-                    id=dataset_view
-                )
-                ctx['vector_tiles_path'] = (
-                    '/layer_tiles/{name}/{{z}}/{{x}}/{{y}}?t={time}'.format(
-                        name=dataset_view.uuid,
-                        time=int(time.time())
-                    )
-                )
-                ctx['bbox'] = dataset_view.bbox.split(',')
-            ctx['label'] = dataset_view.name.replace(' ', '_')
-            ctx['center'] = ''
-            # count levels
-            entities = GeographicalEntity.objects.filter(
-                dataset=dataset_view.dataset,
-                is_approved=True
+        dataset_view_resource = DatasetViewResource.objects.get(
+            id=dataset_view_resource
+        )
+        ctx['vector_tiles_path'] = (
+            '/layer_tiles/{name}/{{z}}/{{x}}/{{y}}?t={time}'.format(
+                name=dataset_view_resource.uuid,
+                time=int(time.time())
             )
-            # raw_sql to view to select id
-            raw_sql = (
-                'SELECT id from "{}"'
-            ).format(str(dataset_view.uuid))
-            entities = entities.filter(
-                id__in=RawSQL(raw_sql, [])
-            )
-            levels = entities.order_by('-level').values_list(
-                'level',
-                flat=True
-            ).distinct()
-            # add max zoom
-            ctx['max_zoom'] = get_max_zoom_level(dataset_view)
+        )
+        dataset_view = dataset_view_resource.dataset_view
+        if dataset_view_resource.bbox:
+            ctx['bbox'] = dataset_view_resource.bbox.split(',')
+        ctx['label'] = dataset_view.name.replace(' ', '_')
+        ctx['center'] = ''
+        # count levels
+        entities = GeographicalEntity.objects.filter(
+            dataset=dataset_view.dataset,
+            is_approved=True
+        )
+        # raw_sql to view to select id
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(dataset_view.uuid))
+        entities = entities.filter(
+            id__in=RawSQL(raw_sql, [])
+        )
+        levels = entities.order_by('-level').values_list(
+            'level',
+            flat=True
+        ).distinct()
+        # add max zoom
+        ctx['max_zoom'] = get_max_zoom_level(dataset_view)
 
         ctx['layer_tiles_base_url'] = settings.LAYER_TILES_BASE_URL
         if settings.DEBUG:

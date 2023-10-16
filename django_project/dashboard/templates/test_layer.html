@@ -38,6 +38,13 @@
   </div>
   <script>
     $(function() {
+      var pageError = {% if page_error %} '{{ page_error }}' {% else %} false {% endif %}
+      if (pageError) {
+        alert(pageError)
+        window.location = '/';
+        return;
+      }
+
       var dialog, form,
         apiKey = $( "#apikey" );
       
