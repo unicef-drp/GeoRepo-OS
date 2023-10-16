@@ -73,7 +73,7 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
                 privacy_level__lte=privacy_level,
                 entity_count__gt=0
             ).first()
-            if resource:
+            if resource and resource.vector_tiles_size > 0:
                 updated_at = (
                     int(resource.vector_tiles_updated_at.timestamp())
                 )
@@ -83,7 +83,7 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
                     f'?t={updated_at}&'
                     'token={{YOUR_TOKEN}}&georepo_user_key={{YOUR_EMAIL}}'
                 )
-        return '-'
+        return None
 
     def get_layer_preview(self, obj: DatasetView):
         user = self.context.get('user', None)
@@ -100,7 +100,7 @@ class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
                 privacy_level__lte=privacy_level,
                 entity_count__gt=0
             ).first()
-            if resource:
+            if resource and resource.vector_tiles_size > 0:
                 return f'/layer-test/?dataset_view_resource={str(resource.id)}'
         return None
 
