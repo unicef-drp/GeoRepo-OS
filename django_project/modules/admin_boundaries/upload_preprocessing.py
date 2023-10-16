@@ -21,7 +21,8 @@ from dashboard.tools.find_country_max_level import (
     find_country_max_level
 )
 from dashboard.tools.admin_level_names import (
-    get_admin_level_names_for_upload
+    fetch_default_dataset_admin_level_names,
+    fetch_dataset_admin_level_names_prev_revision
 )
 from georepo.utils.fiona_utils import (
     open_collection_by_file,
@@ -198,13 +199,20 @@ def prepare_validation(
             upload_session,
             **kwargs
         )
+    default_adm_level_names = fetch_default_dataset_admin_level_names(
+        upload_session.dataset
+    )
     for entity_upload in entity_uploads:
-        adm_level_names = get_admin_level_names_for_upload(
-            upload_session.dataset,
-            entity_upload.original_geographical_entity
-        )
-        entity_upload.admin_level_names = adm_level_names
-        entity_upload.save()
+        if entity_upload.original_geographical_entity:
+            entity_upload.admin_level_names = (
+                fetch_dataset_admin_level_names_prev_revision(
+                    upload_session.dataset,
+                    entity_upload.original_geographical_entity
+                )
+            )
+        else:
+            entity_upload.admin_level_names = default_adm_level_names        
+        entity_upload.save(update_fields=['admin_level_names'])
     # find max level for each country
     find_country_max_level(
         upload_session,

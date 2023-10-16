@@ -4,22 +4,6 @@ from georepo.models.dataset import Dataset, DatasetAdminLevelName
 from georepo.models.entity import GeographicalEntity
 
 
-def get_admin_level_names_for_upload(
-        dataset: Dataset,
-        prev_ancestor: GeographicalEntity):
-    """
-    Return admin level names for current upload
-    Try to fetch from prev version in dataset
-    If not exists, then use default dataset config
-    """
-    if prev_ancestor:
-        return fetch_dataset_admin_level_names_prev_revision(
-            dataset,
-            prev_ancestor
-        )
-    return fetch_default_dataset_admin_level_names(dataset)
-
-
 def fetch_default_dataset_admin_level_names(dataset: Dataset):
     names = DatasetAdminLevelName.objects.filter(
         dataset=dataset
