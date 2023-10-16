@@ -22,7 +22,7 @@ from dashboard.tools.admin_level_names import (
     fetch_default_dataset_admin_level_names,
     fetch_dataset_admin_level_names_prev_revision
 )
-from georepo.utils.layers import read_temp_layer_file
+from georepo.utils.layers import read_layer_files_entity_temp
 
 
 def is_valid_upload_session(
@@ -78,13 +78,7 @@ def prepare_validation(
     upload_session.progress = ''
     upload_session.save(update_fields=['auto_matched_parent_ready',
                                        'status', 'progress'])
-    layer_files = LayerFile.objects.annotate(
-        level_int=Cast('level', IntegerField())
-    ).filter(
-        layer_upload_session=upload_session
-    ).order_by('level_int')
-    for layer_file in layer_files:
-        read_temp_layer_file(upload_session, layer_file)
+    read_layer_files_entity_temp(upload_session)
     # check if upload from level 0
     is_level0_upload = upload_session.layerfile_set.filter(
         level=0

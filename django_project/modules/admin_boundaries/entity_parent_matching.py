@@ -62,7 +62,6 @@ def do_search_parent_entity_by_geometry(
 
 def do_search_parent_entity_by_geometry_for_level0(
     geometry: GEOSGeometry,
-    dataset: Dataset,
     layer_file: LayerFile,
     **kwargs
 ) -> Tuple[EntityTemp, float]:
@@ -101,108 +100,83 @@ def do_process_layer_files_for_parent_matching(
     if not layer_files.exists():
         return
     layer_file = layer_files.first()
-    id_field = (
-        [id_field['field'] for id_field in layer_file.id_fields
-            if id_field['default']][0]
-    )
-    name_field = (
-        [name_field['field'] for name_field in layer_file.name_fields
-            if name_field['default']][0]
-    )
     total_no_match = 0
     results = []
-    with open_collection_by_file(layer_file.layer_file,
-                                 layer_file.layer_type) as features:
-        total_features = len(features)
+    temp_entities = EntityTemp.objects.filter(
+        upload_session=upload_session,
+        layer_file=layer_file
+    ).order_by('feature_index')
+    total_features = temp_entities.count()
+    upload_session.progress = (
+        'Auto parent matching admin level 1 entities '
+        f'(0/{total_features})'
+    )
+    upload_session.save(update_fields=['progress'])
+    for temp_entity in temp_entities:
+        parent_entity_id = temp_entity.parent_entity_id
+        # do search
+        matched_parent_entity, overlap_percentage = (
+            do_search_parent_entity_by_geometry(
+                temp_entity.geometry,
+                upload_session.dataset,
+                **kwargs
+            )
+        )
+        entity_upload = None
+        if matched_parent_entity:
+            entity_upload, _ = (
+                EntityUploadStatus.objects.update_or_create(
+                    upload_session=upload_session,
+                    original_geographical_entity=matched_parent_entity
+                )
+            )
+            results.append(entity_upload)
+        else:
+            # nothing is found from parent matching
+            total_no_match = total_no_match + 1
+        if entity_upload:
+            EntityUploadChildLv1.objects.create(
+                entity_upload=entity_upload,
+                entity_id=temp_entity.entity_id,
+                entity_name=temp_entity.entity_name,
+                overlap_percentage=overlap_percentage,
+                parent_entity_id=temp_entity.parent_entity_id,
+                is_parent_rematched=(
+                    temp_entity.parent_entity_id !=
+                    matched_parent_entity.internal_code
+                ),
+                feature_index=temp_entity.feature_index
+            )
+            if temp_entity.parent_entity_id != matched_parent_entity.internal_code:
+                # update EntityTemp level 1 and above
+                temp_entity.parent_entity_id = matched_parent_entity.internal_code
+                temp_entity.ancestor_entity_id = matched_parent_entity.internal_code
+                temp_entity.is_parent_rematched = True
+                temp_entity.overlap_percentage = overlap_percentage
+                temp_entity.save(update_fields=['parent_entity_id',
+                                                'ancestor_entity_id',
+                                                'is_parent_rematched',
+                                                'overlap_percentage'])
+                EntityTemp.objects.filter(
+                    upload_session=upload_session,
+                    level__gt=1,
+                    ancestor_entity_id=parent_entity_id
+                ).update(
+                    ancestor_entity_id=matched_parent_entity.internal_code
+                )
         upload_session.progress = (
             'Auto parent matching admin level 1 entities '
-            f'(0/{total_features})'
+            f'({temp_entity.feature_index + 1}/{total_features})'
         )
         upload_session.save(update_fields=['progress'])
-        for feature_idx, feature in enumerate(features):
-            parent_entity_id = (
-                get_feature_value(feature, layer_file.parent_id_field, None)
-            )
-            # default code, should pass even if empty
-            entity_id = (
-                get_feature_value(feature, id_field)
-            )
-            entity_name = (
-                get_feature_value(feature, name_field)
-            )
-            # create geometry
-            geom_str = json.dumps(feature['geometry'])
-            geom = GEOSGeometry(geom_str)
-            if isinstance(geom, Polygon):
-                geom = MultiPolygon([geom])
-            # do search
-            matched_parent_entity, overlap_percentage = (
-                do_search_parent_entity_by_geometry(
-                    geom,
-                    upload_session.dataset,
-                    **kwargs
-                )
-            )
-            entity_upload = None
-            if matched_parent_entity:
-                entity_upload, _ = (
-                    EntityUploadStatus.objects.update_or_create(
-                        upload_session=upload_session,
-                        original_geographical_entity=matched_parent_entity
-                    )
-                )
-                results.append(entity_upload)
-            else:
-                # nothing is found from parent matching
-                total_no_match = total_no_match + 1
-            if entity_upload:
-                EntityUploadChildLv1.objects.create(
-                    entity_upload=entity_upload,
-                    entity_id=entity_id,
-                    entity_name=entity_name,
-                    overlap_percentage=overlap_percentage,
-                    parent_entity_id=parent_entity_id,
-                    is_parent_rematched=(
-                        parent_entity_id !=
-                        matched_parent_entity.internal_code
-                    ),
-                    feature_index=feature_idx
-                )
-                if parent_entity_id != matched_parent_entity.internal_code:
-                    # update EntityTemp level 1 and above
-                    EntityTemp.objects.filter(
-                        upload_session=upload_session,
-                        level=1,
-                        parent_entity_id=parent_entity_id
-                    ).update(
-                        parent_entity_id=matched_parent_entity.internal_code,
-                        ancestor_entity_id=(
-                            matched_parent_entity.internal_code
-                        ),
-                        is_parent_rematched=True,
-                        overlap_percentage=overlap_percentage
-                    )
-                    EntityTemp.objects.filter(
-                        upload_session=upload_session,
-                        level__gt=1,
-                        ancestor_entity_id=parent_entity_id
-                    ).update(
-                        ancestor_entity_id=matched_parent_entity.internal_code
-                    )
-            upload_session.progress = (
-                'Auto parent matching admin level 1 entities '
-                f'({feature_idx + 1}/{total_features})'
-            )
-            upload_session.save(update_fields=['progress'])
-            if feature_idx % 20 == 0:
-                logger.info(upload_session.progress)
-        upload_session.progress = (
-            'Auto parent matching admin level 1 entities '
-            f'({total_features}/{total_features})'
-        )
-        upload_session.save(update_fields=['progress'])
-        logger.info(upload_session.progress)
-        delete_tmp_shapefile(features.path)
+        if temp_entity.feature_index % 20 == 0:
+            logger.info(upload_session.progress)
+    upload_session.progress = (
+        'Auto parent matching admin level 1 entities '
+        f'({total_features}/{total_features})'
+    )
+    upload_session.save(update_fields=['progress'])
+    logger.info(upload_session.progress)
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(
@@ -228,104 +202,80 @@ def do_process_layer_files_for_parent_matching_level0(
     if not layer_files.exists():
         return
     layer_file = layer_files.first()
-    id_field = (
-        [id_field['field'] for id_field in layer_file.id_fields
-            if id_field['default']][0]
-    )
-    name_field = (
-        [name_field['field'] for name_field in layer_file.name_fields
-            if name_field['default']][0]
-    )
     total_no_match = 0
-    with open_collection_by_file(layer_file.layer_file,
-                                 layer_file.layer_type) as features:
-        total_features = len(features)
+    temp_entities = EntityTemp.objects.filter(
+        upload_session=upload_session,
+        layer_file=layer_file
+    ).order_by('feature_index')
+    total_features = temp_entities.count()
+    upload_session.progress = (
+        'Auto parent matching admin level 1 entities '
+        f'(0/{total_features})'
+    )
+    upload_session.save(update_fields=['progress'])
+    for temp_entity in temp_entities:
+        parent_entity_id = temp_entity.parent_entity_id
+        # do search
+        matched_parent_entity, overlap_percentage = (
+            do_search_parent_entity_by_geometry_for_level0(
+                temp_entity.geometry,
+                layer_file0,
+                **kwargs
+            )
+        )
+        entity_upload = None
+        if matched_parent_entity:
+            # find matched_parent_entity from entity_uploads
+            entity_upload = find_matched_entity_upload(
+                entity_uploads,
+                matched_parent_entity
+            )
+        else:
+            # nothing is found from parent matching
+            total_no_match = total_no_match + 1
+        if entity_upload:
+            EntityUploadChildLv1.objects.create(
+                entity_upload=entity_upload,
+                entity_id=temp_entity.entity_id,
+                entity_name=temp_entity.entity_name,
+                overlap_percentage=overlap_percentage,
+                parent_entity_id=temp_entity.parent_entity_id,
+                is_parent_rematched=(
+                    temp_entity.parent_entity_id !=
+                    matched_parent_entity.entity_id
+                ),
+                feature_index=temp_entity.feature_index
+            )
+            if temp_entity.parent_entity_id != matched_parent_entity.entity_id:
+                # update EntityTemp level 1 and above
+                temp_entity.parent_entity_id = matched_parent_entity.entity_id
+                temp_entity.ancestor_entity_id = matched_parent_entity.entity_id
+                temp_entity.is_parent_rematched = True
+                temp_entity.overlap_percentage = overlap_percentage
+                temp_entity.save(update_fields=['parent_entity_id',
+                                                'ancestor_entity_id',
+                                                'is_parent_rematched',
+                                                'overlap_percentage'])
+                EntityTemp.objects.filter(
+                    upload_session=upload_session,
+                    level__gt=1,
+                    ancestor_entity_id=parent_entity_id
+                ).update(
+                    ancestor_entity_id=matched_parent_entity.entity_id
+                )
         upload_session.progress = (
             'Auto parent matching admin level 1 entities '
-            f'(0/{total_features})'
+            f'({temp_entity.feature_index + 1}/{total_features})'
         )
         upload_session.save(update_fields=['progress'])
-        for feature_idx, feature in enumerate(features):
-            parent_entity_id = (
-                get_feature_value(feature, layer_file.parent_id_field, None)
-            )
-            # default code, should pass even if empty
-            entity_id = (
-                get_feature_value(feature, id_field)
-            )
-            entity_name = (
-                get_feature_value(feature, name_field)
-            )
-            # create geometry
-            geom_str = json.dumps(feature['geometry'])
-            geom = GEOSGeometry(geom_str)
-            if isinstance(geom, Polygon):
-                geom = MultiPolygon([geom])
-            # do search
-            matched_parent_entity, overlap_percentage = (
-                do_search_parent_entity_by_geometry_for_level0(
-                    geom,
-                    upload_session.dataset,
-                    layer_file0,
-                    **kwargs
-                )
-            )
-            entity_upload = None
-            if matched_parent_entity:
-                # find matched_parent_entity from entity_uploads
-                entity_upload = find_matched_entity_upload(
-                    entity_uploads,
-                    matched_parent_entity
-                )
-            else:
-                # nothing is found from parent matching
-                total_no_match = total_no_match + 1
-            if entity_upload:
-                EntityUploadChildLv1.objects.create(
-                    entity_upload=entity_upload,
-                    entity_id=entity_id,
-                    entity_name=entity_name,
-                    overlap_percentage=overlap_percentage,
-                    parent_entity_id=parent_entity_id,
-                    is_parent_rematched=(
-                        parent_entity_id !=
-                        matched_parent_entity.entity_id
-                    ),
-                    feature_index=feature_idx
-                )
-                if parent_entity_id != matched_parent_entity.entity_id:
-                    # update EntityTemp level 1 and above
-                    EntityTemp.objects.filter(
-                        upload_session=upload_session,
-                        level=1,
-                        parent_entity_id=parent_entity_id
-                    ).update(
-                        parent_entity_id=matched_parent_entity.entity_id,
-                        ancestor_entity_id=matched_parent_entity.entity_id,
-                        is_parent_rematched=True,
-                        overlap_percentage=overlap_percentage
-                    )
-                    EntityTemp.objects.filter(
-                        upload_session=upload_session,
-                        level__gt=1,
-                        ancestor_entity_id=parent_entity_id
-                    ).update(
-                        ancestor_entity_id=matched_parent_entity.entity_id
-                    )
-            upload_session.progress = (
-                'Auto parent matching admin level 1 entities '
-                f'({feature_idx + 1}/{total_features})'
-            )
-            upload_session.save(update_fields=['progress'])
-            if feature_idx % 20 == 0:
-                logger.info(upload_session.progress)
-        upload_session.progress = (
-            'Auto parent matching admin level 1 entities '
-            f'({total_features}/{total_features})'
-        )
-        upload_session.save(update_fields=['progress'])
-        logger.info(upload_session.progress)
-        delete_tmp_shapefile(features.path)
+        if temp_entity.feature_index % 20 == 0:
+            logger.info(upload_session.progress)
+    upload_session.progress = (
+        'Auto parent matching admin level 1 entities '
+        f'({total_features}/{total_features})'
+    )
+    upload_session.save(update_fields=['progress'])
+    logger.info(upload_session.progress)
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(

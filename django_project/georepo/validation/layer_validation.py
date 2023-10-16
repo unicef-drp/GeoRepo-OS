@@ -234,7 +234,7 @@ def retrieve_layer0_default_codes(
     layer_file: LayerFile = layer_files.first()
     entity_temps = EntityTemp.objects.filter(
         layer_file=layer_file
-    )
+    ).order_by('feature_index')
     for entity_temp in entity_temps:
         layer0_default_codes.append({
             'id': str(uuid.uuid4()),
