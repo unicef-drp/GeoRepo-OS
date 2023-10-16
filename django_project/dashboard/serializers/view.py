@@ -333,13 +333,14 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
             obj.vector_tile_sync_status ==
             DatasetViewResource.SyncStatus.SYNCING
         ):
-            if obj.tiling_current_task:
+            # task status may be empty when it is still in broker
+            if obj.tiling_current_task and obj.tiling_current_task.status:
                 return obj.tiling_current_task.status
         return obj.vector_tile_sync_status
 
     def product_sync_status(self, obj: DatasetViewResource, default: str):
         if default == DatasetViewResource.SyncStatus.SYNCING:
-            if obj.product_current_task:
+            if obj.product_current_task and obj.product_current_task.status:
                 return obj.product_current_task.status
         return default
 

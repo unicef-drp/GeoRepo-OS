@@ -513,7 +513,7 @@ def fix_view_entity_count(modeladmin, request, queryset):
 class DatasetViewAdmin(GuardedModelAdmin):
     list_display = (
         'name', 'dataset', 'is_static', 'min_privacy_level',
-        'max_privacy_level', 'tiling_status', 
+        'max_privacy_level', 'tiling_status',
         'vector_tile_sync_status', 'product_sync_status', 'uuid')
     search_fields = ['name', 'dataset__label', 'uuid']
     list_filter = ["dataset"]

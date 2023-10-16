@@ -1,4 +1,3 @@
-import json
 import random
 import time
 
@@ -10,7 +9,7 @@ from core.models.token_detail import ApiKey
 from core.models.preferences import SitePreferences
 from azure_auth.handlers import AzureAuthHandler
 
-from georepo.models import Dataset, DatasetView, GeographicalEntity,\
+from georepo.models import DatasetView, GeographicalEntity,\
     DatasetViewResource
 from georepo.models.dataset_tile_config import (
     DatasetTilingConfig,
