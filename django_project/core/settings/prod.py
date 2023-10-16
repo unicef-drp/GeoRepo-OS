@@ -90,6 +90,7 @@ if SENTRY_DSN and SENTRY_DSN != "''":
     from django.core.exceptions import (
         PermissionDenied
     )
+    from azure_auth.exceptions import InvalidUserError
 
     def before_send(event, hint):
         if 'exc_info' in hint:
@@ -98,6 +99,7 @@ if SENTRY_DSN and SENTRY_DSN != "''":
                 RestPermissionDenied,
                 PermissionDenied,
                 AuthenticationFailed,
+                InvalidUserError,
             )
             exc_value = hint['exc_info'][1]
 
