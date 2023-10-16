@@ -6,6 +6,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.test import TestCase, override_settings, TransactionTestCase
 from django.db import transaction, IntegrityError
 
+from django.utils import timezone
 from georepo.models import GeographicalEntity, IdType, EntityType
 from georepo.tests.model_factories import (
     DatasetF, LanguageF, GeographicalEntityF,
@@ -928,7 +929,7 @@ class FindEntityUploadTestCase(TransactionTestCase):
                 EntityUploadStatus.objects.filter(id=entity_upload.id),
                 STARTED,
                 PROCESSING,
-                '1'
+                timezone.now()
             )
             self.assertTrue(upload)
         # lock should be released, but upload has been updated to PROCESSING
@@ -937,7 +938,7 @@ class FindEntityUploadTestCase(TransactionTestCase):
                 EntityUploadStatus.objects.filter(id=entity_upload.id),
                 STARTED,
                 PROCESSING,
-                '1'
+                timezone.now()
             )
             self.assertFalse(upload)
 
@@ -958,7 +959,7 @@ class FindEntityUploadTestCase(TransactionTestCase):
                 EntityUploadStatus.objects.filter(id=entity_upload.id),
                 STARTED,
                 PROCESSING,
-                '1'
+                timezone.now()
             )
             self.assertTrue(upload)
 
@@ -970,6 +971,6 @@ class FindEntityUploadTestCase(TransactionTestCase):
                     ),
                     STARTED,
                     PROCESSING,
-                    '1'
+                    timezone.now()
                 )
                 self.assertFalse(upload)

@@ -9,7 +9,7 @@ from dashboard.models.entity_upload import EntityUploadStatusLog
 logger = logging.getLogger(__name__)
 
 
-def find_entity_upload(upload_qs, status, update_status, task_id):
+def find_entity_upload(upload_qs, status, update_status, started_at):
     """Find and lock entity upload status for processing."""
     upload = None
     with transaction.atomic():
@@ -21,8 +21,8 @@ def find_entity_upload(upload_qs, status, update_status, task_id):
             pass
         if upload and upload.status == status:
             upload.status = update_status
-            upload.task_id = task_id
-            upload.save(update_fields=['status', 'task_id'])
+            upload.started_at = started_at
+            upload.save(update_fields=['status', 'started_at'])
         else:
             upload = None
     return upload
@@ -42,20 +42,25 @@ def validate_ready_uploads(entity_upload_id, log_obj_id=None):
         Notification,
         NOTIF_TYPE_LAYER_VALIDATION
     )
+    entity_uploads = EntityUploadStatus.objects.filter(
+        id=entity_upload_id
+    )
+    entity_upload = find_entity_upload(
+        entity_uploads,
+        STARTED,
+        PROCESSING,
+        timezone.now()
+    )
+    if entity_upload is None:
+        logger.warning(
+            f'Upload {entity_upload_id} has been processed by other task!'
+        )
+        return
+
     start = time.time()
     upload_log = None
     if log_obj_id:
         upload_log = EntityUploadStatusLog.objects.get(id=log_obj_id)
-    entity_upload = EntityUploadStatus.objects.get(
-        id=entity_upload_id
-    )
-    if entity_upload.status != STARTED:
-        logger.warning(
-            f'upload {entity_upload_id} has invalid status: '
-            f'{entity_upload.status}'
-        )
-        return
-
     if entity_upload.revised_entity_id:
         print('Validating {}'.format(entity_upload.revised_entity_id))
     else:
