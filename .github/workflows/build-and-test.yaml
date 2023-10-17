@@ -64,6 +64,7 @@ jobs:
           echo "Override docker-compose for testing purposes"
           cp docker-compose.test.yml docker-compose.override.yml
           cd ../
+          make update
           make devweb
           make wait-db
           make sleep
@@ -90,10 +91,6 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
-      - name: Prepare E2E Tests
-        run: |
-          make update
-          make sleep
       - name: Test django endpoint
         run: |
           curl http://localhost:8888/
