@@ -2,7 +2,7 @@ import React, {useEffect, useState, useRef, createRef, useCallback} from 'react'
 import axios from "axios";
 import Grid from '@mui/material/Grid';
 import FormControl from '@mui/material/FormControl';
-import maplibregl, {AttributionControl} from "maplibre-gl";
+import maplibregl, {AttributionControl, Map} from "maplibre-gl";
 import { usePrevious } from '../../utils/Helpers';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -50,6 +50,7 @@ interface GeoJSONFile {
 interface CountryItem {
     id: number;
     label: string;
+    bbox?: string;
 }
 
 interface TilingConfigPreviewInterface {
@@ -244,6 +245,12 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
         drawLayers(datasetRefs, files, zoom)
     }, [zoom])
 
+    useEffect(() => {
+        if (!map.current) return;
+        let _mapObj: Map = map.current
+        _mapObj.setMaxZoom(maxZoom)
+    }, [maxZoom])
+
     const fetchGeoJson = (adm0Id: number, level: number) => {
         let _fetch_url = `${PREVIEW_GEOJSON_URL}?adm0_id=${adm0Id}&level=${level}`
         if (props.view && props.view.uuid) {
@@ -364,6 +371,22 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
             }
         }
     }
+
+    const zoomToAdm0Bbox = (adm0Id: number) => {
+        let _idx = countries.findIndex((country) => country.id === adm0Id)
+        if (_idx === -1) return
+        let _country = countries[_idx]
+        if (_country.bbox) {
+            let _bbox = JSON.parse(_country.bbox)
+            setBbox(_bbox)
+        }
+    }
+
+    useEffect(() => {
+        if (selectedAdm0Id) {
+            zoomToAdm0Bbox(selectedAdm0Id)
+        }
+    }, [selectedAdm0Id])
 
     return (
         <div style={{display:'flex', flex: 1, flexDirection: 'column'}}>

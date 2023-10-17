@@ -102,7 +102,7 @@ class CountriesTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
         # retrieve list of adm0
         adm0 = entities.filter(
             level=0
-        ).order_by('label').values('id', 'label')
+        ).order_by('label').values('id', 'label', 'bbox')
         first_adm0 = adm0_id or (adm0[0]['id'] if adm0 else None)
         dataset_levels = entities.filter(
             Q(ancestor=first_adm0) |
