@@ -8,5 +8,6 @@ test('Fetch View List', async ({ page }) => {
   await expect(pageHeader).toHaveText('Views');
   const addViewButton = page.getByLabel('Add View');
   await expect(addViewButton).toBeVisible();
-  await expect(addViewButton).toBeEnabled();
+  // when starting from no dataset, the add view button is disabled
+  await expect(addViewButton).toBeDisabled();
 });
