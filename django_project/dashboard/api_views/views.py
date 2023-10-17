@@ -348,11 +348,9 @@ class ViewFilterValue(
         ]
 
     def fetch_dataset(self):
-        return list(self.views_querysets.exclude(
-            dataset__label__isnull=True
-        ).exclude(
-            dataset__label__exact=''
-        ).order_by().values_list('dataset__label', flat=True).distinct())
+        return list(
+            Dataset.objects.all().order_by(
+                'label').values_list('label', flat=True).distinct())
 
     def fetch_is_default(self):
         return [

@@ -1,7 +1,7 @@
 import React, {Fragment, useCallback, useEffect, useRef, useState} from "react";
 import {useNavigate, useSearchParams} from "react-router-dom";
 
-import {Button} from '@mui/material';
+import Button from '@mui/material/Button';
 import FilterAlt from "@mui/icons-material/FilterAlt";
 import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
 import axios from "axios";

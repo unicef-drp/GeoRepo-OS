@@ -35,14 +35,19 @@ export const viewTableSlice = createSlice({
     },
     setAvailableFilters: (state, action: PayloadAction<string>) => {
       state.availableFilters = JSON.parse(action.payload)
-    }
+    },
+    resetTableStates: (state, action: PayloadAction<null>) => {
+      state.availableFilters = getDefaultFilter()
+      state.currentFilters = getDefaultFilter()
+    },
   }
 })
 
 export const {
   setCurrentColumns,
   setCurrentFilters,
-  setAvailableFilters
+  setAvailableFilters,
+  resetTableStates
 } = viewTableSlice.actions
 
 export default viewTableSlice.reducer;

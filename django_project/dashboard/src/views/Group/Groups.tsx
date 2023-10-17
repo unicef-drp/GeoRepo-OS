@@ -19,6 +19,9 @@ export default function Groups() {
         selectionChanged={null}
         onRowClick={handleRowClick}
         actionData={[]}
+        options={{
+          'filter': false
+        }}
       />
     </div>
   )

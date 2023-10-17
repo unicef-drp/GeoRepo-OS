@@ -4,6 +4,7 @@ import {useNavigate, useSearchParams} from "react-router-dom";
 import axios from "axios";
 import toLower from "lodash/toLower";
 import DeleteIcon from "@mui/icons-material/Delete";
+import Button from '@mui/material/Button';
 import {useAppDispatch} from "../../app/hooks";
 import {setModule} from "../../reducers/module";
 import {modules} from "../../modules";
@@ -202,6 +203,16 @@ export default function Dataset() {
           excludedColumns={['permissions', 'is_empty']}
           customOptions={customColumnOptions}
           customColumnHeaderRender={customColumnHeaderRender}
+          options={{
+            'confirmFilters': true,
+            'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
+              return (
+                <div style={{marginTop: '40px'}}>
+                  <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
+                </div>
+              );
+            },
+          }}
         /> : <Loading/>
       }
     </div>
