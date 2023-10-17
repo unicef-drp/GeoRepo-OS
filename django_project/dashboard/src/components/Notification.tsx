@@ -141,8 +141,12 @@ export default function Notification() {
                     moduleName = modules[0]
                 }
                 dispatch(setModule(moduleName))
-                navigate(`/${moduleName}/upload_wizard/?session=${notification.payload.session}&`+
-                    `dataset=${notification.payload.dataset}&step=${notification.payload.step}`)
+                let _url = `/${moduleName}/upload_wizard/?session=${notification.payload.session}&`+
+                `dataset=${notification.payload.dataset}&step=${notification.payload.step}`
+                if (notification.type === 'LAYER_VALIDATION') {
+                    _url = _url + '&filter_status=All'
+                }
+                navigate(_url)
                 break;
             case 'BOUNDARY_MATCHING':
                 // redirect to review detail page
