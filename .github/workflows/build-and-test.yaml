@@ -90,3 +90,27 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
+      - name: Prepare E2E Tests
+        run: |
+          make update
+          make sleep
+      - name: Test django endpoint
+        run: |
+          curl http://localhost:8888/
+          if [ $? -ne 0 ]; then
+            echo "Curl command failed"
+            exit 1
+          fi
+      - name: Playwright E2E Tests
+        working-directory: ./playwright/ci-test
+        run: |
+          npm install
+          npm ci
+          npx playwright install --with-deps
+          npx playwright test
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright/ci-test/playwright-report/
+          retention-days: 30
