@@ -186,7 +186,7 @@ class LayerRemoveView(AzureAuthRequiredMixin, APIView):
         # fix level ordering
         for layer_upload in layer_uploads:
             layer_upload.level = f'{level}'
-            layer_upload.save()
+            layer_upload.save(update_fields=['level'])
             level += 1
         layer_file_obj.delete()
         return Response(status=200)
