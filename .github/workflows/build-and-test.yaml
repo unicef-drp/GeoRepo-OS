@@ -97,8 +97,6 @@ jobs:
           echo "Running Django in production mode"
           make update
           make sleep
-          curl -Ik -A "User-Agent: PostmanRuntime/7.32.3" http://localhost:8888/
-          docker logs --tail 200 georepo_django
       - name: Playwright E2E Tests
         working-directory: ./playwright/ci-test
         run: |
