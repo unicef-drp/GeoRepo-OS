@@ -27,6 +27,13 @@ services:
     entrypoint: []
   
   nginx:
+    volumes:
+      - ./nginx/sites-enabled:/etc/nginx/conf.d:ro
+      - static-data:/home/web/static
+      - media-data:/home/web/media
+      - layer-tiles:/home/web/layer_tiles
+      - arcgis-configs:/home/web/arcgis
+      - nginx-cache:/home/web/nginx_cache
     ports:
       - "${HTTP_PORT:-8888}:80"
     links:
