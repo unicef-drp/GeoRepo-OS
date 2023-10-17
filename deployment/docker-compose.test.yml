@@ -25,3 +25,11 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
     entrypoint: []
+  
+  nginx:
+    ports:
+      - "${HTTP_PORT:-8888}:80"
+    links:
+      - auth
+      - django
+      - worker

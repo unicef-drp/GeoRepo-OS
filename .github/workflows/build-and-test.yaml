@@ -92,11 +92,11 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
-      - name: Test django endpoint
+      - name: Prepare E2E Tests
         run: |
+          echo "Running Django in production mode"
           make update
-          sleep 120
-          docker ps
+          make sleep
       - name: Playwright E2E Tests
         working-directory: ./playwright/ci-test
         run: |
