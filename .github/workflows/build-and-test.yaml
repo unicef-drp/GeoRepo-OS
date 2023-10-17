@@ -53,7 +53,9 @@ jobs:
           push: false
           load: true
           target: dev
-          tags: ${{ env.APP_IMAGE }}:dev
+          tags: |
+            ${{ env.APP_IMAGE }}:dev
+            ${{ env.APP_IMAGE }}:0.0.1
           cache-from: |
             type=gha,scope=test
             type=gha,scope=prod
