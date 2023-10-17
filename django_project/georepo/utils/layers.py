@@ -1,5 +1,9 @@
 from typing import Tuple
 import time
+import json
+from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
+from django.db.models import IntegerField
+from django.db.models.functions import Cast
 from django.core.files.uploadedfile import (
     InMemoryUploadedFile,
     TemporaryUploadedFile
@@ -13,7 +17,9 @@ from dashboard.models import (
     LayerFile,
     GEOJSON,
     SHAPEFILE,
-    GEOPACKAGE
+    GEOPACKAGE,
+    LayerUploadSession,
+    EntityTemp
 )
 from georepo.utils.geojson import get_geojson_feature_count
 from georepo.utils.shapefile import get_shape_file_feature_count
@@ -156,3 +162,95 @@ def fetch_layer_file_metadata(layer_file: LayerFile):
         layer_file.attributes = get_attributes(collection)
         layer_file.save(update_fields=['feature_count', 'attributes'])
         delete_tmp_shapefile(collection.path)
+
+
+def read_temp_layer_file(upload_session: LayerUploadSession,
+                         layer_file: LayerFile):
+    """Read layer file and store to EntityTemp table."""
+    level = int(layer_file.level)
+    # clear existing
+    existing_entities = EntityTemp.objects.filter(
+        level=level,
+        layer_file=layer_file,
+        upload_session=upload_session
+    )
+    existing_entities._raw_delete(existing_entities.db)
+    if not layer_file.layer_file.storage.exists(layer_file.layer_file.name):
+        return
+    id_field = (
+        [id_field['field'] for id_field in layer_file.id_fields
+            if id_field['default']][0]
+    )
+    name_field = (
+        [name_field['field'] for name_field in layer_file.name_fields
+            if name_field['default']][0]
+    )
+    with open_collection_by_file(layer_file.layer_file,
+                                 layer_file.layer_type) as features:
+        data = []
+        for feature_idx, feature in enumerate(features):
+            # default code
+            entity_id = get_feature_value(
+                feature, id_field
+            )
+            # default name
+            entity_name = get_feature_value(
+                feature, name_field
+            )
+            # parent code
+            feature_parent_code = None
+            # find ancestor
+            ancestor = None
+            if level > 0:
+                feature_parent_code = (
+                    get_feature_value(
+                        feature, layer_file.parent_id_field
+                    )
+                )
+                if feature_parent_code:
+                    if level == 1:
+                        ancestor = feature_parent_code
+                    else:
+                        parent = EntityTemp.objects.filter(
+                            upload_session=upload_session,
+                            level=level - 1,
+                            entity_id=feature_parent_code
+                        ).first()
+                        if parent:
+                            ancestor = parent.ancestor_entity_id
+            # add geom
+            # create geometry
+            geom_str = json.dumps(feature['geometry'])
+            geom = GEOSGeometry(geom_str)
+            if isinstance(geom, Polygon):
+                geom = MultiPolygon([geom])
+            data.append(
+                EntityTemp(
+                    level=level,
+                    layer_file=layer_file,
+                    upload_session=upload_session,
+                    feature_index=feature_idx,
+                    entity_name=entity_name,
+                    entity_id=entity_id,
+                    parent_entity_id=feature_parent_code,
+                    ancestor_entity_id=ancestor,
+                    geometry=geom
+                )
+            )
+            if len(data) == 5:
+                EntityTemp.objects.bulk_create(data, batch_size=5)
+                data.clear()
+        if len(data) > 0:
+            EntityTemp.objects.bulk_create(data)
+        delete_tmp_shapefile(features.path)
+
+
+def read_layer_files_entity_temp(upload_session: LayerUploadSession):
+    """Read all features from session to EntityTemp."""
+    layer_files = LayerFile.objects.annotate(
+        level_int=Cast('level', IntegerField())
+    ).filter(
+        layer_upload_session=upload_session
+    ).order_by('level_int')
+    for layer_file in layer_files:
+        read_temp_layer_file(upload_session, layer_file)

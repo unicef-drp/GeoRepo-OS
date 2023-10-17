@@ -1,15 +1,10 @@
 import time
-import json
 from typing import Tuple
-from django.db.models import IntegerField
-from django.db.models.functions import Cast
-from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from core.celery import app
 from dashboard.models.layer_upload_session import (
     LayerUploadSession, PRE_PROCESSING, PENDING, CANCELED
 )
 from dashboard.models.entity_upload import EntityTemp
-from dashboard.models.layer_file import LayerFile
 from modules.admin_boundaries.entity_parent_matching import (
     do_process_layer_files_for_parent_matching,
     do_process_layer_files_for_parent_matching_level0
@@ -21,94 +16,10 @@ from dashboard.tools.find_country_max_level import (
     find_country_max_level
 )
 from dashboard.tools.admin_level_names import (
-    get_admin_level_names_for_upload
+    fetch_default_dataset_admin_level_names,
+    fetch_dataset_admin_level_names_prev_revision
 )
-from georepo.utils.fiona_utils import (
-    open_collection_by_file,
-    delete_tmp_shapefile
-)
-from georepo.utils.layers import get_feature_value
-
-
-def read_temp_layer_file(upload_session: LayerUploadSession,
-                         layer_file: LayerFile):
-    """Read layer file and store to EntityTemp table."""
-    level = int(layer_file.level)
-    # clear existing
-    existing_entities = EntityTemp.objects.filter(
-        level=level,
-        layer_file=layer_file,
-        upload_session=upload_session
-    )
-    existing_entities._raw_delete(existing_entities.db)
-    if not layer_file.layer_file.storage.exists(layer_file.layer_file.name):
-        return
-    id_field = (
-        [id_field['field'] for id_field in layer_file.id_fields
-            if id_field['default']][0]
-    )
-    name_field = (
-        [name_field['field'] for name_field in layer_file.name_fields
-            if name_field['default']][0]
-    )
-    with open_collection_by_file(layer_file.layer_file,
-                                 layer_file.layer_type) as features:
-        data = []
-        for feature_idx, feature in enumerate(features):
-            # default code
-            entity_id = get_feature_value(
-                feature, id_field
-            )
-            # default name
-            entity_name = get_feature_value(
-                feature, name_field
-            )
-            # parent code
-            feature_parent_code = None
-            # find ancestor
-            ancestor = None
-            if level > 0:
-                feature_parent_code = (
-                    get_feature_value(
-                        feature, layer_file.parent_id_field
-                    )
-                )
-                if feature_parent_code:
-                    if level == 1:
-                        ancestor = feature_parent_code
-                    else:
-                        parent = EntityTemp.objects.filter(
-                            upload_session=upload_session,
-                            level=level - 1,
-                            entity_id=feature_parent_code
-                        ).first()
-                        if parent:
-                            ancestor = parent.ancestor_entity_id
-            # add geom
-            # create geometry
-            geom_str = json.dumps(feature['geometry'])
-            geom = GEOSGeometry(geom_str)
-            if isinstance(geom, Polygon):
-                geom = MultiPolygon([geom])
-            data.append(
-                EntityTemp(
-                    level=level,
-                    layer_file=layer_file,
-                    upload_session=upload_session,
-                    feature_index=feature_idx,
-                    entity_name=entity_name,
-                    entity_id=entity_id,
-                    parent_entity_id=feature_parent_code,
-                    ancestor_entity_id=ancestor,
-                    geometry=geom
-                )
-            )
-            if len(data) == 5:
-                EntityTemp.objects.bulk_create(data, batch_size=5)
-                data.clear()
-        if len(data) > 0:
-            EntityTemp.objects.bulk_create(data)
-        delete_tmp_shapefile(features.path)
+from georepo.utils.layers import read_layer_files_entity_temp
 
 
 def is_valid_upload_session(
@@ -164,13 +75,7 @@ def prepare_validation(
     upload_session.progress = ''
     upload_session.save(update_fields=['auto_matched_parent_ready',
                                        'status', 'progress'])
-    layer_files = LayerFile.objects.annotate(
-        level_int=Cast('level', IntegerField())
-    ).filter(
-        layer_upload_session=upload_session
-    ).order_by('level_int')
-    for layer_file in layer_files:
-        read_temp_layer_file(upload_session, layer_file)
+    read_layer_files_entity_temp(upload_session)
     # check if upload from level 0
     is_level0_upload = upload_session.layerfile_set.filter(
         level=0
@@ -198,13 +103,20 @@ def prepare_validation(
             upload_session,
             **kwargs
         )
+    default_adm_level_names = fetch_default_dataset_admin_level_names(
+        upload_session.dataset
+    )
     for entity_upload in entity_uploads:
-        adm_level_names = get_admin_level_names_for_upload(
-            upload_session.dataset,
-            entity_upload.original_geographical_entity
-        )
-        entity_upload.admin_level_names = adm_level_names
-        entity_upload.save()
+        if entity_upload.original_geographical_entity:
+            entity_upload.admin_level_names = (
+                fetch_dataset_admin_level_names_prev_revision(
+                    upload_session.dataset,
+                    entity_upload.original_geographical_entity
+                )
+            )
+        else:
+            entity_upload.admin_level_names = default_adm_level_names
+        entity_upload.save(update_fields=['admin_level_names'])
     # find max level for each country
     find_country_max_level(
         upload_session,

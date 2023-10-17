@@ -375,7 +375,7 @@ class EntityTemp(GisModels.Model):
     )
 
     def __str__(self) -> str:
-        return self.entity_name
+        return self.entity_name + ' ' + self.entity_id
 
     class Meta:
         indexes = [

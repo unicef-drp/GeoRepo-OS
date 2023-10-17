@@ -16,9 +16,7 @@ from dashboard.tests.model_factories import LayerFileF, LayerUploadSessionF
 from dashboard.tools.validate_layer_file_0 import (
     preprocess_layer_file_0
 )
-from modules.admin_boundaries.upload_preprocessing import (
-    read_temp_layer_file
-)
+from georepo.utils.layers import read_layer_files_entity_temp
 from modules.admin_boundaries.entity_parent_matching import (
     do_search_parent_entity_by_geometry,
     do_process_layer_files_for_parent_matching,
@@ -120,6 +118,7 @@ class TestEntityParentMatching(TestCase):
 
     @override_settings(MEDIA_ROOT='/home/web/django_project/dashboard')
     def test_do_process_layer_files_for_parent_matching(self):
+        read_layer_files_entity_temp(self.upload_session)
         do_process_layer_files_for_parent_matching(self.upload_session)
         uploads = EntityUploadStatus.objects.filter(
             upload_session=self.upload_session
@@ -136,6 +135,12 @@ class TestEntityParentMatching(TestCase):
         self.assertEqual(childs.first().entity_id, 'PAK003')
         self.assertGreater(childs.first().overlap_percentage, 0)
         self.assertTrue(childs.first().is_parent_rematched)
+        # assert that EntityTemp is also updated
+        entity_level1 = EntityTemp.objects.filter(
+            layer_file=self.layer_file
+        ).first()
+        self.assertTrue(entity_level1)
+        self.assertEqual(entity_level1.parent_entity_id, 'PAK')
 
     @override_settings(MEDIA_ROOT='/home/web/django_project/dashboard')
     def test_do_process_layer_files_for_parent_matching_level0(self):
@@ -194,7 +199,7 @@ class TestEntityParentMatching(TestCase):
             layer_file=geojson_1
         )
         # pre-process level0
-        read_temp_layer_file(upload_session, layer_file_0)
+        read_layer_files_entity_temp(upload_session)
         entity_uploads = preprocess_layer_file_0(
             upload_session
         )
@@ -217,3 +222,90 @@ class TestEntityParentMatching(TestCase):
         self.assertEqual(child.parent_entity_id, 'PAK')
         self.assertEqual(child.is_parent_rematched, False)
         self.assertEqual(child.feature_index, 0)
+
+    @override_settings(MEDIA_ROOT='/home/web/django_project/dashboard')
+    def test_parent_matching_level0_with_result(self):
+        dataset_2 = DatasetF.create()
+
+        geojson_0 = absolute_path(
+            'dashboard', 'tests',
+            'parent_matching_dataset',
+            'level_0.geojson')
+        geojson_1 = absolute_path(
+            'dashboard', 'tests',
+            'parent_matching_dataset',
+            'level_1.geojson')
+        upload_session = LayerUploadSessionF.create(
+            dataset=dataset_2
+        )
+        language = LanguageF.create()
+        layer_file_0 = LayerFileF.create(
+            layer_upload_session=upload_session,
+            level=0,
+            parent_id_field='',
+            entity_type='Country',
+            name_fields=[
+                {
+                    'field': 'name_0',
+                    'default': True,
+                    'selectedLanguage': language.id
+                }
+            ],
+            id_fields=[
+                {
+                    'field': 'code_0',
+                    'default': True
+                }
+            ],
+            layer_file=geojson_0
+        )
+        layer_file1 = LayerFileF.create(
+            layer_upload_session=upload_session,
+            level=1,
+            parent_id_field='adm0_id',
+            entity_type='Province',
+            name_fields=[
+                {
+                    'field': 'name_1',
+                    'default': True,
+                    'selectedLanguage': language.id
+                }
+            ],
+            id_fields=[
+                {
+                    'field': 'code_1',
+                    'default': True
+                }
+            ],
+            layer_file=geojson_1
+        )
+        # pre-process level0
+        read_layer_files_entity_temp(upload_session)
+        entity_uploads = preprocess_layer_file_0(
+            upload_session
+        )
+        # do parent matching for level0
+        do_process_layer_files_for_parent_matching_level0(upload_session,
+                                                          entity_uploads)
+        # check has EntityTemp
+        self.assertTrue(EntityTemp.objects.filter(
+            layer_file=layer_file_0
+        ).exists())
+        # check there are EntityUploadChildLv1 records
+        self.assertEqual(len(entity_uploads), 1)
+        upload = entity_uploads[0]
+        children = EntityUploadChildLv1.objects.filter(
+            entity_upload=upload
+        )
+        self.assertEqual(children.count(), 1)
+        child = children.first()
+        self.assertEqual(child.entity_id, 'PAK003')
+        self.assertEqual(child.parent_entity_id, '188')
+        self.assertEqual(child.is_parent_rematched, True)
+        self.assertEqual(child.feature_index, 0)
+        # assert that EntityTemp is also updated
+        entity_level1 = EntityTemp.objects.filter(
+            layer_file=layer_file1
+        ).first()
+        self.assertTrue(entity_level1)
+        self.assertEqual(entity_level1.parent_entity_id, 'PAK')

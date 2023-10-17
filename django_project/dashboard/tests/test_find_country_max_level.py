@@ -16,6 +16,7 @@ from dashboard.tests.model_factories import (
 from dashboard.tools.find_country_max_level import (
     find_country_max_level
 )
+from georepo.utils.layers import read_layer_files_entity_temp
 
 
 class TestFindCountryMaxLevel(TestCase):
@@ -83,6 +84,7 @@ class TestFindCountryMaxLevel(TestCase):
                 }
             ],
         )
+        read_layer_files_entity_temp(upload_session)
         geo_1 = GeographicalEntityF.create(
             dataset=upload_session.dataset,
             level=0,
@@ -168,6 +170,7 @@ class TestFindCountryMaxLevel(TestCase):
                               'geojson_dataset', 'level_1_1.geojson')
             )
         )
+        read_layer_files_entity_temp(upload_session)
         geo_1 = GeographicalEntityF.create(
             dataset=upload_session.dataset,
             level=0,
