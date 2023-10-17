@@ -66,7 +66,6 @@ jobs:
           echo "Override docker-compose for testing purposes"
           cp docker-compose.test.yml docker-compose.override.yml
           cd ../
-          make update
           make devweb
           make wait-db
           make sleep
@@ -95,6 +94,9 @@ jobs:
           fail_ci_if_error: true
       - name: Test django endpoint
         run: |
+          make update
+          make sleep
+          make sleep
           curl http://localhost:8888/
           if [ $? -ne 0 ]; then
             echo "Curl command failed"
