@@ -68,10 +68,8 @@ export default function Step1(props: WizardStepInterface) {
 
   useEffect(() => {
     const isAdminUser = (window as any).is_admin
-    setLoading(true)
     axios.get(LOAD_UPLOAD_SESSION_DETAIL_URL + searchParams.get('session')).then(
       response => {
-        setLoading(false)
         if (response.data.dataset_creator) {
           setCanUploadLevel0(response.data.dataset_creator == (window as any).user_id || isAdminUser)
           setFirstUpload(response.data.first_upload)
@@ -81,7 +79,6 @@ export default function Step1(props: WizardStepInterface) {
         }
       }, error => {
         console.log(error)
-        setLoading(false)
       })
 
     axios.get(
@@ -140,6 +137,7 @@ export default function Step1(props: WizardStepInterface) {
   // called every time a file's `status` changes
   // @ts-ignore
   const handleChangeStatus = (file, status) => {
+    console.log('***status***', status)
     let {meta, f, xhr} = file
     const _levels: Level = levels!
     meta.uploadSession = props.uploadSession
