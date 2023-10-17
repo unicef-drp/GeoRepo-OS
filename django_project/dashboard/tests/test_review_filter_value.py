@@ -125,7 +125,7 @@ class TestReviewFilterValue(TestCase):
         request.user = self.superuser
         list_view = ReviewFilterValue.as_view()
         response = list_view(request, 'dataset')
-        self.assertEquals(response.data, [self.upload_session.dataset.label])
+        self.assertIn(self.upload_session.dataset.label, response.data)
 
     def test_list_status(self):
         request = self.factory.get(

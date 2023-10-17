@@ -31,6 +31,7 @@ class TestViewFilterValue(TestCase):
         self.superuser = UserF.create(is_superuser=True)
         self.creator = UserF.create()
         self.dataset_view_1 = DatasetViewF.create(
+            dataset=self.dataset,
             created_by=self.creator
         )
         grant_dataset_manager(self.dataset_view_1.dataset, self.creator)
