@@ -340,10 +340,16 @@ class TokenDetail(UserPassesTestMixin, APIView):
         auth_token, token = AuthToken.objects.create(
             user=user
         )
+        # name of the user
+        name_of_user = user.first_name
+        if user.last_name:
+            name_of_user = name_of_user + ' ' + user.last_name
         ApiKey.objects.create(
             token=auth_token,
-            platform=request.data.get('platform'),
-            owner=request.data.get('owner', ''),
+            platform=request.data.get(
+                'platform', name_of_user),
+            owner=request.data.get(
+                'owner', user.email),
             contact=request.data.get('contact', ''),
         )
         return Response(status=201, data={
