@@ -274,8 +274,13 @@ function ConceptButton(props: ConceptButtonProps) {
     const newEntityLabel = 'Change to New Concept'
     const existingEntityLabel = 'Change to Same Concept'
     const hasComparisonBoundary = props.data && props.data.matching_code
+    const isDisabled = props.loading || !hasComparisonBoundary
+    let className = sameEntity ? 'GreenCell': 'GrayCell'
+    if (isDisabled) {
+        className = ''
+    }
     return (
-        <Button disabled={props.loading || !hasComparisonBoundary} variant="contained" className={sameEntity ? 'GreenCell': 'GrayCell'}
+        <Button disabled={isDisabled} variant="contained" className={className}
             onClick={props.onClick}
             title={sameEntity ? newEntityLabel: existingEntityLabel}>
             Concept
@@ -873,7 +878,7 @@ export default function DetailMatchTable(props: ReviewTabInterface) {
                             <Grid item container flexDirection={'row'} justifyContent={'space-between'} className='ButtonContainer'>
                                 <Grid item><Button disabled={loading} onClick={onPreviousRow} variant='outlined' title='Select previous row (Shortcut: Arrow Key Up)'>Previous</Button></Grid>
                                 <Grid item><Button disabled={loading} onClick={onNextRow} variant='outlined' title='Select next row (Shortcut: Arrow Key Down)'>Next</Button></Grid>
-                                <Grid item><Button disabled={loading || isReadOnly} onClick={openRematchOnClick} variant='contained' title={isReadOnly ? 'The data has been approved': 'Rematch'}>Rematch</Button></Grid>
+                                <Grid item><Button disabled={loading || isReadOnly || props.uploadSession.revisionNumber === 1} onClick={openRematchOnClick} variant='contained' title={isReadOnly ? 'The data has been approved': 'Rematch'}>Rematch</Button></Grid>
                                 <Grid item><ConceptButton loading={loading || isReadOnly} onClick={swapConceptEntity} data={selectedRowData}  /></Grid>
                             </Grid>
                         </Grid>

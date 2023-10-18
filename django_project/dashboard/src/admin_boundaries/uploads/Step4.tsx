@@ -344,6 +344,17 @@ export default function Step4(props: WizardStepInterface) {
 
   useEffect(() => {
     getStatus()
+    const statusFilter = searchParams.get('filter_status')
+    if (statusFilter === 'All') {
+      let _statusFilter = {...customColumnOptions['status']} as any
+      if ('filterList' in _statusFilter) {
+        _statusFilter['filterList'] = []
+        setCustomColumnOptions({
+          ...customColumnOptions,
+          'status': {..._statusFilter}
+        })
+      }
+    }
   }, [searchParams])
 
   useEffect(() => {

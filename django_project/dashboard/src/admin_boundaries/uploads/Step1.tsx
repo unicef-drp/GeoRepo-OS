@@ -168,7 +168,8 @@ export default function Step1(props: WizardStepInterface) {
         // exit if ref dropZone is not found
         return;
       }
-
+      // we need to disable the dropzone
+      setLoading(true)
       fetch('/api/layer-remove/', {
         method: 'POST',
         headers: {
@@ -192,9 +193,11 @@ export default function Step1(props: WizardStepInterface) {
             level += 1
           }
           setLevels({..._levels})
+          setLoading(false)
         } else {
           setIsError(true)
           setAlertMessage('Could not remove the layer, please try again later')
+          setLoading(false)
           // TODO: add back the file if failed to remove
         }
       }).catch(
@@ -202,6 +205,7 @@ export default function Step1(props: WizardStepInterface) {
           console.error('Error calling layer-remove api :', error)
           setIsError(true)
           setAlertMessage('Could not remove the layer, please try again later')
+          setLoading(false)
         }
       )
     }
@@ -380,7 +384,7 @@ export default function Step1(props: WizardStepInterface) {
             </LoadingButton> :
             (<Grid container direction='row' justifyContent='space-between'>
               <Grid item>
-                <Button onClick={() => props.onBackClicked()} variant="outlined">
+                <Button onClick={() => props.onBackClicked()} variant="outlined" disabled={loading}>
                   Back
                 </Button>
               </Grid>
@@ -393,7 +397,7 @@ export default function Step1(props: WizardStepInterface) {
                     Update Files
                   </Button>
                 )}
-                <Button onClick={handleSubmit} variant="contained" disabled={!formValid}>
+                <Button onClick={handleSubmit} variant="contained" disabled={!formValid || loading}>
                   Next
                 </Button>
               </Grid>

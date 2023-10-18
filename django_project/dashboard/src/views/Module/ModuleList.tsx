@@ -52,6 +52,9 @@ export default function ModuleList() {
             onRowClick={handleRowClick}
             excludedColumns={['uuid', 'is_active']}
             actionData={[]}
+            options={{
+              'filter': false
+            }}
           />
       }
     </div>

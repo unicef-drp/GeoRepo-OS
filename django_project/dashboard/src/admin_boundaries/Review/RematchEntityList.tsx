@@ -278,7 +278,7 @@ export default function RematchEntityList(props: RematchEntityListInterface) {
                         <Grid container direction="row" 
                             justifyContent="flex-end" 
                             alignItems="center"
-                            spacing={2}>
+                            spacing={2} sx={{marginTop: '10px'}}>
                             <Grid item>
                                 { !hasRematchedData && (
                                     <Button disabled={selectedRow === -1} onClick={onRematchClick} variant="contained">

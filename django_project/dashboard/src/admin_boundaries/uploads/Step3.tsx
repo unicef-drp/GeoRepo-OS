@@ -38,6 +38,7 @@ import { WizardStepInterface } from "../../models/upload";
 import { VariableSizeList as List, ListChildComponentProps } from 'react-window';
 import ResizeTableEvent from "../../components/ResizeTableEvent";
 import UploadActionStatus from "../../components/UploadActionStatus";
+import HtmlTooltip from '../../components/HtmlTooltip';
 
 interface AdminLevelName {
   [key: string]: string
@@ -417,6 +418,13 @@ export default function Step3(props: WizardStepInterface) {
                           </IconButton>
                     )}
                   </Grid>
+                  { editableKey===_editable_key ? (
+                    <Grid item sx={{paddingLeft: '5px'}}>
+                      <HtmlTooltip tooltipTitle='Edit Level Name'
+                          tooltipDescription={<p>Press enter to save edits or escape to revert.</p>}
+                      />
+                    </Grid>
+                  ) : null }
                 </Grid>
               </Grid>
             </Grid>

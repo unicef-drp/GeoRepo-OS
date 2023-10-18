@@ -183,6 +183,8 @@ class TestApiViews(TestCase):
         'dashboard.api_views.layer_upload.validate_layer_file_metadata',
         mock.Mock(return_value=(True, 'EPSG:4326', 1, [])))
     def test_layer_upload(self):
+        test_user = UserF.create()
+        view = LayerUploadView.as_view()
         file = SimpleUploadedFile(
             'admin.geojson',
             b'file_content',
@@ -195,13 +197,31 @@ class TestApiViews(TestCase):
                 'file': file
             }
         )
-        request.user = UserF.create()
-        view = LayerUploadView.as_view()
+        request.user = test_user
         response = view(request)
         self.assertEqual(response.status_code, 204)
         self.assertTrue(LayerFile.objects.filter(
             name='admin.geojson',
             meta_id='layer-id'
+        ).exists())
+        # test upload with diff id but same filename, should create new obj
+        request = self.factory.post(
+            reverse('layer-upload'), {
+                'uploadSession': upload_session.id,
+                'id': 'layer-id-2',
+                'file': file
+            }
+        )
+        request.user = test_user
+        response = view(request)
+        self.assertEqual(response.status_code, 204)
+        self.assertTrue(LayerFile.objects.filter(
+            name='admin.geojson',
+            meta_id='layer-id'
+        ).exists())
+        self.assertTrue(LayerFile.objects.filter(
+            name='admin.geojson',
+            meta_id='layer-id-2'
         ).exists())
 
     def test_layer_process_status(self):

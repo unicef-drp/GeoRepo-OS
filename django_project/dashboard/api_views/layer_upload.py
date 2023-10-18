@@ -1,11 +1,12 @@
 import os
 from datetime import datetime
+from django.db.models import IntegerField, Min
+from django.db.models.functions import Cast
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.http import Http404, HttpResponseForbidden, FileResponse,\
     HttpResponseNotFound
 from django.shortcuts import get_object_or_404
-from django.db.models import Min
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -124,11 +125,12 @@ class LayerUploadView(AzureAuthRequiredMixin, APIView):
                     }
                 )
             layer_file, _ = LayerFile.objects.get_or_create(
-                name=file_obj.name,
+                meta_id=request.POST.get('id', ''),
                 uploader=self.request.user,
                 layer_upload_session=upload_session,
                 layer_type=layer_type,
                 defaults={
+                    'name': file_obj.name,
                     'upload_date': datetime.now(),
                     'feature_count': feature_count,
                     'attributes': attrs
@@ -136,10 +138,11 @@ class LayerUploadView(AzureAuthRequiredMixin, APIView):
             )
         else:
             layer_file, _ = LayerFile.objects.get_or_create(
-                name=file_obj.name,
+                meta_id=request.POST.get('id', ''),
                 uploader=self.request.user,
                 layer_type=layer_type,
                 defaults={
+                    'name': file_obj.name,
                     'upload_date': datetime.now(),
                     'feature_count': feature_count,
                     'attributes': attrs
@@ -149,7 +152,6 @@ class LayerUploadView(AzureAuthRequiredMixin, APIView):
             layer_file.level = level
         try:
             layer_file.layer_file = file_obj
-            layer_file.meta_id = request.POST.get('id', '')
             layer_file.save()
         except Exception:
             # if fail to upload, remove the file
@@ -180,13 +182,15 @@ class LayerRemoveView(AzureAuthRequiredMixin, APIView):
             layer_upload_session=layer_file_obj.layer_upload_session,
         ).exclude(id=layer_file_obj.id).order_by('level')
         # start at level from the first layer file
-        level = int(LayerFile.objects.filter(
+        level = LayerFile.objects.filter(
             layer_upload_session=layer_file_obj.layer_upload_session,
-        ).aggregate(Min('level'))['level__min'])
+        ).annotate(
+            level_int=Cast('level', IntegerField())
+        ).aggregate(min_level=Min('level_int'))['min_level']
         # fix level ordering
         for layer_upload in layer_uploads:
             layer_upload.level = f'{level}'
-            layer_upload.save()
+            layer_upload.save(update_fields=['level'])
             level += 1
         layer_file_obj.delete()
         return Response(status=200)

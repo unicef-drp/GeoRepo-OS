@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from azure_auth.backends import AzureAuthRequiredMixin
+from georepo.models.dataset import Dataset
 from dashboard.api_views.common import (
     DatasetWritePermission
 )
@@ -265,13 +266,9 @@ class ReviewFilterValue(
         return [val for val in filter_values]
 
     def fetch_dataset(self):
-        return list(self.reviews_querysets.filter(
-            upload_session__dataset__label__isnull=False
-        ).exclude(
-            upload_session__dataset__label__exact=''
-        ).order_by().values_list(
-            'upload_session__dataset__label', flat=True
-        ).distinct())
+        return list(
+            Dataset.objects.all().order_by(
+                'label').values_list('label', flat=True).distinct())
 
     def fetch_status(self):
         return [

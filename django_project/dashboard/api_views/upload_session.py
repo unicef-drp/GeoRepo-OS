@@ -240,12 +240,16 @@ class UploadSessionFilterValue(
     permission_classes = [IsAuthenticated]
     querysets = LayerUploadSession.objects.none()
 
+    def fetch_dataset(self):
+        return list(
+            Dataset.objects.all().order_by(
+                'label').values_list('label', flat=True).distinct())
+
     def fetch_criteria_values(self, criteria):
         criteria_field_mapping = {
             'id': 'id',
             'uploaded_by': 'uploader__username',
             'type': 'dataset__module__name',
-            'dataset': 'dataset__label',
             'status': 'status',
         }
         field = criteria_field_mapping.get(criteria, None)
@@ -253,9 +257,11 @@ class UploadSessionFilterValue(
         if not field:
             if criteria == 'level_0_entity':
                 return self.fetch_level_0_entity()
+            elif criteria == 'dataset':
+                return self.fetch_dataset()
 
         filter_values = self.querysets.\
-            filter(**{f"{field}__isnull": False}).order_by().\
+            filter(**{f"{field}__isnull": False}).order_by(field).\
             values_list(field, flat=True).distinct()
         return [val for val in filter_values]
 

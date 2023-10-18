@@ -6,9 +6,9 @@ import axios from "axios";
 import debounce from "lodash/debounce";
 import {Box, Button, FormControl, Grid, MenuItem, TextField, Typography} from "@mui/material";
 import Select, { SelectChangeEvent } from '@mui/material/Select';
+import LoadingButton from "@mui/lab/LoadingButton";
 import Dataset from '../../models/dataset';
 import HtmlTooltip from "../../components/HtmlTooltip";
-import Loading from "../../components/Loading";
 import toLower from "lodash/toLower";
 import {postData} from "../../utils/Requests";
 import {setModule} from "../../reducers/module";
@@ -17,6 +17,9 @@ import {useNavigate} from "react-router-dom";
 import Scrollable from '../../components/Scrollable';
 import PrivacyLevel from "../../models/privacy";
 import AlertMessage from '../../components/AlertMessage';
+import { resetTableStates as resetReviewTableStates } from "../../reducers/reviewTable";
+import { resetTableStates as resetViewTableStates } from "../../reducers/viewTable";
+import { resetTableStates as resetUploadTableStates } from "../../reducers/uploadTable";
 
 import '../../styles/LayerUpload.scss';
 
@@ -63,6 +66,10 @@ export default function DatasetCreate() {
         let _dataset: Dataset = response.data
         let moduleName = toLower(_dataset.type).replace(' ', '_')
         dispatch(setModule(moduleName))
+        // rest dataset filters on listing pages
+        dispatch(resetReviewTableStates())
+        dispatch(resetViewTableStates())
+        dispatch(resetUploadTableStates())
         navigate(`/${moduleName}/dataset_entities?id=${_dataset.id}`)
       }
     }).catch((error) => {
@@ -253,13 +260,13 @@ export default function DatasetCreate() {
             </Grid>
           </Grid>
           <Box sx={{ textAlign: 'right' }}>
-            <Button
-              variant={"contained"}
-              disabled={loading || !name || !description || !selectedModule || !isValidShortCode}
-              onClick={submitCreateDataset}>
-                <span style={{ display: 'flex' }}>
-              { loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { "Create Dataset" }</span>
-            </Button>
+            <LoadingButton loading={loading} loadingPosition="start"
+                           disabled={loading || !name || !description || !selectedModule || !isValidShortCode}
+                           startIcon={<div style={{width: 20}}/>}
+                           onClick={submitCreateDataset}
+                           variant="contained">
+              { loading ? 'Creating New Dataset...' : 'Create Dataset' }
+            </LoadingButton>
           </Box>
         </FormControl>
         </div>

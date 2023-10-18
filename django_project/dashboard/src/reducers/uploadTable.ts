@@ -34,14 +34,19 @@ export const uploadTableSlice = createSlice({
     },
     setAvailableFilters: (state, action: PayloadAction<string>) => {
       state.availableFilters = JSON.parse(action.payload)
-    }
+    },
+    resetTableStates: (state, action: PayloadAction<null>) => {
+      state.availableFilters = getDefaultFilter()
+      state.currentFilters = getDefaultFilter()
+    },
   }
 })
 
 export const {
   setCurrentColumns,
   setCurrentFilters,
-  setAvailableFilters
+  setAvailableFilters,
+  resetTableStates
 } = uploadTableSlice.actions
 
 export default uploadTableSlice.reducer;
