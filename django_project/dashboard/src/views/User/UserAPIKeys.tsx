@@ -8,7 +8,6 @@ import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
-import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -49,34 +48,17 @@ interface TempAPIKeyData {
 const USER_API_KEYS_URL = '/api/token/'
 
 function UserAPIKeyCreateForm(props: UserAPIKeyCreateFormInterface) {
-    const [platform, setPlatform] = useState('')
-
     return (
         <Grid container sx={{width: '50%'}}>
             <div className='FormContainer'>
                 <FormControl className='FormContent'>
-                    <Grid container columnSpacing={2} rowSpacing={2}>
-                        <Grid className={'form-label'} item md={4} xl={4} xs={12}>
-                            <Typography variant={'subtitle1'}>Platform</Typography>
-                        </Grid>
-                        <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
-                            <TextField
-                                id="input_platform"
-                                hiddenLabel={true}
-                                type={"text"}
-                                value={platform}
-                                onChange={(e) => setPlatform(e.target.value)}
-                                sx={{ width: '100%' }}
-                            />
-                        </Grid>
-                    </Grid>
                     <Grid container sx={{paddingTop: '1em'}} flexDirection={'row'} justifyContent={'flex-end'}>
                         <Grid item>
                             <Button
                                 className='button-with-loading'
                                 variant={"contained"}
                                 disabled={props.loading}
-                                onClick={() => props.handleSaveClick(platform)}
+                                onClick={() => props.handleSaveClick()}
                                 sx={{ width: '200px'}}>
                                 <span style={{ display: 'flex' }}>
                                 { props.loading ? <Loading size={20} style={{ marginRight: 10 }}/> : ''} { "Generate API Key" }</span>
@@ -186,13 +168,6 @@ function UserAPIKeyItem(props: UserAPIKeyItemInterface) {
                                     <Grid container flexDirection={'row'}>
                                         <Grid item>
                                             <Typography variant={'subtitle1'}>Created At : {utcToLocalDateTimeString(new Date(props.apiKey.created))}</Typography>
-                                        </Grid>
-                                    </Grid>
-                                </Grid>
-                                <Grid item>
-                                    <Grid container flexDirection={'row'}>
-                                        <Grid item>
-                                            <Typography variant={'subtitle1'}>Platform : {displayValue(props.apiKey.platform)}</Typography>
                                         </Grid>
                                     </Grid>
                                 </Grid>
