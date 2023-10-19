@@ -272,7 +272,7 @@ class UploadSessionFilterValue(
                 if val[1] else
                 f"{val[0]}"
             )
-            for val in filter_values]     
+            for val in filter_values]
 
     def fetch_criteria_values(self, criteria):
         criteria_field_mapping = {
