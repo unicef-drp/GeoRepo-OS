@@ -366,49 +366,50 @@ function PermissionList(props: PermissionDetailTabInterface) {
                         onResize={(clientHeight:number) => {
                             setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)
                         }} />}
-                    
-                    <MUIDataTable columns={columns} data={data}
-                        title={<Box sx={{textAlign:'left'}}>
-                            <AddButton disabled={loading || props.isReadOnly} text={addButtonTitle} variant={'secondary'}
-                                onClick={addButtonClick}/>
-                        </Box>}
-                        options={{
-                            serverSide: true,
-                            page: pagination.page,
-                            count: totalCount,
-                            rowsPerPage: pagination.rowsPerPage,
-                            rowsPerPageOptions: rowsPerPageOptions,
-                            sortOrder: pagination.sortOrder as MUISortOptions,
-                            jumpToPage: true,
-                            onTableChange: (action:string, tableState:any) => onTableChangeState(action, tableState),
-                            customSearchRender: debounceSearchRender(500),
-                            selectableRows: 'none',
-                            selectableRowsOnClick: true,
-                            expandableRows: false,
-                            fixedHeader: true,
-                            fixedSelectColumn: false,
-                            tableBodyHeight: `${tableHeight}px`,
-                            tableBodyMaxHeight: `${tableHeight}px`,
-                            textLabels: {
-                                body: {
-                                    noMatch: loading ?
-                                        <Loading /> :
-                                        'Sorry, there is no matching data to display',
+                    {loading ? <Loading/> :
+                        <MUIDataTable columns={columns} data={data}
+                            title={<Box sx={{textAlign:'left'}}>
+                                <AddButton disabled={loading || props.isReadOnly} text={addButtonTitle} variant={'secondary'}
+                                    onClick={addButtonClick}/>
+                            </Box>}
+                            options={{
+                                serverSide: true,
+                                page: pagination.page,
+                                count: totalCount,
+                                rowsPerPage: pagination.rowsPerPage,
+                                rowsPerPageOptions: rowsPerPageOptions,
+                                sortOrder: pagination.sortOrder as MUISortOptions,
+                                jumpToPage: true,
+                                onTableChange: (action:string, tableState:any) => onTableChangeState(action, tableState),
+                                customSearchRender: debounceSearchRender(500),
+                                selectableRows: 'none',
+                                selectableRowsOnClick: true,
+                                expandableRows: false,
+                                fixedHeader: true,
+                                fixedSelectColumn: false,
+                                tableBodyHeight: `${tableHeight}px`,
+                                tableBodyMaxHeight: `${tableHeight}px`,
+                                textLabels: {
+                                    body: {
+                                        noMatch: loading ?
+                                            <Loading /> :
+                                            'Sorry, there is no matching data to display',
+                                    },
                                 },
-                            },
-                            onSearchChange: (searchText: string) => {
-                                handleSearchOnChange(searchText)
-                            },
-                            searchText: filter.search_text,
-                            searchOpen: (filter.search_text != null && filter.search_text.length > 0),
-                            filter: false,
-                            sort: false
-                    }}
-                    components={{
-                        icons: {
-                            FilterIcon
-                        }
-                    }}/>
+                                onSearchChange: (searchText: string) => {
+                                    handleSearchOnChange(searchText)
+                                },
+                                searchText: filter.search_text,
+                                searchOpen: (filter.search_text != null && filter.search_text.length > 0),
+                                filter: false,
+                                sort: false
+                        }}
+                        components={{
+                            icons: {
+                                FilterIcon
+                            }
+                        }}/>
+                    }
                     <Modal open={showAddPermissionConfig} onClose={() => onPermissionItemModalClosed()}>
                         <Box className="permission-modal">
                             <PermissionItemModal isGroup={props.isGroup} objectType={props.objectType}

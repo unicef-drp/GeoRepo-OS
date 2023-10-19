@@ -42,6 +42,7 @@ interface LevelUploadInterface {
     uploadData: UploadInterface,
     onBackClicked: Function,
     isReadOnly: boolean,
+    isUpdatingStep: boolean,
     updateLeveData?: Function,
     setFormIsDirty?: Function,
     canResetProgress?: boolean,
@@ -763,12 +764,12 @@ function Step2LevelUpload(props: LevelUploadInterface) {
                   </LoadingButton> :
                   (<Grid container direction='row' justifyContent='space-between'>
                     <Grid item>
-                      <Button onClick={() => props.onBackClicked()} variant="outlined">
+                      <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" onClick={() => props.onBackClicked()} variant="outlined">
                         Back
-                      </Button>
+                      </LoadingButton>
                     </Grid>
                     <Grid item>
-                      { props.canResetProgress && (
+                      { props.canResetProgress && !props.isUpdatingStep && (
                         <Button onClick={props.onResetProgress} color={'warning'} variant="outlined" sx={{marginRight: '10px'}}>
                           Update Config
                         </Button>

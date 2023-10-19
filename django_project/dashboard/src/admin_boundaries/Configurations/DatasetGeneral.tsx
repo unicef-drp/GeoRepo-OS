@@ -47,6 +47,7 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
 
     const updateDatasetDetail = (name: string, thresholdNew: number, thresholdOld: number, generateAdm0DefaultViews: boolean, isActive: boolean) => {
         setLoading(true)
+        setAlertLoading(true)
         postData(
             `${UPDATE_DATASET_URL}${props.dataset.uuid}/`,
             {
@@ -60,11 +61,13 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
             response => {
                 setLoading(false)
                 setAlertOpen(false)
+                setAlertLoading(false)
                 setAlertMessage('Successfully updating dataset configuration!')
             }
         ).catch(error => {
             setLoading(false)
             setAlertOpen(false)
+            setAlertLoading(false)
             console.log('error ', error)
             if (error.response) {
                 if (error.response.status == 403) {

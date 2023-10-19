@@ -39,6 +39,7 @@ import { VariableSizeList as List, ListChildComponentProps } from 'react-window'
 import ResizeTableEvent from "../../components/ResizeTableEvent";
 import UploadActionStatus from "../../components/UploadActionStatus";
 import HtmlTooltip from '../../components/HtmlTooltip';
+import { LoadingButton } from "@mui/lab";
 
 interface AdminLevelName {
   [key: string]: string
@@ -618,9 +619,9 @@ export default function Step3(props: WizardStepInterface) {
       <Grid item className="button-container" style={{marginLeft:0, width: '100%'}}>
         <Grid container direction='row' justifyContent='space-between'>
           <Grid item>
-            <Button disabled={disableBackButton} onClick={() => props.onBackClicked()} variant="outlined">
+            <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" disabled={disableBackButton} onClick={() => props.onBackClicked()} variant="outlined">
               Back
-            </Button>
+            </LoadingButton>
           </Grid>
           <Grid item>
             { props.canResetProgress && !loading && (
@@ -630,12 +631,12 @@ export default function Step3(props: WizardStepInterface) {
             )}
             {
               datasetData.length > 0 ?
-                <Button variant="contained"
+                <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" variant="contained"
                         disabled={loading || (selectedEntities.length == 0)}
                         onClick={validateButtonClicked}
                 >
                   { props.isReadOnly? 'Next': 'Validate'}
-                </Button> : null
+                </LoadingButton> : null
             }
           </Grid>
         </Grid>

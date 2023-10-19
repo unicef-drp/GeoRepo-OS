@@ -31,6 +31,7 @@ import { SyncStatus } from "../../models/syncStatus";
 import {updateViewTabStatuses, resetViewTabStatuses} from "../../reducers/viewTabs";
 import { StatusAndProgress } from '../../models/syncStatus';
 import { fetchSyncStatusAPI } from '../../utils/api/TilingStatus';
+import StatusLoadingDialog from '../../components/StatusLoadingDialog';
 
 const QUERY_CHECK_URL = '/api/query-view-preview/'
 const DOWNLOAD_VIEW_URL = '/api/view-download/'
@@ -227,6 +228,7 @@ export default function ViewDetail() {
 
     return (
         <div style={{display:'flex', flex: 1, flexDirection: 'column'}}>
+            <StatusLoadingDialog open={isDownloading} title={'Download product data'} description={'Please wait while system is preparing the data...'} />
             <Box display={'flex'} flexDirection={'row'} justifyContent={'space-between'} sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs className='DatasetTabs' value={tabSelected} onChange={handleChange} aria-label="Configuration Tab">
                     <Tab label={ "Detail" + (tempData != null ? "*" : "") } {...a11yProps(0)} />

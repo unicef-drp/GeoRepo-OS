@@ -106,13 +106,13 @@ export default function Step2(props: WizardStepInterface) {
             <TabPanel value={props.initChildTab} index={index} key={index}>
               <Step2LevelUpload languageOptions={languageOptions} uploadData={upload} updateLeveData={updateLevelData}
                  onBackClicked={props.onBackClicked} setFormIsDirty={props.setFormIsDirty} isReadOnly={props.isReadOnly}
-                 canResetProgress={props.canResetProgress} onResetProgress={props.onResetProgress} />
+                 canResetProgress={props.canResetProgress} onResetProgress={props.onResetProgress}  isUpdatingStep={props.isUpdatingStep} />
             </TabPanel>
             )
           )}
           <TabPanel value={props.initChildTab} index={uploads.length}>
             <Step2Summary uploads={uploads} onBackClicked={props.onBackClicked}
-              onClickNext={props.onClickNext} isReadOnly={props.isReadOnly}/>
+              onClickNext={props.onClickNext} isReadOnly={props.isReadOnly} isUpdatingStep={props.isUpdatingStep} />
           </TabPanel>
         </Grid>
       </Grid>

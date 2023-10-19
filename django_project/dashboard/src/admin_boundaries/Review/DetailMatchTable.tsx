@@ -332,6 +332,7 @@ export default function DetailMatchTable(props: ReviewTabInterface) {
     const fetchingComparisonData = () => {
         if (axiosSource.current) axiosSource.current.cancel()
         let cancelFetchToken = newCancelToken()
+        setData([])
         setLoading(true)
         let sort_by = pagination.sortOrder.name ? pagination.sortOrder.name : ''
         let sort_direction = pagination.sortOrder.direction ? pagination.sortOrder.direction : ''
@@ -863,6 +864,17 @@ export default function DetailMatchTable(props: ReviewTabInterface) {
                         searchOpen: (filter.search_text != null && filter.search_text.length > 0),
                         onFilterChange: (column, filterList, type) => {
                             handleFilterSubmit(filterList)
+                        },
+                        confirmFilters: true,
+                        customFilterDialogFooter: (currentFilterList, applyNewFilters) => {
+                            return (
+                              <div style={{marginTop: '40px'}}>
+                                <Button variant="contained" onClick={() => {
+                                    let _filterList = applyNewFilters()
+                                    handleFilterSubmit(_filterList)
+                                }}>Apply Filters</Button>
+                              </div>
+                            );
                         },
                 }}
                 components={{

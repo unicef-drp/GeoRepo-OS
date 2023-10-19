@@ -7,8 +7,8 @@ import {
   Checkbox, FormControlLabel, SelectChangeEvent,
   Box
 } from "@mui/material";
+import LoadingButton from '@mui/lab/LoadingButton';
 import Dropzone, { IFileWithMeta, ILayoutProps } from "react-dropzone-uploader";
-import LoadingButton from "@mui/lab/LoadingButton";
 import {useSearchParams} from "react-router-dom";
 import axios from "axios";
 import { postData } from '../../utils/Requests';
@@ -384,9 +384,9 @@ export default function Step1(props: WizardStepInterface) {
             </LoadingButton> :
             (<Grid container direction='row' justifyContent='space-between'>
               <Grid item>
-                <Button onClick={() => props.onBackClicked()} variant="outlined" disabled={loading}>
+                <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" onClick={() => props.onBackClicked()} variant="outlined" disabled={loading}>
                   Back
-                </Button>
+                </LoadingButton>
               </Grid>
               <Grid item>
                 {files.length > 0 && files.length < maxFiles && !props.isReadOnly && input}
@@ -397,9 +397,9 @@ export default function Step1(props: WizardStepInterface) {
                     Update Files
                   </Button>
                 )}
-                <Button onClick={handleSubmit} variant="contained" disabled={!formValid || loading}>
+                <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" onClick={handleSubmit} variant="contained" disabled={!formValid || loading}>
                   Next
-                </Button>
+                </LoadingButton>
               </Grid>
             </Grid>)
           }

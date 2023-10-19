@@ -61,6 +61,7 @@ export default function UploadWizard (props: UploadWizardInterface) {
   const [lastStep, setLastStep] = useState(0)
   const [resetProgressOpen, setResetProgressOpen] = useState(false)
   const [resetTaskId, setResetTaskId] = useState('')
+  const [updateStepInProgress, setUpdateStepInProgress] = useState(false)
 
   const initUploadWizardStep = () => {
     if (props.moduleName) {
@@ -81,11 +82,13 @@ export default function UploadWizard (props: UploadWizardInterface) {
       if (searchParams.get('step')) {
         step = parseInt(searchParams.get('step'))
       }
+      setUpdateStepInProgress(true)
       postData((window as any).uploadSessionUpdateStep, {
         'id': searchParams.get('session'),
         'step': step
       }).then(
         response => {
+          setUpdateStepInProgress(false)
           // append dataset name to Dataset Breadcrumbs
           let _name = response.data.dataset_name
             if (response.data.type) {
@@ -118,7 +121,11 @@ export default function UploadWizard (props: UploadWizardInterface) {
           setLastStep(response.data.last_step)
           setLoading(false)
         }
-      ).catch(error => alert('There is something wrong, please try again later'))
+      ).catch(error => {
+        setUpdateStepInProgress(false)
+        setLoading(false)
+        alert('There is something wrong, please try again later')
+      })
       setUploadSession(searchParams.get('session'))
     }
   }
@@ -280,6 +287,7 @@ export default function UploadWizard (props: UploadWizardInterface) {
                       datasetId: currentDatasetId,
                       uploadSession: uploadSession,
                       isReadOnly: isTabReadOnly(index),
+                      isUpdatingStep: updateStepInProgress,
                       setFormIsDirty: setIsDirty,
                       canChangeTab: canChangeTab,
                       isFormDirty: checkFormIsDirty,

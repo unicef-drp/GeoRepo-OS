@@ -10,6 +10,7 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
+import LoadingButton from "@mui/lab/LoadingButton";
 import { DataGrid, GridColDef, GridColumnGroupingModel, GridColumnHeaderParams, GridCellParams, allGridColumnsSelector } from '@mui/x-data-grid';
 import CircularProgress from '@mui/material/CircularProgress';
 import {postData} from "../../utils/Requests";
@@ -571,15 +572,23 @@ export default function Step4(props: WizardStepInterface) {
           'onFilterChange': (column: any, filterList: any, type: any) => {
             var newFilters = () => (filterList)
             handleFilterChange(newFilters)
-          }
+          },
+          'confirmFilters': true,
+          'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
+            return (
+              <div style={{marginTop: '40px'}}>
+                <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
+              </div>
+            );
+          },
         }}
       />
         <div className="button-container" style={{marginLeft:0, width: '100%'}}>
           <Grid container direction='row' justifyContent='space-between'>
             <Grid item>
-              <Button disabled={!allFinished} onClick={() => props.onBackClicked()} variant="outlined">
+              <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" disabled={!allFinished} onClick={() => props.onBackClicked()} variant="outlined">
                 Back
-              </Button>
+              </LoadingButton>
             </Grid>
             { !props.isReadOnly && (
               <Grid item sx={{minWidth: '200px'}}>

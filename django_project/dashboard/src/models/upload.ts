@@ -73,6 +73,7 @@ export interface WizardStepInterface {
     datasetId: string,
     uploadSession: string,
     isReadOnly: boolean,
+    isUpdatingStep: boolean,
     setFormIsDirty: (isDirty: boolean) => void,
     canChangeTab: (tab: number) => boolean,
     isFormDirty: () => boolean,
