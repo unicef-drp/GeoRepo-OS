@@ -42,7 +42,12 @@ class UploadSessionSerializer(serializers.ModelSerializer):
         return obj.started_at
 
     def get_uploaded_by(self, obj: LayerUploadSession):
-        return obj.uploader.username if obj.uploader else '-'
+        if obj.uploader and obj.uploader.first_name:
+            name = obj.uploader.first_name
+            if obj.uploader.last_name:
+                name = f'{name} {obj.uploader.last_name}'
+            return name
+        return '-'
 
     def get_level_0_entity(self, obj: LayerUploadSession):
         level_0_entities = list(

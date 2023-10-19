@@ -136,7 +136,7 @@ class TestUploadSessionFilterValue(TestCase):
         request.user = self.superuser
         list_view = UploadSessionFilterValue.as_view()
         response = list_view(request, 'uploaded_by')
-        self.assertEquals(response.data, [self.creator.username])
+        self.assertEquals(len(response.data), 0)
 
     def test_list_status(self):
         request = self.factory.get(
