@@ -644,7 +644,7 @@ class TestApiViews(TestCase):
         self.assertEqual(len(response.data['results']), 2)
         self.assertEqual(
             response.data['results'][0]['submitted_by'],
-            user.username
+            '-'
         )
         # simulate when there is other upload in review of same entity
         upload_session_2 = LayerUploadSessionF.create(

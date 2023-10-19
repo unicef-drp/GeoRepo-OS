@@ -20,7 +20,8 @@ interface Step2SummaryInterface {
   uploads: UploadInterface[],
   onBackClicked: Function,
   onClickNext: () => void,
-  isReadOnly: boolean
+  isReadOnly: boolean,
+  isUpdatingStep: boolean,
 }
 
 const UPLOAD_SUMMARY_URL = '/api/upload-session-summary/'
@@ -95,14 +96,14 @@ export default function Step2Summary(props: Step2SummaryInterface) {
             </LoadingButton> :
             (<Grid container direction='row' justifyContent='space-between'>
             <Grid item>
-              <Button onClick={() => props.onBackClicked()} variant="outlined">
+              <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" onClick={() => props.onBackClicked()} variant="outlined">
                 Back
-              </Button>
+              </LoadingButton>
             </Grid>
             <Grid item>
-            <Button onClick={handleSubmit} variant="contained">
+            <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" onClick={handleSubmit} variant="contained">
               {props.isReadOnly ? 'Next': 'Import & Validate'}
-            </Button>
+            </LoadingButton>
             </Grid>
           </Grid>)
           }

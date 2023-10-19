@@ -130,6 +130,7 @@ export default function DetailSummaryTable(props: ReviewTabInterface) {
                                 fixedHeader: true,
                                 tableBodyHeight: `${tableHeight}px`,
                                 tableBodyMaxHeight: `${tableHeight}px`,
+                                filter: false,
                             }}
                             components={{
                                 icons: {

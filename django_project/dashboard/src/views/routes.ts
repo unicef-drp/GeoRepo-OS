@@ -127,7 +127,7 @@ export const AccessRequestListRoute: RouteInterface = {
 
 export const AccessRequestDetailRoute: RouteInterface = {
   id: 'access_request_detail',
-  name: 'Access Request',
+  name: 'Detail',
   path: '/access_request',
   element: lazy(() => import('./AccessRequest/AccessRequestDetail' /* webpackChunkName: "access_request_detail" */)),
   parent: AccessRequestListRoute
@@ -135,7 +135,7 @@ export const AccessRequestDetailRoute: RouteInterface = {
 
 export const AccessRequestSubmitRoute: RouteInterface = {
   id: 'access_request_submit',
-  name: 'Access Request',
+  name: 'Detail',
   path: '/access_request_submit',
   element: lazy(() => import('./AccessRequest/SubmitAccessRequest' /* webpackChunkName: "access_request_submit" */)),
   icon: PrivacyTipIcon

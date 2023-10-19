@@ -41,7 +41,13 @@ class EntityUploadSerializer(serializers.ModelSerializer):
         return obj.revision_number
 
     def get_submitted_by(self, obj: EntityUploadStatus):
-        return obj.upload_session.uploader.username
+        session = obj.upload_session
+        if session.uploader and session.uploader.first_name:
+            name = session.uploader.first_name
+            if session.uploader.last_name:
+                name = f'{name} {session.uploader.last_name}'
+            return name
+        return '-'
 
     def get_module(self, obj: EntityUploadStatus):
         # return module name

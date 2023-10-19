@@ -11,7 +11,6 @@ import MenuItem from '@mui/material/MenuItem';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import UserInterface from '../../models/user';
 import Loading from "../../components/Loading";
-import AlertMessage from '../../components/AlertMessage';
 import {putData} from "../../utils/Requests";
 import AlertDialog from '../../components/AlertDialog';
 import Scrollable from "../../components/Scrollable";
@@ -19,7 +18,7 @@ import Scrollable from "../../components/Scrollable";
 interface UserDetailGeneralInterface {
     user: UserInterface,
     isUserProfile: boolean,
-    onUserUpdated: () => void
+    onUserUpdated: (message?: string) => void
 }
 
 const FETCH_USER_DETAIL_URL = '/api/user/'
@@ -35,7 +34,6 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
     const [role, setRole] = useState('')
     const [firstName, setFirstName] = useState(props.user?.first_name)
     const [lastName, setLastName] = useState(props.user?.last_name)
-    const [alertMessage, setAlertMessage] = useState<string>('')
     const [alertOpen, setAlertOpen] = useState<boolean>(false)
     const [alertLoading, setAlertLoading] = useState<boolean>(false)
     const [alertDialogTitle, setAlertDialogTitle] = useState<string>('')
@@ -66,7 +64,7 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
                 setLoading(false)
                 setAlertOpen(false)
                 setAlertLoading(false)
-                setAlertMessage('Successfully updating user!')
+                props.onUserUpdated('Successfully updating user!')
             }
         ).catch(error => {
             setLoading(false)
@@ -108,10 +106,6 @@ export default function UserDetailGeneral(props: UserDetailGeneralInterface) {
         <Scrollable>
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
                 <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                    <AlertMessage message={alertMessage} onClose={() => {
-                        props.onUserUpdated()
-                        setAlertMessage('')
-                    }} />
                     <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
                             alertConfirmed={alertConfirmed}
                             alertLoading={alertLoading}

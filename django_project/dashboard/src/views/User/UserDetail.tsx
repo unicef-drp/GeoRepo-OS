@@ -17,6 +17,7 @@ import UserInterface from '../../models/user';
 import UserDetailGeneral from './UserDetailGeneral';
 import UserPermission from './UserPermission';
 import UserAPIKeys from './UserAPIKeys';
+import AlertMessage from '../../components/AlertMessage';
 
 const FETCH_USER_DETAIL_URL = '/api/user/'
 
@@ -28,6 +29,7 @@ export default function UserDetail(props: any) {
     const [tabSelected, setTabSelected] = useState(0)
     const [user, setUser] = useState<UserInterface>(null)
     const [isUserProfile, setIsUserProfile] = useState(searchParams.get('id') === null)
+    const [alertMessage, setAlertMessage] = useState<string>('')
 
     const updateBreadcrumb = (user: UserInterface) => {
       if (!isUserProfile) {
@@ -93,7 +95,10 @@ export default function UserDetail(props: any) {
       }
     }
 
-    const onUserUpdated = () => {
+    const onUserUpdated = (message?: string) => {
+      if (message) {
+        setAlertMessage(message)
+      }
       let userId = searchParams.get('id')
       if (userId) {
         fetchUserDetail(parseInt(userId))
@@ -105,6 +110,9 @@ export default function UserDetail(props: any) {
 
     return (
         <div style={{display:'flex', flex: 1, flexDirection: 'column'}}>
+          <AlertMessage message={alertMessage} onClose={() => {
+              setAlertMessage('')
+          }} />
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs value={tabSelected} onChange={handleChange} aria-label="User Tab">
                     <Tab key={'tab-0'} label={'DETAIL'} {...a11yProps(0)} />

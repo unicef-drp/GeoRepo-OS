@@ -4,14 +4,14 @@ import {useNavigate} from "react-router-dom";
 import axios from "axios";
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
+import Button from '@mui/material/Button';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {useAppDispatch} from "../../app/hooks";
 import {updateMenu} from "../../reducers/breadcrumbMenu";
 import TabPanel, {a11yProps} from '../../components/TabPanel';
 import Loading from "../../components/Loading";
-import List, {ActionDataInterface} from "../../components/List";
-import EditIcon from "@mui/icons-material/Edit";
+import List from "../../components/List";
 import { AccessRequestDetailRoute, AccessRequestListRoute } from '../routes';
 import AccessRequestInterface from '../../models/access';
 
@@ -19,7 +19,25 @@ const FETCH_ACCESS_REQUEST_LIST = '/api/access/request/'
 const getDefaultFilter = () => {
     return {
         'status': {
-            'filterList': ['PENDING']
+            'filter': true,
+            'filterList': ['PENDING'],
+            'filterOptions': {
+                'fullWidth': true
+            }
+        },
+        'type': {
+            'filter': false,
+            'display': false
+        },
+        'id': {
+            'filter': false,
+            'display': false
+        },
+        'name': {
+            'filter': false
+        },
+        'requester_email': {
+            'filter': false
         }
     }
 }
@@ -109,6 +127,16 @@ export default function AccessRequestList() {
                             actionData={[]}
                             excludedColumns={['type']}
                             customOptions={customOptions}
+                            options={{
+                                'confirmFilters': true,
+                                'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
+                                  return (
+                                    <div style={{marginTop: '40px'}}>
+                                      <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
+                                    </div>
+                                  );
+                                },
+                              }}
                         />
                     }
                 </TabPanel>
@@ -124,6 +152,16 @@ export default function AccessRequestList() {
                             actionData={[]}
                             excludedColumns={['type']}
                             customOptions={customOptions}
+                            options={{
+                                'confirmFilters': true,
+                                'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
+                                  return (
+                                    <div style={{marginTop: '40px'}}>
+                                      <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
+                                    </div>
+                                  );
+                                },
+                              }}
                         />
                     }
                 </TabPanel>

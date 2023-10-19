@@ -1,8 +1,10 @@
 import math
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Value as V
+from django.db.models.functions import Concat
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
 from django.http import HttpResponseForbidden
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -37,6 +39,8 @@ from dashboard.tasks.upload import (
     delete_layer_upload_session,
     reset_upload_session
 )
+
+User = get_user_model()
 
 
 class AddUploadSession(AzureAuthRequiredMixin,
@@ -136,7 +140,16 @@ class UploadSessionList(AzureAuthRequiredMixin, APIView):
             filter_values = dict(request.data).get(filter_field, [])
             if not filter_values:
                 continue
-            filter_kwargs.update({f'{model_field}__in': filter_values})
+            if filter_field == 'uploaded_by':
+                user_ids = User.objects.annotate(
+                    full_name=Concat('first_name', V(' '), 'last_name')
+                ).filter(
+                    Q(full_name__in=filter_values) |
+                    Q(first_name__in=filter_values)
+                ).values_list('id', flat=True)
+                filter_kwargs.update({'uploader_id__in': user_ids})
+            else:
+                filter_kwargs.update({f'{model_field}__in': filter_values})
 
         if 'level_0_entity' in dict(request.data):
             filter_values = sorted(
@@ -183,7 +196,7 @@ class UploadSessionList(AzureAuthRequiredMixin, APIView):
 
         ordering_mapping = {
             'id': 'id',
-            'uploaded_by': 'uploader__username',
+            'uploaded_by': 'uploader__first_name',
             'type': 'dataset__module__name',
             'dataset': 'dataset__label',
             'status': 'status',
@@ -245,10 +258,25 @@ class UploadSessionFilterValue(
             Dataset.objects.all().order_by(
                 'label').values_list('label', flat=True).distinct())
 
+    def fetch_uploader(self):
+        filter_values = self.querysets.\
+            filter(uploader__isnull=False).\
+            exclude(uploader__first_name__isnull=True).\
+            exclude(uploader__first_name='').\
+            order_by('uploader__first_name').\
+            values_list('uploader__first_name', 'uploader__last_name').\
+            distinct()
+        return [
+            (
+                f"{val[0]} {val[1]}"
+                if val[1] else
+                f"{val[0]}"
+            )
+            for val in filter_values]
+
     def fetch_criteria_values(self, criteria):
         criteria_field_mapping = {
             'id': 'id',
-            'uploaded_by': 'uploader__username',
             'type': 'dataset__module__name',
             'status': 'status',
         }
@@ -259,6 +287,8 @@ class UploadSessionFilterValue(
                 return self.fetch_level_0_entity()
             elif criteria == 'dataset':
                 return self.fetch_dataset()
+            elif criteria == 'uploaded_by':
+                return self.fetch_uploader()
 
         filter_values = self.querysets.\
             filter(**{f"{field}__isnull": False}).order_by(field).\

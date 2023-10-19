@@ -37,13 +37,12 @@ class DatasetSerializer(serializers.ModelSerializer):
         ]
 
     def get_created_by(self, obj: Dataset):
-        if obj.created_by:
-            return (
-                obj.created_by.first_name
-                if obj.created_by.first_name
-                else obj.created_by.username
-            )
-        return ''
+        if obj.created_by and obj.created_by.first_name:
+            name = obj.created_by.first_name
+            if obj.created_by.last_name:
+                name = f'{name} {obj.created_by.last_name}'
+            return name
+        return '-'
 
     def get_dataset(self, obj: Dataset):
         return obj.label
