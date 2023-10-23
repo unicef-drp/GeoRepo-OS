@@ -153,7 +153,9 @@ def handle_task_failure(task: BackgroundTask):
             upload_id = task_param[0]
             upload = EntityUploadStatus.objects.get(id=upload_id)
             upload.status = PROCESSING_ERROR
-            upload.save(update_fields=['status'])
+            if task.errors:
+                upload.logs = task.errors
+            upload.save(update_fields=['status', 'logs'])
         except EntityUploadStatus.DoesNotExist as ex:
             logger.error(ex)
 

@@ -96,12 +96,12 @@ export default function Step2Summary(props: Step2SummaryInterface) {
             </LoadingButton> :
             (<Grid container direction='row' justifyContent='space-between'>
             <Grid item>
-              <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" onClick={() => props.onBackClicked()} variant="outlined">
+              <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => props.onBackClicked()} variant="outlined">
                 Back
               </LoadingButton>
             </Grid>
             <Grid item>
-            <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" onClick={handleSubmit} variant="contained">
+            <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={handleSubmit} variant="contained">
               {props.isReadOnly ? 'Next': 'Import & Validate'}
             </LoadingButton>
             </Grid>

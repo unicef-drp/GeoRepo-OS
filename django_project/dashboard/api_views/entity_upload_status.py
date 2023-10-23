@@ -3,6 +3,7 @@ from pytz import timezone
 from collections import OrderedDict
 from django.conf import settings
 from django.db import connection
+from django.db.models import Case, When, Value
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.views import APIView
@@ -12,7 +13,7 @@ from azure_auth.backends import AzureAuthRequiredMixin
 from georepo.models.entity import GeographicalEntity
 from georepo.models.dataset import DatasetAdminLevelName
 from dashboard.models import LayerUploadSession, EntityUploadStatus, \
-    EntityUploadChildLv1, STARTED
+    EntityUploadChildLv1, STARTED, PROCESSING
 from dashboard.serializers.upload_session import DetailUploadSessionSerializer
 from georepo.utils.module_import import module_function
 from dashboard.api_views.common import EntityUploadStatusReadPermission
@@ -87,7 +88,13 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
         )
         entity_uploads = entity_uploads.exclude(
             status=''
-        ).order_by('id')
+        )
+        status_priority = Case(
+            When(status=PROCESSING, then=Value(1)),
+            default=Value(2),
+        )
+        entity_uploads = entity_uploads.annotate(
+            status_priority=status_priority).order_by('status_priority', 'id')
         level_name_0 = DatasetAdminLevelName.objects.filter(
             dataset=dataset,
             level=0

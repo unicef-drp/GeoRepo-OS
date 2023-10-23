@@ -384,7 +384,7 @@ export default function Step1(props: WizardStepInterface) {
             </LoadingButton> :
             (<Grid container direction='row' justifyContent='space-between'>
               <Grid item>
-                <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" onClick={() => props.onBackClicked()} variant="outlined" disabled={loading}>
+                <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => props.onBackClicked()} variant="outlined" disabled={loading}>
                   Back
                 </LoadingButton>
               </Grid>
@@ -397,7 +397,7 @@ export default function Step1(props: WizardStepInterface) {
                     Update Files
                   </Button>
                 )}
-                <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" onClick={handleSubmit} variant="contained" disabled={!formValid || loading}>
+                <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={handleSubmit} variant="contained" disabled={!formValid || loading}>
                   Next
                 </LoadingButton>
               </Grid>

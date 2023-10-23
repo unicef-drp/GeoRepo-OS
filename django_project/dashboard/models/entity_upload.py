@@ -15,12 +15,15 @@ logger = logging.getLogger(__name__)
 PROCESSING = 'Processing'
 VALID = 'Valid'
 ERROR = 'Error'
+WARNING = 'Warning'
 STARTED = 'Started'
 REVIEWING = 'Reviewing'
 APPROVED = 'Approved'
 REJECTED = 'Rejected'
 PROCESSING_APPROVAL = 'Processing_Approval'
-PROCESSING_ERROR = 'Error Processing'
+PROCESSING_ERROR = 'Stopped with Error'
+
+IMPORTABLE_UPLOAD_STATUS_LIST = [VALID, WARNING]
 
 
 class EntityUploadStatus(models.Model):
@@ -28,6 +31,7 @@ class EntityUploadStatus(models.Model):
     STATUS_CHOICES = (
         (STARTED, STARTED),
         (VALID, VALID),
+        (WARNING, WARNING),
         (ERROR, ERROR),
         (PROCESSING, PROCESSING),
         (REVIEWING, REVIEWING),

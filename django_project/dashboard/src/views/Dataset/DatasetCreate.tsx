@@ -262,7 +262,7 @@ export default function DatasetCreate() {
           <Box sx={{ textAlign: 'right' }}>
             <LoadingButton loading={loading} loadingPosition="start"
                            disabled={loading || !name || !description || !selectedModule || !isValidShortCode}
-                           startIcon={<div style={{width: 20}}/>}
+                           startIcon={loading ? <div style={{width: 20}}/>:<div style={{width: 0}}/>}
                            onClick={submitCreateDataset}
                            variant="contained">
               { loading ? 'Creating New Dataset...' : 'Create Dataset' }

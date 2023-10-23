@@ -156,10 +156,10 @@ const COLUMN_DESCRIPTION: {
   'Upgraded Privacy Level': 'Privacy level has been upgraded to dataset minimum privacy level',
 }
 
-const STATUS_LIST = ['Not Completed', 'Queued', 'Processing', 'Error', 'Valid', 'Approved', 'Rejected', 'Error Processing']
+const STATUS_LIST = ['Not Completed', 'Queued', 'Processing', 'Error', 'Warning', 'Valid', 'Approved', 'Rejected', 'Stopped with Error'].sort()
 const INCOMPLETE_STATUS_LIST = ['Started', 'Queued', 'Processing']
 const IN_PROGRES_STATUS_LIST = ['Processing']
-const COMPLETED_STATUS_LIST = ['Error', 'Valid', 'Approved', 'Rejected', 'Error Processing']
+const COMPLETED_STATUS_LIST = ['Error', 'Warning', 'Valid', 'Approved', 'Rejected', 'Stopped with Error']
 
 const DOWNLOAD_ERROR_REPORT_URL = '/api/entity-upload-error-download/'
 
@@ -249,7 +249,7 @@ export default function Step4(props: WizardStepInterface) {
                     <CircularProgress size={18} />
                     <span style={{marginLeft: '5px' }}>{value}{value === 'Processing' && progress ? ` ${progress}`:''}</span>
                   </span>
-          } else  if (value === 'Error') {
+          } else  if (value === 'Error' || value === 'Warning') {
             if (props.isReadOnly) {
               return <span>
                       <span>{isWarning?'Warning':value}</span>
@@ -293,9 +293,6 @@ export default function Step4(props: WizardStepInterface) {
           })
           if (unfinished.length == 0) {
             setAllFinished(true)
-            const errors = _results.filter((responseData: any) => {
-              return responseData['status'] == 'Error';
-            })
             props.setEditable(true)
             if (props.onCheckProgress) {
               props.onCheckProgress()
@@ -586,7 +583,7 @@ export default function Step4(props: WizardStepInterface) {
         <div className="button-container" style={{marginLeft:0, width: '100%'}}>
           <Grid container direction='row' justifyContent='space-between'>
             <Grid item>
-              <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" disabled={!allFinished} onClick={() => props.onBackClicked()} variant="outlined">
+              <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" startIcon={<div style={{width: 0}}/>} disabled={!allFinished} onClick={() => props.onBackClicked()} variant="outlined">
                 Back
               </LoadingButton>
             </Grid>
