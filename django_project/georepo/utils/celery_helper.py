@@ -25,6 +25,7 @@ def get_task_status(task_id: str):
         response = requests.get(f'{REST_URL}{task_id}')
         if response.status_code == 404:
             # when the task is not found, means:
+            # - task is not sent to worker yet
             # - running task but got interupted
             # - too old task that has been removed after success/failure
             status = TASK_NOT_FOUND

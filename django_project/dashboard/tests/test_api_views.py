@@ -106,6 +106,9 @@ from dashboard.tasks.upload import (
     validate_selected_country_for_review,
     process_country_selection_for_review
 )
+from modules.admin_boundaries.config import (
+    generate_adm0_default_views
+)
 
 
 def mocked_cache_get(self, *args, **kwargs):
@@ -164,6 +167,10 @@ def mocked_run_generate_vector_tiles(*args, **kwargs):
 
 def mocked_revoke_running_task(*args, **kwargs):
     return True
+
+
+def mocked_do_generate_adm0_default_views(*args, **kwargs):
+    return DummyTask('1')
 
 
 class TestApiViews(TestCase):
@@ -2105,7 +2112,10 @@ class TestApiViews(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data['is_available'])
 
-    def test_update_dataset(self):
+    @mock.patch(
+        'dashboard.tasks.patch.do_generate_adm0_default_views.delay'
+    )
+    def test_update_dataset(self, patch_adm0_default_views):
         user = UserF.create(is_superuser=True)
         dataset = DatasetF.create(
             label='Dataset World',
@@ -2139,9 +2149,12 @@ class TestApiViews(TestCase):
             format='json'
         )
         request.user = user
+        patch_adm0_default_views.side_effect = (
+            mocked_do_generate_adm0_default_views
+        )
         view = UpdateDataset.as_view()
         response = view(request, **kwargs)
-        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.status_code, 201)
         updated = Dataset.objects.get(id=dataset.id)
         self.assertEqual(
             updated.geometry_similarity_threshold_new,
@@ -2153,6 +2166,7 @@ class TestApiViews(TestCase):
         )
         self.assertEqual(updated.label, dataset.label)
         self.assertTrue(updated.generate_adm0_default_views)
+        generate_adm0_default_views(dataset)
         # assert that 2 default views for adm0 are generated
         self.assertEqual(
             DatasetView.objects.filter(
@@ -2160,6 +2174,9 @@ class TestApiViews(TestCase):
                 default_ancestor_code=adm0.unique_code
             ).exclude(default_type__isnull=True).count(),
             2
+        )
+        patch_adm0_default_views.assert_called_once_with(
+            dataset.id
         )
         post_data = {
             'name': 'New World',
@@ -2174,9 +2191,10 @@ class TestApiViews(TestCase):
             format='json'
         )
         request.user = user
+        patch_adm0_default_views.reset_mock()
         view = UpdateDataset.as_view()
         response = view(request, **kwargs)
-        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.status_code, 201)
         updated = Dataset.objects.get(id=dataset.id)
         self.assertEqual(
             updated.geometry_similarity_threshold_new,
@@ -2196,6 +2214,7 @@ class TestApiViews(TestCase):
             ).exclude(default_type__isnull=True).count(),
             2
         )
+        patch_adm0_default_views.assert_not_called()
 
     def test_get_language_list(self):
         user = UserF.create(is_superuser=True)
