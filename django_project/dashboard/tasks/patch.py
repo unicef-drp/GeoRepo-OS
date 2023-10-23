@@ -2,6 +2,7 @@ from celery import shared_task
 import logging
 
 from django.db import IntegrityError
+from georepo.utils.module_import import module_function
 from dashboard.models import (
     LayerUploadSession, DONE,
     LayerFile, SHAPEFILE
@@ -105,3 +106,19 @@ def fix_entity_name_encoding(dataset_id):
                                     f'{total_features}')
                 logger.info(f'Finished patching {feature_idx+1}/'
                             f'{total_features}')
+
+
+@shared_task(name='do_generate_adm0_default_views')
+def do_generate_adm0_default_views(dataset_id):
+    from georepo.models import Dataset
+    dataset = Dataset.objects.get(id=dataset_id)
+    logger.info('Running do_generate_adm0_default_views of '
+                f'dataset {dataset_id} - {str(dataset)}')
+    generate_adm0 = module_function(
+        dataset.module.code_name,
+        'config',
+        'generate_adm0_default_views'
+    )
+    generate_adm0(dataset)
+    logger.info('Finished do_generate_adm0_default_views of '
+                f'dataset {dataset_id} - {str(dataset)}')

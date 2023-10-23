@@ -58,7 +58,6 @@ from dashboard.tools.dataset_styles import (
 from dashboard.tools.admin_level_names import (
     populate_default_dataset_admin_level_names
 )
-from georepo.utils.module_import import module_function
 from georepo.utils.permission import (
     get_dataset_for_user,
     get_view_permission_privacy_level,
@@ -73,6 +72,8 @@ from dashboard.api_views.common import (
     DatasetManagePermission
 )
 from georepo.tasks.dataset_delete import dataset_delete
+from dashboard.tasks.patch import do_generate_adm0_default_views
+
 
 DATASET_SHORT_CODE_MAX_LENGTH = 4
 
@@ -1217,13 +1218,10 @@ class UpdateDataset(AzureAuthRequiredMixin, DatasetManagePermission, APIView):
         dataset.generate_adm0_default_views = (
             request.data.get('generate_adm0_default_views')
         )
+        generate_default_views_task = None
         if dataset.generate_adm0_default_views:
-            generate_adm0 = module_function(
-                dataset.module.code_name,
-                'config',
-                'generate_adm0_default_views'
-            )
-            generate_adm0(dataset)
+            task = do_generate_adm0_default_views.delay(dataset.id)
+            generate_default_views_task = task.id
         tmp_active = dataset.is_active
         dataset.is_active = request.data.get('is_active')
         if not dataset.is_active and tmp_active:
@@ -1241,7 +1239,12 @@ class UpdateDataset(AzureAuthRequiredMixin, DatasetManagePermission, APIView):
             dataset.deprecated_at = None
             dataset.deprecated_by = None
         dataset.save()
-        return Response(status=204)
+        return Response(
+            status=201,
+            data={
+                'generate_default_views_task': generate_default_views_task
+            }
+        )
 
 
 class DatasetAdminLevelNames(AzureAuthRequiredMixin,

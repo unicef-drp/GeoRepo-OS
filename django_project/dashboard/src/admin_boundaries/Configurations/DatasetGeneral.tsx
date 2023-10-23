@@ -19,6 +19,7 @@ import Loading from "../../components/Loading";
 import {postData} from "../../utils/Requests";
 import PrivacyLevel from "../../models/privacy";
 import Scrollable from '../../components/Scrollable';
+import TaskStatus from '../../components/TaskStatus';
 
 interface DatasetGeneralInterface {
     dataset: Dataset,
@@ -44,6 +45,7 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
     const [alertDialogTitle, setAlertDialogTitle] = useState<string>('')
     const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
     const [privacyLevelLabels, setPrivacyLevelLabels] = useState<PrivacyLevel>({})
+    const [updateDatasetTaskId, setUpdateDatasetTaskId] = useState('')
 
     const updateDatasetDetail = (name: string, thresholdNew: number, thresholdOld: number, generateAdm0DefaultViews: boolean, isActive: boolean) => {
         setLoading(true)
@@ -62,7 +64,12 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
                 setLoading(false)
                 setAlertOpen(false)
                 setAlertLoading(false)
-                setAlertMessage('Successfully updating dataset configuration!')
+                let _taskId = response.data['generate_default_views_task']
+                if (_taskId) {
+                    setUpdateDatasetTaskId(_taskId)
+                } else {
+                    setAlertMessage('Successfully updating dataset configuration!')
+                }
             }
         ).catch(error => {
             setLoading(false)
@@ -138,6 +145,12 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
                          alertLoading={alertLoading}
                          alertDialogTitle={alertDialogTitle}
                          alertDialogDescription={alertDialogDescription} />
+                <TaskStatus dialogTitle='Update Dataset' errorMessage='Error! There is unexpected error while generating adm0 default views, please contact Administrator.'
+                    successMessage='Successfully updating dataset configuration!' task_id={updateDatasetTaskId} onCompleted={() => {
+                        setUpdateDatasetTaskId('')
+                        setAlertMessage('Successfully updating dataset configuration!')
+                    }}
+                />
                 <div className='FormContainer'>
                     <FormControl className='FormContent'>
                         <Grid container columnSpacing={2} rowSpacing={2}>
