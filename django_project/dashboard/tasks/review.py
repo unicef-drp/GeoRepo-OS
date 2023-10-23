@@ -86,12 +86,6 @@ def process_batch_review(batch_review_id):
     item_processed = 0
     for upload_id in batch_review.upload_ids:
         upload = EntityUploadStatus.objects.filter(id=upload_id).first()
-        upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
-            id=upload.id
-        )
-        kwargs = {
-            'log_object': upload_log
-        }
         if not upload:
             item_processed += 1
             continue
@@ -115,6 +109,12 @@ def process_batch_review(batch_review_id):
             item_processed += 1
             continue
         if batch_review.is_approve:
+            upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+                entity_upload_status_id=upload.id
+            )
+            kwargs = {
+                'log_object': upload_log
+            }
             approve_func = module_function(
                 dataset.module.code_name,
                 'review',
