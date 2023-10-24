@@ -8,6 +8,7 @@ interface UploadActionStatusInterface {
     title: string;
     onSuccess: (result?: any) => void;
     onError: (error: string) => void;
+    description?: string;
 }
 
 // fetch status every 5s
@@ -47,7 +48,8 @@ export default function UploadActionStatus(props: UploadActionStatusInterface) {
             setCheckFinished(false)
             setStatusDialogOpen(true)
             setStatusDialogTitle(props.title)
-            setStatusDialogDescription('Please wait while background task is in progress...')
+            let _desc = props.description ? props.description : 'Please wait while background task is in progress...'
+            setStatusDialogDescription(_desc)
         }
     }, [props.actionUuid])
 

@@ -1,5 +1,6 @@
 import datetime
 import json
+import mock
 from django.contrib.gis.geos import GEOSGeometry
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -19,9 +20,20 @@ from dashboard.api_views.entity_upload_status import (
     EntityUploadStatusList,
     EntityUploadLevel1List,
     OverlapsEntityUploadList,
-    OverlapsEntityUploadDetail
+    OverlapsEntityUploadDetail,
+    RetriggerSingleValidation
 )
 from georepo.utils import absolute_path
+from dashboard.models.entity_upload import PROCESSING_ERROR, STARTED
+
+
+class DummyTask:
+    def __init__(self, id):
+        self.id = id
+
+
+def mocked_run_task(*args, **kwargs):
+    return DummyTask('1')
 
 
 class TestEntityUploadStatusApiViews(TestCase):
@@ -87,7 +99,8 @@ class TestEntityUploadStatusApiViews(TestCase):
                     'error_report': '',
                     'is_importable': False,
                     'is_warning': False,
-                    'progress': None
+                    'progress': None,
+                    'error_logs': None
                 }
             ]
         )
@@ -260,3 +273,41 @@ class TestEntityUploadStatusApiViews(TestCase):
         self.assertIn('geometry_2', response.data)
         self.assertIn('overlaps', response.data)
         self.assertIn('bbox', response.data)
+
+    @mock.patch(
+        'dashboard.api_views.entity_upload_status.'
+        'validate_ready_uploads.apply_async'
+    )
+    def test_retrigger_single_validation(self, mocked_task):
+        upload_session = LayerUploadSessionF.create()
+        ancestor = GeographicalEntityF.create(
+            dataset=upload_session.dataset,
+            level=0,
+            label='Syria',
+            internal_code='SY'
+        )
+        entity_upload_status = EntityUploadF.create(
+            upload_session=upload_session,
+            revised_geographical_entity=ancestor,
+            status=PROCESSING_ERROR,
+            logs='Test error'
+        )
+        mocked_task.side_effect = mocked_run_task
+        user = UserF.create()
+        kwargs = {
+            'upload_id': entity_upload_status.id
+        }
+        request = self.factory.get(
+            reverse('retrigger-single-upload-validation', kwargs=kwargs)
+        )
+        request.user = user
+        view = RetriggerSingleValidation.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        entity_upload_status.refresh_from_db()
+        self.assertEqual(entity_upload_status.status, STARTED)
+        self.assertTrue(entity_upload_status.task_id)
+        self.assertFalse(entity_upload_status.logs)
+        self.assertFalse(entity_upload_status.summaries)
+        self.assertFalse(entity_upload_status.error_report)
+        mocked_task.assert_called_once()

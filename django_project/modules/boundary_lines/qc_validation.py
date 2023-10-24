@@ -18,7 +18,10 @@ from django.db.models.functions import Cast
 
 from dashboard.models.layer_upload_session import LayerUploadSession
 from dashboard.models import LayerFile, ERROR
-from dashboard.models.entity_upload import EntityUploadStatus, VALID
+from dashboard.models.entity_upload import (
+    EntityUploadStatus, VALID, WARNING,
+    IMPORTABLE_UPLOAD_STATUS_LIST
+)
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity, EntityId
 from modules.boundary_lines.error_type import (
@@ -238,7 +241,14 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs):
             delete_tmp_shapefile(layer.path)
 
     if len(validation_summaries) > 0:
-        entity_upload.status = ERROR
+        # check whether the errors are blocking/non-blocking
+        (
+            allowable_errors, blocking_errors, _, _
+        ) = count_error_categories(error_summaries)
+        if allowable_errors > 0 and blocking_errors == 0:
+            entity_upload.status = WARNING
+        else:
+            entity_upload.status = ERROR
         entity_upload.summaries = error_summaries
         # Save error report to csv
         try:
@@ -262,7 +272,8 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs):
 
     # note: error/invalid geometries will be removed
     # only when upload is deleted
-    if entity_upload.status == VALID:
+    is_importable = entity_upload.status in IMPORTABLE_UPLOAD_STATUS_LIST
+    if is_importable:
         # generate unique_code_version for entity upload
         upload_session = entity_upload.upload_session
         revision_start_date = (
@@ -298,6 +309,38 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs):
     return entity_upload.status == VALID
 
 
+def count_error_categories(error_summaries):
+    """
+    Return Tuple of:
+        - allowable_errors
+        - blocking_errors
+        - superadmin_bypass_errors
+        - superadmin_blocking_errors
+    """
+    allowable_errors = 0
+    blocking_errors = 0
+    superadmin_bypass_errors = 0
+    superadmin_blocking_errors = 0
+    for error_summary in error_summaries:
+        for error_type in ErrorType:
+            if error_type.value not in error_summary:
+                continue
+            if error_type in ALLOWABLE_ERROR_TYPES:
+                allowable_errors += error_summary[error_type.value]
+            else:
+                blocking_errors += error_summary[error_type.value]
+            if error_type in SUPERADMIN_BYPASS_ERROR:
+                superadmin_bypass_errors += (
+                    error_summary[error_type.value]
+                )
+            else:
+                superadmin_blocking_errors += (
+                    error_summary[error_type.value]
+                )
+    return (allowable_errors, blocking_errors, superadmin_bypass_errors,
+            superadmin_blocking_errors)
+
+
 def is_validation_result_importable(
         entity_upload: EntityUploadStatus,
         user, **kwargs) -> Tuple[bool, bool]:
@@ -306,34 +349,16 @@ def is_validation_result_importable(
     """
     start = time.time()
 
-    is_warning = False
-    is_importable = entity_upload.status == VALID
+    is_warning = entity_upload.status == WARNING
+    is_importable = entity_upload.status in IMPORTABLE_UPLOAD_STATUS_LIST
     if not is_importable and entity_upload.summaries:
-        # check whether there is only overlaps error
-        error_summaries = entity_upload.summaries
-        allowable_errors = 0
-        blocking_errors = 0
-        superadmin_bypass_errors = 0
-        superadmin_blocking_errors = 0
-        for error_summary in error_summaries:
-            for error_type in ErrorType:
-                if error_type.value not in error_summary:
-                    continue
-                if error_type in ALLOWABLE_ERROR_TYPES:
-                    allowable_errors += error_summary[error_type.value]
-                else:
-                    blocking_errors += error_summary[error_type.value]
-                if error_type in SUPERADMIN_BYPASS_ERROR:
-                    superadmin_bypass_errors += (
-                        error_summary[error_type.value]
-                    )
-                else:
-                    superadmin_blocking_errors += (
-                        error_summary[error_type.value]
-                    )
+        # check whether the errors are blocking/non-blocking
+        (
+            allowable_errors, blocking_errors, superadmin_bypass_errors,
+            superadmin_blocking_errors
+        ) = count_error_categories(entity_upload.summaries)
         if allowable_errors > 0 and blocking_errors == 0:
             is_importable = True
-            is_warning = True
         # check if superadmin user:
         if user and user.is_superuser:
             if (

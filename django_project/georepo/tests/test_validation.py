@@ -14,7 +14,7 @@ from georepo.tests.model_factories import (
 )
 from georepo.utils import absolute_path
 from dashboard.models.entity_upload import (
-    EntityUploadStatus, STARTED, PROCESSING
+    EntityUploadStatus, STARTED, PROCESSING, WARNING
 )
 from dashboard.tests.model_factories import (
     LayerUploadSessionF,
@@ -226,14 +226,14 @@ class TestValidation(TestCase):
         status = validate_layer_file(
             entity_upload=entity_upload
         )
-
+        entity_upload.refresh_from_db()
         self.assertEqual(
-            EntityUploadStatus.objects.get(
-                id=entity_upload.id).summaries[0][
+            entity_upload.summaries[0][
                 ErrorType.SELF_INTERSECTS.value],
             1
         )
         self.assertFalse(status)
+        self.assertEqual(entity_upload.status, WARNING)
         # entities in error upload will be deleted
         # if not selected to be imported
         self.assertTrue(GeographicalEntity.objects.filter(
@@ -314,7 +314,8 @@ class TestValidation(TestCase):
                 '2': 'DistrictF'
             }
         )
-        validate_layer_file(entity_upload)
+        status = validate_layer_file(entity_upload)
+        self.assertTrue(status)
         self.assertTrue(
             GeographicalEntity.objects.filter(
                 internal_code='PAK',

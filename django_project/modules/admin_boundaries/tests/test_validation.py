@@ -10,7 +10,7 @@ from modules.admin_boundaries.qc_validation import (
     is_validation_result_importable
 )
 from dashboard.models.entity_upload import (
-    ERROR
+    ERROR, WARNING
 )
 
 
@@ -118,6 +118,8 @@ class IsUploadImportableTestCase(TestCase):
             ]
         )
         # check with user_a
+        entity_upload_2.status = WARNING
+        entity_upload_2.save(update_fields=['status'])
         is_importable, is_warning = is_validation_result_importable(
             entity_upload_2, self.user_a
         )

@@ -764,7 +764,7 @@ function Step2LevelUpload(props: LevelUploadInterface) {
                   </LoadingButton> :
                   (<Grid container direction='row' justifyContent='space-between'>
                     <Grid item>
-                      <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" onClick={() => props.onBackClicked()} variant="outlined">
+                      <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => props.onBackClicked()} variant="outlined">
                         Back
                       </LoadingButton>
                     </Grid>

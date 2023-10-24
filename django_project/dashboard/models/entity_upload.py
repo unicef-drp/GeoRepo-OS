@@ -15,12 +15,15 @@ logger = logging.getLogger(__name__)
 PROCESSING = 'Processing'
 VALID = 'Valid'
 ERROR = 'Error'
+WARNING = 'Warning'
 STARTED = 'Started'
 REVIEWING = 'Reviewing'
 APPROVED = 'Approved'
 REJECTED = 'Rejected'
 PROCESSING_APPROVAL = 'Processing_Approval'
-PROCESSING_ERROR = 'Error Processing'
+PROCESSING_ERROR = 'Stopped with Error'
+
+IMPORTABLE_UPLOAD_STATUS_LIST = [VALID, WARNING]
 
 
 class EntityUploadStatus(models.Model):
@@ -28,6 +31,7 @@ class EntityUploadStatus(models.Model):
     STATUS_CHOICES = (
         (STARTED, STARTED),
         (VALID, VALID),
+        (WARNING, WARNING),
         (ERROR, ERROR),
         (PROCESSING, PROCESSING),
         (REVIEWING, REVIEWING),
@@ -160,7 +164,9 @@ class EntityUploadStatus(models.Model):
         return self.comparison_data_ready is not None
 
     def __str__(self):
-        return f'{self.original_geographical_entity} - {self.status}'
+        if self.original_geographical_entity:
+            return f'{self.original_geographical_entity} - {self.status}'
+        return f'{self.revised_entity_name} - {self.status}'
 
     def get_entity_admin_level_name(self, level: int) -> str | None:
         """Return admin level name for entity at given level"""

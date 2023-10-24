@@ -110,3 +110,13 @@
   margin-top: 5px;
   margin-bottom: 5px;
 }
+
+.error-status-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.error-status-label {
+  margin-right: 5px;
+}
