@@ -25,6 +25,10 @@ import {utcToLocalDateTimeString} from '../../utils/Helpers';
 import UploadActionStatus from "../../components/UploadActionStatus";
 import AlertMessage from '../../components/AlertMessage';
 import LinearProgressWithLabel from "../../components/LinearProgressWithLabel";
+import SyncIcon from '@mui/icons-material/Sync';
+import ErrorIcon from '@mui/icons-material/Error';
+import HtmlTooltip from "../../components/HtmlTooltip";
+import StatusLoadingDialog from "../../components/StatusLoadingDialog";
 
 const URL = '/api/entity-upload-status-list/'
 const READY_TO_REVIEW_URL = '/api/ready-to-review/'
@@ -162,6 +166,7 @@ const IN_PROGRES_STATUS_LIST = ['Processing']
 const COMPLETED_STATUS_LIST = ['Error', 'Warning', 'Valid', 'Approved', 'Rejected', 'Stopped with Error']
 
 const DOWNLOAD_ERROR_REPORT_URL = '/api/entity-upload-error-download/'
+const RETRIGGER_VALIDATION_URL = '/api/entity-upload-status/retrigger-validation/'
 
 interface StatusSummaryDict {
   [Key: string]: number;
@@ -239,17 +244,19 @@ export default function Step4(props: WizardStepInterface) {
         },
         customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
           let id = tableMeta['rowData'][0]
+          let name = tableMeta['rowData'][1]
           let isImportable = tableMeta['rowData'][6]
           let isWarning = tableMeta['rowData'][7]
           let progress = tableMeta['rowData'][8] ? tableMeta['rowData'][8] : ''
           let summaries = tableMeta['rowData'][4]
           let error_report = tableMeta['rowData'][5]
+          let error_logs = tableMeta['rowData'][9]
           if (IN_PROGRES_STATUS_LIST.includes(value)) {
             return <span style={{display:'flex'}}>
                     <CircularProgress size={18} />
                     <span style={{marginLeft: '5px' }}>{value}{value === 'Processing' && progress ? ` ${progress}`:''}</span>
                   </span>
-          } else  if (value === 'Error' || value === 'Warning') {
+          } else if (value === 'Error' || value === 'Warning') {
             if (props.isReadOnly) {
               return <span>
                       <span>{isWarning?'Warning':value}</span>
@@ -262,15 +269,56 @@ export default function Step4(props: WizardStepInterface) {
                         () => showError(id, summaries, error_report, isImportable)}
                       >{isWarning?'Show Warning':'Show Error'}</Button>
             }
+          } else if (value === 'Stopped with Error') {
+            return (
+              <span className="error-status-container">
+                <span className="error-status-label">{value}</span>
+                {error_logs && (
+                  <HtmlTooltip tooltipTitle='Error Detail' icon={<ErrorIcon fontSize="small" color="error" />}
+                    tooltipDescription={<p>{error_logs}</p>}
+                />
+                )}
+                <IconButton aria-label={'Retrigger validation'} title={'Retrigger validation'}
+                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                    e.currentTarget.disabled = true
+                    retriggerValidation(id as number, name)
+                  }}>
+                  <SyncIcon color='info' fontSize='small' />
+              </IconButton>
+              </span>
+            )
           }
           return value
         }
-    }
+    },
+    'error_logs': {
+      filter: false,
+      display: false,
+    },
   })
   const [addNotCompletedFilter, setAddNotCompletedFilter] = useState(false)
   const [statusSummary, setStatusSummary] = useState<StatusSummaryDict>({})
   const [jobSummaryText, setJobSummaryText] = useState('-')
   const [jobSummaryProgress, setJobSummaryProgress] = useState(0)
+  const [retriggerLoadingOpen, setRetriggerLoadingOpen] = useState<boolean>(false)
+
+  const retriggerValidation = (id:number, title: string) => {
+    setRetriggerLoadingOpen(true)
+    axios.get(`${RETRIGGER_VALIDATION_URL}${id}/`).then(
+      response => {
+        setRetriggerLoadingOpen(false)
+        setAlertMessage(`Successfully retrigger validation for ${title}!`)
+        getStatus()
+        setAllFinished(false)
+        // trigger to fetch notification frequently
+        dispatch(setPollInterval(FETCH_INTERVAL_JOB))
+      }
+    ).catch((error) => {
+      setRetriggerLoadingOpen(false)
+      console.log('Failed to retrigger validation ', error)
+      setAlertMessage(`There is unexpected error when retrigger validation for ${title}! Please try again later or contact administrator!`)
+    })
+  }
 
   const getStatus = () => {
     axios.get(url).then(
@@ -554,6 +602,8 @@ export default function Step4(props: WizardStepInterface) {
       <UploadActionStatus actionUuid={actionUuid} sessionId={props.uploadSession}
           title="Processing selected countries" onError={onSessionActionError} onSuccess={onSessionActionSuccess} />
       <AlertMessage message={alertMessage} onClose={() => setAlertMessage('')} />
+      <StatusLoadingDialog open={retriggerLoadingOpen}
+            title={'Retrigger Validation'} description={'Please wait while we are submitting your request!'} />
       <List
         pageName={'Country'}
         listUrl={''}

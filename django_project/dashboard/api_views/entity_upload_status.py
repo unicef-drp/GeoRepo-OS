@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import connection
 from django.db.models import Case, When, Value
 from django.shortcuts import get_object_or_404
+from django.utils import timezone as django_tz
 from rest_framework import serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -13,10 +14,13 @@ from azure_auth.backends import AzureAuthRequiredMixin
 from georepo.models.entity import GeographicalEntity
 from georepo.models.dataset import DatasetAdminLevelName
 from dashboard.models import LayerUploadSession, EntityUploadStatus, \
-    EntityUploadChildLv1, STARTED, PROCESSING
+    EntityUploadChildLv1, STARTED, PROCESSING, PROCESSING_ERROR, \
+    EntityUploadStatusLog
 from dashboard.serializers.upload_session import DetailUploadSessionSerializer
 from georepo.utils.module_import import module_function
 from dashboard.api_views.common import EntityUploadStatusReadPermission
+from georepo.utils.celery_helper import cancel_task
+from georepo.tasks import validate_ready_uploads
 
 
 class EntityUploadStatusDetail(AzureAuthRequiredMixin,
@@ -116,6 +120,11 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
                 request.user
             )
             tz = timezone(settings.TIME_ZONE)
+            error_logs = None
+            if entity_upload.status == PROCESSING_ERROR:
+                error_logs = (
+                    entity_upload.logs if entity_upload.logs else None
+                )
             response_data.append({
                 'id': entity_upload.id,
                 level_name: (
@@ -134,7 +143,8 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
                 ),
                 'is_importable': is_importable,
                 'is_warning': is_warning,
-                'progress': entity_upload.progress
+                'progress': entity_upload.progress,
+                'error_logs': error_logs
             })
 
         return Response(
@@ -377,5 +387,47 @@ class OverlapsEntityUploadDetail(AzureAuthRequiredMixin, APIView):
                         overlaps.geojson
                     )
                 )
+            }
+        )
+
+
+class RetriggerSingleValidation(AzureAuthRequiredMixin, APIView):
+    """
+    Retrigger validation of single entity upload status.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        upload_id = kwargs.get('upload_id')
+        entity_upload = get_object_or_404(
+            EntityUploadStatus,
+            id=upload_id
+        )
+        entity_upload.started_at = django_tz.now()
+        entity_upload.status = STARTED
+        entity_upload.logs = ''
+        entity_upload.summaries = None
+        entity_upload.error_report = None
+        if entity_upload.task_id:
+            cancel_task(entity_upload.task_id)
+        entity_upload.save(update_fields=['started_at', 'status', 'logs',
+                                          'summaries', 'error_report'])
+        upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
+            entity_upload_status=entity_upload
+        )
+        # trigger validation task
+        task = validate_ready_uploads.apply_async(
+            (
+                entity_upload.id,
+                upload_log.id
+            ),
+            queue='validation'
+        )
+        entity_upload.task_id = task.id
+        entity_upload.save(update_fields=['task_id'])
+        return Response(
+            status=200,
+            data={
+                'detail': 'Success'
             }
         )

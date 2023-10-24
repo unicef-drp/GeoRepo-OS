@@ -40,7 +40,8 @@ from dashboard.api_views.entity_upload_status import (
     EntityUploadStatusList,
     EntityUploadLevel1List,
     OverlapsEntityUploadList,
-    OverlapsEntityUploadDetail
+    OverlapsEntityUploadDetail,
+    RetriggerSingleValidation
 )
 from dashboard.api_views.validate import ValidateUploadSession, \
     LayerUploadPreprocess
@@ -646,6 +647,10 @@ urlpatterns = [
             r'(?P<entity_id_1>\d+)/(?P<entity_id_2>\d+)/?$',
             OverlapsEntityUploadDetail.as_view(),
             name='fetch-entity-overlaps-detail'),
+    re_path(r'api/entity-upload-status/retrigger-validation/'
+            r'(?P<upload_id>\d+)/?$',
+            RetriggerSingleValidation.as_view(),
+            name='retrigger-single-upload-validation'),
     re_path(r'api/dataset-admin-level-names/(?P<uuid>[\da-f-]+)/?$',
             DatasetAdminLevelNames.as_view(),
             name='dataset-admin-level-names'),

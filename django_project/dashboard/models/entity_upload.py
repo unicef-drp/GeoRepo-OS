@@ -164,7 +164,9 @@ class EntityUploadStatus(models.Model):
         return self.comparison_data_ready is not None
 
     def __str__(self):
-        return f'{self.original_geographical_entity} - {self.status}'
+        if self.original_geographical_entity:
+            return f'{self.original_geographical_entity} - {self.status}'
+        return f'{self.revised_entity_name} - {self.status}'
 
     def get_entity_admin_level_name(self, level: int) -> str | None:
         """Return admin level name for entity at given level"""

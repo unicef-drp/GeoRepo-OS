@@ -379,7 +379,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
     :param entity_upload: EntityUpload objects
     :return: boolean status whether the process is successful or not
     """
-    logger.info(f'validate admin_boundaries {entity_upload.id}')
+    logger.info(f'Validate admin_boundaries {entity_upload}')
     start = time.time()
     layer_files = LayerFile.objects.annotate(
         level_int=Cast('level', IntegerField())
@@ -1099,7 +1099,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
         simplify_for_dataset(dataset)
     # note: error/invalid geometries will be removed
     # if it's not selected to be imported
-    logger.info(f'finished validation admin_boundaries {entity_upload.id}')
+    logger.info(f'Finished validation admin_boundaries {entity_upload}')
 
     end = time.time()
     if kwargs.get('log_object'):
