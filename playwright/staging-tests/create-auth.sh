@@ -20,7 +20,9 @@ npx playwright \
   codegen \
   --save-storage=georepo-auth.json \
   -o tests/deleteme.ts \
-  https://staging-georepo.unitst.org
+  --ignore-https-errors \
+  https://localhost:51102
+  # https://staging-georepo.unitst.org
 
 # We are only interested in georepo-auth.json
 rm tests/deleteme.ts

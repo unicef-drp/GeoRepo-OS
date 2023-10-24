@@ -31,7 +31,9 @@ npx playwright \
   codegen \
   --load-storage=georepo-auth.json \
   -o tests/$TESTNAME.spec.ts \
-  https://staging-georepo.unitst.org
+  --ignore-https-errors \
+  https://localhost:51102
+  # https://staging-georepo.unitst.org
 
 echo "Test recording completed."
 echo "You can then run your test by doing:"
