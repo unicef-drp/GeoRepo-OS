@@ -738,18 +738,18 @@ class AdminBoundaryMatching(object):
             'Processing Boundary Matching...'
         )
         self.entity_upload.save()
-        logger.info(f'Boundary Matching - {self.entity_upload.id} started...')
+        logger.info(f'Boundary Matching - {self.entity_upload} started...')
         self.check_entities()
         self.save_progress(
             'Processing Boundary Matching - generating summary data...'
         )
         logger.info(
-            f'Boundary Matching - {self.entity_upload.id} '
+            f'Boundary Matching - {self.entity_upload} '
             'generate summary data...'
         )
         summary = self.generate_summary_data()
         logger.info(
-            f'Processing Boundary Matching {self.entity_upload.id} finished...'
+            f'Processing Boundary Matching {self.entity_upload} finished...'
         )
         self.entity_upload.progress = (
             'Processing Boundary Matching finished...'
