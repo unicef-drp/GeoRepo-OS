@@ -496,7 +496,7 @@ export default function Step4(props: WizardStepInterface) {
 
   const onSessionActionSuccess = (result?: any) => {
     setActionUuid('')
-    let _defaultError = 'There is an unxpected error from importing of selected countries! Please try again or retry from previous step!'
+    let _defaultError = 'There is an unexpected error from importing of selected countries! Please try again or retry from previous step!'
     // check if success validation
     let _isValid = result?.is_valid
     let _error = result?.error
@@ -600,7 +600,8 @@ export default function Step4(props: WizardStepInterface) {
         </Box>
       </Modal>
       <UploadActionStatus actionUuid={actionUuid} sessionId={props.uploadSession}
-          title="Processing selected countries" onError={onSessionActionError} onSuccess={onSessionActionSuccess} />
+          title="Processing selected countries" onError={onSessionActionError}
+          onSuccess={onSessionActionSuccess} description="Please do not close this page while background task is in progress..."/>
       <AlertMessage message={alertMessage} onClose={() => setAlertMessage('')} />
       <StatusLoadingDialog open={retriggerLoadingOpen}
             title={'Retrigger Validation'} description={'Please wait while we are submitting your request!'} />

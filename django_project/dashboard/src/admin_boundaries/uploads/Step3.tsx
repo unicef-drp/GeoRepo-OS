@@ -230,7 +230,7 @@ export default function Step3(props: WizardStepInterface) {
 
   const onSessionActionSuccess = (result?: any) => {
     setActionUuid('')
-    let _defaultError = 'There is an unxpected error from validation of selected countries! Please try again or retry from previous step!'
+    let _defaultError = 'There is an unexpected error from validation of selected countries! Please try again or retry from previous step!'
     // check if success validation
     let _isValid = result?.is_valid
     let _error = result?.error
@@ -545,7 +545,8 @@ export default function Step3(props: WizardStepInterface) {
                 }} />}
       <Grid item>
         <UploadActionStatus actionUuid={actionUuid} sessionId={props.uploadSession}
-          title="Processing selected countries" onError={onSessionActionError} onSuccess={onSessionActionSuccess} />
+          title="Processing selected countries" onError={onSessionActionError} onSuccess={onSessionActionSuccess}
+          description="Please do not close this page while background task is in progress..."/>
       </Grid>
       <Grid item style={{ width: '100%' }}>
         <h3 style={{ textAlign: 'left' }}>Import Data</h3>
