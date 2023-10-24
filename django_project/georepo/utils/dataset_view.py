@@ -509,7 +509,8 @@ def get_view_tiling_status(view_resource_queryset):
     tiling_status = 'out_of_sync'
     resource_count = available_resources.count()
     if resource_count == 0:
-        tiling_status = 'synced'
+        # set default status to out_of_sync if no resource yet
+        tiling_status = 'out_of_sync'
     elif 'syncing' in vt_statuses:
         tiling_status = 'syncing'
     elif len(vt_statuses) == 1:
@@ -542,7 +543,8 @@ def get_view_product_status(view_resource_queryset, product=None):
     product_status = 'out_of_sync'
     resource_count = available_resources.count()
     if resource_count == 0:
-        product_status = 'synced'
+        # set default status to out_of_sync if no resource yet
+        product_status = 'out_of_sync'
     elif 'syncing' in pt_statuses:
         product_status = 'syncing'
     elif len(pt_statuses) == 1:
