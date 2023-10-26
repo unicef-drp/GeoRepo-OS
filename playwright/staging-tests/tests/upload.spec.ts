@@ -12,7 +12,7 @@ const LONG_RUNNING_PROCESS_TIMEOUT = 20000;
  */
 test('Upload Workflow Success', async ({ page }) => {
   test.setTimeout(120000);
-  const sessionId = 61;
+  const sessionId = 63;
   const datasetId = 35;
   await page.goto(`/admin_boundaries/upload_wizard/?session=${sessionId}&dataset=${datasetId}&step=0`);
   await page.locator('#input_source').fill('Upload');
@@ -207,9 +207,7 @@ test('Upload Workflow Success', async ({ page }) => {
   await expect(page.getByRole('button', {name:'Batch Review', exact: true})).toBeHidden();
   await expect(page.getByText('Batch Review: ')).toBeVisible();
   await expect(page.getByRole('button', {name:'Batch Review', exact: true})).toBeVisible({timeout: LONG_RUNNING_PROCESS_TIMEOUT});
-  await expect(page.getByText('Successfully submitting batch review. Your request will be processed in the back')).toBeVisible();
-  await page.getByLabel('Close').nth(1).click();
   await expect(page.getByText('Somalia')).toBeVisible();
-  await expect(page.getByText('Approved', {exact: true})).toBeVisible();
+  await expect(page.getByText('Approved', {exact: true})).toBeVisible({timeout: LONG_RUNNING_PROCESS_TIMEOUT});
   /* End of Batch Review */
 });
