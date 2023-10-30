@@ -149,6 +149,7 @@ class TestValidation(TestCase):
             upload_session=self.upload_session,
             original_geographical_entity=self.geographical_entity
         )
+        read_layer_files_entity_temp(self.upload_session)
 
         status = validate_layer_file(
             entity_upload=entity_upload
@@ -222,6 +223,7 @@ class TestValidation(TestCase):
             upload_session=self.upload_session,
             original_geographical_entity=self.geographical_entity
         )
+        read_layer_files_entity_temp(self.upload_session)
 
         status = validate_layer_file(
             entity_upload=entity_upload
@@ -314,6 +316,7 @@ class TestValidation(TestCase):
                 '2': 'DistrictF'
             }
         )
+        read_layer_files_entity_temp(upload_session)
         status = validate_layer_file(entity_upload)
         self.assertTrue(status)
         self.assertTrue(
@@ -646,7 +649,10 @@ class TestValidation(TestCase):
             id_fields=[
                 {
                     'field': 'code_0',
-                    'default': True
+                    'default': True,
+                    'idType': {
+                        'id': self.idType.id
+                    }
                 }
             ],
             layer_file=(
@@ -735,7 +741,7 @@ class TestValidation(TestCase):
             upload_session=upload_session,
             original_geographical_entity=self.geographical_entity
         )
-
+        read_layer_files_entity_temp(upload_session)
         # create EntityUploadChildLv1 for PAK003
         EntityUploadChildLv1F.create(
             entity_upload=entity_upload,
