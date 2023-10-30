@@ -296,7 +296,7 @@ export default function ViewSync(props: ViewResourceInterface) {
                         <ThemeButton
                           variant={'secondary'}
                           onClick={regenerateProductData}
-                          title={'Regenerate Product Data'}
+                          title={'Regenerate Data Products'}
                           icon={null}
                         />
                       </Grid>

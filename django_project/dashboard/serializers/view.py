@@ -20,6 +20,26 @@ from georepo.utils.directory_helper import (
 )
 
 
+def fetch_vector_tile_sync_status(obj: DatasetViewResource):
+    if obj.status == DatasetView.DatasetViewStatus.ERROR:
+        return 'Stopped'
+    if (
+        obj.vector_tile_sync_status ==
+        DatasetViewResource.SyncStatus.SYNCING
+    ):
+        # task status may be empty when it is still in broker
+        if obj.tiling_current_task and obj.tiling_current_task.status:
+            return obj.tiling_current_task.status
+    return obj.vector_tile_sync_status
+
+
+def fetch_product_sync_status(obj: DatasetViewResource, default: str):
+    if default == DatasetViewResource.SyncStatus.SYNCING:
+        if obj.product_current_task and obj.product_current_task.status:
+            return obj.product_current_task.status
+    return default
+
+
 class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     dataset = serializers.SerializerMethodField()
@@ -243,6 +263,8 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
     simplification_status = serializers.SerializerMethodField()
     simplification_progress = serializers.SerializerMethodField()
+    vector_tile_sync_status = serializers.SerializerMethodField()
+    product_sync_status = serializers.SerializerMethodField()
 
     def get_dataset(self, obj):
         return obj.dataset_id
@@ -280,6 +302,37 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
         if obj.is_tiling_config_match:
             return obj.dataset.simplification_progress_num
         return obj.simplification_progress_num
+
+    def get_vector_tile_sync_status(self, obj: DatasetView):
+        if obj.vector_tile_sync_status == DatasetView.SyncStatus.SYNCING:
+            # check if all statuses are queued
+            res_statuses = []
+            for res in DatasetViewResource.objects.filter(
+                dataset_view=obj,
+                entity_count__gt=0
+            ):
+                status = fetch_vector_tile_sync_status(res)
+                if status not in res_statuses:
+                    res_statuses.append(status)
+            if len(res_statuses) == 1 and 'Queued' in res_statuses:
+                return 'Queued'
+        return obj.vector_tile_sync_status
+
+    def get_product_sync_status(self, obj: DatasetView):
+        if obj.product_sync_status == DatasetView.SyncStatus.SYNCING:
+            # check if all statuses are queued
+            res_statuses = []
+            for res in DatasetViewResource.objects.filter(
+                dataset_view=obj,
+                entity_count__gt=0
+            ):
+                status = fetch_product_sync_status(
+                    res, res.product_sync_status)
+                if status not in res_statuses:
+                    res_statuses.append(status)
+            if len(res_statuses) == 1 and 'Queued' in res_statuses:
+                return 'Queued'
+        return obj.product_sync_status
 
     class Meta:
         model = DatasetView
@@ -327,34 +380,19 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
         return convert_size(obj.topojson_size)
 
     def get_vector_tile_sync_status(self, obj: DatasetViewResource):
-        if obj.status == DatasetView.DatasetViewStatus.ERROR:
-            return 'Stopped'
-        if (
-            obj.vector_tile_sync_status ==
-            DatasetViewResource.SyncStatus.SYNCING
-        ):
-            # task status may be empty when it is still in broker
-            if obj.tiling_current_task and obj.tiling_current_task.status:
-                return obj.tiling_current_task.status
-        return obj.vector_tile_sync_status
-
-    def product_sync_status(self, obj: DatasetViewResource, default: str):
-        if default == DatasetViewResource.SyncStatus.SYNCING:
-            if obj.product_current_task and obj.product_current_task.status:
-                return obj.product_current_task.status
-        return default
+        return fetch_vector_tile_sync_status(obj)
 
     def get_geojson_sync_status(self, obj: DatasetViewResource):
-        return self.product_sync_status(obj, obj.geojson_sync_status)
+        return fetch_product_sync_status(obj, obj.geojson_sync_status)
 
     def get_shapefile_sync_status(self, obj: DatasetViewResource):
-        return self.product_sync_status(obj, obj.shapefile_sync_status)
+        return fetch_product_sync_status(obj, obj.shapefile_sync_status)
 
     def get_kml_sync_status(self, obj: DatasetViewResource):
-        return self.product_sync_status(obj, obj.kml_sync_status)
+        return fetch_product_sync_status(obj, obj.kml_sync_status)
 
     def get_topojson_sync_status(self, obj: DatasetViewResource):
-        return self.product_sync_status(obj, obj.topojson_sync_status)
+        return fetch_product_sync_status(obj, obj.topojson_sync_status)
 
     class Meta:
         model = DatasetViewResource
