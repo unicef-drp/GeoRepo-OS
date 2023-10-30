@@ -30,6 +30,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import SyncIcon from '@mui/icons-material/Sync';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import { DatasetDetailItemInterface } from "../../models/dataset";
 
@@ -177,6 +178,14 @@ const VIEW_LIST_URL = '/api/view-sync-list/'
 const TRIGGER_SYNC_API_URL = '/api/sync-view/'
 const FilterIcon: any = FilterAlt
 
+const getQueued = () => {
+  return (
+    <span className='sync-status-desc-container'>
+      <HourglassEmptyIcon color='info' fontSize='small' />
+      <span className='sync-status-desc'>{'Queued but not running yet'}</span>
+    </span>
+  )
+}
 const getSyncing = (progress: number) => {
   return (
     <span className='running-status'>
@@ -471,6 +480,8 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                 return getSynced('Vector tiles are synced')
               } else if (_status === 'syncing') {
                 return getSyncing(_progress)
+              } else if (_status === 'Queued') {
+                return getQueued()
               } else if (_status === 'error') {
                 if (_simplificationStatus !== 'synced') {
                   return (
@@ -494,7 +505,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   
         _columns.push({
           name: 'product_sync_status',
-          label: 'Data Product',
+          label: 'Data Products',
           options: {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
@@ -511,6 +522,8 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                 return getSynced('Data products are synced')
               } else if (_status === 'syncing') {
                 return getSyncing(_progress)
+              } else if (_status === 'Queued') {
+                return getQueued()
               } else if (_status === 'error') {
                 return (
                   getError('Click to retrigger data products generation', !rowData[2].includes('Manage'), (e: any) => {
@@ -552,7 +565,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
               let _syncButtonDisabled = (rowData[8] === 'synced' && rowData[9] === 'synced') || (rowData[8] === 'syncing' || rowData[9] === 'syncing')
               const getSyncText = () => {
                 if (_syncButtonDisabled) {
-                  return 'Vector Tile and Data Product are synchronized'
+                  return 'Vector Tile and Data Products are synchronized'
                 }
                 if (_simplificationStatus !== 'synced') return 'Please trigger simplification before regenerate vector tiles!'
                 return 'Synchronize'
