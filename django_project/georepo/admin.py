@@ -104,11 +104,29 @@ class GeographicalEntityAdmin(admin.ModelAdmin):
 
 def populate_default_tile_config(modeladmin, request, queryset):
     from georepo.utils.tile_configs import populate_tile_configs
+    from georepo.tasks.dataset_view import (
+        check_affected_views_from_tiling_config
+    )
     for dataset in queryset:
         populate_tile_configs(dataset.id)
+        # reset dataset styles because zoom could be changed
+        dataset.styles = None
+        dataset.style_source_name = ''
+        dataset.is_simplified = False
+        dataset.sync_status = dataset.SyncStatus.OUT_OF_SYNC
+        dataset.simplification_sync_status = dataset.SyncStatus.OUT_OF_SYNC
+        dataset.simplification_progress = ''
+        dataset.simplification_progress_num = 0
+        dataset.save(update_fields=[
+            'styles', 'style_source_name', 'is_simplified', 'sync_status',
+            'simplification_sync_status', 'simplification_progress',
+            'simplification_progress_num'
+        ])
+        # trigger check affected views from dataset tiling config
+        check_affected_views_from_tiling_config.delay(dataset.id)
     modeladmin.message_user(
         request,
-        'Dataset tile configs has been successfully generated!',
+        'Dataset tile configs has been successfully reset!',
         messages.SUCCESS
     )
 
