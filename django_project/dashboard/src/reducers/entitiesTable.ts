@@ -9,15 +9,13 @@ export interface TableState {
 const initialState: TableState = {
   currentColumns: [
     'country',
-    'level',
     'type',
     'name',
     'default_code',
-    'code',
-    'concept_ucode',
-    'updated',
+    'ucode',
     'rev',
     'status',
+    'level',
   ]
 };
 

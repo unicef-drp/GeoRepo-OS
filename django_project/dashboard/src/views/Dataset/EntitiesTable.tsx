@@ -51,14 +51,12 @@ const ALL_COLUMNS = [
     'updated',
     'rev',
     'status',
-    'centroid',
     'privacy_level',
     'unique_code_version',
     'level',
     'end_date',
     'is_latest',
     'approved_date',
-    'geometry',
     'source',
     'admin_level_name',
     'dataset',
@@ -208,7 +206,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                         options.label = 'Valid From'
                         options.options = {
                             searchable: false,
-                            display: true,
+                            display: initialColumns.includes(column_name),
                             customBodyRender: (value:any) => {
                                 return value?new Date(value).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}):'-'
                             },
