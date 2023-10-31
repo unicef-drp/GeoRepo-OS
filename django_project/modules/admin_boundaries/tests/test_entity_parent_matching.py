@@ -3,6 +3,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.test import TestCase, override_settings
 
 from core.settings.utils import absolute_path
+from georepo.models import IdType
 from georepo.tests.model_factories import (
     GeographicalEntityF,
     DatasetF,
@@ -28,6 +29,7 @@ class TestEntityParentMatching(TestCase):
 
     def setUp(self):
         self.dataset = DatasetF.create()
+        self.pCode = IdType.objects.get(name='PCode')
         self.geojson_0 = absolute_path(
             'dashboard', 'tests',
             'parent_matching_dataset',
@@ -91,7 +93,10 @@ class TestEntityParentMatching(TestCase):
             id_fields=[
                 {
                     'field': 'code_1',
-                    'default': True
+                    'default': True,
+                    'idType': {
+                        'id': self.pCode.id
+                    }
                 }
             ],
             layer_file=self.geojson_1
@@ -173,7 +178,10 @@ class TestEntityParentMatching(TestCase):
             id_fields=[
                 {
                     'field': 'code_0',
-                    'default': True
+                    'default': True,
+                    'idType': {
+                        'id': self.pCode.id
+                    }
                 }
             ],
             layer_file=geojson_0
@@ -193,7 +201,10 @@ class TestEntityParentMatching(TestCase):
             id_fields=[
                 {
                     'field': 'code_1',
-                    'default': True
+                    'default': True,
+                    'idType': {
+                        'id': self.pCode.id
+                    }
                 }
             ],
             layer_file=geojson_1
@@ -254,7 +265,10 @@ class TestEntityParentMatching(TestCase):
             id_fields=[
                 {
                     'field': 'code_0',
-                    'default': True
+                    'default': True,
+                    'idType': {
+                        'id': self.pCode.id
+                    }
                 }
             ],
             layer_file=geojson_0
@@ -274,7 +288,10 @@ class TestEntityParentMatching(TestCase):
             id_fields=[
                 {
                     'field': 'code_1',
-                    'default': True
+                    'default': True,
+                    'idType': {
+                        'id': self.pCode.id
+                    }
                 }
             ],
             layer_file=geojson_1

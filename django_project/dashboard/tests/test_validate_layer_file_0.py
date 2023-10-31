@@ -1,6 +1,7 @@
 from django.test import TestCase, override_settings
 
 from core.settings.utils import absolute_path
+from georepo.models import IdType
 from georepo.tests.model_factories import (
     LanguageF, GeographicalEntityF
 )
@@ -11,6 +12,9 @@ from georepo.utils.layers import read_layer_files_entity_temp
 
 
 class TestValidateLayerFile0(TestCase):
+
+    def setUp(self) -> None:
+        self.pCode = IdType.objects.get(name='PCode')
 
     @override_settings(MEDIA_ROOT='/home/web/django_project/dashboard')
     def test_validate_layer_file_0(self):
@@ -39,7 +43,10 @@ class TestValidateLayerFile0(TestCase):
             id_fields=[
                 {
                     'field': 'code_0',
-                    'default': True
+                    'default': True,
+                    'idType': {
+                        'id': self.pCode.id
+                    }
                 }
             ],
             layer_file=geojson_1
@@ -76,7 +83,10 @@ class TestValidateLayerFile0(TestCase):
             id_fields=[
                 {
                     'field': 'code_0',
-                    'default': True
+                    'default': True,
+                    'idType': {
+                        'id': self.pCode.id
+                    }
                 }
             ],
             layer_file=geojson_1

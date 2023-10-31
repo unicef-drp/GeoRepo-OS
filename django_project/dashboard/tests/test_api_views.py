@@ -185,6 +185,7 @@ class TestApiViews(TestCase):
             generate_adm0_default_views=True
         )
         self.superuser = UserF.create(is_superuser=True)
+        self.pCode = IdType.objects.get(name='PCode')
 
     @mock.patch(
         'dashboard.api_views.layer_upload.validate_layer_file_metadata',
@@ -1097,7 +1098,10 @@ class TestApiViews(TestCase):
             id_fields=[
                 {
                     'field': 'code_0',
-                    'default': True
+                    'default': True,
+                    'idType': {
+                        'id': self.pCode.id
+                    }
                 }
             ],
             layer_file=(
@@ -1248,7 +1252,10 @@ class TestApiViews(TestCase):
             id_fields=[
                 {
                     'field': 'code_0',
-                    'default': True
+                    'default': True,
+                    'idType': {
+                        'id': self.pCode.id
+                    }
                 }
             ],
             layer_file=(

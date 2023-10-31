@@ -1,6 +1,7 @@
 from typing import Tuple
 import time
 import json
+import logging
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
@@ -30,6 +31,9 @@ from georepo.utils.fiona_utils import (
     store_zip_memory_to_temp_file,
     open_collection_by_file
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_attributes(collection):
@@ -164,6 +168,15 @@ def fetch_layer_file_metadata(layer_file: LayerFile):
         delete_tmp_shapefile(collection.path)
 
 
+def build_geom_object(geom_str: str):
+    geom = None
+    try:
+        geom = GEOSGeometry(geom_str)
+    except Exception:
+        logger.error('Error building geom object ', geom)
+    return geom
+
+
 def read_temp_layer_file(upload_session: LayerUploadSession,
                          layer_file: LayerFile):
     """Read layer file and store to EntityTemp table."""
@@ -221,9 +234,68 @@ def read_temp_layer_file(upload_session: LayerUploadSession,
             # add geom
             # create geometry
             geom_str = json.dumps(feature['geometry'])
-            geom = GEOSGeometry(geom_str)
-            if isinstance(geom, Polygon):
+            geom = build_geom_object(geom_str)
+            if geom and isinstance(geom, Polygon):
                 geom = MultiPolygon([geom])
+            # add metadata
+            location_type_value = None
+            if layer_file.location_type_field:
+                location_type_value = (
+                    get_feature_value(feature, layer_file.location_type_field)
+                )
+            source_value = None
+            if layer_file.source_field:
+                source_value = (
+                    get_feature_value(feature, layer_file.source_field)
+                )
+            privacy_level_value = None
+            if layer_file.privacy_level_field:
+                privacy_level_value = (
+                    get_feature_value(feature, layer_file.privacy_level_field)
+                )
+            boundary_type_value = None
+            if layer_file.boundary_type:
+                boundary_type_value = (
+                    get_feature_value(feature, layer_file.boundary_type)
+                )
+            id_fields = []
+            for id_field_data in layer_file.id_fields:
+                id_fields.append({
+                    'field': id_field_data['field'],
+                    'value': get_feature_value(
+                        feature, id_field_data['field']),
+                    'idType': id_field_data['idType'],
+                    'default': id_field_data['default']
+                })
+            name_fields = []
+            for name_field_data in layer_file.name_fields:
+                name_fields.append({
+                    'field': name_field_data['field'],
+                    'value': get_feature_value(
+                        feature, name_field_data['field']),
+                    'default': name_field_data['default'],
+                    'label': (
+                        name_field_data['label'] if 'label' in
+                        name_field_data else ''
+                    ),
+                    'selectedLanguage': name_field_data['selectedLanguage']
+                })
+            metadata = {
+                'entity_type': layer_file.entity_type,
+                'location_type_field': layer_file.location_type_field,
+                'location_type_value': location_type_value,
+                'parent_id_field': layer_file.parent_id_field,
+                'parent_id_value': feature_parent_code,
+                'source_field': layer_file.source_field,
+                'source_value': source_value,
+                'privacy_level': layer_file.privacy_level,
+                'privacy_level_field': layer_file.privacy_level_field,
+                'privacy_level_value': privacy_level_value,
+                'id_fields': id_fields,
+                'name_fields': name_fields,
+                'boundary_type': layer_file.boundary_type,
+                'boundary_type_value': boundary_type_value
+            }
             data.append(
                 EntityTemp(
                     level=level,
@@ -234,7 +306,8 @@ def read_temp_layer_file(upload_session: LayerUploadSession,
                     entity_id=entity_id,
                     parent_entity_id=feature_parent_code,
                     ancestor_entity_id=ancestor,
-                    geometry=geom
+                    geometry=geom,
+                    metadata=metadata
                 )
             )
             if len(data) == 5:
@@ -254,3 +327,18 @@ def read_layer_files_entity_temp(upload_session: LayerUploadSession):
     ).order_by('level_int')
     for layer_file in layer_files:
         read_temp_layer_file(upload_session, layer_file)
+
+
+def check_value_as_string_valid(value: str):
+    """Validate if it is not empty string."""
+    if value is None:
+        return False
+    return str(value).strip() != ''
+
+
+def check_tmp_entity_metadata_valid(metadata, field):
+    """Validate if field value is not empty."""
+    if field not in metadata:
+        return False
+    value = metadata[field] if metadata[field] else ''
+    return check_value_as_string_valid(value)

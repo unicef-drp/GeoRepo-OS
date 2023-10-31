@@ -380,6 +380,12 @@ class EntityTemp(GisModels.Model):
         blank=True
     )
 
+    metadata = models.JSONField(
+        default=dict,
+        null=True,
+        blank=True
+    )
+
     def __str__(self) -> str:
         return self.entity_name + ' ' + self.entity_id
 
