@@ -4,7 +4,7 @@ import logging
 from django.db.models import Q
 from georepo.models.entity import GeographicalEntity
 from georepo.models.dataset import Dataset
-from georepo.models.dataset_view import DatasetView
+from georepo.models.dataset_view import DatasetView, DatasetViewResource
 from georepo.utils.unique_code import generate_concept_ucode_base
 from georepo.utils.dataset_view import (
     calculate_entity_count_in_view,
@@ -236,3 +236,27 @@ def entity_patch_centroid_bbox():
     logger.info('entity_patch_centroid_bbox has finished processing all '
                 f'{total_updated} of {total_count} entities')
     return (total_count, total_updated)
+
+
+@shared_task(name='patch_dataset_views_sync_status')
+def patch_dataset_views_sync_status(dataset_id):
+    dataset = Dataset.objects.get(id=dataset_id)
+    views = DatasetView.objects.filter(
+        dataset=dataset
+    )
+    logger.info(f'Patch views of dataset {dataset} initial sync status')
+    for view in views:
+        resources = DatasetViewResource.objects.filter(
+            dataset_view=view,
+            entity_count__gt=0
+        )
+        if resources.count() == 0:
+            # set initial status of view to out of sync
+            view.vector_tile_sync_status = (
+                DatasetView.SyncStatus.OUT_OF_SYNC
+            )
+            view.product_sync_status = (
+                DatasetView.SyncStatus.OUT_OF_SYNC
+            )
+            view.save(update_fields=['vector_tile_sync_status',
+                                     'product_sync_status'])
