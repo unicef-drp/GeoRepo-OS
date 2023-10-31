@@ -40,6 +40,30 @@ def fetch_product_sync_status(obj: DatasetViewResource, default: str):
     return default
 
 
+def fetch_all_product_status(obj: DatasetViewResource):
+    status_list = []
+    status_list.append(obj.geojson_sync_status)
+    if obj.kml_sync_status not in status_list:
+        status_list.append(obj.kml_sync_status)
+    if obj.topojson_sync_status not in status_list:
+        status_list.append(obj.topojson_sync_status)
+    if obj.shapefile_sync_status not in status_list:
+        status_list.append(obj.shapefile_sync_status)
+    result = ''
+    if 'syncing' in status_list:
+        if obj.product_current_task and obj.product_current_task.status:
+            result = obj.product_current_task.status
+        else:
+            result = 'syncing'
+    elif 'error' in status_list:
+        result = 'error'
+    elif 'out_of_sync' in status_list:
+        result = 'out_of_sync'
+    elif 'synced' in status_list:
+        result = 'synced'
+    return result
+
+
 class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     dataset = serializers.SerializerMethodField()
@@ -326,8 +350,7 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
                 dataset_view=obj,
                 entity_count__gt=0
             ):
-                status = fetch_product_sync_status(
-                    res, res.product_sync_status)
+                status = fetch_all_product_status(res)
                 if status not in res_statuses:
                     res_statuses.append(status)
             if len(res_statuses) == 1 and 'Queued' in res_statuses:

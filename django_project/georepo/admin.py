@@ -198,6 +198,18 @@ def refresh_dynamic_views(modeladmin, request, queryset):
         trigger_generate_dynamic_views(dataset)
 
 
+@admin.action(description='Patch initial sync status of views')
+def patch_initial_sync_status(modeladmin, request, queryset):
+    from georepo.tasks.dataset_patch import patch_dataset_views_sync_status
+    for dataset in queryset:
+        patch_dataset_views_sync_status.delay(dataset.id)
+    modeladmin.message_user(
+        request,
+        'Dataset patch for view sync status will be run in background!',
+        messages.SUCCESS
+    )
+
+
 @admin.action(description='Generate arcgis config')
 def generate_arcgis_config_action(modeladmin, request, queryset):
     from georepo.utils.arcgis import generate_arcgis_config
@@ -330,11 +342,11 @@ class DatasetAdmin(GuardedModelAdmin):
         do_dataset_patch, refresh_dynamic_views,
         populate_default_admin_level_names,
         generate_arcgis_config_action,
-        clear_cache, generate_jmeter_script,
+        clear_cache,
         generate_default_views, add_to_public_groups,
         generate_dataset_concept_ucode, patch_entity_names,
         patch_views_in_dataset, patch_centroid_in_entities,
-        check_entities_empty_centroid]
+        check_entities_empty_centroid, patch_initial_sync_status]
 
     def get_form(self, request, obj=None, **kwargs):
         """
