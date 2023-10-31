@@ -40,7 +40,8 @@ from georepo.utils.dataset_view import (
     init_view_privacy_level
 )
 from georepo.utils.permission import (
-    grant_datasetview_external_viewer
+    grant_datasetview_external_viewer,
+    grant_dataset_viewer
 )
 
 
@@ -152,7 +153,7 @@ class TestApiDatasetView(TestCase):
         request.user = self.superuser
         scheme = versioning.NamespaceVersioning
         view = DatasetViewList.as_view(versioning_class=scheme)
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(9):
             response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertIn('results', response.data)
@@ -167,12 +168,12 @@ class TestApiDatasetView(TestCase):
         dataset_view.delete()
         views = generate_default_view_dataset_latest(dataset)
         # insert geom
-        self.setup_entities_for_dataset(dataset)
+        entity = self.setup_entities_for_dataset(dataset)
         dataset_view = views[0]
         init_view_privacy_level(dataset_view)
         calculate_entity_count_in_view(dataset_view)
         generate_view_bbox(dataset_view)
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(9):
             response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertIn('results', response.data)
@@ -183,8 +184,89 @@ class TestApiDatasetView(TestCase):
             len(response.data['results'][0]['bbox']),
             4
         )
+        # create a user with privacy level 3
+        user_level_3 = UserF.create()
+        grant_dataset_viewer(dataset, user_level_3, 3)
+        # add entity with privacy level 2
+        pak1 = GeographicalEntityF.create(
+            dataset=dataset,
+            level=1,
+            admin_level_name='Province',
+            type=self.entity_type,
+            is_validated=True,
+            is_approved=True,
+            is_latest=True,
+            geometry=entity.geometry,
+            internal_code='PAK_1',
+            revision_number=1,
+            label='Pakistan_Province1',
+            unique_code='PAK_1',
+            unique_code_version=1,
+            start_date=isoparse('2023-01-01T06:16:13Z'),
+            end_date=isoparse('2023-01-10T06:16:13Z'),
+            privacy_level=2
+        )
+        EntityIdF.create(
+            code=self.pCode,
+            geographical_entity=pak1,
+            default=True,
+            value=pak1.internal_code
+        )
+        EntityNameF.create(
+            geographical_entity=pak1,
+            name=pak1.label,
+            language=self.enLang,
+            idx=0
+        )
+        # recalculate view metadata
+        init_view_privacy_level(dataset_view)
+        calculate_entity_count_in_view(dataset_view)
+        generate_view_bbox(dataset_view)
+        # ensure resource with level 4 and 2 are correct
+        dataset_view.refresh_from_db()
+        entity_count_map = {
+            4: 1,
+            3: 0,
+            2: 1,
+            1: 0
+        }
+        for privacy_level, assert_count in entity_count_map.items():
+            resource = dataset_view.datasetviewresource_set.filter(
+                privacy_level=privacy_level
+            ).first()
+            self.assertEqual(resource.entity_count, assert_count)
+            if assert_count > 0:
+                resource.vector_tiles_size = 1
+                resource.save(update_fields=['vector_tiles_size'])
+        # trigger view list API
+        request = self.factory.get(
+            reverse('v1:view-list-by-dataset', kwargs=kwargs)
+        )
+        request.user = user_level_3
+        view = DatasetViewList.as_view(versioning_class=scheme)
+        with self.assertNumQueries(13):
+            response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        self.assertEqual(
+            response.data['results'][0]['uuid'],
+            str(dataset_view.uuid))
+        resources = dataset_view.datasetviewresource_set.exclude(
+            privacy_level=2
+        )
+        for resource in resources:
+            self.assertNotIn(
+                str(resource.uuid),
+                response.data['results'][0]['vector_tiles'])
+        resource = dataset_view.datasetviewresource_set.filter(
+            privacy_level=2
+        ).first()
+        self.assertIn(
+            str(resource.uuid),
+            response.data['results'][0]['vector_tiles'])
         # check disabled module
         self.check_disabled_module(dataset, view, request, kwargs=kwargs)
+
 
     def test_dataset_view_list_for_user(self):
         dataset = DatasetF.create()

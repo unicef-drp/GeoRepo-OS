@@ -120,6 +120,8 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
         resource_level_for_user = view.get_resource_level_for_user(
             user_privacy_level
         )
+        # datasetviewresource_set has been prefetched
+        # with filter by entity_count > 0
         resources = view.datasetviewresource_set.all()
         filtered = [res for res in resources if
                     res.privacy_level <= resource_level_for_user]
