@@ -219,6 +219,7 @@ class DatasetViewDetailAccessPermission(GeoRepoBaseAccessPermission):
         max_privacy_level = 0
         obj_checker = ObjectPermissionChecker(request.user)
         obj_checker.prefetch_perms([dataset_view])
+        obj_checker.prefetch_perms([dataset_view.dataset])
         for i in range(MAX_PRIVACY_LEVEL, MIN_PRIVACY_LEVEL - 1, -1):
             if (
                 (obj_checker.has_perm('view_datasetview', dataset_view) and
