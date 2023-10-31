@@ -196,8 +196,12 @@ class DatasetDetailAccessPermission(GeoRepoBaseAccessPermission):
         """Test if user has view permission to dataset"""
         if not dataset.module.is_active:
             return False
+        if request.user.is_superuser:
+            return True
+        obj_checker = ObjectPermissionChecker(request.user)
+        obj_checker.prefetch_perms([dataset])
         for i in range(MIN_PRIVACY_LEVEL, MAX_PRIVACY_LEVEL + 1):
-            if request.user.has_perm(f'view_dataset_level_{i}', dataset):
+            if obj_checker.has_perm(f'view_dataset_level_{i}', dataset):
                 return True
         return False
 
@@ -209,15 +213,20 @@ class DatasetViewDetailAccessPermission(GeoRepoBaseAccessPermission):
         """Test if user has view permission to dataset view"""
         if not dataset_view.dataset.module.is_active:
             return False
+        if request.user.is_superuser:
+            return True
         has_read_perm = False
         max_privacy_level = 0
+        obj_checker = ObjectPermissionChecker(request.user)
+        obj_checker.prefetch_perms([dataset_view])
+        obj_checker.prefetch_perms([dataset_view.dataset])
         for i in range(MAX_PRIVACY_LEVEL, MIN_PRIVACY_LEVEL - 1, -1):
             if (
-                (request.user.has_perm('view_datasetview', dataset_view) and
-                 request.user.has_perm(f'view_dataset_level_{i}',
-                                       dataset_view.dataset)) or
-                request.user.has_perm(f'ext_view_datasetview_level_{i}',
-                                      dataset_view)
+                (obj_checker.has_perm('view_datasetview', dataset_view) and
+                 obj_checker.has_perm(f'view_dataset_level_{i}',
+                                      dataset_view.dataset)) or
+                obj_checker.has_perm(f'ext_view_datasetview_level_{i}',
+                                     dataset_view)
             ):
                 has_read_perm = True
                 max_privacy_level = i
@@ -323,16 +332,12 @@ def get_views_for_user(user):
         views = DatasetView.objects.filter(
             dataset=dataset
         )
-        views, _ = get_dataset_views_for_user(
+        views, privacy_level = get_dataset_views_for_user(
             user,
             dataset,
             views
         )
         views_querysets = views_querysets.union(views)
-        privacy_level = get_view_permission_privacy_level(
-            user,
-            dataset
-        )
         user_privacy_levels[dataset.id] = privacy_level
     # include external user
     external_views = DatasetView.objects.all()
@@ -376,8 +381,10 @@ def get_dataset_views_for_user(user, dataset, queryset, use_groups=True):
         accept_global_perms=False
     )
     # filter views based on privacy level
+    obj_checker = ObjectPermissionChecker(user)
+    obj_checker.prefetch_perms([dataset])
     user_privacy_level = get_view_permission_privacy_level(
-        user, dataset
+        obj_checker, dataset
     )
     views = views.filter(
         min_privacy_level__lte=user_privacy_level
