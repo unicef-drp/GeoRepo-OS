@@ -5,9 +5,3 @@ node_modules/
 /playwright/.cache/
 *auth.json
 __pycache__
-/test-results/
-/playwright-report/
-/playwright/.cache/
-/test-results/
-/playwright-report/
-/playwright/.cache/
