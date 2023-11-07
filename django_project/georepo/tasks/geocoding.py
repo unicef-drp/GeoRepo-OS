@@ -2,6 +2,8 @@ import logging
 import traceback
 import os
 import json
+import time
+import uuid
 from ast import literal_eval as make_tuple
 from psycopg2.extras import execute_values
 from celery import shared_task
@@ -52,9 +54,8 @@ def drop_temp_table(table_name):
     sql = (
         """DROP table if EXISTS {table_name}"""
     ).format(table_name=table_name)
-    # UNCOMMENT THIS
-    # with connection.cursor() as cursor:
-    #     cursor.execute(sql)
+    with connection.cursor() as cursor:
+        cursor.execute(sql)
 
 
 def create_temp_table(table_name):
@@ -69,8 +70,18 @@ def create_temp_table(table_name):
         )
         """
     ).format(table_name=table_name)
+    index_sql = (
+        """
+        CREATE INDEX "{index_prefix}_feature_idx_IDX"
+        ON {table_name} (feature_idx)
+        """
+    ).format(
+        index_prefix=str(uuid.uuid4()),
+        table_name=table_name
+    )
     with connection.cursor() as cursor:
         cursor.execute(sql)
+        cursor.execute(index_sql)
 
 
 def truncate_temp_table(table_name):
@@ -132,14 +143,14 @@ def get_column_id(id_type: IdType | str):
 def get_spatial_join(spatial_query: str, dwithin_distance: int):
     spatial_params = ''
     if spatial_query == 'ST_Intersects':
-        spatial_params = 'ST_Intersects(s.geometry, gg.geometry)'
+        spatial_params = 'ST_Intersects(s.geometry, tmp_entity.geometry)'
     elif spatial_query == 'ST_Within':
-        spatial_params = 'ST_Within(s.geometry, gg.geometry)'
+        spatial_params = 'ST_Within(s.geometry, tmp_entity.geometry)'
     elif spatial_query == 'ST_Within(ST_Centroid)':
-        spatial_params = 'ST_Within(ST_Centroid(s.geometry), gg.geometry)'
+        spatial_params = 'ST_Within(ST_Centroid(s.geometry), tmp_entity.geometry)'
     elif spatial_query == 'ST_DWithin':
         spatial_params = (
-            'ST_DWithin(s.geometry, gg.geometry, {})'
+            'ST_DWithin(s.geometry, tmp_entity.geometry, {})'
         ).format(dwithin_distance)
     return spatial_params
 
@@ -160,7 +171,7 @@ def get_containment_check_query(view: DatasetView,
     if isinstance(return_type, IdType):
         other_joins.append(
             """
-            LEFT JOIN georepo_entityid gi
+            JOIN georepo_entityid gi
               ON gi.geographical_entity_id = gg.id
               AND gi.code_id={}
             """.format(return_type.id)
@@ -177,13 +188,15 @@ def get_containment_check_query(view: DatasetView,
     where_sql = ' AND '.join(sql_conds)
     sql = (
         """
-        select s.id, s.feature_idx, s.properties, {column_id} as result_id,
+        select s.id, s.feature_idx, s.properties, tmp_entity.entity_id,
         st_asgeojson(s.geometry)
         from {table_name} s
-        left join georepo_geographicalentity gg on
-        {spatial_join}
-        {other_joins}
-        {where_sql}
+        left join (
+            select {column_id} as entity_id, gg.geometry
+            from georepo_geographicalentity gg
+            {other_joins}
+            {where_sql}
+        ) tmp_entity on {spatial_join}
         ORDER BY s.feature_idx
         """
     ).format(
@@ -214,9 +227,6 @@ def do_containment_check(geocoding_request: GeocodingRequest,
         view, table_name, spatial_query, dwithin_distance,
         max_privacy_level, return_type, admin_level
     )
-    print(sql)
-    print('*****')
-    print(query_values)
     suffix = '.geojson'
     geojson_file_path = os.path.join(
         TEMP_OUTPUT_GEOCODING_DIRECTORY,
@@ -224,9 +234,12 @@ def do_containment_check(geocoding_request: GeocodingRequest,
     ) + suffix
     rows = []
     with connection.cursor() as cursor:
+        start_query = time.time()
         cursor.execute(sql, query_values)
         rows = cursor.fetchall()
         idx = 0
+        logger.info(f'Total query time {time.time() - start_query} seconds')
+        logger.info(f'Total rows: {len(rows)}')
         with open(geojson_file_path, "w") as geojson_file:
             geojson_file.write('{\n')
             geojson_file.write('"type": "FeatureCollection",\n')
@@ -254,7 +267,7 @@ def do_containment_check(geocoding_request: GeocodingRequest,
                     idx += 1
                     feature_idx = row[1]
                     id_results.clear()
-                if row[3]:
+                if row[3] and row[3] not in id_results:
                     id_results.append(row[3])
             # write last row
             if len(rows):
@@ -317,8 +330,7 @@ def end_process_geocoding_request(geocoding_request: GeocodingRequest,
                                            output_file)
     table_name = geocoding_request.table_name(TEMP_SCHEMA)
     drop_temp_table(table_name)
-    # UNCOMMENT THIS
-    # delete_tmp_output_geocoding(geocoding_request)
+    delete_tmp_output_geocoding(geocoding_request)
 
 
 def geocoding_request_on_delete(geocoding_request: GeocodingRequest):
@@ -329,6 +341,7 @@ def geocoding_request_on_delete(geocoding_request: GeocodingRequest):
     delete_tmp_output_geocoding(geocoding_request)
 
 
+@shared_task(name="process_geocoding_request")
 def process_geocoding_request(request_id):
     geocoding_request = GeocodingRequest.objects.get(id=request_id)
     # parse parameters
