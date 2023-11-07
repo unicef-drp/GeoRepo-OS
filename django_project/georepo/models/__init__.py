@@ -16,3 +16,4 @@ from ..models.role import *  # noqa
 from ..models.access_request import *  # noqa
 from ..models.background_task import *  # noqa
 from ..models.geocoding_request import *  # noqa
+from ..models.search_id_request import *  # noqa
