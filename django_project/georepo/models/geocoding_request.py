@@ -40,7 +40,9 @@ class GeocodingRequest(models.Model):
     )
 
     task_id = models.CharField(
-        max_length=256
+        max_length=256,
+        null=True,
+        blank=True
     )
 
     uuid = models.UUIDField(
@@ -95,7 +97,9 @@ class GeocodingRequest(models.Model):
     )
 
     output_file = models.FileField(
-        upload_to='layer_files/%Y/%m/%d/'
+        upload_to='layer_files/%Y/%m/%d/',
+        null=True,
+        blank=True
     )
 
     feature_count = models.IntegerField(
@@ -105,3 +109,6 @@ class GeocodingRequest(models.Model):
 
     def __str__(self):
         return str(self.uuid)
+
+    def table_name(self, schema_name="temp"):
+        return f"{schema_name}.\"{str(self.uuid)}\""

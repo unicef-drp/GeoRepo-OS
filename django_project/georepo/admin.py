@@ -50,7 +50,8 @@ from georepo.models import (
     DatasetViewResourceLog,
     GeorepoRole,
     UserAccessRequest,
-    BackgroundTask
+    BackgroundTask,
+    GeocodingRequest
 )
 from georepo.utils.admin import (
     # get_deleted_objects,
@@ -856,6 +857,11 @@ class BackgroundTaskAdmin(admin.ModelAdmin):
         return '-'
 
 
+class GeocodingRequestAdmin(admin.ModelAdmin):
+    list_display = ('uuid', 'task_id', 'status', 'started_at', 'finished_at',
+                    'feature_count', 'progress')
+
+
 admin.site.register(GeographicalEntity, GeographicalEntityAdmin)
 admin.site.register(Language, LanguageAdmin)
 admin.site.register(EntityType)
@@ -876,6 +882,7 @@ admin.site.register(DatasetViewResource, DatasetViewResourceAdmin)
 admin.site.register(DatasetViewResourceLog, DatasetViewResourceLogAdmin)
 admin.site.register(UserAccessRequest, UserAccessRequestAdmin)
 admin.site.register(BackgroundTask, BackgroundTaskAdmin)
+admin.site.register(GeocodingRequest, GeocodingRequestAdmin)
 
 
 # Define inline formset
