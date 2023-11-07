@@ -1,14 +1,6 @@
 from django.db import models
-import uuid
-from django.conf import settings
+from georepo.models.base_task_request import BaseTaskRequest
 
-
-# task statuses
-PENDING = 'PENDING'
-PROCESSING = 'PROCESSING'
-DONE = 'DONE'
-ERROR = 'ERROR'
-CANCELLED = 'CANCELLED'
 
 # uploaded file types
 GEOJSON = 'GEOJSON'
@@ -16,15 +8,7 @@ SHAPEFILE = 'SHAPEFILE'
 GEOPACKAGE = 'GEOPACKAGE'
 
 
-class GeocodingRequest(models.Model):
-
-    STATUS_CHOICES = (
-        (PENDING, PENDING),
-        (PROCESSING, PROCESSING),
-        (DONE, DONE),
-        (ERROR, ERROR),
-        (CANCELLED, CANCELLED)
-    )
+class GeocodingRequest(BaseTaskRequest):
 
     FILE_TYPE_CHOICES = (
         (GEOJSON, GEOJSON),
@@ -32,60 +16,8 @@ class GeocodingRequest(models.Model):
         (GEOPACKAGE, GEOPACKAGE)
     )
 
-    status = models.CharField(
-        max_length=255,
-        choices=STATUS_CHOICES,
-        null=True,
-        blank=True
-    )
-
-    task_id = models.CharField(
-        max_length=256,
-        null=True,
-        blank=True
-    )
-
-    uuid = models.UUIDField(
-        default=uuid.uuid4,
-        unique=True
-    )
-
-    submitted_on = models.DateTimeField()
-
-    submitted_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-    )
-
-    started_at = models.DateTimeField(
-        null=True,
-        blank=True
-    )
-
-    finished_at = models.DateTimeField(
-        null=True,
-        blank=True
-    )
-
-    parameters = models.TextField(
-        null=True,
-        blank=True
-    )
-
-    errors = models.TextField(
-        null=True,
-        blank=True
-    )
-
-    progress = models.FloatField(
-        null=True,
-        blank=True
-    )
-
     file = models.FileField(
-        upload_to='layer_files/%Y/%m/%d/'
+        upload_to='geocoding/%Y/%m/%d/'
     )
 
     file_type = models.CharField(
@@ -97,7 +29,7 @@ class GeocodingRequest(models.Model):
     )
 
     output_file = models.FileField(
-        upload_to='layer_files/%Y/%m/%d/',
+        upload_to='geocoding/%Y/%m/%d/',
         null=True,
         blank=True
     )

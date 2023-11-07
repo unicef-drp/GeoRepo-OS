@@ -1,5 +1,5 @@
 import logging
-import time
+import traceback
 import os
 import json
 from ast import literal_eval as make_tuple
@@ -18,9 +18,11 @@ from georepo.models.entity import (
     CONCEPT_UCODE_ENTITY_ID,
     MAIN_ENTITY_ID_LIST
 )
+from georepo.models.base_task_request import (
+    PROCESSING, DONE, ERROR
+)
 from georepo.models.geocoding_request import (
-    GeocodingRequest, PROCESSING,
-    DONE, ERROR
+    GeocodingRequest, 
 )
 from georepo.utils.fiona_utils import (
     open_collection_by_file,
@@ -50,6 +52,7 @@ def drop_temp_table(table_name):
     sql = (
         """DROP table if EXISTS {table_name}"""
     ).format(table_name=table_name)
+    # UNCOMMENT THIS
     # with connection.cursor() as cursor:
     #     cursor.execute(sql)
 
@@ -64,6 +67,16 @@ def create_temp_table(table_name):
             geometry public.geometry(geometry, 4326) NOT NULL,
             properties jsonb NULL
         )
+        """
+    ).format(table_name=table_name)
+    with connection.cursor() as cursor:
+        cursor.execute(sql)
+
+
+def truncate_temp_table(table_name):
+    sql = (
+        """
+        TRUNCATE TABLE {table_name}
         """
     ).format(table_name=table_name)
     with connection.cursor() as cursor:
@@ -149,11 +162,9 @@ def get_containment_check_query(view: DatasetView,
             """
             LEFT JOIN georepo_entityid gi
               ON gi.geographical_entity_id = gg.id
-            LEFT JOIN georepo_idtype gc ON gi.code_id = gc.id
-            """
+              AND gi.code_id={}
+            """.format(return_type.id)
         )
-        sql_conds.append('gc.name ilike %s')
-        query_values.append(return_type)
     sql_conds.append('gg.level = %s')
     query_values.append(admin_level)
     sql_conds.append('gg.is_approved = true')
@@ -166,13 +177,14 @@ def get_containment_check_query(view: DatasetView,
     where_sql = ' AND '.join(sql_conds)
     sql = (
         """
-        select s.id, s.feature_idx, {column_id} as result_id
+        select s.id, s.feature_idx, s.properties, {column_id} as result_id,
+        st_asgeojson(s.geometry)
         from {table_name} s
         left join georepo_geographicalentity gg on
         {spatial_join}
         {other_joins}
         {where_sql}
-        ORDER BY s.id
+        ORDER BY s.feature_idx
         """
     ).format(
         table_name=table_name,
@@ -184,7 +196,14 @@ def get_containment_check_query(view: DatasetView,
     return sql, query_values
 
 
-def do_containment_check(view: DatasetView,
+def get_return_type_key(return_type: IdType | str):
+    if isinstance(return_type, IdType):
+        return return_type.name
+    return return_type
+
+
+def do_containment_check(geocoding_request: GeocodingRequest,
+                         view: DatasetView,
                          table_name: str,
                          spatial_query: str,
                          dwithin_distance: int,
@@ -195,11 +214,66 @@ def do_containment_check(view: DatasetView,
         view, table_name, spatial_query, dwithin_distance,
         max_privacy_level, return_type, admin_level
     )
+    print(sql)
+    print('*****')
+    print(query_values)
+    suffix = '.geojson'
+    geojson_file_path = os.path.join(
+        TEMP_OUTPUT_GEOCODING_DIRECTORY,
+        f"{str(geocoding_request.uuid)}"
+    ) + suffix
     rows = []
     with connection.cursor() as cursor:
         cursor.execute(sql, query_values)
         rows = cursor.fetchall()
-
+        idx = 0
+        with open(geojson_file_path, "w") as geojson_file:
+            geojson_file.write('{\n')
+            geojson_file.write('"type": "FeatureCollection",\n')
+            geojson_file.write('"features": [\n')
+            feature_idx = -1
+            id_results = []
+            for row_idx, row in enumerate(rows):
+                if feature_idx == -1:
+                    feature_idx = row[1]
+                elif feature_idx != row[1]:
+                    # write feature to file
+                    write_row_idx = row_idx - 1
+                    geom = json.loads(rows[write_row_idx][4])
+                    properties = json.loads(rows[write_row_idx][2])
+                    properties[get_return_type_key(return_type)] = (
+                        id_results
+                    )
+                    feature_data = {
+                        "type": "Feature",
+                        "properties": properties,
+                        "geometry": geom
+                    }
+                    geojson_file.write(json.dumps(feature_data))
+                    geojson_file.write(',\n')
+                    idx += 1
+                    feature_idx = row[1]
+                    id_results.clear()
+                if row[3]:
+                    id_results.append(row[3])
+            # write last row
+            if len(rows):
+                write_row_idx = len(rows) - 1
+                geom = json.loads(rows[write_row_idx][4])
+                properties = json.loads(rows[write_row_idx][2])
+                properties[get_return_type_key(return_type)] = (
+                    id_results
+                )
+                feature_data = {
+                    "type": "Feature",
+                    "properties": properties,
+                    "geometry": geom
+                }
+                geojson_file.write(json.dumps(feature_data))
+                geojson_file.write('\n')
+            geojson_file.write(']\n')
+            geojson_file.write('}\n')
+    return open(geojson_file_path, 'rb')
 
 def delete_tmp_output_geocoding(geocoding_request: GeocodingRequest):
     tmp_file_path = os.path.join(
@@ -217,10 +291,11 @@ def start_process_geocoding_request(geocoding_request: GeocodingRequest):
     geocoding_request.save(update_fields=['status', 'started_at', 'progress'])
     create_temp_schema()
     table_name = geocoding_request.table_name(TEMP_SCHEMA)
-    drop_temp_table(table_name)
     create_temp_table(table_name)
+    truncate_temp_table(table_name)
     if not os.path.exists(TEMP_OUTPUT_GEOCODING_DIRECTORY):
         os.makedirs(TEMP_OUTPUT_GEOCODING_DIRECTORY)
+    delete_tmp_output_geocoding(geocoding_request)
     return table_name
 
 
@@ -235,13 +310,15 @@ def end_process_geocoding_request(geocoding_request: GeocodingRequest,
     else:
         geocoding_request.progress = 100
         geocoding_request.errors = None
-        geocoding_request.output_file = output_file
-    geocoding_request.save(update_fields=['status', 'finished_at',
-                                          'progress', 'feature_count',
-                                          'errors', 'output_file'])
+        geocoding_request.save(update_fields=['status', 'finished_at',
+                                            'progress', 'feature_count',
+                                            'errors'])
+        geocoding_request.output_file.save(os.path.basename(output_file.name),
+                                           output_file)
     table_name = geocoding_request.table_name(TEMP_SCHEMA)
     drop_temp_table(table_name)
-    delete_tmp_output_geocoding(geocoding_request)
+    # UNCOMMENT THIS
+    # delete_tmp_output_geocoding(geocoding_request)
 
 
 def geocoding_request_on_delete(geocoding_request: GeocodingRequest):
@@ -313,14 +390,21 @@ def process_geocoding_request(request_id):
     is_success = False
     output_file = None
     errors = None
-    sql, query_values = get_containment_check_query(
-        view, geocoding_request.table_name(TEMP_SCHEMA),
-        spatial_query, dwithin_distance, max_privacy_level,
-        return_type, admin_level
-    )
-    print(sql)
-    print('*****')
-    print(query_values)
-    # end process
-    end_process_geocoding_request(
-        geocoding_request, is_success, output_file, feature_count, errors)
+    try:
+        output_file = do_containment_check(
+            geocoding_request, view, geocoding_request.table_name(TEMP_SCHEMA),
+            spatial_query, dwithin_distance, max_privacy_level,
+            return_type, admin_level
+        )
+        is_success = True
+    except Exception as ex:
+        print(traceback.format_exc())
+        logger.error('Failed to process geocoding request!')
+        logger.error(ex)
+        errors = str(ex)
+    finally:
+        # end process
+        end_process_geocoding_request(
+            geocoding_request, is_success, output_file, feature_count, errors)
+        if output_file:
+            output_file.close()
