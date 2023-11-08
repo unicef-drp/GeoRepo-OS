@@ -2323,7 +2323,7 @@ class ViewEntityBatchSearchId(APIView, DatasetViewDetailCheckPermission):
             return Response(
                 status=400,
                 data=APIErrorSerializer({
-                    'detail': f'Invalid ID List in request body.'
+                    'detail': 'Invalid ID List in request body.'
                 }).data
             )
         id_request = SearchIdRequest.objects.create(
