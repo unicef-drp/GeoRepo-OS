@@ -9,15 +9,17 @@ from georepo.models.entity import (
 
 
 def validate_return_type(return_type: str) -> IdType | str:
-        id_type = IdType.objects.filter(
-            name__iexact=return_type
-        )
-        if id_type.exists():
-            return id_type.first()
-        # check whether id_type is uuid, Code
-        if return_type in MAIN_ENTITY_ID_LIST:
-            return return_type
-        return None
+    id_type = IdType.objects.filter(
+        name__iexact=return_type
+    )
+    if id_type.exists():
+        return id_type.first()
+    # check whether id_type is uuid, Code
+    if return_type:
+        return_type_str = return_type.lower()
+        if return_type_str in MAIN_ENTITY_ID_LIST:
+            return return_type_str
+    return None
 
 
 def get_column_id(id_type: IdType | str):

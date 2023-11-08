@@ -10,6 +10,9 @@ DONE = 'DONE'
 ERROR = 'ERROR'
 CANCELLED = 'CANCELLED'
 
+COMPLETED_STATUS = [DONE, ERROR, CANCELLED]
+
+
 class BaseTaskRequest(models.Model):
 
     STATUS_CHOICES = (
@@ -85,4 +88,3 @@ class BaseTaskRequest(models.Model):
 
     def __str__(self):
         return str(self.uuid)
-

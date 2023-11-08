@@ -120,10 +120,11 @@ def get_search_id_query(view: DatasetView, input_type: IdType | str,
     where_sql = ' AND '.join(sql_conds)
     sql = (
         """
-        select DISTINCT {column_id} as entity_id
+        select DISTINCT {column_id} as entity_id, gg.unique_code_version
         from georepo_geographicalentity gg
         {other_joins}
         {where_sql}
+        ORDER BY gg.unique_code_version
         """
     ).format(
         column_id=get_column_id(output_type),
@@ -167,18 +168,24 @@ def process_search_id_request(request_id):
     )
     return_type = validate_return_type(request.output_id_type)
     if return_type is None:
-        logger.error(f'Invalid search id request return type! {request.output_id_type}')
+        logger.error(
+            'Invalid search id request '
+            f'return type! {request.output_id_type}')
         end_process_search_id_request(
             request, False, None,
-            f'Invalid search id request return type! {request.output_id_type}')
+            'Invalid search id request '
+            f'return type! {request.output_id_type}')
         return
     # validate input type
     input_type = validate_return_type(request.input_id_type)
     if input_type is None:
-        logger.error(f'Invalid search id request input type! {request.input_id_type}')
+        logger.error(
+            'Invalid search id request '
+            f'input type! {request.input_id_type}')
         end_process_search_id_request(
             request, False, None,
-            f'Invalid search id request input type! {request.input_id_type}')
+            'Invalid search id request '
+            f'input type! {request.input_id_type}')
         return
 
     is_success = False

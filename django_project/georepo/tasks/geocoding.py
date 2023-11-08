@@ -16,9 +16,7 @@ from georepo.models.id_type import IdType
 from georepo.models.base_task_request import (
     PROCESSING, DONE, ERROR
 )
-from georepo.models.geocoding_request import (
-    GeocodingRequest, 
-)
+from georepo.models.geocoding_request import GeocodingRequest
 from georepo.utils.fiona_utils import (
     open_collection_by_file,
     delete_tmp_shapefile
@@ -110,7 +108,9 @@ def get_spatial_join(spatial_query: str, dwithin_distance: int):
     elif spatial_query == 'ST_Within':
         spatial_params = 'ST_Within(s.geometry, tmp_entity.geometry)'
     elif spatial_query == 'ST_Within(ST_Centroid)':
-        spatial_params = 'ST_Within(ST_Centroid(s.geometry), tmp_entity.geometry)'
+        spatial_params = (
+            'ST_Within(ST_Centroid(s.geometry), tmp_entity.geometry)'
+        )
     elif spatial_query == 'ST_DWithin':
         spatial_params = (
             'ST_DWithin(s.geometry, tmp_entity.geometry, {})'
@@ -324,7 +324,8 @@ def process_geocoding_request(request_id):
     admin_level = int(params[4])
     return_type = validate_return_type(return_type_str)
     if return_type is None:
-        logger.error(f'Invalid geocoding request return type! {return_type_str}')
+        logger.error(
+            f'Invalid geocoding request return type! {return_type_str}')
         end_process_geocoding_request(
             geocoding_request, False, None, 0,
             f'Invalid geocoding request return type! {return_type_str}')
@@ -349,7 +350,7 @@ def process_geocoding_request(request_id):
             data.append((
                 feature_idx,
                 geom.ewkt,
-                json.dumps(properties)   
+                json.dumps(properties)
             ))
             feature_count += 1
             if len(data) == 100:
