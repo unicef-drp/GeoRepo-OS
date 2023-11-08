@@ -37,7 +37,11 @@ from georepo.api_views.entity_view import (
     ViewEntityTraverseHierarchyByUCode,
     ViewEntityTraverseChildrenHierarchyByUCode,
     ViewEntityListByAdminLevel0,
-    ViewEntityListByAdminLevelAndConceptUCode
+    ViewEntityListByAdminLevelAndConceptUCode,
+    ViewEntityBatchSearchId,
+    # ViewEntityBatchGeocoding,
+    ViewEntityBatchSearchIdResult,
+    # ViewEntityBatchGeocodingResult
 )
 from georepo.api_views.entity import (
     EntityBoundingBox,
@@ -160,6 +164,18 @@ view_urls = [
 ]
 
 view_entity_urls = [
+    path(
+        'search/view/<uuid:uuid>/entity/batch/identifier/<str:input_type>/'
+        'return_type/<str:return_type>/',
+        ViewEntityBatchSearchId.as_view(),
+        name='batch-search-view-by-id'
+    ),
+    path(
+        'search/view/<uuid:uuid>/entity/batch/identifier/'
+        'result/<uuid:request_id>/',
+        ViewEntityBatchSearchIdResult.as_view(),
+        name='batch-result-search-view-by-id'
+    ),
     re_path(
         r'search/view/(?P<uuid>[\da-f-]+)/entity/list/?$',
         ViewEntityListByAdminLevel0.as_view(),
@@ -240,6 +256,19 @@ operation_view_entity_urls = [
         ViewEntityContainmentCheck.as_view(),
         name='view-entity-containment-check'
     ),
+    # path(
+    #     'operation/view/<uuid:uuid>/batch-containment-check/'
+    #     'result/<uuid:request_uuid>/',
+    #     ViewEntityBatchGeocodingResult.as_view(),
+    #     name='batch-result-containment-check'
+    # ),
+    # re_path(
+    #     r'operation/view/(?P<uuid>[\da-f-]+)/batch-containment-check/'
+    #     r'(?P<spatial_query>[^/]+)/(?P<distance>[\d]+)/'
+    #     r'(?P<id_type>[^/]+)/?$',
+    #     ViewEntityBatchGeocoding.as_view(),
+    #     name='view-entity-batch-containment-check'
+    # ),
 ]
 
 download_urls = [
