@@ -13,13 +13,6 @@ from django.contrib.gis.geos import Polygon, MultiPolygon
 from django.utils import timezone
 from georepo.models.dataset_view import DatasetView
 from georepo.models.id_type import IdType
-from georepo.models.entity import (
-    UUID_ENTITY_ID,
-    CONCEPT_UUID_ENTITY_ID,
-    CODE_ENTITY_ID, UCODE_ENTITY_ID,
-    CONCEPT_UCODE_ENTITY_ID,
-    MAIN_ENTITY_ID_LIST
-)
 from georepo.models.base_task_request import (
     PROCESSING, DONE, ERROR
 )
@@ -33,6 +26,11 @@ from georepo.utils.fiona_utils import (
 from georepo.utils.layers import build_geom_object
 from georepo.utils.permission import (
     get_view_permission_privacy_level
+)
+from georepo.utils.entity_query import (
+    validate_return_type,
+    get_column_id,
+    get_return_type_key
 )
 
 
@@ -105,41 +103,6 @@ def insert_into_temp_table(table_name, data):
         execute_values(cursor, sql, data)
 
 
-def validate_return_type(return_type: str) -> IdType | str:
-        id_type = IdType.objects.filter(
-            name__iexact=return_type
-        )
-        if id_type.exists():
-            return id_type.first()
-        # check whether id_type is uuid, Code
-        if return_type in MAIN_ENTITY_ID_LIST:
-            return return_type
-        return None
-
-
-def get_column_id(id_type: IdType | str):
-    column_id = None
-    if isinstance(id_type, IdType):
-        column_id = 'gi.value'
-    elif id_type == CONCEPT_UCODE_ENTITY_ID:
-        column_id = 'gg.concept_ucode'
-    elif id_type == CODE_ENTITY_ID:
-        column_id = 'gg.internal_code'
-    elif id_type == UUID_ENTITY_ID:
-        column_id = 'gg.uuid_revision'
-    elif id_type == CONCEPT_UUID_ENTITY_ID:
-        column_id = 'gg.uuid'
-    elif id_type == UCODE_ENTITY_ID:
-        column_id = (
-            """
-            gg.unique_code || '_V' || CASE WHEN
-            gg.unique_code_version IS NULL THEN 1 ELSE
-            gg.unique_code_version END
-            """
-        )
-    return column_id
-
-
 def get_spatial_join(spatial_query: str, dwithin_distance: int):
     spatial_params = ''
     if spatial_query == 'ST_Intersects':
@@ -207,12 +170,6 @@ def get_containment_check_query(view: DatasetView,
         where_sql=f'where {where_sql}'
     )
     return sql, query_values
-
-
-def get_return_type_key(return_type: IdType | str):
-    if isinstance(return_type, IdType):
-        return return_type.name
-    return return_type
 
 
 def do_containment_check(geocoding_request: GeocodingRequest,
@@ -288,6 +245,7 @@ def do_containment_check(geocoding_request: GeocodingRequest,
             geojson_file.write('}\n')
     return open(geojson_file_path, 'rb')
 
+
 def delete_tmp_output_geocoding(geocoding_request: GeocodingRequest):
     tmp_file_path = os.path.join(
         TEMP_OUTPUT_GEOCODING_DIRECTORY,
@@ -323,9 +281,10 @@ def end_process_geocoding_request(geocoding_request: GeocodingRequest,
     else:
         geocoding_request.progress = 100
         geocoding_request.errors = None
-        geocoding_request.save(update_fields=['status', 'finished_at',
-                                            'progress', 'feature_count',
-                                            'errors'])
+    geocoding_request.save(update_fields=['status', 'finished_at',
+                                          'progress', 'feature_count',
+                                          'errors'])
+    if output_file:
         geocoding_request.output_file.save(os.path.basename(output_file.name),
                                            output_file)
     table_name = geocoding_request.table_name(TEMP_SCHEMA)
