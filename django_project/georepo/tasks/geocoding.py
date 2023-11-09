@@ -36,6 +36,11 @@ logger = logging.getLogger(__name__)
 TEMP_SCHEMA = "temp"
 TEMP_OUTPUT_GEOCODING_DIRECTORY = getattr(settings, 'FILE_UPLOAD_TEMP_DIR',
                                           '/home/web/media/tmp/geocoding')
+TEMP_OUTPUT_GEOCODING_DIRECTORY = (
+    TEMP_OUTPUT_GEOCODING_DIRECTORY if
+    TEMP_OUTPUT_GEOCODING_DIRECTORY is not None else
+    '/home/web/media/tmp/geocoding'
+)
 
 
 def create_temp_schema():
