@@ -859,12 +859,16 @@ class BackgroundTaskAdmin(admin.ModelAdmin):
 
 
 class GeocodingRequestAdmin(admin.ModelAdmin):
-    list_display = ('uuid', 'task_id', 'status', 'started_at', 'finished_at',
+    list_display = ('uuid', 'task_id', 'status',
+                    'submitted_on', 'submitted_by',
+                    'started_at', 'finished_at',
                     'feature_count')
 
 
 class SearchIdRequestAdmin(admin.ModelAdmin):
-    list_display = ('uuid', 'task_id', 'status', 'started_at', 'finished_at')
+    list_display = ('uuid', 'task_id', 'status',
+                    'submitted_on', 'submitted_by',
+                    'started_at', 'finished_at')
 
 
 admin.site.register(GeographicalEntity, GeographicalEntityAdmin)
