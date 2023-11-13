@@ -35,9 +35,6 @@ from georepo.api_views.entity_view import (
     ViewEntityBatchGeocodingStatus,
     ViewEntityBatchGeocodingResult
 )
-from georepo.utils.fiona_utils import (
-    open_collection_by_file
-)
 
 
 class DummyTask:
