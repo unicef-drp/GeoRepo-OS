@@ -119,9 +119,7 @@ class CountriesTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
     def get_dataset_levels(self, dataset_uuid, adm0_id = None):
         dataset = get_object_or_404(Dataset, uuid=dataset_uuid)
         entities = GeographicalEntity.objects.filter(
-            dataset=dataset,
-            is_approved=True,
-            is_latest=True
+            dataset=dataset
         )
         return self.prepare_response(entities, adm0_id)
 
@@ -129,9 +127,7 @@ class CountriesTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
         dataset_view = get_object_or_404(DatasetView, uuid=view_uuid)
         dataset = dataset_view.dataset
         entities = GeographicalEntity.objects.filter(
-            dataset=dataset,
-            is_approved=True,
-            is_latest=True
+            dataset=dataset
         )
         # raw_sql to view to select id
         raw_sql = (
@@ -187,8 +183,6 @@ class FetchGeoJsonPreview(AzureAuthRequiredMixin, APIView):
         dataset = get_object_or_404(Dataset, uuid=dataset_uuid)
         entities = GeographicalEntity.objects.filter(
             dataset=dataset,
-            is_approved=True,
-            is_latest=True,
             level=level
         )
         return self.prepare_response(entities, adm0_id, level)
@@ -198,8 +192,6 @@ class FetchGeoJsonPreview(AzureAuthRequiredMixin, APIView):
         dataset = dataset_view.dataset
         entities = GeographicalEntity.objects.filter(
             dataset=dataset,
-            is_approved=True,
-            is_latest=True,
             level=level
         )
         # raw_sql to view to select id
