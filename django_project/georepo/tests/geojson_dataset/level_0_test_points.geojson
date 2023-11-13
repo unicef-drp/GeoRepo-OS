@@ -1,0 +1,11 @@
+{
+    "type": "FeatureCollection",
+    "name": "level0_test_point",
+    "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+    "features": [
+    { "type": "Feature", "properties": { "id": 1 }, "geometry": { "type": "Point", "coordinates": [ 70.19706697786674, 32.578628584727497 ] } },
+    { "type": "Feature", "properties": { "id": 2 }, "geometry": { "type": "Point", "coordinates": [ 70.547045554805379, 32.334252827909602 ] } },
+    { "type": "Feature", "properties": { "id": 3 }, "geometry": { "type": "Point", "coordinates": [ 69.967583926450487, 32.149447892698291 ] } }
+    ]
+    }
+    
