@@ -39,9 +39,10 @@ from georepo.api_views.entity_view import (
     ViewEntityListByAdminLevel0,
     ViewEntityListByAdminLevelAndConceptUCode,
     ViewEntityBatchSearchId,
-    # ViewEntityBatchGeocoding,
+    ViewEntityBatchGeocoding,
     ViewEntityBatchSearchIdResult,
-    # ViewEntityBatchGeocodingResult
+    ViewEntityBatchGeocodingResult,
+    ViewEntityBatchGeocodingStatus
 )
 from georepo.api_views.entity import (
     EntityBoundingBox,
@@ -256,19 +257,25 @@ operation_view_entity_urls = [
         ViewEntityContainmentCheck.as_view(),
         name='view-entity-containment-check'
     ),
-    # path(
-    #     'operation/view/<uuid:uuid>/batch-containment-check/'
-    #     'result/<uuid:request_uuid>/',
-    #     ViewEntityBatchGeocodingResult.as_view(),
-    #     name='batch-result-containment-check'
-    # ),
-    # re_path(
-    #     r'operation/view/(?P<uuid>[\da-f-]+)/batch-containment-check/'
-    #     r'(?P<spatial_query>[^/]+)/(?P<distance>[\d]+)/'
-    #     r'(?P<id_type>[^/]+)/?$',
-    #     ViewEntityBatchGeocoding.as_view(),
-    #     name='view-entity-batch-containment-check'
-    # ),
+    path(
+        'operation/view/<uuid:uuid>/batch-containment-check/'
+        'status/<uuid:request_id>/',
+        ViewEntityBatchGeocodingStatus.as_view(),
+        name='check-status-batch-geocoding'
+    ),
+    path(
+        'operation/view/<uuid:uuid>/batch-containment-check/'
+        'result/<uuid:request_id>/',
+        ViewEntityBatchGeocodingResult.as_view(),
+        name='get-result-batch-geocoding'
+    ),
+    re_path(
+        r'operation/view/(?P<uuid>[\da-f-]+)/batch-containment-check/'
+        r'(?P<spatial_query>[^/]+)/(?P<distance>[\d]+)/'
+        r'(?P<admin_level>[\d]+)/(?P<id_type>[^/]+)/?$',
+        ViewEntityBatchGeocoding.as_view(),
+        name='batch-geocoding'
+    ),
 ]
 
 download_urls = [
