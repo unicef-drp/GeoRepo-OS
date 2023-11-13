@@ -2559,6 +2559,7 @@ class ViewEntityBatchGeocoding(ViewEntityContainmentCheck,
                 status=PENDING,
                 submitted_on=timezone.now(),
                 submitted_by=request.user,
+                file_type=layer_type,
                 parameters=(
                     f'({str(dataset_view.id)},\'{spatial_query}\','
                     f'{dwithin_distance},\'{return_type_str}\',{admin_level})'
