@@ -9,7 +9,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import Dataset from '../../models/dataset';
 import View from '../../models/view';
-import { TilingConfig, ZOOM_LEVELS } from '../../models/tiling';
+import { TilingConfig, ZOOM_LEVELS, MAX_ZOOM } from '../../models/tiling';
 import HtmlTooltip from '../../components/HtmlTooltip';
 
 const TILING_CONFIGS_TEMP_DETAIL_URL = '/api/tiling-configs/preview/country/list/'
@@ -183,8 +183,8 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
             center: [lng, lat],
             zoom: 0,
             attributionControl: false,
-            minZoom: minZoom,
-            maxZoom: maxZoom
+            minZoom: 0,
+            maxZoom: MAX_ZOOM
         });
         map.current.addControl(new AttributionControl(), 'bottom-left');
         map.current.on('load', () => {
@@ -244,12 +244,6 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
         if (Object.keys(datasetRefs).length === 0) return;
         drawLayers(datasetRefs, files, zoom)
     }, [zoom])
-
-    useEffect(() => {
-        if (!map.current) return;
-        let _mapObj: Map = map.current
-        _mapObj.setMaxZoom(maxZoom)
-    }, [maxZoom])
 
     const fetchGeoJson = (adm0Id: number, level: number) => {
         let _fetch_url = `${PREVIEW_GEOJSON_URL}?adm0_id=${adm0Id}&level=${level}`
@@ -319,8 +313,10 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
             let _file = files[_searchIdx]
             let _searchFactorIdx = _file.factors.findIndex((factor) => factor.zoom_level == currentZoom)
             if (_searchFactorIdx === -1) {
-                // remove from map
-                toggleLayer(_level, false)
+                // remove from map only if the current zoom is lower than max zoom
+                if (currentZoom <= maxZoom) {
+                    toggleLayer(_level, false)
+                }
             } else {
                 // do simplification if needed
                 let _factor = _file.factors[_searchFactorIdx]
