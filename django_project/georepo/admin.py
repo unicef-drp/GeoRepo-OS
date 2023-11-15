@@ -171,6 +171,32 @@ def generate_simplified_geometry(modeladmin, request, queryset):
     )
 
 
+def generate_simplified_geometry_low_memory(modeladmin, request, queryset):
+    from georepo.tasks.simplify_geometry import simplify_geometry_in_dataset
+    from celery.result import AsyncResult
+    from core.celery import app
+    for dataset in queryset:
+        if dataset.simplification_task_id:
+            res = AsyncResult(dataset.simplification_task_id)
+            if not res.ready():
+                app.control.revoke(
+                    dataset.simplification_task_id,
+                    terminate=True
+                )
+        task = simplify_geometry_in_dataset.delay(dataset.id, True)
+        dataset.simplification_task_id = task.id
+        dataset.simplification_progress = 'Started'
+        dataset.save(
+            update_fields=['simplification_task_id',
+                           'simplification_progress']
+        )
+    modeladmin.message_user(
+        request,
+        'Dataset entity simplification will be run in background!',
+        messages.SUCCESS
+    )
+
+
 def do_dataset_patch(modeladmin, request, queryset):
     from georepo.tasks.dataset_patch import dataset_patch
     for dataset in queryset:
@@ -341,6 +367,7 @@ class DatasetAdmin(GuardedModelAdmin):
     actions = [
         delete_selected,
         populate_default_tile_config, generate_simplified_geometry,
+        generate_simplified_geometry_low_memory,
         do_dataset_patch, refresh_dynamic_views,
         populate_default_admin_level_names,
         generate_arcgis_config_action,
