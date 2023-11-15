@@ -187,13 +187,21 @@ def parse_unique_code(unique_code: str):
     """
     codes = unique_code.split('_')
     if len(codes) < 2:
-        raise ValueError(f'Invalid ucode {unique_code}')
+        raise ValueError(f'Invalid ucode {unique_code}: '
+                         'Code should consist of unique code and '
+                         'version number')
     version = codes[-1]
     if not version.startswith('V'):
-        raise ValueError(f'Invalid ucode {unique_code}')
+        raise ValueError(f'Invalid ucode {unique_code}: '
+                         'V in version should be uppercase')
     ucode = unique_code.replace(f'_{version}', '')
     version = version.replace('V', '', 1)
-    return ucode, float(version)
+    try:
+        version_number = float(version)
+    except ValueError:
+        raise ValueError(f'Invalid ucode {unique_code}: '
+                         'version number must be numeric')
+    return ucode, version_number
 
 
 def get_version_code(version: float) -> str:
