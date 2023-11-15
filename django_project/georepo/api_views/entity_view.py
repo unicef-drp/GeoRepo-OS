@@ -2642,6 +2642,12 @@ class ViewEntityBatchSearchIdResult(APIView, DatasetViewDetailCheckPermission):
                         ),
                         type=openapi.TYPE_STRING
                     ),
+                    'error': openapi.Schema(
+                        title=(
+                            'Error when batch job is failed'
+                        ),
+                        type=openapi.TYPE_STRING
+                    ),
                     'results': openapi.Schema(
                         title='Dictionary of search results',
                         type=openapi.TYPE_STRING
@@ -2650,6 +2656,7 @@ class ViewEntityBatchSearchIdResult(APIView, DatasetViewDetailCheckPermission):
                 example={
                     'request_id': 'af9c24a0-02cf-4a12-beb2-fac126a9c709',
                     'status': 'DONE',
+                    'error': None,
                     'results': {
                         'PAK': ['TST1_PAK_V1', 'TST1_PAK_V2'],
                         'MWI': ['TST1_MWI_V2']
@@ -2671,7 +2678,8 @@ class ViewEntityBatchSearchIdResult(APIView, DatasetViewDetailCheckPermission):
                 data={
                     'request_id': str(id_request.uuid),
                     'status': id_request.status,
-                    'results': id_request.output
+                    'results': id_request.output,
+                    'error': id_request.errors
                 }
             )
         return Response(
@@ -2679,7 +2687,8 @@ class ViewEntityBatchSearchIdResult(APIView, DatasetViewDetailCheckPermission):
             data={
                 'request_id': str(id_request.uuid),
                 'status': id_request.status,
-                'results': None
+                'results': None,
+                'error': id_request.errors
             }
         )
 
@@ -2725,6 +2734,12 @@ class ViewEntityBatchGeocodingStatus(APIView,
                         ),
                         type=openapi.TYPE_STRING
                     ),
+                    'error': openapi.Schema(
+                        title=(
+                            'Error when batch job is failed'
+                        ),
+                        type=openapi.TYPE_STRING
+                    ),
                     'output_url': openapi.Schema(
                         title='URL to download output GeoJSON File',
                         type=openapi.TYPE_STRING
@@ -2733,6 +2748,7 @@ class ViewEntityBatchGeocodingStatus(APIView,
                 example={
                     'request_id': 'af9c24a0-02cf-4a12-beb2-fac126a9c709',
                     'status': 'DONE',
+                    'error': None,
                     'output_url': (
                         '{base_url}/api/v1/search/view/'
                         'cd20c26b-ac26-47c3-8b73-a998cb1efff7/'
@@ -2768,6 +2784,7 @@ class ViewEntityBatchGeocodingStatus(APIView,
                 data={
                     'request_id': str(geocoding_request.uuid),
                     'status': geocoding_request.status,
+                    'error': geocoding_request.errors,
                     'output_url': output_url
                 }
             )
@@ -2776,6 +2793,7 @@ class ViewEntityBatchGeocodingStatus(APIView,
             data={
                 'request_id': str(geocoding_request.uuid),
                 'status': geocoding_request.status,
+                'error': geocoding_request.errors,
                 'output_url': None
             }
         )

@@ -197,6 +197,25 @@ class TestUniqueCodeGeneration(TestCase):
         code, version = parse_unique_code(unique_code)
         self.assertEqual(code, 'ISO_0001_0001')
         self.assertEqual(version, 1.75)
+        # test parse error
+        with self.assertRaises(ValueError) as context:
+            unique_code = 'ISO'
+            code, version = parse_unique_code(unique_code)
+            self.assertIn(f'Invalid ucode {unique_code}: '
+                          'Code should consist of unique code and '
+                          'version number', str(context.exception))
+        with self.assertRaises(ValueError) as context:
+            unique_code = 'ISO_0001_v1.5'
+            code, version = parse_unique_code(unique_code)
+            self.assertIn(f'Invalid ucode {unique_code}: '
+                          'V in version should be uppercase',
+                          str(context.exception))
+        with self.assertRaises(ValueError) as context:
+            unique_code = 'ISO_0001_Vaaa'
+            code, version = parse_unique_code(unique_code)
+            self.assertIn(f'Invalid ucode {unique_code}: '
+                          'version number must be numeric',
+                          str(context.exception))
 
     def test_get_unique_code(self):
         code = 'ISO_0001'

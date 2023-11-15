@@ -264,7 +264,9 @@ def start_process_geocoding_request(geocoding_request: GeocodingRequest):
     geocoding_request.status = PROCESSING
     geocoding_request.started_at = timezone.now()
     geocoding_request.progress = 0
-    geocoding_request.save(update_fields=['status', 'started_at', 'progress'])
+    geocoding_request.errors = None
+    geocoding_request.save(update_fields=['status', 'started_at', 'progress',
+                                          'errors'])
     create_temp_schema()
     table_name = geocoding_request.table_name(TEMP_SCHEMA)
     create_temp_table(table_name)

@@ -37,7 +37,8 @@ def start_processs_search_id_request(request: SearchIdRequest):
     request.status = PROCESSING
     request.started_at = timezone.now()
     request.progress = 0
-    request.save(update_fields=['status', 'started_at', 'progress'])
+    request.errors = None
+    request.save(update_fields=['status', 'started_at', 'progress', 'errors'])
 
 
 def end_process_search_id_request(request: SearchIdRequest,
@@ -187,7 +188,7 @@ def process_search_id_request(request_id):
             'Invalid search id request '
             f'input type! {request.input_id_type}')
         return
-
+    start_processs_search_id_request(request)
     is_success = False
     results = {}
     errors = None
