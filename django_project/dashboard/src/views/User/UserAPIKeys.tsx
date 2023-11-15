@@ -21,6 +21,7 @@ import AlertMessage from '../../components/AlertMessage';
 import AlertDialog from '../../components/AlertDialog';
 import Scrollable from "../../components/Scrollable";
 import { utcToLocalDateTimeString } from '../../utils/Helpers';
+import HtmlTooltip from '../../components/HtmlTooltip';
 
 
 interface UserAPIKeysInterface {
@@ -59,6 +60,7 @@ function UserAPIKeyCreateForm(props: UserAPIKeyCreateFormInterface) {
                     <Grid container columnSpacing={2} rowSpacing={2}>
                         <Grid className={'form-label'} item md={4} xl={4} xs={12}>
                             <Typography variant={'subtitle1'}>Platform</Typography>
+                            <HtmlTooltip tooltipDescription={<p>Provide the name of the platform that will be using the API key, e.g. "GeoSight".</p>} />
                         </Grid>
                         <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
                             <TextField
