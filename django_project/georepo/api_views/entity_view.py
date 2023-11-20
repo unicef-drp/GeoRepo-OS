@@ -2248,11 +2248,12 @@ class ViewEntityBatchSearchId(APIView, DatasetViewDetailCheckPermission):
 
     The search will be done in background and the result can be retrieved using
     API batch-result-search-view-by-id.
-    For input_type and return_type can be retrieved from API id-type-list
+    For input_type and return_type can be retrieved from API id-type-list.
+    If return_type is empty, then the output will be full entity detail.
 
     Example request:
     ```
-    POST /search/view/{view_uuid}/batch/identifier/PCode/return_type/ucode/
+    POST /search/view/{view_uuid}/batch/identifier/PCode/
     Request Body: [ "PAK", "MWI" ]
         ```
     """
