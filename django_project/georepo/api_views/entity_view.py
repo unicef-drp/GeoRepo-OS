@@ -1874,7 +1874,7 @@ class ViewEntityContainmentCheck(EntityContainmentCheck,
                     'detail': 'Invalid Type.'
                 }).data
             )
-        level_type = request.query_params.get('entity_type', None)
+        level_type = request.GET.get('entity_type', None)
         valid_level_type, entity_type = self.validate_level_type(level_type)
         if not valid_level_type:
             return Response(
@@ -1883,7 +1883,7 @@ class ViewEntityContainmentCheck(EntityContainmentCheck,
                     'detail': f'Invalid Entity Type: {level_type}.'
                 }).data
             )
-        admin_level = request.query_params.get('admin_level', None)
+        admin_level = request.GET.get('admin_level', None)
         geojson = request.data
         if not validate_geojson(geojson):
             return Response(
@@ -2526,7 +2526,7 @@ class ViewEntityBatchGeocoding(ViewEntityContainmentCheck,
                     'detail': f'Invalid Type {return_type_str}.'
                 }).data
             )
-        admin_level = request.query_params.get('admin_level', 0)
+        admin_level = kwargs.get('admin_level', 0)
         file_obj = request.data['file']
         layer_type = self.check_layer_type(file_obj.name)
         if layer_type == '':
