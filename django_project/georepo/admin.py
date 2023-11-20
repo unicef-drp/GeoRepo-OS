@@ -871,7 +871,7 @@ def trigger_process_geocoding_request(modeladmin, request, queryset):
         req.save(update_fields=['task_id'])
     modeladmin.message_user(
         request,
-        f'Process geocoding will be run in the background!',
+        'Process geocoding will be run in the background!',
         messages.SUCCESS
     )
 
@@ -895,7 +895,7 @@ def trigger_process_search_id_request(modeladmin, request, queryset):
         req.save(update_fields=['task_id'])
     modeladmin.message_user(
         request,
-        f'Process search ID will be run in the background!',
+        'Process search ID will be run in the background!',
         messages.SUCCESS
     )
 

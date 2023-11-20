@@ -308,7 +308,7 @@ class TestSearchId(TestCase):
             reverse(
                 'v1:batch-search-view-by-id',
                 kwargs=kwargs
-            ) + f'?return_type=ucode',
+            ) + '?return_type=ucode',
             data=['PAK'],
             format='json'
         )
