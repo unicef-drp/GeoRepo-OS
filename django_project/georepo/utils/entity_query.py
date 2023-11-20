@@ -151,11 +151,11 @@ def do_generate_entity_query(entities, dataset_uuid, entity_type=None,
             values.append(f'{field_key}__label')
     # find max level to build query for the parent's code
     max_level = 0
-    max_level_entity = entities.order_by(
+    max_level_entity = entities.values('level').order_by(
         'level'
     ).last()
     if max_level_entity:
-        max_level = max_level_entity.level
+        max_level = max_level_entity['level']
     related = ''
     for i in range(max_level):
         related = related + (
