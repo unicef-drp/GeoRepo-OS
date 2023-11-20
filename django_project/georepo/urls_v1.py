@@ -40,6 +40,7 @@ from georepo.api_views.entity_view import (
     ViewEntityListByAdminLevelAndConceptUCode,
     ViewEntityBatchSearchId,
     ViewEntityBatchGeocoding,
+    ViewEntityBatchSearchIdStatus,
     ViewEntityBatchSearchIdResult,
     ViewEntityBatchGeocodingResult,
     ViewEntityBatchGeocodingStatus
@@ -166,10 +167,15 @@ view_urls = [
 
 view_entity_urls = [
     path(
-        'search/view/<uuid:uuid>/entity/batch/identifier/<str:input_type>/'
-        'return_type/<str:return_type>/',
+        'search/view/<uuid:uuid>/entity/batch/identifier/<str:input_type>/',
         ViewEntityBatchSearchId.as_view(),
         name='batch-search-view-by-id'
+    ),
+    path(
+        'search/view/<uuid:uuid>/entity/batch/identifier/'
+        'status/<uuid:request_id>/',
+        ViewEntityBatchSearchIdStatus.as_view(),
+        name='batch-status-search-view-by-id'
     ),
     path(
         'search/view/<uuid:uuid>/entity/batch/identifier/'

@@ -19,7 +19,7 @@ class SearchIdRequest(BaseTaskRequest):
     )
 
     output_file = models.FileField(
-        upload_to='geocoding/%Y/%m/%d/',
+        upload_to='search_id/%Y/%m/%d/',
         null=True,
         blank=True
     )

@@ -29,7 +29,7 @@ from georepo.tasks.search_id import (
 )
 from georepo.api_views.entity_view import (
     ViewEntityBatchSearchId,
-    ViewEntityBatchSearchIdResult
+    ViewEntityBatchSearchIdStatus
 )
 
 
@@ -270,8 +270,31 @@ class TestSearchId(TestCase):
         process_search_id_request(id_request.id)
         id_request.refresh_from_db()
         self.assertEqual(id_request.status, DONE)
-        self.assertIn('PAK', id_request.output)
-        self.assertEqual(id_request.output['PAK'][0], self.pak0_2.ucode)
+        self.assertTrue(id_request.output_file)
+        self.assertTrue(
+            id_request.output_file.storage.exists(
+                id_request.output_file.name)
+        )
+        id_request.delete()
+        # test without output_id_type
+        id_request = SearchIdRequest.objects.create(
+            status=PENDING,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser,
+            parameters=f'({self.dataset_view.id},)',
+            input_id_type=self.pCode.name,
+            output_id_type=None,
+            input=['PAK']
+        )
+        process_search_id_request(id_request.id)
+        id_request.refresh_from_db()
+        self.assertEqual(id_request.status, DONE)
+        self.assertTrue(id_request.output_file)
+        self.assertTrue(
+            id_request.output_file.storage.exists(
+                id_request.output_file.name)
+        )
+        id_request.delete()
 
     @mock.patch('georepo.api_views.entity_view.'
                 'process_search_id_request.delay')
@@ -280,13 +303,12 @@ class TestSearchId(TestCase):
         kwargs = {
             'uuid': str(self.dataset_view.uuid),
             'input_type': self.pCode.name,
-            'return_type': 'ucode'
         }
         request = self.factory.post(
             reverse(
                 'v1:batch-search-view-by-id',
                 kwargs=kwargs
-            ),
+            ) + f'?return_type=ucode',
             data=['PAK'],
             format='json'
         )
@@ -311,15 +333,15 @@ class TestSearchId(TestCase):
             ),
         )
         request.user = self.superuser
-        view = ViewEntityBatchSearchIdResult.as_view()
+        view = ViewEntityBatchSearchIdStatus.as_view()
         response = view(request, **status_kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['status'], PENDING)
-        self.assertFalse(response.data['results'])
+        self.assertFalse(response.data['output_url'])
         process_search_id_request(id_request.id)
         id_request.refresh_from_db()
         self.assertEqual(id_request.status, DONE)
         response = view(request, **status_kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['status'], DONE)
-        self.assertDictEqual(id_request.output, response.data['results'])
+        self.assertTrue(response.data['output_url'])

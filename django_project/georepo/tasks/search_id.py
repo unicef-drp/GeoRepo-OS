@@ -1,16 +1,19 @@
 import logging
 import traceback
+import json
 from ast import literal_eval as make_tuple
 from celery import shared_task
 from django.db import connection
 from django.utils import timezone
+from django.core.files.base import ContentFile
 from georepo.models.dataset_view import DatasetView
 from georepo.models.id_type import IdType
 from georepo.models.entity import (
     UUID_ENTITY_ID,
     CONCEPT_UUID_ENTITY_ID,
     CODE_ENTITY_ID, UCODE_ENTITY_ID,
-    CONCEPT_UCODE_ENTITY_ID
+    CONCEPT_UCODE_ENTITY_ID,
+    GeographicalEntity
 )
 from georepo.models.base_task_request import (
     PROCESSING, DONE, ERROR
@@ -23,11 +26,16 @@ from georepo.utils.permission import (
 )
 from georepo.utils.entity_query import (
     validate_return_type,
-    get_column_id
+    get_column_id,
+    do_generate_entity_query
 )
 from georepo.utils.unique_code import (
     parse_unique_code,
 )
+from georepo.serializers.entity import (
+    GeographicalEntitySerializer
+)
+from georepo.utils.uuid_helper import UUIDEncoder
 
 
 logger = logging.getLogger(__name__)
@@ -50,9 +58,16 @@ def end_process_search_id_request(request: SearchIdRequest,
     else:
         request.progress = 100
         request.errors = None
-        request.output = results
     request.save(update_fields=['status', 'finished_at', 'progress',
-                                'errors', 'output'])
+                                'errors'])
+    if is_success and results:
+        output_name = f'{str(request.uuid)}.json'
+        request.output_file.save(
+            output_name,
+            ContentFile(
+                json.dumps(results, cls=UUIDEncoder).encode(
+                    encoding='utf-8', errors='ignore'))
+        )
 
 
 def get_query_cond_from_input_type(input_type: IdType | str,
@@ -167,16 +182,18 @@ def process_search_id_request(request_id):
         view.dataset,
         dataset_view=view
     )
-    return_type = validate_return_type(request.output_id_type)
-    if return_type is None:
-        logger.error(
-            'Invalid search id request '
-            f'return type! {request.output_id_type}')
-        end_process_search_id_request(
-            request, False, None,
-            'Invalid search id request '
-            f'return type! {request.output_id_type}')
-        return
+    return_type = None
+    if request.output_id_type:
+        return_type = validate_return_type(request.output_id_type)
+        if return_type is None:
+            logger.error(
+                'Invalid search id request '
+                f'return type! {request.output_id_type}')
+            end_process_search_id_request(
+                request, False, None,
+                'Invalid search id request '
+                f'return type! {request.output_id_type}')
+            return
     # validate input type
     input_type = validate_return_type(request.input_id_type)
     if input_type is None:
@@ -196,7 +213,27 @@ def process_search_id_request(request_id):
         for id_input in request.input:
             output = do_search_id(view, input_type, return_type,
                                   id_input, max_privacy_level)
-            results[id_input] = output
+            if return_type:
+                results[id_input] = output
+            else:
+                # serialize full entity detail
+                dataset = view.dataset
+                entities = GeographicalEntity.objects.filter(
+                    id__in=output,
+                    dataset=dataset
+                )
+                entities, max_level, ids, names = (
+                    do_generate_entity_query(entities, str(dataset.uuid))
+                )
+                results[id_input] = GeographicalEntitySerializer(
+                    entities,
+                    many=True,
+                    context={
+                        'max_level': max_level,
+                        'ids': ids,
+                        'names': names
+                    }
+                ).data
         is_success = True
     except Exception as ex:
         print(traceback.format_exc())
