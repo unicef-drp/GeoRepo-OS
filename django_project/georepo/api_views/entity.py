@@ -1,7 +1,6 @@
 import json
 import math
 from typing import Tuple
-from enum import Enum
 from datetime import datetime
 from dateutil.parser import isoparse
 from django.db import connection
@@ -16,7 +15,7 @@ from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
 from django.contrib.gis.geos import GEOSGeometry
 from core.models.preferences import SitePreferences
-from django.db.models import FilteredRelation, Q, Value, F, Max, IntegerField
+from django.db.models import FilteredRelation, Q, Value, F, IntegerField
 from django.db.models.functions import Replace, Greatest
 from django.contrib.postgres.search import TrigramWordSimilarity
 from django.core.paginator import Paginator
@@ -26,9 +25,6 @@ from georepo.utils.permission import (
     DatasetDetailAccessPermission,
     get_view_permission_privacy_level
 )
-from georepo.utils.custom_geo_functions import (
-    ForcePolygonCCW
-)
 
 from georepo.api_views.api_cache import ApiCache
 from georepo.models import (
@@ -37,7 +33,6 @@ from georepo.models import (
     IdType,
     EntityId,
     EntityType,
-    EntityName,
     DatasetView
 )
 from georepo.serializers.entity import (
@@ -68,20 +63,10 @@ from georepo.api_views.api_collections import (
     CONTROLLED_LIST_TAG
 )
 from georepo.utils.api_parameters import common_api_params
-
-
-class GeomReturnType(Enum):
-    NO_GEOM = 'no_geom'
-    FULL_GEOM = 'full_geom'
-    CENTROID = 'centroid'
-
-    @staticmethod
-    def from_str(label):
-        try:
-            return GeomReturnType(label)
-        except KeyError:
-            pass
-        return None
+from georepo.utils.entity_query import (
+    GeomReturnType,
+    do_generate_entity_query
+)
 
 
 class DatasetDetailCheckPermission(object):
@@ -757,98 +742,8 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
         geom_type = GeomReturnType.from_str(geom_type)
         # json or geojson. Default to json
         format = self.request.GET.get('format', 'json')
-        # initial fields to select
-        values = [
-            'id', 'label', 'internal_code',
-            'unique_code', 'unique_code_version',
-            'uuid', 'uuid_revision',
-            'type__label', 'level', 'start_date', 'end_date',
-            'is_latest', 'admin_level_name', 'concept_ucode', 'bbox'
-        ]
-        if geom_type == GeomReturnType.FULL_GEOM or format == 'geojson':
-            entities = entities.annotate(
-                rhr_geom=ForcePolygonCCW(F('geometry'))
-            )
-            values.append('rhr_geom')
-        elif geom_type == GeomReturnType.CENTROID:
-            values.append('centroid')
-        # retrieve all ids+names in current dataset
-        ids = EntityId.objects.filter(
-            geographical_entity__is_approved=True,
-            geographical_entity__dataset__uuid=dataset_uuid
-        )
-        names = EntityName.objects.filter(
-            geographical_entity__is_approved=True,
-            geographical_entity__dataset__uuid=dataset_uuid
-        )
-        if entity_type:
-            ids = ids.filter(
-                geographical_entity__type=entity_type.id
-            )
-            names = names.filter(
-                geographical_entity__type=entity_type.id
-            )
-        if admin_level is not None:
-            ids = ids.filter(
-                geographical_entity__level=admin_level
-            )
-            names = names.filter(
-                geographical_entity__level=admin_level
-            )
-        ids = ids.order_by('code').values(
-            'code__id', 'code__name', 'default'
-        ).distinct('code__id')
-        # conditional join to entity id for each id
-        for id in ids:
-            field_key = f"id_{id['code__id']}"
-            annotations = {
-                field_key: FilteredRelation(
-                    'entity_ids',
-                    condition=Q(entity_ids__code__id=id['code__id'])
-                )
-            }
-            entities = entities.annotate(**annotations)
-            values.append(f'{field_key}__value')
-        # get max idx in the names
-        names_max_idx = names.aggregate(
-            Max('idx')
-        )
-        if names_max_idx['idx__max'] is not None:
-            for name_idx in range(names_max_idx['idx__max'] + 1):
-                field_key = f"name_{name_idx}"
-                annotations = {
-                    field_key: FilteredRelation(
-                        'entity_names',
-                        condition=Q(
-                            entity_names__idx=name_idx
-                        )
-                    )
-                }
-                entities = entities.annotate(**annotations)
-                values.append(f'{field_key}__name')
-                values.append(f'{field_key}__language__code')
-                values.append(f'{field_key}__label')
-        # find max level to build query for the parent's code
-        max_level = 0
-        max_level_entity = entities.order_by(
-            'level'
-        ).last()
-        if max_level_entity:
-            max_level = max_level_entity.level
-        related = ''
-        for i in range(max_level):
-            related = related + (
-                '__parent' if i > 0 else 'parent'
-            )
-            # fetch parent's default code
-            values.append(f'{related}__internal_code')
-            values.append(f'{related}__unique_code')
-            values.append(f'{related}__unique_code_version')
-            values.append(f'{related}__level')
-            values.append(f'{related}__type__label')
-        entities = entities.order_by('level', 'unique_code_version',
-                                     'unique_code', 'id')
-        return entities.values(*values), max_level, ids, names_max_idx
+        return do_generate_entity_query(entities, dataset_uuid, entity_type,
+                                        admin_level, geom_type, format)
 
     def generate_response(self, entities, context=None) -> Tuple[dict, dict]:
         """

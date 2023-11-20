@@ -9,15 +9,17 @@ class SearchIdRequest(BaseTaskRequest):
     )
 
     output_id_type = models.CharField(
-        max_length=256
+        max_length=256,
+        null=True,
+        blank=True
     )
 
     input = models.JSONField(
         default=list
     )
 
-    output = models.JSONField(
-        default=dict,
+    output_file = models.FileField(
+        upload_to='search_id/%Y/%m/%d/',
         null=True,
         blank=True
     )

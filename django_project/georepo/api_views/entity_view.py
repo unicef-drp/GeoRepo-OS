@@ -1874,7 +1874,7 @@ class ViewEntityContainmentCheck(EntityContainmentCheck,
                     'detail': 'Invalid Type.'
                 }).data
             )
-        level_type = request.query_params.get('entity_type', None)
+        level_type = request.GET.get('entity_type', None)
         valid_level_type, entity_type = self.validate_level_type(level_type)
         if not valid_level_type:
             return Response(
@@ -1883,7 +1883,7 @@ class ViewEntityContainmentCheck(EntityContainmentCheck,
                     'detail': f'Invalid Entity Type: {level_type}.'
                 }).data
             )
-        admin_level = request.query_params.get('admin_level', None)
+        admin_level = request.GET.get('admin_level', None)
         geojson = request.data
         if not validate_geojson(geojson):
             return Response(
@@ -2248,11 +2248,12 @@ class ViewEntityBatchSearchId(APIView, DatasetViewDetailCheckPermission):
 
     The search will be done in background and the result can be retrieved using
     API batch-result-search-view-by-id.
-    For input_type and return_type can be retrieved from API id-type-list
+    For input_type and return_type can be retrieved from API id-type-list.
+    If return_type is empty, then the output will be full entity detail.
 
     Example request:
     ```
-    POST /search/view/{view_uuid}/batch/identifier/PCode/return_type/ucode/
+    POST /search/view/{view_uuid}/batch/identifier/PCode/
     Request Body: [ "PAK", "MWI" ]
         ```
     """
@@ -2275,10 +2276,11 @@ class ViewEntityBatchSearchId(APIView, DatasetViewDetailCheckPermission):
                 type=openapi.TYPE_STRING
             ),
             openapi.Parameter(
-                'return_type', openapi.IN_PATH,
+                'return_type', openapi.IN_QUERY,
                 description=(
                     'Return ID Type; The list is available from '
-                    'id-type-list API. Example: PCode'
+                    'id-type-list API. '
+                    'Default to be empty and return all entity details.'
                 ),
                 type=openapi.TYPE_STRING
             )
@@ -2326,15 +2328,16 @@ class ViewEntityBatchSearchId(APIView, DatasetViewDetailCheckPermission):
                     'detail': f'Invalid Input Type {input_type_str}.'
                 }).data
             )
-        return_type_str = kwargs.get('return_type')
-        return_type = validate_return_type(return_type_str)
-        if return_type is None:
-            return Response(
-                status=400,
-                data=APIErrorSerializer({
-                    'detail': f'Invalid Return Type {return_type_str}.'
-                }).data
-            )
+        return_type_str = request.GET.get('return_type', None)
+        if return_type_str:
+            return_type = validate_return_type(return_type_str)
+            if return_type is None:
+                return Response(
+                    status=400,
+                    data=APIErrorSerializer({
+                        'detail': f'Invalid Return Type {return_type_str}.'
+                    }).data
+                )
         id_value_list = request.data
         if id_value_list is None or len(id_value_list) == 0:
             return Response(
@@ -2359,7 +2362,7 @@ class ViewEntityBatchSearchId(APIView, DatasetViewDetailCheckPermission):
             'uuid': str(dataset_view.uuid),
             'request_id': str(id_request.uuid)
         }
-        status_url = reverse('v1:batch-result-search-view-by-id',
+        status_url = reverse('v1:batch-status-search-view-by-id',
                              kwargs=status_kwargs,
                              request=request)
         status_url = request.build_absolute_uri(status_url)
@@ -2524,7 +2527,7 @@ class ViewEntityBatchGeocoding(ViewEntityContainmentCheck,
                     'detail': f'Invalid Type {return_type_str}.'
                 }).data
             )
-        admin_level = request.query_params.get('admin_level', 0)
+        admin_level = kwargs.get('admin_level', 0)
         file_obj = request.data['file']
         layer_type = self.check_layer_type(file_obj.name)
         if layer_type == '':
@@ -2602,7 +2605,7 @@ class ViewEntityBatchGeocoding(ViewEntityContainmentCheck,
         )
 
 
-class ViewEntityBatchSearchIdResult(APIView, DatasetViewDetailCheckPermission):
+class ViewEntityBatchSearchIdStatus(APIView, DatasetViewDetailCheckPermission):
     """
     Check status of batch search by id
 
@@ -2611,7 +2614,7 @@ class ViewEntityBatchSearchIdResult(APIView, DatasetViewDetailCheckPermission):
     permission_classes = [DatasetViewDetailAccessPermission]
 
     @swagger_auto_schema(
-        operation_id='check-batch-result-search-view-by-id',
+        operation_id='check-batch-status-search-view-by-id',
         tags=[SEARCH_VIEW_ENTITY_TAG],
         manual_parameters=[
             openapi.Parameter(
@@ -2628,7 +2631,7 @@ class ViewEntityBatchSearchIdResult(APIView, DatasetViewDetailCheckPermission):
         ],
         responses={
             200: openapi.Schema(
-                title='Batch Task Results',
+                title='Batch Task Status',
                 type=openapi.TYPE_OBJECT,
                 properties={
                     'request_id': openapi.Schema(
@@ -2648,8 +2651,8 @@ class ViewEntityBatchSearchIdResult(APIView, DatasetViewDetailCheckPermission):
                         ),
                         type=openapi.TYPE_STRING
                     ),
-                    'results': openapi.Schema(
-                        title='Dictionary of search results',
+                    'output_url': openapi.Schema(
+                        title='URL to download output results',
                         type=openapi.TYPE_STRING
                     ),
                 },
@@ -2657,11 +2660,120 @@ class ViewEntityBatchSearchIdResult(APIView, DatasetViewDetailCheckPermission):
                     'request_id': 'af9c24a0-02cf-4a12-beb2-fac126a9c709',
                     'status': 'DONE',
                     'error': None,
-                    'results': {
-                        'PAK': ['TST1_PAK_V1', 'TST1_PAK_V2'],
-                        'MWI': ['TST1_MWI_V2']
-                    }
+                    'output_url': (
+                        '{base_url}/api/v1/search/view/'
+                        'cd20c26b-ac26-47c3-8b73-a998cb1efff7/'
+                        'entity/batch/identifier/result/'
+                        'af9c24a0-02cf-4a12-beb2-fac126a9c709/'
+                    )
                 }
+            ),
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        dataset_view, _ = self.get_dataset_view_obj(
+            request, kwargs.get('uuid', None)
+        )
+        request_uuid = kwargs.get('request_id')
+        id_request = get_object_or_404(SearchIdRequest, uuid=request_uuid)
+        if id_request.status in COMPLETED_STATUS:
+            output_url = None
+            if id_request.status == DONE:
+                output_kwargs = {
+                    'uuid': str(dataset_view.uuid),
+                    'request_id': str(id_request.uuid)
+                }
+                output_url = reverse('v1:batch-result-search-view-by-id',
+                                     kwargs=output_kwargs,
+                                     request=request)
+                output_url = request.build_absolute_uri(output_url)
+                if not settings.DEBUG:
+                    # if not dev env, then replace with https
+                    output_url = output_url.replace('http://', 'https://')
+            return Response(
+                status=200,
+                data={
+                    'request_id': str(id_request.uuid),
+                    'status': id_request.status,
+                    'error': id_request.errors,
+                    'output_url': output_url
+                }
+            )
+        return Response(
+            status=200,
+            data={
+                'request_id': str(id_request.uuid),
+                'status': id_request.status,
+                'error': id_request.errors,
+                'output_url': None
+            }
+        )
+
+
+class ViewEntityBatchSearchIdResult(APIView,
+                                    DatasetViewDetailCheckPermission):
+    """
+    Fetch output results of batch search by id
+
+    Return the json of batch search by id.
+    Possible output:
+
+    - If return_type is specified, then the results would be:
+    ```
+        'results': {
+            'PAK': ['TST1_PAK_V1', 'TST1_PAK_V2'],
+            'MWI': ['TST1_MWI_V2']
+        }
+    ```
+
+    - If return_type is not specified, then the results will have
+    full entity detail with following fields:
+
+        | Field | Description |
+        |---|---|
+        | name | Geographical entity name |
+        | ucode | Unicef code |
+        | concept_ucode | Concept Unicef code |
+        | uuid | UUID revision |
+        | concept_uuid | UUID that persist between revision |
+        | admin_level | Admin level of geographical entity |
+        | level_name | Admin level name |
+        | type | Name of entity type |
+        | start_date | Start date of this geographical entity revision |
+        | end_date | End date of this geographical entity revision |
+        | ext_codes | Other external codes |
+        | names | Other names with ISO2 language code |
+        | is_latest | True if this is latest revision |
+        | parents | All parents in upper level |
+        | bbox | Bounding box of this geographical entity |
+    """
+    permission_classes = [DatasetViewDetailAccessPermission]
+
+    @swagger_auto_schema(
+        operation_id='get-result-batch-search-view-by-id',
+        tags=[SEARCH_VIEW_ENTITY_TAG],
+        manual_parameters=[
+            openapi.Parameter(
+                'uuid', openapi.IN_PATH,
+                description='View UUID', type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'request_id', openapi.IN_PATH,
+                description=(
+                    'Task Request ID'
+                ),
+                type=openapi.TYPE_STRING
+            )
+        ],
+        responses={
+            200: openapi.Schema(
+                title='Geojson file',
+                description=(
+                    'Geojson that contains geocoding output in '
+                    'the properties.'
+                ),
+                type=openapi.TYPE_FILE,
             ),
             404: APIErrorSerializer
         }
@@ -2671,24 +2783,17 @@ class ViewEntityBatchSearchIdResult(APIView, DatasetViewDetailCheckPermission):
             request, kwargs.get('uuid', None)
         )
         request_uuid = kwargs.get('request_id')
-        id_request = get_object_or_404(SearchIdRequest, uuid=request_uuid)
-        if id_request.status in COMPLETED_STATUS:
-            return Response(
-                status=200,
-                data={
-                    'request_id': str(id_request.uuid),
-                    'status': id_request.status,
-                    'results': id_request.output,
-                    'error': id_request.errors
-                }
+        id_request = get_object_or_404(SearchIdRequest,
+                                       uuid=request_uuid)
+        if id_request.status == DONE and id_request.output_file:
+            return FileResponse(
+                id_request.output_file,
+                as_attachment=True
             )
         return Response(
-            status=200,
+            status=404,
             data={
-                'request_id': str(id_request.uuid),
-                'status': id_request.status,
-                'results': None,
-                'error': id_request.errors
+                'detail': 'Batch search id process is not completed yet.'
             }
         )
 

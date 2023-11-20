@@ -52,7 +52,8 @@ from georepo.models import (
     UserAccessRequest,
     BackgroundTask,
     GeocodingRequest,
-    SearchIdRequest
+    SearchIdRequest,
+    PENDING
 )
 from georepo.utils.admin import (
     # get_deleted_objects,
@@ -66,6 +67,7 @@ from georepo.utils.directory_helper import (
     get_folder_size
 )
 from georepo.utils.celery_helper import get_task_status
+
 
 User = get_user_model()
 
@@ -858,17 +860,51 @@ class BackgroundTaskAdmin(admin.ModelAdmin):
         return '-'
 
 
+@admin.action(description='Trigger Process Geocoding Request')
+def trigger_process_geocoding_request(modeladmin, request, queryset):
+    from georepo.tasks.geocoding import process_geocoding_request
+    for req in queryset:
+        req.status = PENDING
+        req.save(update_fields=['status'])
+        celery_task = process_geocoding_request.delay(req.id)
+        req.task_id = celery_task.id
+        req.save(update_fields=['task_id'])
+    modeladmin.message_user(
+        request,
+        'Process geocoding will be run in the background!',
+        messages.SUCCESS
+    )
+
+
 class GeocodingRequestAdmin(admin.ModelAdmin):
     list_display = ('uuid', 'task_id', 'status',
                     'submitted_on', 'submitted_by',
                     'started_at', 'finished_at',
                     'feature_count')
+    actions = [trigger_process_geocoding_request]
+
+
+@admin.action(description='Trigger Process Search ID Request')
+def trigger_process_search_id_request(modeladmin, request, queryset):
+    from georepo.tasks.search_id import process_search_id_request
+    for req in queryset:
+        req.status = PENDING
+        req.save(update_fields=['status'])
+        celery_task = process_search_id_request.delay(req.id)
+        req.task_id = celery_task.id
+        req.save(update_fields=['task_id'])
+    modeladmin.message_user(
+        request,
+        'Process search ID will be run in the background!',
+        messages.SUCCESS
+    )
 
 
 class SearchIdRequestAdmin(admin.ModelAdmin):
     list_display = ('uuid', 'task_id', 'status',
                     'submitted_on', 'submitted_by',
                     'started_at', 'finished_at')
+    actions = [trigger_process_search_id_request]
 
 
 admin.site.register(GeographicalEntity, GeographicalEntityAdmin)
