@@ -1321,7 +1321,7 @@ class ViewFindEntityGeometryFuzzySearch(
             'uuid', openapi.IN_PATH,
             description='View UUID', type=openapi.TYPE_STRING
         ), openapi.Parameter(
-            'level', openapi.IN_QUERY,
+            'admin_level', openapi.IN_QUERY,
             description='Admin level. Example: 0',
             type=openapi.TYPE_INTEGER,
             required=False
