@@ -141,13 +141,28 @@ class DatasetViewSearchBase(object):
         return super(DatasetViewSearchBase, self).get_response_data(
             request, *args, **kwargs
         )
+    
+    def get_admin_level_param(self):
+        admin_level = None
+        kwargs_adm_level = self.kwargs.get('admin_level', None)
+        if kwargs_adm_level is not None:
+            admin_level = kwargs_adm_level
+        return admin_level
 
     def generate_response(self, entities, context=None):
         if entities is not None:
             # raw_sql to view to select id
+            admin_level_param = self.get_admin_level_param()
             raw_sql = (
                 'SELECT id from "{}"'
             ).format(str(self.kwargs.get('uuid')))
+            if admin_level_param is not None:
+                raw_sql = (
+                    'SELECT id from "{view}" where level={admin_level}'
+                ).format(
+                    view=str(self.kwargs.get('uuid')),
+                    admin_level=admin_level_param
+                )
             # Query existing entities with uuids found in views
             entities = entities.filter(
                 id__in=RawSQL(raw_sql, [])
