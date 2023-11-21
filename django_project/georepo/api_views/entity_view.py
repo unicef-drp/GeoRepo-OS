@@ -141,7 +141,7 @@ class DatasetViewSearchBase(object):
         return super(DatasetViewSearchBase, self).get_response_data(
             request, *args, **kwargs
         )
-    
+
     def get_admin_level_param(self):
         admin_level = None
         kwargs_adm_level = self.kwargs.get('admin_level', None)
