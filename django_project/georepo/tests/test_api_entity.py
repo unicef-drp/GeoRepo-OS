@@ -791,7 +791,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         request = self.factory.post(
             reverse(
                 'v1:entity-fuzzy-search-by-geometry', kwargs=kwargs
-            ) + '?level=2',
+            ) + '?admin_level=2',
             data=data_1,
             format='json'
         )

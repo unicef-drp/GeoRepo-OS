@@ -1129,7 +1129,7 @@ class EntityGeometryFuzzySearch(EntitySearchBase):
         description='Dataset UUID', type=openapi.TYPE_STRING
     )
     level_param = openapi.Parameter(
-        'level', openapi.IN_QUERY,
+        'admin_level', openapi.IN_QUERY,
         description='Admin level. Example: 0',
         type=openapi.TYPE_INTEGER,
         required=False
@@ -1283,7 +1283,7 @@ class EntityGeometryFuzzySearch(EntitySearchBase):
         dataset, max_privacy_level = self.get_dataset_obj(
             request, kwargs, self.search_source
         )
-        level = request.GET.get('level', None)
+        level = request.GET.get('admin_level', None)
         # json or geojson. Default to json
         format = self.request.GET.get('format', 'json')
         is_latest = request.GET.get('latest', None)
