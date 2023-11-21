@@ -4,6 +4,7 @@ from django.http import HttpResponse, HttpResponseForbidden
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from guardian.core import ObjectPermissionChecker
 
 from georepo.auth import CustomTokenAuthentication
 from georepo.models import Dataset, DatasetView, DatasetViewResource
@@ -25,17 +26,18 @@ class IsDatasetAllowedAPI(APIView):
     jwks_client = None
 
     def has_perm(self, user, privacy_level: int,
-                 dataset: Dataset, dataset_view: DatasetView = None) -> bool:
+                 dataset: Dataset, dataset_view: DatasetView) -> bool:
+        if user.is_superuser:
+            return True
+        obj_checker = ObjectPermissionChecker(user)
+        obj_checker.prefetch_perms([dataset, dataset_view])
+        obj_checker.prefetch_perms([dataset_view])
         max_privacy_level = get_view_permission_privacy_level(
             user,
             dataset,
             dataset_view=dataset_view
         )
         return privacy_level <= max_privacy_level
-
-    def has_perm_to_view(self, user, permission: str,
-                         dataset_view: DatasetView) -> bool:
-        return user.has_perm(permission, dataset_view)
 
     def post(self, request, *args, **kwargs):
         request_url = request.query_params.get('request_url', '')
@@ -53,8 +55,10 @@ class IsDatasetAllowedAPI(APIView):
                 else:
                     return HttpResponseForbidden()
             view_resource = DatasetViewResource.objects.select_related(
-                'dataset_view'
-            ).select_related('dataset_view__dataset').get(
+                'dataset_view',
+                'dataset_view__dataset',
+                'dataset_view__dataset__module'
+            ).get(
                 uuid=resource_uuid
             )
             privacy_level = view_resource.privacy_level
