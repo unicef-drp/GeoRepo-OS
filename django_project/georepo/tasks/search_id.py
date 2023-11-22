@@ -3,7 +3,9 @@ import traceback
 import json
 from ast import literal_eval as make_tuple
 from celery import shared_task
-from django.db import connection
+from django.db.models.expressions import RawSQL
+from django.db.models.functions import Concat
+from django.db.models import Value as V, CharField
 from django.utils import timezone
 from django.core.files.base import ContentFile
 from georepo.models.dataset_view import DatasetView
@@ -26,11 +28,7 @@ from georepo.utils.permission import (
 )
 from georepo.utils.entity_query import (
     validate_return_type,
-    get_column_id,
     do_generate_entity_query
-)
-from georepo.utils.unique_code import (
-    parse_unique_code,
 )
 from georepo.serializers.entity import (
     GeographicalEntitySerializer
@@ -70,98 +68,58 @@ def end_process_search_id_request(request: SearchIdRequest,
         )
 
 
-def get_query_cond_from_input_type(input_type: IdType | str,
-                                   input_type_value: str):
-    sql_conds = []
-    sql_values = []
+def get_id_field_key(input_type: IdType | str):
+    field_key = None
     if isinstance(input_type, IdType):
-        sql_conds.append("gi2.value = %s")
-        sql_values.append(input_type_value)
+        field_key = f"id_{input_type.id}__value"
     elif input_type == CONCEPT_UCODE_ENTITY_ID:
-        sql_conds.append("gg.concept_ucode = %s")
-        sql_values.append(input_type_value)
+        field_key = 'concept_ucode'
     elif input_type == CODE_ENTITY_ID:
-        sql_conds.append("gg.internal_code = %s")
-        sql_values.append(input_type_value)
+        field_key = 'internal_code'
     elif input_type == UUID_ENTITY_ID:
-        sql_conds.append("gg.uuid_revision = %s")
-        sql_values.append(input_type_value)
+        field_key = 'uuid_revision'
     elif input_type == CONCEPT_UUID_ENTITY_ID:
-        sql_conds.append("gg.uuid = %s")
-        sql_values.append(input_type_value)
+        field_key = 'uuid'
     elif input_type == UCODE_ENTITY_ID:
-        ucode, version = parse_unique_code(input_type_value)
-        sql_conds.append("gg.unique_code = %s")
-        sql_conds.append("gg.unique_code_version = %s")
-        sql_values.append(ucode)
-        sql_values.append(version)
-    return sql_conds, sql_values
+        field_key = 'ucode_filter'
+    return field_key
 
 
-def get_search_id_query(view: DatasetView, input_type: IdType | str,
-                        output_type: IdType | str,
-                        input_type_value: str,
-                        max_privacy_level: int):
-    other_joins = []
-    sql_conds = [
-        'gg.dataset_id = %s'
-    ]
-    query_values = [view.dataset.id]
-    if isinstance(output_type, IdType):
-        other_joins.append(
-            """
-            JOIN georepo_entityid gi
-              ON gi.geographical_entity_id = gg.id
-              AND gi.code_id={}
-            """.format(output_type.id)
-        )
-    if isinstance(input_type, IdType):
-        other_joins.append(
-            """
-            JOIN georepo_entityid gi2
-              ON gi2.geographical_entity_id = gg.id
-              AND gi2.code_id={}
-            """.format(input_type.id)
-        )
-    sql_conds.append('gg.is_approved = true')
-    sql_conds.append('gg.privacy_level <= %s')
-    query_values.append(max_privacy_level)
-    id_filter_conds, id_filter_values = get_query_cond_from_input_type(
-        input_type, input_type_value)
-    sql_conds.extend(id_filter_conds)
-    query_values.extend(id_filter_values)
-    sql_conds.append(
-        "gg.id IN (SELECT id from \"{}\")".format(str(view.uuid))
-    )
-    where_sql = ' AND '.join(sql_conds)
-    sql = (
-        """
-        select DISTINCT {column_id} as entity_id, gg.unique_code_version
-        from georepo_geographicalentity gg
-        {other_joins}
-        {where_sql}
-        ORDER BY gg.unique_code_version
-        """
-    ).format(
-        column_id=get_column_id(output_type),
-        other_joins=' '.join(other_joins),
-        where_sql=f'where {where_sql}'
-    )
-    return sql, query_values
+def get_id_value(entity, input_type: IdType | str):
+    field_key = get_id_field_key(input_type)
+    return entity.get(field_key, None)
 
 
 def do_search_id(view: DatasetView,
                  input_type: IdType | str,
-                 output_type: IdType | str,
-                 input_type_value: str,
-                 max_privacy_level: int):
-    sql, query_values = get_search_id_query(view, input_type, output_type,
-                                            input_type_value,
-                                            max_privacy_level)
-    with connection.cursor() as cursor:
-        cursor.execute(sql, query_values)
-        rows = cursor.fetchall()
-        return [row[0] for row in rows if row[0]]
+                 max_privacy_level: int,
+                 input_list):
+    dataset = view.dataset
+    entities = GeographicalEntity.objects.filter(
+        dataset=dataset,
+        is_approved=True,
+        privacy_level__lte=max_privacy_level
+    )
+    raw_sql = (
+        'SELECT id from "{}"'
+    ).format(str(view.uuid))
+    entities = entities.filter(
+        id__in=RawSQL(raw_sql, [])
+    )
+    entities, values, max_level, ids, names_max_idx = (
+        do_generate_entity_query(entities, dataset.id)
+    )
+    entities = entities.annotate(
+        ucode_filter=Concat('unique_code', V('_V'), 'unique_code_version',
+                            output_field=CharField())
+    )
+    values.append('ucode_filter')
+    id_field_key = get_id_field_key(input_type)
+    id_filters = {
+        f'{id_field_key}__in': input_list
+    }
+    entities = entities.filter(**id_filters)
+    return entities.values(*values), max_level, ids, names_max_idx
 
 
 @shared_task(name="process_search_id_request")
@@ -210,30 +168,38 @@ def process_search_id_request(request_id):
     results = {}
     errors = None
     try:
-        for id_input in request.input:
-            output = do_search_id(view, input_type, return_type,
-                                  id_input, max_privacy_level)
+        sanitized_inputs = [str(id_input) for id_input in request.input]
+        entities, max_level, ids, names = do_search_id(
+            view, input_type, max_privacy_level, sanitized_inputs)
+        for entity in entities:
+            id_input = get_id_value(entity, input_type)
+            if id_input is None:
+                continue
+            search_output = None
             if return_type:
-                results[id_input] = output
+                search_output = get_id_value(entity, return_type)
             else:
-                # serialize full entity detail
-                dataset = view.dataset
-                entities = GeographicalEntity.objects.filter(
-                    id__in=output,
-                    dataset=dataset
-                )
-                entities, max_level, ids, names = (
-                    do_generate_entity_query(entities, str(dataset.uuid))
-                )
-                results[id_input] = GeographicalEntitySerializer(
-                    entities,
-                    many=True,
+                search_output = GeographicalEntitySerializer(
+                    entity,
+                    many=False,
                     context={
                         'max_level': max_level,
                         'ids': ids,
                         'names': names
                     }
                 ).data
+            if search_output is None:
+                continue
+            # add to results dict
+            if id_input in results:
+                results[id_input].append(search_output)
+            else:
+                results[id_input] = [search_output]
+        # iterate original input to add missing item
+        for id_input in sanitized_inputs:
+            if str(id_input) in results:
+                continue
+            results[id_input] = []
         is_success = True
     except Exception as ex:
         print(traceback.format_exc())

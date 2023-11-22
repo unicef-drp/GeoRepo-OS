@@ -733,7 +733,7 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
     def generate_entity_query(
         self,
         entities,
-        dataset_uuid,
+        dataset_id,
         entity_type=None,
         admin_level=None
     ):
@@ -742,8 +742,12 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
         geom_type = GeomReturnType.from_str(geom_type)
         # json or geojson. Default to json
         format = self.request.GET.get('format', 'json')
-        return do_generate_entity_query(entities, dataset_uuid, entity_type,
-                                        admin_level, geom_type, format)
+        entities, values, max_level, ids, names_max_idx = (
+            do_generate_entity_query(
+                entities, dataset_id, entity_type,
+                admin_level, geom_type, format)
+        )
+        return entities.values(*values), max_level, ids, names_max_idx
 
     def generate_response(self, entities, context=None) -> Tuple[dict, dict]:
         """
@@ -872,7 +876,7 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
 
         entities, max_level, ids, names = self.generate_entity_query(
             entities,
-            str(dataset.uuid),
+            dataset.id,
             entity_type=entity_type,
             admin_level=admin_level
         )
@@ -1069,7 +1073,7 @@ class EntityFuzzySearch(EntitySearchBase):
             )
         entities, max_level, ids, names = self.generate_entity_query(
             entities,
-            str(dataset.uuid)
+            dataset.id
         )
         similarities = []
         if names['idx__max'] is not None:
@@ -1315,7 +1319,7 @@ class EntityGeometryFuzzySearch(EntitySearchBase):
         )
         entities, max_level, ids, names = self.generate_entity_query(
             entities,
-            str(dataset.uuid)
+            dataset.id
         )
         if format == 'geojson':
             output = GeographicalGeojsonSerializer(
@@ -1950,7 +1954,7 @@ class FindEntityById(EntitySearchBase):
 
         entities, max_level, ids, names = self.generate_entity_query(
             entities,
-            str(dataset.uuid)
+            dataset.id
         )
         if id_type not in MAIN_ENTITY_ID_LIST:
             searched_id = (
@@ -2135,7 +2139,7 @@ class FindEntityVersionsByConceptUCode(EntitySearchBase):
             )
         entities, max_level, ids, names = self.generate_entity_query(
             entities,
-            str(dataset.uuid)
+            dataset.id
         )
         return self.generate_response(
             entities,

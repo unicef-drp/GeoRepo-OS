@@ -23,8 +23,6 @@ from georepo.utils.dataset_view import (
     init_view_privacy_level
 )
 from georepo.tasks.search_id import (
-    get_query_cond_from_input_type,
-    get_search_id_query,
     process_search_id_request
 )
 from georepo.api_views.entity_view import (
@@ -237,25 +235,6 @@ class TestSearchId(TestCase):
         ).first()
         init_view_privacy_level(self.dataset_view)
 
-    def test_get_query_cond_from_input_type(self):
-        sql_conds, sql_values = get_query_cond_from_input_type(
-            'ucode', 'TMC5_ZWE_V1'
-        )
-        self.assertIn('gg.unique_code = %s', sql_conds)
-        self.assertIn('gg.unique_code_version = %s', sql_conds)
-        self.assertIn('TMC5_ZWE', sql_values)
-        self.assertIn(1.0, sql_values)
-
-    def test_get_search_id_query(self):
-        sql, query_values = get_search_id_query(
-            self.dataset_view, self.pCode,
-            'ucode', 'PAK', 4
-        )
-        self.assertIn(f'gi2.code_id={self.pCode.id}', sql)
-        self.assertIn('gi2.value = %s', sql)
-        self.assertIn(str(self.dataset_view.uuid), sql)
-        self.assertIn('PAK', query_values)
-        self.assertIn(self.dataset.id, query_values)
 
     def test_process_search_id_request(self):
         id_request = SearchIdRequest.objects.create(
