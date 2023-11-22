@@ -74,7 +74,7 @@ def get_return_type_key(return_type: IdType | str):
     return return_type
 
 
-def do_generate_entity_query(entities, dataset_uuid, entity_type=None,
+def do_generate_entity_query(entities, dataset_id, entity_type=None,
                              admin_level=None,
                              geom_type=GeomReturnType.NO_GEOM,
                              format='json'):
@@ -96,11 +96,11 @@ def do_generate_entity_query(entities, dataset_uuid, entity_type=None,
     # retrieve all ids+names in current dataset
     ids = EntityId.objects.filter(
         geographical_entity__is_approved=True,
-        geographical_entity__dataset__uuid=dataset_uuid
+        geographical_entity__dataset_id=dataset_id
     )
     names = EntityName.objects.filter(
         geographical_entity__is_approved=True,
-        geographical_entity__dataset__uuid=dataset_uuid
+        geographical_entity__dataset_id=dataset_id
     )
     if entity_type:
         ids = ids.filter(
@@ -169,4 +169,4 @@ def do_generate_entity_query(entities, dataset_uuid, entity_type=None,
         values.append(f'{related}__type__label')
     entities = entities.order_by('level', 'unique_code_version',
                                  'unique_code', 'id')
-    return entities.values(*values), max_level, ids, names_max_idx
+    return entities, values, max_level, ids, names_max_idx

@@ -2064,7 +2064,7 @@ class ViewEntityTraverseHierarchyByUCode(
                 return self.generate_response(None)
         entities, max_level, ids, names = self.generate_entity_query(
             entities,
-            str(dataset_view.dataset.uuid),
+            dataset_view.dataset.id,
             admin_level=admin_level
         )
         return self.generate_response(
