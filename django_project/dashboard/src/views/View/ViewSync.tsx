@@ -321,7 +321,7 @@ export default function ViewSync(props: ViewResourceInterface) {
                       body: {
                         noMatch: loading ?
                           <Loading/> :
-                          'Sorry, there is no matching data to display',
+                          'Sorry, there is no product that has been generated. Use the \'Regenerate All\' buttons to trigger the product generation for this view.',
                       },
                     },
                     filter: false,
