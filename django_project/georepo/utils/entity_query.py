@@ -8,8 +8,11 @@ from georepo.models.entity import (
     CONCEPT_UCODE_ENTITY_ID,
     MAIN_ENTITY_ID_LIST,
     EntityId,
-    EntityName
+    EntityName,
+    GeographicalEntity
 )
+from georepo.models.dataset import Dataset
+from georepo.models.dataset_view import DatasetView
 from georepo.utils.custom_geo_functions import (
     ForcePolygonCCW
 )
@@ -170,3 +173,108 @@ def do_generate_entity_query(entities, dataset_id, entity_type=None,
     entities = entities.order_by('level', 'unique_code_version',
                                  'unique_code', 'id')
     return entities, values, max_level, ids, names_max_idx
+
+
+def do_generate_fuzzy_query(view: DatasetView, search_text: str, max_privacy_level: int):
+    dataset: Dataset = view.dataset 
+    sql_select = (
+        """select distinct gg.id, ename."name", word_similarity(ename."name", %s) as sim,
+        gg."label", gg."internal_code",
+        gg."unique_code", gg."unique_code_version", gg."uuid",
+        gg."uuid_revision", "georepo_entitytype"."label", gg."level", gg."start_date",
+        gg."end_date", gg."is_latest", gg."admin_level_name", gg."concept_ucode", gg."bbox" """
+    )
+    other_selects = []
+    other_joins = []
+    # add code/id
+    ids = EntityId.objects.filter(
+        geographical_entity__is_approved=True,
+        geographical_entity__dataset=dataset
+    ).order_by('code').values(
+        'code__id', 'code__name', 'default'
+    ).distinct('code__id')
+    for id in ids:
+        field_key = f"id_{id['code__id']}"
+        other_joins.append(
+            f"left join georepo_entityid {field_key} on (gg.id={field_key}.geographical_entity_id and {field_key}.code_id={id['code__id']})"
+        )
+        other_selects.append(f"{field_key}.value as {field_key}__value")
+    # add other names
+    names = EntityName.objects.filter(
+        geographical_entity__is_approved=True,
+        geographical_entity__dataset=dataset
+    )
+    names_max_idx = names.aggregate(
+        Max('idx')
+    )
+    if names_max_idx['idx__max'] is not None:
+        for name_idx in range(names_max_idx['idx__max'] + 1):
+            field_key = f"name_{name_idx}"
+            other_joins.append(
+                f"left join georepo_entityname {field_key} on (gg.id={field_key}.geographical_entity_id and {field_key}.idx={name_idx})"
+            )
+            other_joins.append(
+                f"left join georepo_language {field_key}_lang on ({field_key}.language_id={field_key}_lang.id)"
+            )
+            other_selects.append(f"{field_key}.name as {field_key}__name")
+            other_selects.append(f"{field_key}.label as {field_key}__label")
+            other_selects.append(f"{field_key}_lang.code as {field_key}__language__code")
+    # add parents
+    max_level = 0
+    max_level_entity = GeographicalEntity.objects.filter(
+        is_approved=True,
+        dataset=dataset
+    ).values('level').order_by(
+        'level'
+    ).last()
+    if max_level_entity:
+        max_level = max_level_entity['level']
+        for i in range(max_level):
+            field_key = f"parent_{i}"
+            prev_field = (
+                f"parent_{i-1}" if i > 0 else "gg"
+            )
+            other_joins.append(
+                f"left join georepo_geographicalentity {field_key} on ({field_key}.id={prev_field}.parent_id)"
+            )
+            other_joins.append(
+                f"left join georepo_entitytype {field_key}_type on ({field_key}.type_id={field_key}_type.id)"
+            )
+            other_selects.append(
+                f"{field_key}.internal_code as {field_key}_internal_code"
+            )
+            other_selects.append(
+                f"{field_key}.unique_code as {field_key}_unique_code"
+            )
+            other_selects.append(
+                f"{field_key}.unique_code_version as {field_key}_unique_code_version"
+            )
+            other_selects.append(
+                f"{field_key}.level as {field_key}_level"
+            )
+            other_selects.append(
+                f"{field_key}_type.label as {field_key}_type_label"
+            )
+    
+    if other_selects:
+        sql_select = (
+            sql_select + ', ' + ', '.join(other_selects)
+        )
+
+    sql = (
+        """
+        {sql_select}
+        FROM georepo_entityname ename
+        inner join georepo_geographicalentity gg on gg.id=ename .geographical_entity_id
+        {other_joins}
+        WHERE %s <% ename."name" and gg.dataset_id = {dataset_id} and gg.privacy_level <= {max_privacy_level}
+        and gg.id in (SELECT id from "{view_uuid}")
+        """
+    ).format(
+        sql_select=sql_select,
+        other_joins=' '.join(other_joins),
+        dataset_id=dataset.id,
+        max_privacy_level=max_privacy_level,
+        view_uuid=str(view.uuid)
+    )
+    return sql
