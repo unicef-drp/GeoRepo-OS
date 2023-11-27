@@ -19,6 +19,7 @@ from django.utils.text import (
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from django.views.decorators.csrf import csrf_protect
+from georepo.models.entity import GeographicalEntity
 from georepo.tasks.dataset_delete import dataset_delete
 
 IS_POPUP_VAR = "_popup"
@@ -99,7 +100,10 @@ def get_deleted_objects(objs, request, admin_site, disable_summary=False):
             f'Dataset: {obj.label}' for obj in objs
         ]
         model_count = {
-            'dataset': len(objs)
+            'dataset': len(objs),
+            'Geographical Entities': GeographicalEntity.objects.filter(
+                dataset__in=objs
+            ).count()
         }
 
     return to_delete, model_count, perms_needed, protected

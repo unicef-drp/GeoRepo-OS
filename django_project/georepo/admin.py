@@ -56,7 +56,7 @@ from georepo.models import (
     PENDING
 )
 from georepo.utils.admin import (
-    # get_deleted_objects,
+    get_deleted_objects,
     delete_selected
 )
 from georepo.utils.dataset_view import (
@@ -387,12 +387,12 @@ class DatasetAdmin(GuardedModelAdmin):
 
     # Uncomment this function when we want to simplify
     # the delete confirmation page
-    # def get_deleted_objects(self, objs, request):
-    #     """
-    #     Hook for customizing the delete process for the delete view and the
-    #     "delete selected" action.
-    #     """
-    #     return get_deleted_objects(objs, request, self.admin_site, True)
+    def get_deleted_objects(self, objs, request):
+        """
+        Hook for customizing the delete process for the delete view and the
+        "delete selected" action.
+        """
+        return get_deleted_objects(objs, request, self.admin_site, True)
 
 
 class LayerStyleAdmin(admin.ModelAdmin):
