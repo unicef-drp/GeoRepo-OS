@@ -55,7 +55,7 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
     const navigate = useNavigate()
 
     const saveEntityDetail = (id: number) => {
-        setLoading(true)
+      setAlertLoading(true)
         postData(
             `${SAVE_ENTITY_DETAIL_URL}${id}/`,
             {
@@ -70,12 +70,12 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
             }
         ).then(
             response => {
-                setLoading(false)
+              setAlertLoading(false)
                 setAlertMessage('Successfully update Entity!')
                 setAlertOpen(false)
             }
         ).catch(error => {
-            setLoading(false)
+          setAlertLoading(false)
             console.log('error ', error)
             if (error.response) {
                 if (error.response.status == 403) {
