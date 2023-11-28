@@ -79,6 +79,7 @@ nav:
                                  - Design: developer/guide/design.md
                                  - Road Map: developer/guide/roadmap.md
                                  - Workflows: developer/guide/workflows.md
+                                 - FAQ: developer/guide/faq.md
                                  # Pages to render but exclude from navigation
                                  - "": developer/guide/templates/pull-request-template.md 
                                  - "": developer/guide/templates/commit-message-convention.md
