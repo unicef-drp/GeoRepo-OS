@@ -30,7 +30,7 @@ class IsDatasetAllowedAPI(APIView):
         if user.is_superuser:
             return True
         obj_checker = ObjectPermissionChecker(user)
-        obj_checker.prefetch_perms([dataset, dataset_view])
+        obj_checker.prefetch_perms([dataset])
         obj_checker.prefetch_perms([dataset_view])
         max_privacy_level = get_view_permission_privacy_level(
             user,
