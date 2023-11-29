@@ -34,14 +34,19 @@ if [ $HAS_PLAYWRIGHT -eq 0 ]; then
     fi
     # check if npm is present
     HAS_NPM=$(which npm | grep -w "npm" | wc -l)
+    NPM="npm"
     if [ $HAS_NPM -eq 1 ]; then
-      NPM="npm"
+      PACKAGE_JSON=$(ls | grep -w "package.json" | wc -l)
       PLAYWRIGHT_INSTALL=$($NPM ls --depth 1 playwright | grep -w "@playwright/test" | wc -l)
 
-      if [ $PLAYWRIGHT_INSTALL -eq 0 ]; then
+      if [ $PLAYWRIGHT_INSTALL -eq 0 ] && [ $PACKAGE_JSON -eq 0 ]; then
+        $NPM init playwright@latest
+
+      elif [ $PLAYWRIGHT_INSTALL -eq 0 ]; then
         $NPM install
         $PLAYWRIGHT install --with-deps chromium
       fi
+    
     fi
 
   fi
