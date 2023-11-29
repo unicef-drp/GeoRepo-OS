@@ -60,7 +60,9 @@ class SitePreferencesAdmin(admin.ModelAdmin):
         ('API Configs', {
             'fields': (
                 'api_config',
-                'api_latest_version'
+                'api_latest_version',
+                'search_similarity',
+                'search_simplify_tolerance'
             )
         }),
         ('Exporter Configs', {

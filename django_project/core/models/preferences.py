@@ -125,7 +125,7 @@ class SitePreferences(SingletonModel):
     search_similarity = models.FloatField(
         null=True,
         blank=True,
-        default=0.3,
+        default=0.4,
         help_text='Search Similarity Threshold for fuzzy search.'
     )
     # -----------------------------------------------

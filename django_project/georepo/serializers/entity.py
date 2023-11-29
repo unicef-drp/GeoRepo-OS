@@ -539,6 +539,96 @@ class SearchEntitySerializer(GeographicalEntitySerializer):
         return obj.get('similarity', 0)
 
 
+class FuzzySearchEntitySerializer(GeographicalEntitySerializer):
+    similarity = serializers.SerializerMethodField()
+    matching_name = serializers.SerializerMethodField()
+
+    class Meta:
+        swagger_schema_fields = {
+            'type': openapi.TYPE_OBJECT,
+            'title': 'Geographical Entity Detail',
+            'properties': {
+                **GeographicalEntitySerializer.Meta.
+                swagger_schema_fields['properties'],
+                'similarity': openapi.Schema(
+                                title='Name Similarity',
+                                description=(
+                                    'Value is between 0-1. '
+                                    'Higher value means more similar'
+                                ),
+                                type=openapi.TYPE_NUMBER,
+                            ),
+                'matching_name': openapi.Schema(
+                    title='Name of entity from the search result',
+                    description=(
+                        'Name of entity from the search result'
+                    ),
+                    type=openapi.TYPE_NUMBER,
+                )
+            },
+            'example': {
+                **GeographicalEntitySerializer.Meta.
+                swagger_schema_fields['example'],
+                'similarity': 1.0,
+                'matching_name': 'Malema'
+            }
+        }
+
+        model = GeographicalEntity
+        fields = [
+            'ucode',
+            'concept_ucode',
+            'uuid',
+            'concept_uuid',
+            'is_latest',
+            'start_date',
+            'end_date',
+            'name',
+            'admin_level',
+            'level_name',
+            'type',
+            'ext_codes',
+            'names',
+            'parents',
+            'centroid',
+            'geometry',
+            'similarity',
+            'matching_name',
+            'bbox'
+        ]
+
+    def get_similarity(self, obj):
+        return obj.get('similarity', 0)
+
+    def get_matching_name(self, obj):
+        return obj.get('matching_name', '')
+
+    def get_parents(self, obj: GeographicalEntity):
+        parents = []
+        max_level = self.context['max_level']
+        for i in range(max_level):
+            field_key = f"parent_{i}"
+            parent_code = obj.get(f'{field_key}__internal_code', '')
+            unique_code = obj.get(f'{field_key}__unique_code', '')
+            unique_code_version = obj.get(
+                f'{field_key}__unique_code_version',
+                1
+            )
+            admin_level = obj.get(f'{field_key}__level', '')
+            type = obj.get(f'{field_key}__type__label', '')
+            if parent_code and unique_code:
+                parents.append({
+                    'default': parent_code,
+                    'ucode': get_unique_code(
+                        unique_code,
+                        unique_code_version
+                    ),
+                    'admin_level': admin_level,
+                    'type': type
+                })
+        return parents
+
+
 class SearchGeometrySerializer(GeographicalEntitySerializer):
     distance = serializers.SerializerMethodField()
 

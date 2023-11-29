@@ -175,16 +175,29 @@ def do_generate_entity_query(entities, dataset_id, entity_type=None,
     return entities, values, max_level, ids, names_max_idx
 
 
-def do_generate_fuzzy_query(view: DatasetView, search_text: str, max_privacy_level: int):
-    dataset: Dataset = view.dataset 
-    sql_select = (
-        """select distinct gg.id, ename."name", word_similarity(ename."name", %s) as sim,
-        gg."label", gg."internal_code",
-        gg."unique_code", gg."unique_code_version", gg."uuid",
-        gg."uuid_revision", "georepo_entitytype"."label", gg."level", gg."start_date",
-        gg."end_date", gg."is_latest", gg."admin_level_name", gg."concept_ucode", gg."bbox" """
-    )
-    other_selects = []
+def do_generate_fuzzy_query(view: DatasetView, search_text: str,
+                            max_privacy_level: int, page: int,
+                            page_size: int):
+    dataset: Dataset = view.dataset
+    select_dicts = {
+        'id': 'gg.id',
+        'matching_name': 'ename.name',
+        'similarity': 'word_similarity(%s, ename.name)',
+        'label': 'gg.label',
+        'internal_code': 'gg.internal_code',
+        'unique_code': 'gg.unique_code',
+        'unique_code_version': 'gg.unique_code_version',
+        'uuid': 'gg.uuid',
+        'uuid_revision': 'gg.uuid_revision',
+        'type__label': 'ge.label',
+        'level': 'gg.level',
+        'start_date': 'gg.start_date',
+        'end_date': 'gg.end_date',
+        'is_latest': 'gg.is_latest',
+        'admin_level_name': 'gg.admin_level_name',
+        'concept_ucode': 'gg.concept_ucode',
+        'bbox': 'gg.bbox'
+    }
     other_joins = []
     # add code/id
     ids = EntityId.objects.filter(
@@ -196,9 +209,11 @@ def do_generate_fuzzy_query(view: DatasetView, search_text: str, max_privacy_lev
     for id in ids:
         field_key = f"id_{id['code__id']}"
         other_joins.append(
-            f"left join georepo_entityid {field_key} on (gg.id={field_key}.geographical_entity_id and {field_key}.code_id={id['code__id']})"
+            f"left join georepo_entityid {field_key} on (gg.id={field_key}."
+            f"geographical_entity_id and {field_key}."
+            f"code_id={id['code__id']})"
         )
-        other_selects.append(f"{field_key}.value as {field_key}__value")
+        select_dicts[f'{field_key}__value'] = f'{field_key}.value'
     # add other names
     names = EntityName.objects.filter(
         geographical_entity__is_approved=True,
@@ -211,14 +226,19 @@ def do_generate_fuzzy_query(view: DatasetView, search_text: str, max_privacy_lev
         for name_idx in range(names_max_idx['idx__max'] + 1):
             field_key = f"name_{name_idx}"
             other_joins.append(
-                f"left join georepo_entityname {field_key} on (gg.id={field_key}.geographical_entity_id and {field_key}.idx={name_idx})"
+                f"left join georepo_entityname {field_key} on "
+                f"(gg.id={field_key}.geographical_entity_id and "
+                f"{field_key}.idx={name_idx})"
             )
             other_joins.append(
-                f"left join georepo_language {field_key}_lang on ({field_key}.language_id={field_key}_lang.id)"
+                f"left join georepo_language {field_key}_lang on "
+                f"({field_key}.language_id={field_key}_lang.id)"
             )
-            other_selects.append(f"{field_key}.name as {field_key}__name")
-            other_selects.append(f"{field_key}.label as {field_key}__label")
-            other_selects.append(f"{field_key}_lang.code as {field_key}__language__code")
+            select_dicts[f'{field_key}__name'] = f'{field_key}.name'
+            select_dicts[f'{field_key}__label'] = f'{field_key}.label'
+            select_dicts[f'{field_key}__language__code'] = (
+                f'{field_key}_lang.code'
+            )
     # add parents
     max_level = 0
     max_level_entity = GeographicalEntity.objects.filter(
@@ -235,46 +255,74 @@ def do_generate_fuzzy_query(view: DatasetView, search_text: str, max_privacy_lev
                 f"parent_{i-1}" if i > 0 else "gg"
             )
             other_joins.append(
-                f"left join georepo_geographicalentity {field_key} on ({field_key}.id={prev_field}.parent_id)"
+                f"left join georepo_geographicalentity {field_key} on "
+                f"({field_key}.id={prev_field}.parent_id)"
             )
             other_joins.append(
-                f"left join georepo_entitytype {field_key}_type on ({field_key}.type_id={field_key}_type.id)"
+                f"left join georepo_entitytype {field_key}_type on "
+                f"({field_key}.type_id={field_key}_type.id)"
             )
-            other_selects.append(
-                f"{field_key}.internal_code as {field_key}_internal_code"
+            select_dicts[f'{field_key}__internal_code'] = (
+                f'{field_key}.internal_code'
             )
-            other_selects.append(
-                f"{field_key}.unique_code as {field_key}_unique_code"
+            select_dicts[f'{field_key}__unique_code'] = (
+                f'{field_key}.unique_code'
             )
-            other_selects.append(
-                f"{field_key}.unique_code_version as {field_key}_unique_code_version"
+            select_dicts[f'{field_key}__unique_code_version'] = (
+                f'{field_key}.unique_code_version'
             )
-            other_selects.append(
-                f"{field_key}.level as {field_key}_level"
+            select_dicts[f'{field_key}__level'] = f'{field_key}.level'
+            select_dicts[f'{field_key}__type__label'] = (
+                f'{field_key}_type.label'
             )
-            other_selects.append(
-                f"{field_key}_type.label as {field_key}_type_label"
-            )
-    
-    if other_selects:
-        sql_select = (
-            sql_select + ', ' + ', '.join(other_selects)
-        )
-
-    sql = (
+    sql_select = 'SELECT '
+    selects = []
+    for key, value in select_dicts.items():
+        selects.append(f'{value} as {key}')
+    sql_select = (
+        sql_select + ', '.join(selects)
+    )
+    sql_template = (
         """
         {sql_select}
         FROM georepo_entityname ename
-        inner join georepo_geographicalentity gg on gg.id=ename .geographical_entity_id
+        inner join georepo_geographicalentity gg
+        on gg.id=ename.geographical_entity_id
+        inner join georepo_entitytype ge on ge.id=gg.type_id
         {other_joins}
-        WHERE %s <% ename."name" and gg.dataset_id = {dataset_id} and gg.privacy_level <= {max_privacy_level}
+        WHERE %s <%% ename.name and gg.dataset_id = {dataset_id} and
+        gg.privacy_level <= {max_privacy_level}
         and gg.id in (SELECT id from "{view_uuid}")
+        {order_by}
         """
-    ).format(
+    )
+    offset = (page - 1) * page_size
+    pagination = f'OFFSET {offset} LIMIT {page_size}'
+    sql = sql_template.format(
         sql_select=sql_select,
         other_joins=' '.join(other_joins),
         dataset_id=dataset.id,
         max_privacy_level=max_privacy_level,
-        view_uuid=str(view.uuid)
+        view_uuid=str(view.uuid),
+        order_by=f'ORDER BY similarity DESC {pagination}'
     )
-    return sql
+    count_sql = sql_template.format(
+        sql_select='SELECT COUNT(*)',
+        other_joins=' '.join(other_joins),
+        dataset_id=dataset.id,
+        max_privacy_level=max_privacy_level,
+        view_uuid=str(view.uuid),
+        order_by=''
+    )
+    query_values = [search_text, search_text]
+    count_query_values = [search_text]
+    return {
+        'sql': sql,
+        'count_sql': count_sql,
+        'query_values': query_values,
+        'count_query_values': count_query_values,
+        'select_keys': list(select_dicts.keys()),
+        'max_level': max_level,
+        'ids': ids,
+        'names_max_idx': names_max_idx
+    }
