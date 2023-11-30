@@ -1682,7 +1682,7 @@ class TestApiEntityLatestView(EntityViewTestSuite, TestCase):
 
     def assert_view_entity_fuzzy_search_found2(self, response):
         # search with paki, should return two diff results
-        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(len(response.data['results']), 5)
         items = [x for x in response.data['results'] if
                  x['ucode'] == self.pak0_2.ucode]
         self.assertEqual(len(items), 1)
@@ -1735,6 +1735,9 @@ class TestApiEntityLatestView(EntityViewTestSuite, TestCase):
     def test_view_entity_containment_check(self):
         self.run_test_view_entity_containment_check()
 
+    @mock.patch.object(
+        ViewFindEntityFuzzySearch, 'get_trigram_similarity',
+        mock.Mock(return_value=0.45))
     def test_search_view_fuzzy_text(self):
         self.run_test_search_view_fuzzy_text()
 
