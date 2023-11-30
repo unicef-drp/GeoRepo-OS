@@ -515,7 +515,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
         ).order_by('feature_index')
         layer_index = 0
         feature_included_idx = 0
-        for temp_entity in temp_entities:
+        for temp_entity in temp_entities.iterator(chunk_size=1):
             feature_idx = temp_entity.feature_index
             layer_index += 1
             error_found = False
@@ -977,7 +977,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                 ancestor=entity_upload.revised_geographical_entity
             )
             # we can do contained check if all features have been inserted
-            for entity in entities:
+            for entity in entities.iterator(chunk_size=1):
                 is_valid = do_contained_check(
                     entity,
                     entity_upload,
