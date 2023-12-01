@@ -1,4 +1,6 @@
 import os
+import logging
+import traceback
 from datetime import datetime
 from django.db.models import IntegerField, Min
 from django.db.models.functions import Cast
@@ -24,6 +26,9 @@ from georepo.utils.shapefile import (
 )
 from georepo.utils.layers import \
     validate_layer_file_metadata
+
+
+logger = logging.getLogger(__name__)
 
 
 class LayerProcessStatusView(APIView):
@@ -83,80 +88,93 @@ class LayerUploadView(AzureAuthRequiredMixin, APIView):
         file_obj = request.FILES['file']
         upload_session = request.data.get('uploadSession', '')
         level = request.data.get('level', '')
-        layer_type = self.check_layer_type(file_obj.name)
-        if layer_type == '':
-            self.remove_temp_file(file_obj)
-            return Response(
-                status=400,
-                data={
-                    'detail': 'Unrecognized file type!'
-                }
-            )
-        if layer_type == SHAPEFILE:
-            validate_shp_file = self.validate_shapefile_zip(file_obj)
-            if validate_shp_file != '':
-                self.remove_temp_file(file_obj)
-                return Response(
-                    status=400,
-                    data={
-                        'detail': validate_shp_file
-                    }
-                )
-        is_valid_crs, crs, feature_count, attrs = self.check_crs_type(
-            file_obj, layer_type)
-        if not is_valid_crs:
-            self.remove_temp_file(file_obj)
-            return Response(
-                status=400,
-                data={
-                    'detail': f'Incorrect CRS type: {crs}!'
-                }
-            )
-        if upload_session:
-            upload_session = LayerUploadSession.objects.get(
-                id=upload_session
-            )
-            if upload_session.is_read_only():
-                self.remove_temp_file(file_obj)
-                return Response(
-                    status=400,
-                    data={
-                        'detail': 'Invalid Upload Session'
-                    }
-                )
-            layer_file, _ = LayerFile.objects.get_or_create(
-                meta_id=request.POST.get('id', ''),
-                uploader=self.request.user,
-                layer_upload_session=upload_session,
-                layer_type=layer_type,
-                defaults={
-                    'name': file_obj.name,
-                    'upload_date': datetime.now(),
-                    'feature_count': feature_count,
-                    'attributes': attrs
-                }
-            )
-        else:
-            layer_file, _ = LayerFile.objects.get_or_create(
-                meta_id=request.POST.get('id', ''),
-                uploader=self.request.user,
-                layer_type=layer_type,
-                defaults={
-                    'name': file_obj.name,
-                    'upload_date': datetime.now(),
-                    'feature_count': feature_count,
-                    'attributes': attrs
-                }
-            )
-        if level:
-            layer_file.level = level
+        layer_file = None
         try:
+            layer_type = self.check_layer_type(file_obj.name)
+            if layer_type == '':
+                self.remove_temp_file(file_obj)
+                return Response(
+                    status=400,
+                    data={
+                        'detail': 'Unrecognized file type!'
+                    }
+                )
+            if layer_type == SHAPEFILE:
+                validate_shp_file = self.validate_shapefile_zip(file_obj)
+                if validate_shp_file != '':
+                    self.remove_temp_file(file_obj)
+                    return Response(
+                        status=400,
+                        data={
+                            'detail': validate_shp_file
+                        }
+                    )
+            is_valid_crs, crs, feature_count, attrs = self.check_crs_type(
+                file_obj, layer_type)
+            if not is_valid_crs:
+                self.remove_temp_file(file_obj)
+                return Response(
+                    status=400,
+                    data={
+                        'detail': f'Incorrect CRS type: {crs}!'
+                    }
+                )
+            if upload_session:
+                upload_session = LayerUploadSession.objects.get(
+                    id=upload_session
+                )
+                if upload_session.is_read_only():
+                    self.remove_temp_file(file_obj)
+                    return Response(
+                        status=400,
+                        data={
+                            'detail': 'Invalid Upload Session'
+                        }
+                    )
+                layer_file, _ = LayerFile.objects.get_or_create(
+                    meta_id=request.POST.get('id', ''),
+                    uploader=self.request.user,
+                    layer_upload_session=upload_session,
+                    layer_type=layer_type,
+                    defaults={
+                        'name': file_obj.name,
+                        'upload_date': datetime.now(),
+                        'feature_count': feature_count,
+                        'attributes': attrs
+                    }
+                )
+            else:
+                layer_file, _ = LayerFile.objects.get_or_create(
+                    meta_id=request.POST.get('id', ''),
+                    uploader=self.request.user,
+                    layer_type=layer_type,
+                    defaults={
+                        'name': file_obj.name,
+                        'upload_date': datetime.now(),
+                        'feature_count': feature_count,
+                        'attributes': attrs
+                    }
+                )
+            if level:
+                layer_file.level = level
             layer_file.layer_file = file_obj
             layer_file.save()
-        except Exception:
+        except Exception as ex:
+            logger.error('Failed uploading file!')
+            logger.error(ex)
+            logger.error(traceback.format_exc())
             # if fail to upload, remove the file
-            layer_file.delete()
-            return Response(status=400)
+            if layer_file:
+                layer_file.delete()
+            return Response(
+                status=400,
+                data={
+                    'detail': (
+                        'There is unexpected error while uploading {}. '
+                        'Please try again to reupload the file!'
+                    ).format(file_obj.name if file_obj else 'the file')
+                }
+            )
         finally:
             self.remove_temp_file(file_obj)
         return Response(status=204)
