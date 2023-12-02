@@ -80,7 +80,7 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         code_name = id['code__name']
         join_name = f'id_{code_id}'
         id_field_select.append(
-            f'{join_name}.value as {code_name}'
+            f'{join_name}.value as "{code_name}"'
         )
         id_field_left_joins.append(
             f'LEFT JOIN georepo_entityid {join_name} ON '
