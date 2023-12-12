@@ -38,3 +38,5 @@ django-storages==1.13.2
 django-storages[azure]
 django-easy-audit
 django-revproxy @ https://github.com/jazzband/django-revproxy/archive/refs/tags/0.11.0.zip
+# for reading excel file
+openpyxl==3.1.2
