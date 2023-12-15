@@ -3,10 +3,9 @@ import math
 import os
 import shutil
 import datetime
-import tempfile
-import zipfile
+import zipfly
 from django.db import connection
-from django.http import HttpResponse
+from django.http import StreamingHttpResponse
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from rest_framework.reverse import reverse
@@ -38,7 +37,8 @@ from georepo.utils.renderers import (
 )
 from georepo.utils.azure_blob_storage import (
     DirectoryClient,
-    StorageContainerClient
+    StorageContainerClient,
+    AzureStorageZipfly
 )
 from georepo.utils.directory_helper import (
     get_folder_size
@@ -745,40 +745,32 @@ class APIDownloaderBase(GenericAPIView):
         return prefix_name, zip_file_name
 
     def prepare_response(self, prefix_name, zip_file_name, result_list):
-        with tempfile.SpooledTemporaryFile() as tmp_file:
-            with zipfile.ZipFile(
-                    tmp_file, 'w', zipfile.ZIP_DEFLATED) as archive:
-                for result in result_list:
-                    file_name = result.split('/')[-1]
-                    if 'readme' in file_name:
-                        item_file_name = file_name
-                    else:
-                        item_file_name = f'{prefix_name} {file_name}'
-                    if settings.USE_AZURE:
-                        if StorageContainerClient:
-                            bc = StorageContainerClient.get_blob_client(
-                                blob=result)
-                            download_stream = bc.download_blob(
-                                max_concurrency=2,
-                                validate_content=False
-                            )
-                            archive.writestr(item_file_name,
-                                             download_stream.readall())
-                    else:
-                        archive.write(
-                            result,
-                            arcname=item_file_name
-                        )
-            tmp_file.seek(0)
-            response = HttpResponse(
-                tmp_file.read(), content_type='application/x-zip-compressed'
+        paths = []
+        for result in result_list:
+            file_name = result.split('/')[-1]
+            if 'readme' in file_name:
+                item_file_name = file_name
+            else:
+                item_file_name = f'{prefix_name} {file_name}'
+            paths.append({
+                'fs': result,
+                'n': item_file_name
+            })
+        zfly = None
+        if settings.USE_AZURE:
+            zfly = AzureStorageZipfly(
+                paths=paths, storage_container_client=StorageContainerClient)
+        else:
+            zfly = zipfly.ZipFly(paths=paths)
+        z = zfly.generator()
+        response = StreamingHttpResponse(
+            z, content_type='application/octet-stream')
+        response['Content-Disposition'] = (
+            'attachment; filename="{}"'.format(
+                zip_file_name
             )
-            response['Content-Disposition'] = (
-                'attachment; filename="{}"'.format(
-                    zip_file_name
-                )
-            )
-            return response
+        )
+        return response
 
     def check_exists(self, file_path):
         if settings.USE_AZURE:
