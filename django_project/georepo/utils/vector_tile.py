@@ -104,17 +104,42 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
     name_field_left_joins = []
     name_field_select = []
     if names_max_idx['idx__max'] is not None:
+        empty_label_idx = 1
         for name_idx in range(names_max_idx['idx__max'] + 1):
             join_name = f'name_{name_idx+1}'
-            name_label = join_name
-            name_field_select.append(
-                f'{join_name}.name as "{name_label}"'
+            # find labels for name with name_idx
+            name_labels_qs = names.filter(
+                idx=name_idx
+            ).order_by('label').distinct('label').values_list(
+                'label', flat=True
             )
-            name_field_left_joins.append(
-                f'LEFT JOIN georepo_entityname {join_name} ON '
-                f'{join_name}.geographical_entity_id=gg.id AND '
-                f'{join_name}.idx={name_idx} '
-            )
+            has_empty = False
+            for label_idx, label in enumerate(name_labels_qs):
+                if label:
+                    label_join_name = f'{join_name}_{label_idx}'
+                    name_field_select.append(
+                        f'{label_join_name}.name as "{label}"'
+                    )
+                    name_field_left_joins.append(
+                        f'LEFT JOIN georepo_entityname {label_join_name} ON '
+                        f'{label_join_name}.geographical_entity_id=gg.id AND '
+                        f'{label_join_name}.idx={name_idx} AND '
+                        f'{label_join_name}.label=\'{label}\''
+                    )
+                elif not has_empty:
+                    has_empty = True
+                    name_label = f'name_{empty_label_idx}'
+                    empty_label_idx += 1
+                    name_field_select.append(
+                        f'{join_name}.name as "{name_label}"'
+                    )
+                    name_field_left_joins.append(
+                        f'LEFT JOIN georepo_entityname {join_name} ON '
+                        f'{join_name}.geographical_entity_id=gg.id AND '
+                        f'{join_name}.idx={name_idx} AND '
+                        f'({join_name}.label=\'\' OR '
+                        f'{join_name}.label IS NULL)'
+                    )
     view_tiling_config_where_cond = ''
     if using_view_tiling_config:
         view_tiling_config_where_cond = (
