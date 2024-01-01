@@ -11,7 +11,8 @@ export interface EntityName {
     default: boolean,
     language_id: number,
     name: string,
-    uuid?: string
+    uuid?: string,
+    label?: string
 }
 
 

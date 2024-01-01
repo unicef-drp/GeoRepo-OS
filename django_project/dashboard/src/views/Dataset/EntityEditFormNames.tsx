@@ -87,9 +87,10 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
         let _new_item:EntityName = {
             id: 0,
             default: false,
-            language_id: 1,
+            language_id: languageOptions ? parseInt(languageOptions[0].id) : 1,
             name: '',
-            uuid: uuidv4()
+            uuid: uuidv4(),
+            label: ''
         }
         _data.push(_new_item)
         props.onUpdate(_data)
@@ -99,7 +100,7 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
         let _data:EntityName[] = names.reduce((res, name) => {
             if (name.id !== deletedName.id) {
                 res.push({
-                    ...name, language_id: 1
+                    ...name
                 })
             }
             return res
@@ -107,7 +108,7 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
          props.onUpdate(_data)
     }
 
-    const onKeyPress = (e: any, editedName: EntityName) => {
+    const onKeyPress = (e: any, editedName: EntityName, field: string) => {
         if(e.keyCode == 13){
             e.preventDefault()
             let _data:EntityName[] = names.reduce((res, name) => {
@@ -116,8 +117,9 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                         id: editedName.id,
                         default: names.length === 1 ? true : editedName.default,
                         language_id: editedName.language_id,
-                        name: e.target.value,
-                        uuid: editedName.uuid
+                        name: field === 'name' ? e.target.value : editedName.name,
+                        uuid: editedName.uuid,
+                        label: field === 'label' ? e.target.value : editedName.label,
                     })
                 } else {
                     res.push(name)
@@ -132,6 +134,25 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
         }
     }
 
+    const onTextFieldBlur = (e: any, editedName: EntityName, field: string) => {
+        let _data:EntityName[] = names.reduce((res, name) => {
+            if (name.uuid === editedName.uuid) {
+                res.push({
+                    id: editedName.id,
+                    default: names.length === 1 ? true : editedName.default,
+                    language_id: editedName.language_id,
+                    name: field === 'name' ? e.target.value : editedName.name,
+                    uuid: editedName.uuid,
+                    label: field === 'label' ? e.target.value : editedName.label,
+                })
+            } else {
+                res.push(name)
+            }
+            return res
+        }, [] as EntityName[])
+        props.onUpdate(_data)
+    }
+
     return (
         <Grid container flexDirection={'row'}  sx={{alignItems: 'flex-start'}}>
             <Grid item>
@@ -142,6 +163,7 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                                 <TableCell>Default</TableCell>
                                 <TableCell>Name</TableCell>
                                 <TableCell>Language</TableCell>
+                                <TableCell>Label</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                         </TableHead>
@@ -169,7 +191,8 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                                                 defaultValue={name.name}
                                                 size="small"
                                                 variant="standard"
-                                                onKeyDown={(e: any) => onKeyPress(e, name)}
+                                                onKeyDown={(e: any) => onKeyPress(e, name, 'name')}
+                                                onBlur={(e: any) => onTextFieldBlur(e, name, 'name')}
                                                 autoFocus
                                             />
                                         ) : name.name}
@@ -193,6 +216,20 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
                                                 })}
                                             </Select>
                                         ) : getLanguage(name.language_id as unknown as string)}
+                                    </TableCell>
+                                    <TableCell>
+                                        {index === editableIdx ? (
+                                            <TextField
+                                                label="Label"
+                                                id="standard-size-small"
+                                                defaultValue={name.label}
+                                                size="small"
+                                                variant="standard"
+                                                onKeyDown={(e: any) => onKeyPress(e, name, 'label')}
+                                                onBlur={(e: any) => onTextFieldBlur(e, name, 'label')}
+                                                autoFocus
+                                            />
+                                        ) : name.label}
                                     </TableCell>
                                     <TableCell>
                                         <Grid container flexDirection={'row'} spacing={1}>
