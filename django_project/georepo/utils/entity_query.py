@@ -1,4 +1,5 @@
 from enum import Enum
+import math
 from django.db.models import FilteredRelation, Q, F, Max
 from georepo.models.id_type import IdType
 from georepo.models.entity import (
@@ -326,3 +327,17 @@ def do_generate_fuzzy_query(view: DatasetView, search_text: str,
         'ids': ids,
         'names_max_idx': names_max_idx
     }
+
+
+def normalize_attribute_name(name: str, name_idx: int) -> str:
+    """Ensure attribute name must be max 10 chars."""
+    suffix_length = int(math.log10(name_idx + 1)) + 2
+    label_for_current_val = name
+    if len(label_for_current_val) + suffix_length > 10:
+        # truncate name_label so fit to shapefile
+        n = len(label_for_current_val) + suffix_length - 10
+        label_for_current_val = label_for_current_val[:-n]
+    return '{label}_{label_idx}'.format(
+        label=label_for_current_val,
+        label_idx=name_idx + 1
+    )

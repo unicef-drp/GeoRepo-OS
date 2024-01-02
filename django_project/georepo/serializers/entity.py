@@ -8,6 +8,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from georepo.serializers.common import APIResponseModelSerializer
 from georepo.models import GeographicalEntity
 from georepo.utils.unique_code import get_unique_code
+from georepo.utils.entity_query import normalize_attribute_name
 
 
 class GeographicalEntitySerializer(APIResponseModelSerializer):
@@ -129,25 +130,55 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
         if names_max_idx is None or names_max_idx['idx__max'] is None:
             return []
         names = []
+        default_lang_code = 'EN'
+        # find the count of name having same lang that does not have label
+        # e.g. name_1 (EN) = 'abc', name_2 (EN) = 'def'
+        # the resulting labels would be 'name_en_1' and 'name_en_2'
+        # when there is only 1 lang, then the resulting label would be:
+        # e.g. 'name_en'
+        name_labels_dict = {}
         for name_idx in range(names_max_idx['idx__max'] + 1):
             field_key = f"name_{name_idx}"
             val = obj.get(f'{field_key}__name', None)
-            lang = obj.get(f'{field_key}__language__code', None)
+            if val is None or val == '':
+                continue
+            lang = obj.get(f'{field_key}__language__code', default_lang_code)
             label = obj.get(f'{field_key}__label', None)
-            if self.output_format == 'geojson':
-                names.append({
-                    'name': val,
-                    'label': f'name_{name_idx + 1}'
-                })
-            elif val:
-                name = {
-                    'name': val
+            name_label = ''
+            if label:
+                name_label = '{label}'.format(
+                    label=label
+                )
+            else:
+                name_label = f'name_{lang.lower()}'
+            if name_label in name_labels_dict:
+                name_labels_dict[name_label]['total'] += 1
+                name_labels_dict[name_label]['values'].append(val)
+                name_labels_dict[name_label]['langs'].append(lang)
+            else:
+                name_labels_dict[name_label] = {
+                    'total': 1,
+                    'values': [val],
+                    'langs': [lang]
                 }
-                if lang:
-                    name['lang'] = lang
-                if label:
-                    name['label'] = label
+        for name_label, values in name_labels_dict.items():
+            if values['total'] == 1:
+                name = {
+                    'name': values['values'][0],
+                    'lang': values['langs'][0],
+                    'label': name_label
+                }
                 names.append(name)
+            else:
+                for idx, value in enumerate(values['values']):
+                    name = {
+                        'name': value,
+                        'lang': values['langs'][idx],
+                        'label': normalize_attribute_name(
+                            name_label, idx
+                        )
+                    }
+                    names.append(name)
         return names
 
     def get_parents(self, obj: GeographicalEntity):

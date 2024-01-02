@@ -550,7 +550,7 @@ class TestApiDatasetView(TestCase):
             response.get('Content-Disposition'),
             f'attachment; filename="{dataset_view.name}.zip"'
         )
-        with io.BytesIO(response.content) as f:
+        with io.BytesIO(response.getvalue()) as f:
             with zipfile.ZipFile(f, 'r') as archive:
                 self.assertIsNone(archive.testzip())
                 name_list = archive.namelist()
@@ -625,7 +625,7 @@ class TestApiDatasetView(TestCase):
             response.get('Content-Disposition'),
             f'attachment; filename="{dataset_view.name}.zip"'
         )
-        with io.BytesIO(response.content) as f:
+        with io.BytesIO(response.getvalue()) as f:
             with zipfile.ZipFile(f, 'r') as archive:
                 self.assertIsNone(archive.testzip())
                 name_list = archive.namelist()
@@ -702,7 +702,7 @@ class TestApiDatasetView(TestCase):
             response.get('Content-Disposition'),
             f'attachment; filename="{dataset_view.name}.zip"'
         )
-        with io.BytesIO(response.content) as f:
+        with io.BytesIO(response.getvalue()) as f:
             with zipfile.ZipFile(f, 'r') as archive:
                 self.assertIsNone(archive.testzip())
                 name_list = archive.namelist()
@@ -741,7 +741,7 @@ class TestApiDatasetView(TestCase):
             response.get('Content-Disposition'),
             f'attachment; filename="{dataset_view.name}.zip"'
         )
-        with io.BytesIO(response.content) as f:
+        with io.BytesIO(response.getvalue()) as f:
             with zipfile.ZipFile(f, 'r') as archive:
                 self.assertIsNone(archive.testzip())
                 name_list = archive.namelist()
@@ -821,7 +821,7 @@ class TestApiDatasetView(TestCase):
             response.get('Content-Disposition'),
             f'attachment; filename="{dataset_view.name}.zip"'
         )
-        with io.BytesIO(response.content) as f:
+        with io.BytesIO(response.getvalue()) as f:
             with zipfile.ZipFile(f, 'r') as archive:
                 self.assertIsNone(archive.testzip())
                 name_list = archive.namelist()
@@ -861,7 +861,7 @@ class TestApiDatasetView(TestCase):
             response.get('Content-Disposition'),
             f'attachment; filename="{dataset_view.name}.zip"'
         )
-        with io.BytesIO(response.content) as f:
+        with io.BytesIO(response.getvalue()) as f:
             with zipfile.ZipFile(f, 'r') as archive:
                 self.assertIsNone(archive.testzip())
                 name_list = archive.namelist()

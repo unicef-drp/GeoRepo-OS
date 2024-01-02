@@ -246,12 +246,26 @@ class EntityNameListSerializer(serializers.ListSerializer):
         for item in items:
             obj = item.save(entity)
             results.append(obj)
+        # fix name index
+        entity_names = EntityName.objects.filter(
+            geographical_entity=entity
+        ).order_by('id')
+        idx = 0
+        for entity_name in entity_names:
+            entity_name.idx = idx
+            entity_name.skip_signal = True
+            entity_name.save(update_fields=['idx'])
+            idx += 1
         return results
 
 
 class EntityNameSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField()
     language_id = serializers.IntegerField(allow_null=True)
+
+    def validate_label(self, value):
+        stripped_value = value.strip() if value else ''
+        return stripped_value
 
     def validate_code(self, value):
         stripped_value = value.strip() if value else ''
@@ -270,6 +284,7 @@ class EntityNameSerializer(serializers.ModelSerializer):
         language = self.validated_data['language_id']
         name_value = self.validated_data['name']
         default = self.validated_data['default']
+        label = self.validated_data['label']
         if name_id > 0:
             try:
                 entity_name = EntityName.objects.get(
@@ -279,6 +294,7 @@ class EntityNameSerializer(serializers.ModelSerializer):
                 entity_name.default = default
                 entity_name.language_id = language
                 entity_name.skip_signal = True
+                entity_name.label = label
                 entity_name.save()
 
                 if default:
@@ -299,7 +315,8 @@ class EntityNameSerializer(serializers.ModelSerializer):
                 default=default,
                 geographical_entity=entity,
                 language_id=language,
-                idx=idx
+                idx=idx,
+                label=label
             )
             entity_name.skip_signal = True
             entity_name.save()
@@ -309,7 +326,7 @@ class EntityNameSerializer(serializers.ModelSerializer):
         model = EntityName
         list_serializer_class = EntityNameListSerializer
         fields = [
-            'id', 'default', 'name', 'language_id'
+            'id', 'default', 'name', 'language_id', 'label'
         ]
 
 

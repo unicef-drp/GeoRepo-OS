@@ -1,11 +1,15 @@
 import os
+import io
 from azure.storage.blob import (
     BlobServiceClient,
     BlobSasPermissions,
-    generate_blob_sas
+    generate_blob_sas,
+    ContainerClient
 )
 from django.conf import settings
 from datetime import datetime, timedelta
+import zipfile
+from zipfly import ZipFly
 
 
 class DirectoryClient:
@@ -238,6 +242,108 @@ def get_tegola_cache_config(connection_string, container_name):
         'az_account_name': client.credential.account_name,
         'az_shared_key': client.credential.account_key
     }
+
+
+class CustomZipflyStream(io.RawIOBase):
+
+    """
+    The RawIOBase ABC extends IOBase. It deals with
+    the reading and writing of bytes to a stream. FileIO subclasses
+    RawIOBase to provide an interface to files in the machine’s file system.
+    """
+
+    def __init__(self):
+        self._buffer = b''
+        self._size = 0
+
+    def writable(self):
+        return True
+
+    def write(self, b):
+        if self.closed:
+            raise RuntimeError("ZipFly stream was closed!")
+        self._buffer += b
+        return len(b)
+
+    def get(self):
+        chunk = self._buffer
+        self._buffer = b''
+        self._size += len(chunk)
+        return chunk
+
+    def size(self):
+        return self._size
+
+
+class AzureStorageZipfly(ZipFly):
+    """Extension of Zipfly that read streams from azure blob storage."""
+
+    def __init__(self,
+                 mode = 'w',
+                 paths = [],
+                 chunksize = 0x8000,
+                 compression = zipfile.ZIP_STORED,
+                 allowZip64 = True,
+                 compresslevel = None,
+                 storesize = 0,
+                 filesystem = 'fs',
+                 arcname = 'n',
+                 encode = 'utf-8',
+                 storage_container_client: ContainerClient = None):
+        """storage_container_client is container client to download blob."""
+        super(AzureStorageZipfly, self).__init__(
+            mode, paths, chunksize, compression, allowZip64, compresslevel,
+            storesize, filesystem, arcname, encode
+        )
+        self.storage_container_client = storage_container_client
+
+    def generator(self):
+        stream = CustomZipflyStream()
+        with zipfile.ZipFile(
+            stream,
+            mode = self.mode,
+            compression = self.compression,
+            allowZip64 = self.allowZip64,) as zf:
+            for path in self.paths:
+                if self.filesystem not in path:
+                    raise RuntimeError(f"'{self.filesystem}' key is required")
+                """
+                filesystem should be the path to blob storage
+                """
+                if self.arcname not in path:
+                    # arcname will be default path
+                    path[self.arcname] = path[self.filesystem]
+                bc = self.storage_container_client.get_blob_client(
+                    blob=path[self.filesystem])
+                properties = bc.get_blob_properties()
+                current_dt = datetime.now()
+                blob_date_time = (
+                    current_dt.year, current_dt.month, current_dt.day,
+                    current_dt.hour, current_dt.minute, current_dt.second
+                )
+                if properties.creation_time:
+                    blob_date_time = (
+                        properties.creation_time.year,
+                        properties.creation_time.month,
+                        properties.creation_time.day,
+                        properties.creation_time.hour,
+                        properties.creation_time.minute,
+                        properties.creation_time.second
+                    )
+                z_info = zipfile.ZipInfo(path[self.arcname], blob_date_time)
+                z_info.file_size = properties.size
+                # read blob as stream
+                bc_stream = bc.download_blob()
+                with zf.open(z_info, mode=self.mode) as d:
+                    for chunk in bc_stream.chunks():
+                        d.write(chunk)
+                        yield stream.get()
+            self.set_comment(self.comment)
+            zf.comment = self.comment
+        yield stream.get()
+        self._buffer_size = stream.size()
+        # Flush and close this stream.
+        stream.close()
 
 
 StorageServiceClient = None

@@ -109,13 +109,15 @@ class TestApiEntity(TestCase):
                     'id': self.geographical_entity_name_1.id,
                     'default': True,
                     'name': self.geographical_entity_name_1.name,
-                    'language_id': self.geographical_entity_name_1.language_id
+                    'language_id': self.geographical_entity_name_1.language_id,
+                    'label': ''
                 },
                 {
                     'id': self.geographical_entity_name_2.id,
                     'default': False,
                     'name': self.geographical_entity_name_2.name,
-                    'language_id': self.geographical_entity_name_2.language_id
+                    'language_id': self.geographical_entity_name_2.language_id,
+                    'label': ''
                 },
             ],
             'codes': [
@@ -179,13 +181,15 @@ class TestApiEntity(TestCase):
                     'id': self.geographical_entity_name_1.id,
                     'default': True,
                     'name': self.geographical_entity_name_1.name,
-                    'language_id': self.geographical_entity_name_1.language_id
+                    'language_id': self.geographical_entity_name_1.language_id,
+                    'label': self.geographical_entity_name_1.label
                 },
                 {
                     'id': self.geographical_entity_name_2.id,
                     'default': False,
                     'name': self.geographical_entity_name_2.name,
-                    'language_id': self.geographical_entity_name_2.language_id
+                    'language_id': self.geographical_entity_name_2.language_id,
+                    'label': self.geographical_entity_name_2.label
                 },
             ],
             'codes': [
@@ -203,6 +207,7 @@ class TestApiEntity(TestCase):
                 }
             ]
         }
+        print(response.data)
         self.assertEqual(
             self._convert_response_to_dict(response.data),
             expected_response
@@ -236,7 +241,8 @@ class TestApiEntity(TestCase):
             'id': 0,
             'default': False,
             'name': 'some-name',
-            'language_id': None
+            'language_id': None,
+            'label': ''
         })
         request = self.factory.post(
             f"{reverse('entity-edit', args=[self.geographical_entity.id])}/",
@@ -265,7 +271,8 @@ class TestApiEntity(TestCase):
             'id': payload['names'][0]['id'],
             'default': True,
             'name': f"{payload['names'][0]['name']}-updated",
-            'language_id': payload['names'][0]['language_id']
+            'language_id': payload['names'][0]['language_id'],
+            'label': ''
         }
         request = self.factory.post(
             f"{reverse('entity-edit', args=[self.geographical_entity.id])}/",
