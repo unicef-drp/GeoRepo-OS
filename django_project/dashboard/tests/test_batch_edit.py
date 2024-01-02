@@ -1,30 +1,32 @@
 import json
 import random
-import mock
-from django.test import TestCase, override_settings
+from django.test import TestCase
+from django.urls import reverse
+from rest_framework.test import APIRequestFactory
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from django.contrib.gis.geos import GEOSGeometry
 from dateutil.parser import isoparse
 from georepo.utils import absolute_path
 from georepo.models import IdType
 from georepo.models.base_task_request import (
-    PENDING,
-    DONE
+    PENDING
 )
 from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, EntityIdF,
     EntityNameF, LanguageF, UserF
 )
 from dashboard.models.batch_edit import BatchEntityEdit
-from dashboard.tools.entity_edit import (
-    CSVBatchEntityEditImporter,
-    ExcelBatchEntityEditImporter
+from dashboard.api_views.entity import (
+    BatchEntityEditAPI,
+    BatchEntityEditFile
 )
 
 
 class TestBatchEdit(TestCase):
 
     def setUp(self) -> None:
+        self.factory = APIRequestFactory()
         self.enLang = LanguageF.create(
             code='EN',
             name='English'
@@ -97,7 +99,7 @@ class TestBatchEdit(TestCase):
                     level=1,
                     admin_level_name='Region',
                     dataset=self.dataset,
-                    type=self.entity_type1,
+                    type=self.entity_type0,
                     is_validated=True,
                     is_approved=True,
                     is_latest=False,
@@ -134,3 +136,198 @@ class TestBatchEdit(TestCase):
 
     def test_import_excel(self):
         pass
+
+    def test_create_batch_entity_edit(self):
+        request = self.factory.put(
+            reverse('batch-entity-edit') +
+            f'?dataset_id={self.dataset.id}'
+        )
+        request.user = self.superuser
+        view = BatchEntityEditAPI.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        batch_id = response.data['id']
+        batch_edit = BatchEntityEdit.objects.filter(id=batch_id).first()
+        self.assertTrue(batch_edit)
+
+    def test_fetch_batch_entity_edit(self):
+        batch_edit = BatchEntityEdit.objects.create(
+            dataset=self.dataset,
+            status=PENDING,
+            submitted_by=self.superuser,
+            submitted_on=timezone.now()
+        )
+        request = self.factory.get(
+            reverse('batch-entity-edit') +
+            f'?dataset_id={self.dataset.id}'
+        )
+        request.user = self.superuser
+        view = BatchEntityEditAPI.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['id'], batch_edit.id)
+        request = self.factory.get(
+            reverse('batch-entity-edit') +
+            f'?dataset_id={self.dataset.id}&batch_edit_id={batch_edit.id}'
+        )
+        request.user = self.superuser
+        view = BatchEntityEditAPI.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['id'], batch_edit.id)
+
+    def test_update_batch_entity_edit(self):
+        # TODO: mock task
+        batch_edit = BatchEntityEdit.objects.create(
+            dataset=self.dataset,
+            status=PENDING,
+            submitted_by=self.superuser,
+            submitted_on=timezone.now()
+        )
+        data = {
+            'batch_edit_id': batch_edit.id,
+            'ucode_field': 'test_field1',
+            'name_fields': [
+                {
+                    'field': 'name_0',
+                    'selectedLanguage': self.enLang.id
+                }
+            ],
+            'id_fields': [
+                {
+                    'field': 'code_0',
+                    'idType': {
+                        'id': self.id_1.id
+                    }
+                }
+            ]
+        }
+        request = self.factory.post(
+            reverse('batch-entity-edit'), data=data, format='json'
+        )
+        request.user = self.superuser
+        view = BatchEntityEditAPI.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        batch_edit.refresh_from_db()
+        self.assertEqual(batch_edit.ucode_field, data['ucode_field'])
+        self.assertEqual(batch_edit.name_fields, data['name_fields'])
+        self.assertEqual(batch_edit.id_fields, data['id_fields'])
+
+    def run_upload_file(self, test_file_path, test_file_name,
+                        content_type, batch_edit):
+        with open(test_file_path, 'rb') as data:
+            file = SimpleUploadedFile(
+                content=data.read(),
+                name=test_file_name,
+                content_type=content_type)
+        request = self.factory.post(
+            reverse(
+                'batch-entity-edit-file'
+            ),
+            data={
+                'file': file,
+                'batch_edit_id': batch_edit.id
+            }
+        )
+        request.user = self.superuser
+        view = BatchEntityEditFile.as_view()
+        return view(request)
+
+    def test_upload_csv_file(self):
+        batch_edit = BatchEntityEdit.objects.create(
+            dataset=self.dataset,
+            status=PENDING,
+            submitted_by=self.superuser,
+            submitted_on=timezone.now()
+        )
+        test_file_path = absolute_path(
+            'dashboard', 'tests',
+            'importer_data', 'import_empty.csv')
+        response = self.run_upload_file(test_file_path, 'import_empty.csv',
+                                        'text/csv', batch_edit)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['detail'],
+                         'You have uploaded empty spreadsheet, '
+                         'please check again.')
+        batch_edit.refresh_from_db()
+        self.assertTrue(batch_edit.input_file)
+        test_file_path = absolute_path(
+            'dashboard', 'tests',
+            'importer_data', 'import_valid_file.csv')
+        response = self.run_upload_file(test_file_path,
+                                        'import_valid_file.csv',
+                                        'text/csv', batch_edit)
+        self.assertEqual(response.status_code, 204)
+        batch_edit.refresh_from_db()
+        self.assertTrue(batch_edit.input_file)
+        self.assertTrue(batch_edit.headers)
+        self.assertEqual(batch_edit.total_count, 1)
+
+    def test_upload_excel_file(self):
+        batch_edit = BatchEntityEdit.objects.create(
+            dataset=self.dataset,
+            status=PENDING,
+            submitted_by=self.superuser,
+            submitted_on=timezone.now()
+        )
+        test_file_path = absolute_path(
+            'dashboard', 'tests',
+            'importer_data', 'import_empty.xlsx')
+        content_type = (
+            'application/vnd.openxmlformats-'
+            'officedocument.spreadsheetml.sheet'
+        )
+        response = self.run_upload_file(test_file_path, 'import_empty.xlsx',
+                                        content_type, batch_edit)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['detail'],
+                         'You have uploaded empty spreadsheet, '
+                         'please check again.')
+        batch_edit.refresh_from_db()
+        self.assertTrue(batch_edit.input_file)
+        test_file_path = absolute_path(
+            'dashboard', 'tests',
+            'importer_data', 'import_valid_file.xlsx')
+        response = self.run_upload_file(test_file_path,
+                                        'import_valid_file.xlsx',
+                                        content_type, batch_edit)
+        self.assertEqual(response.status_code, 204)
+        batch_edit.refresh_from_db()
+        self.assertTrue(batch_edit.input_file)
+        self.assertTrue(batch_edit.headers)
+        self.assertEqual(batch_edit.total_count, 1)
+
+    def test_remove_excel_file(self):
+        batch_edit = BatchEntityEdit.objects.create(
+            dataset=self.dataset,
+            status=PENDING,
+            submitted_by=self.superuser,
+            submitted_on=timezone.now()
+        )
+        content_type = (
+            'application/vnd.openxmlformats-'
+            'officedocument.spreadsheetml.sheet'
+        )
+        test_file_path = absolute_path(
+            'dashboard', 'tests',
+            'importer_data', 'import_valid_file.xlsx')
+        with open(test_file_path, 'rb') as data:
+            file = SimpleUploadedFile(
+                content=data.read(),
+                name='import_valid_file.xlsx',
+                content_type=content_type)
+        batch_edit.input_file = file
+        batch_edit.save(update_fields=['input_file'])
+        request = self.factory.delete(
+            reverse('batch-entity-edit-file') +
+            f'?batch_edit_id={batch_edit.id}'
+        )
+        request.user = self.superuser
+        view = BatchEntityEditFile.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 204)
+        batch_edit.refresh_from_db()
+        self.assertFalse(batch_edit.input_file)
+        self.assertFalse(batch_edit.headers)
+        self.assertEqual(batch_edit.total_count, 0)

@@ -479,12 +479,6 @@ class BatchEntityEditBaseImporter(object):
                 'You have uploaded empty spreadsheet, '
                 'please check again.'
             )
-        if self.total_rows == 1:
-            # contains only header
-            return False, (
-                'You have uploaded spreadsheet without any row, '
-                'please check again.'
-            )
         # check if has headers
         if len(self.headers) < 2:
             return False, (
@@ -503,7 +497,7 @@ class BatchEntityEditBaseImporter(object):
 class CSVBatchEntityEditImporter(BatchEntityEditBaseImporter):
 
     def read_headers(self):
-        with self.request.input_file.open('r') as csv_file:
+        with self.request.input_file.open('rb') as csv_file:
             file = csv_file.read().decode(
                 'utf-8', errors='ignore').splitlines()
             csv_reader = csv.reader(file)
@@ -514,7 +508,7 @@ class CSVBatchEntityEditImporter(BatchEntityEditBaseImporter):
         success_count = 0
         error_count = 0
         line_count = 0
-        with self.request.input_file.open('r') as csv_file:
+        with self.request.input_file.open('rb') as csv_file:
             file = csv_file.read().decode(
                 'utf-8', errors='ignore').splitlines()
             csv_reader = csv.reader(file)
@@ -538,7 +532,7 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
 
     def read_headers(self):
         self.headers = []
-        with self.request.input_file.open('r') as excel_file:
+        with self.request.input_file.open('rb') as excel_file:
             wb_obj = openpyxl.load_workbook(excel_file)
             sheet_obj = wb_obj.active
             max_col = sheet_obj.max_column
@@ -552,7 +546,7 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
         success_count = 0
         error_count = 0
         line_count = 0
-        with self.request.input_file.open('r') as excel_file:
+        with self.request.input_file.open('rb') as excel_file:
             wb_obj = openpyxl.load_workbook(excel_file)
             sheet_obj = wb_obj.active
             max_col = sheet_obj.max_column

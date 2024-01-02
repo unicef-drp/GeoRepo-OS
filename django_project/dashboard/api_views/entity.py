@@ -1,5 +1,6 @@
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from guardian.core import ObjectPermissionChecker
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -242,7 +243,8 @@ class BatchEntityEditAPI(APIView):
         batch_edit = BatchEntityEdit.objects.create(
             dataset=dataset,
             status=PENDING,
-            submitted_by=self.request.user
+            submitted_by=self.request.user,
+            submitted_on=timezone.now()
         )
         return Response(
             status=200, data=BatchEntityEditSerializer(batch_edit).data)
