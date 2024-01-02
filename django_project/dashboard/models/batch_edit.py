@@ -58,3 +58,8 @@ class BatchEntityEdit(BaseTaskRequest):
     error_count = models.IntegerField(
         default=0
     )
+
+    headers = models.JSONField(
+        default=list,
+        blank=True
+    )

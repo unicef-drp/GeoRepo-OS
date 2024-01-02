@@ -6,11 +6,16 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from guardian.shortcuts import get_objects_for_user
-from dashboard.models import EntityUploadStatus
+from dashboard.models import (
+    EntityUploadStatus,
+    BatchEntityEdit
+)
 from georepo.models import (
     GeographicalEntity,
-    DatasetView,
+    Dataset,
+    DatasetView
 )
+from georepo.models.base_task_request import COMPLETED_STATUS, PENDING
 from georepo.tasks.dataset_view import check_affected_dataset_views
 from georepo.utils.permission import (
     EXTERNAL_READ_VIEW_PERMISSION_LIST,
@@ -19,7 +24,12 @@ from georepo.utils.permission import (
 )
 from dashboard.serializers.entity import (
     EntityConceptUCodeSerializer,
-    EntityEditSerializer
+    EntityEditSerializer,
+    BatchEntityEditSerializer
+)
+from dashboard.tools.entity_edit import (
+    try_delete_uploaded_file,
+    get_entity_edit_importer
 )
 
 
@@ -204,3 +214,137 @@ class EntityEdit(APIView):
                 'detail': 'Insufficient permission'
             }, 403)
         return Response(EntityEditSerializer(entity).data, 200)
+
+
+class BatchEntityEditAPI(APIView):
+    """API to fetch and create/update batch entity edit for given dataset."""
+    permission_classes = [IsAuthenticated]
+
+    def find_existing_batch(self, dataset: Dataset):
+        batch_edit = BatchEntityEdit.objects.filter(
+            dataset=dataset
+        ).exclude(
+            status__in=COMPLETED_STATUS
+        ).order_by('-id')
+        return batch_edit.first()
+
+    def put(self, *args, **kwargs):
+        dataset_id = self.request.GET.get('dataset_id')
+        dataset = get_object_or_404(Dataset, id=dataset_id)
+        existing_batch_edit = self.find_existing_batch(dataset)
+        if existing_batch_edit:
+            return Response({
+                'detail': (
+                    'There is ongoing batch entity edit for this dataset!'
+                ),
+                'batch_id': existing_batch_edit.id
+            }, 400)
+        batch_edit = BatchEntityEdit.objects.create(
+            dataset=dataset,
+            status=PENDING,
+            submitted_by=self.request.user
+        )
+        return Response(
+            status=200, data=BatchEntityEditSerializer(batch_edit).data)
+
+    def get(self, *args, **kwargs):
+        dataset_id = self.request.GET.get('dataset_id')
+        dataset = get_object_or_404(Dataset, id=dataset_id)
+        batch_edit_id = self.request.GET.get('batch_edit_id', None)
+        if batch_edit_id:
+            batch_edit = get_object_or_404(BatchEntityEdit, id=batch_edit_id)
+        else:
+            batch_edit = self.find_existing_batch(dataset)
+            if batch_edit is None:
+                return Response(status=404, data={
+                    'detail': (
+                        'There is no ongoing batch entity edit '
+                        'for this dataset!'
+                    )
+                })
+        return Response(
+            status=200, data=BatchEntityEditSerializer(batch_edit).data)
+
+    def post(self, *args, **kwargs):
+        """Update fields mappping and trigger the importer."""
+        batch_edit_id = self.request.data.get('batch_edit_id')
+        batch_edit = get_object_or_404(BatchEntityEdit, id=batch_edit_id)
+        ucode_field = self.request.data.get('ucode_field')
+        id_fields = self.request.data.get('id_fields')
+        name_fields = self.request.data.get('name_fields')
+        batch_edit.ucode_field = ucode_field
+        if id_fields:
+            batch_edit.id_fields = id_fields
+        if name_fields:
+            batch_edit.name_fields = name_fields
+        batch_edit.task_id = ''
+        batch_edit.save(
+            update_fields=[
+                'id_fields', 'name_fields', 'ucode_field',
+                'task_id'
+            ]
+        )
+        return Response(
+            status=200, data=BatchEntityEditSerializer(batch_edit).data)
+
+
+class BatchEntityEditFile(APIView):
+    """API to upload/download batch entity edit."""
+
+    def validate(self, batch_edit: BatchEntityEdit):
+        """
+        Validation of file input:
+        - File type: excel or csv
+        - Column Headers > 0
+        - Total rows > 0
+        """
+        importer = get_entity_edit_importer(batch_edit)
+        if importer is None:
+            # invalid file type
+            return False, (
+                'Invalid file type! Please upload either excel or csv file!'
+            )
+        return importer.validate_input_file()
+
+    def post(self, request, format=None):
+        file_obj = request.FILES['file']
+        batch_edit_id = request.data.get('batch_edit_id')
+        batch_edit = get_object_or_404(BatchEntityEdit, id=batch_edit_id)
+        batch_edit.input_file = file_obj
+        batch_edit.save(update_fields=['input_file'])
+        valid_file, error = self.validate(batch_edit)
+        if not valid_file:
+            return Response(
+                status=400,
+                data={
+                    'detail': error
+                }
+            )
+        return Response(status=204)
+
+    def delete(self, request, format=None):
+        batch_edit_id = request.GET.get('batch_edit_id')
+        batch_edit = get_object_or_404(BatchEntityEdit, id=batch_edit_id)
+        if batch_edit.input_file:
+            try_delete_uploaded_file(batch_edit.input_file)
+        batch_edit.input_file = None
+        if batch_edit.output_file:
+            try_delete_uploaded_file(batch_edit.output_file)
+            batch_edit.output_file = None
+        batch_edit.finished_at = None
+        batch_edit.progress = 0
+        batch_edit.errors = None
+        batch_edit.error_notes = None
+        batch_edit.error_count = 0
+        batch_edit.success_notes = None
+        batch_edit.total_count = 0
+        batch_edit.success_count = 0
+        batch_edit.status = PENDING
+        batch_edit.headers = []
+        batch_edit.save(update_fields=[
+            'status', 'started_at', 'progress', 'errors',
+            'finished_at', 'output_file', 'error_notes',
+            'error_count', 'total_count', 'success_notes',
+            'success_count', 'input_file', 'headers'
+        ])
+        return Response(status=204)

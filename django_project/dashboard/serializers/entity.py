@@ -3,7 +3,8 @@ from django.db.models import Q, Max
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from georepo.models.entity import EntityName, EntityId, EntityType
-from dashboard.models import EntitiesUserConfig
+from dashboard.models import EntitiesUserConfig, BatchEntityEdit
+from georepo.models.base_task_request import PENDING, DONE
 
 
 class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
@@ -488,4 +489,49 @@ class EntityEditSerializer(serializers.ModelSerializer):
             'names',
             'codes',
             'label'
+        ]
+
+
+class BatchEntityEditSerializer(serializers.ModelSerializer):
+    has_file = serializers.SerializerMethodField()
+    step = serializers.SerializerMethodField()
+    is_read_only = serializers.SerializerMethodField()
+
+    def get_has_file(self, obj: BatchEntityEdit):
+        return (
+            obj.input_file and
+            obj.input_file.storage.exists(obj.input_file.name)
+        )
+
+    def get_step(self, obj: BatchEntityEdit):
+        if not self.get_has_file(obj):
+            return 0
+        if obj.status == PENDING and obj.headers and obj.total_count > 0:
+            return 1
+        return 2
+
+    def get_is_read_only(self, obj: BatchEntityEdit):
+        return obj.status == DONE
+
+    class Meta:
+        model = BatchEntityEdit
+        fields = [
+            'id',
+            'uuid',
+            'status',
+            'dataset_id',
+            'id_fields',
+            'name_fields',
+            'ucode_field',
+            'error_notes',
+            'success_notes',
+            'total_count',
+            'success_count',
+            'error_count',
+            'progress',
+            'errors',
+            'has_file',
+            'step',
+            'is_read_only',
+            'headers'
         ]

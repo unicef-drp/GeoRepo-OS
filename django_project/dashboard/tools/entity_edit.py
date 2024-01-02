@@ -44,6 +44,7 @@ def try_delete_uploaded_file(file: FieldFile):
 class BatchEntityEditBaseImporter(object):
     request = BatchEntityEdit.objects.none()
     headers = []
+    total_rows = 0
     ucode_index = -1
     # store name/id fields with its index
     name_fields = {}
@@ -65,6 +66,7 @@ class BatchEntityEditBaseImporter(object):
     def process_started(self):
         # reset state, clear exiting output
         self.headers = []
+        self.total_rows = 0
         self.ucode_index = -1
         self.name_fields = {}
         self.id_fields = {}
@@ -81,12 +83,11 @@ class BatchEntityEditBaseImporter(object):
         self.request.error_notes = None
         self.request.error_count = 0
         self.request.success_notes = None
-        self.request.total_count = 0
         self.request.success_count = 0
         self.request.save(update_fields=[
             'status', 'started_at', 'progress', 'errors',
             'finished_at', 'output_file', 'error_notes',
-            'error_count', 'total_count', 'success_notes',
+            'error_count', 'success_notes',
             'success_count'
         ])
 
@@ -120,11 +121,10 @@ class BatchEntityEditBaseImporter(object):
 
     def on_update_progress(self, row, total_count):
         # save progress of task
-        self.request.total_count = total_count
         self.request.progress = (
             (row / total_count) * 100 if total_count else 0
         )
-        self.request.save(update_fields=['total_count', 'progress'])
+        self.request.save(update_fields=['progress'])
 
     def start(self):
         self.process_started()
@@ -471,6 +471,34 @@ class BatchEntityEditBaseImporter(object):
             pass
         return row_value
 
+    def validate_input_file(self):
+        """Validate input file from BatchEntityEdit obj."""
+        self.read_headers()
+        if self.total_rows < 1:
+            return False, (
+                'You have uploaded empty spreadsheet, '
+                'please check again.'
+            )
+        if self.total_rows == 1:
+            # contains only header
+            return False, (
+                'You have uploaded spreadsheet without any row, '
+                'please check again.'
+            )
+        # check if has headers
+        if len(self.headers) < 2:
+            return False, (
+                'You have uploaded spreadsheet with invalid headers, '
+                'the headers must include ucode field and '
+                'at least one ID/Name field, '
+                'please check again.'
+            )
+        # store headers and total count
+        self.request.total_count = self.total_rows
+        self.request.headers = self.headers
+        self.request.save(update_fields=['total_count', 'headers'])
+        return True, None
+
 
 class CSVBatchEntityEditImporter(BatchEntityEditBaseImporter):
 
@@ -480,6 +508,7 @@ class CSVBatchEntityEditImporter(BatchEntityEditBaseImporter):
                 'utf-8', errors='ignore').splitlines()
             csv_reader = csv.reader(file)
             self.headers = next(csv_reader)
+            self.total_rows = sum(1 for row in csv_reader)
 
     def process_rows(self):
         success_count = 0
@@ -500,6 +529,7 @@ class CSVBatchEntityEditImporter(BatchEntityEditBaseImporter):
                     else:
                         error_count += 1
                     self.csv_output_writer.writerow(output_row)
+                self.on_update_progress(line_count, self.total_rows)
                 line_count += 1
         return line_count - 1, success_count, error_count
 
@@ -512,6 +542,7 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
             wb_obj = openpyxl.load_workbook(excel_file)
             sheet_obj = wb_obj.active
             max_col = sheet_obj.max_column
+            self.total_rows = sheet_obj.max_row - 1
             # Loop will print all columns name
             for i in range(1, max_col + 1):
                 cell_obj = sheet_obj.cell(row=1, column=i)
@@ -541,4 +572,18 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
                     error_count += 1
                 self.csv_output_writer.writerow(output_row)
                 line_count += 1
+                self.on_update_progress(line_count, self.total_rows)
         return line_count - 1, success_count, error_count
+
+
+def get_entity_edit_importer(obj: BatchEntityEdit):
+    if obj.input_file is None:
+        raise RuntimeError('Batch session does not have input file uploaded!')
+    if (
+        obj.input_file.path.endswith('.xlsx') or
+        obj.input_file.path.endswith('.xls')
+    ):
+        return ExcelBatchEntityEditImporter(obj)
+    elif obj.input_file.path.endswith('.csv'):
+        return CSVBatchEntityEditImporter(obj)
+    return None
