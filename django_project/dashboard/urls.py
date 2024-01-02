@@ -96,7 +96,9 @@ from dashboard.api_views.module import ModuleDashboard
 from dashboard.api_views.entity import (
     EntityRevisionList,
     EntityByConceptUCode,
-    EntityEdit
+    EntityEdit,
+    BatchEntityEditAPI,
+    BatchEntityEditFile
 )
 
 from dashboard.api_views.views import (
@@ -166,6 +168,16 @@ urlpatterns = [
         r'(?P<entity_id>\d+)/?$',
         EntityEdit.as_view(),
         name='entity-edit'
+    ),
+    re_path(
+        r'api/batch-entity-edit/file/?$',
+        BatchEntityEditFile.as_view(),
+        name='batch-entity-edit-file'
+    ),
+    re_path(
+        r'api/batch-entity-edit/?$',
+        BatchEntityEditAPI.as_view(),
+        name='batch-entity-edit'
     ),
     re_path(
         r'api/language/list/?$',
