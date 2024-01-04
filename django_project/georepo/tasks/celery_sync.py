@@ -1,6 +1,7 @@
 from celery import shared_task, states
 import logging
 from django.utils import timezone
+from datetime import timedelta
 from ast import literal_eval as make_tuple
 from georepo.models import (
     BackgroundTask,
@@ -17,6 +18,8 @@ from georepo.utils.module_import import module_function
 
 
 logger = logging.getLogger(__name__)
+# remove tasks with two months old 
+REMOVE_AFTER_DAYS = 60
 
 
 @shared_task(name="check_celery_background_tasks")
@@ -383,3 +386,13 @@ def handle_task_interrupted(task: BackgroundTask):
             upload_session.save(update_fields=['task_id'])
         except LayerUploadSession.DoesNotExist as ex:
             logger.error(ex)
+
+
+@shared_task(name="remove_old_background_tasks")
+def remove_old_background_tasks():
+    datetime_filter = timezone.now() - timedelta(days=REMOVE_AFTER_DAYS)
+    tasks = BackgroundTask.objects.filter(
+        last_update__lte=datetime_filter
+    )
+    logger.info(f'Removing old background task with count {tasks.count()}')
+    tasks.delete()
