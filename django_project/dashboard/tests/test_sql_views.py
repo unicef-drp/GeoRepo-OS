@@ -61,6 +61,61 @@ class TestSqlViews(TransactionTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['valid'], False)
 
+        query_string = 'truncate table georepo_geographicalentity'
+        request = self.factory.post(
+            reverse('query-view-check'), {
+                'query_string': query_string,
+                'dataset': dataset.id
+            }
+        )
+        request.user = user
+        query_view = QueryViewCheck.as_view()
+        response = query_view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['valid'], False)
+
+    def test_query_check_with_quotes(self):
+        query_string = (
+            "select * from georepo_geographicalentity WHERE label=\"test\""
+        )
+        user = UserF.create()
+        dataset = DatasetF.create()
+        GeographicalEntityF.create(
+            dataset=dataset
+        )
+        request = self.factory.post(
+            reverse('query-view-check'), {
+                'query_string': query_string,
+                'dataset': dataset.id
+            }
+        )
+        request.user = user
+        query_view = QueryViewCheck.as_view()
+        response = query_view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['valid'], True)
+
+    def test_query_check_with_go(self):
+        query_string = (
+            "select * from georepo_geographicalentity WHERE label='TW20_AGO'"
+        )
+        user = UserF.create()
+        dataset = DatasetF.create()
+        GeographicalEntityF.create(
+            dataset=dataset
+        )
+        request = self.factory.post(
+            reverse('query-view-check'), {
+                'query_string': query_string,
+                'dataset': dataset.id
+            }
+        )
+        request.user = user
+        query_view = QueryViewCheck.as_view()
+        response = query_view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['valid'], True)
+
     def test_column_table_list(self):
         user = UserF.create()
         request = self.factory.get(
