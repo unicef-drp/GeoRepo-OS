@@ -18,7 +18,7 @@ from georepo.utils.module_import import module_function
 
 
 logger = logging.getLogger(__name__)
-# remove tasks with two months old 
+# remove tasks with two months old
 REMOVE_AFTER_DAYS = 60
 
 
@@ -91,8 +91,10 @@ def handle_task_failure(task: BackgroundTask):
                 'Invalid parameter generate_view_resource_vector_tiles_task')
         try:
             view_resource_id = task_param[0]
-            resource = DatasetViewResource.objects.get(
-                id=view_resource_id)
+            resource = DatasetViewResource.objects.filter(
+                id=view_resource_id).first()
+            if resource is None:
+                return
             export_data = (
                 task_param[1] if len(task_param) > 1 else True
             )
@@ -121,7 +123,9 @@ def handle_task_failure(task: BackgroundTask):
                 'Invalid parameter view_vector_tiles_task')
         try:
             view_id = task_param[0]
-            view = DatasetView.objects.get(id=view_id)
+            view = DatasetView.objects.filter(id=view_id).first()
+            if view is None:
+                return
             view.status = DatasetView.DatasetViewStatus.ERROR
             has_custom_tiling_config = (
                 view.datasetviewtilingconfig_set.all().exists()
@@ -154,7 +158,9 @@ def handle_task_failure(task: BackgroundTask):
                 'Invalid parameter validate_ready_uploads')
         try:
             upload_id = task_param[0]
-            upload = EntityUploadStatus.objects.get(id=upload_id)
+            upload = EntityUploadStatus.objects.filter(id=upload_id).first()
+            if upload is None:
+                return
             upload.status = PROCESSING_ERROR
             if task.errors:
                 upload.logs = task.errors
@@ -195,8 +201,10 @@ def handle_task_interrupted(task: BackgroundTask):
                 'Invalid parameter generate_view_resource_vector_tiles_task')
         try:
             view_resource_id = task_param[0]
-            resource = DatasetViewResource.objects.get(
-                id=view_resource_id)
+            resource = DatasetViewResource.objects.filter(
+                id=view_resource_id).first()
+            if resource is None:
+                return
             export_data = (
                 task_param[1] if len(task_param) > 1 else True
             )
@@ -254,7 +262,9 @@ def handle_task_interrupted(task: BackgroundTask):
                 task_param[2] if len(task_param) > 2 else True
             )
             overwrite = task_param[3] if len(task_param) > 3 else True
-            view = DatasetView.objects.get(id=view_id)
+            view = DatasetView.objects.filter(id=view_id).first()
+            if view is None:
+                return
             view.simplification_current_task = None
             view.save(update_fields=['simplification_current_task'])
             task_celery = view_vector_tiles_task.delay(
@@ -273,7 +283,9 @@ def handle_task_interrupted(task: BackgroundTask):
                 int(task_param[1]) if len(task_param) > 1 and
                 task_param[1] is not None else None
             )
-            upload = EntityUploadStatus.objects.get(id=upload_id)
+            upload = EntityUploadStatus.objects.filter(id=upload_id).first()
+            if upload is None:
+                return
             # validate if upload is not in final state
             if upload.status in [STARTED, PROCESSING]:
                 # reset the status back to STARTED
@@ -296,7 +308,9 @@ def handle_task_interrupted(task: BackgroundTask):
                 'Invalid parameter run_comparison_boundary')
         try:
             upload_id = task_param[0]
-            upload = EntityUploadStatus.objects.get(id=upload_id)
+            upload = EntityUploadStatus.objects.filter(id=upload_id).first()
+            if upload is None:
+                return
             upload_session: LayerUploadSession = upload.upload_session
             dataset: Dataset = upload_session.dataset
             # if boundary match ready, then skip
@@ -328,7 +342,9 @@ def handle_task_interrupted(task: BackgroundTask):
                 'Invalid parameter review_approval')
         try:
             upload_id = task_param[0]
-            upload = EntityUploadStatus.objects.get(id=upload_id)
+            upload = EntityUploadStatus.objects.filter(id=upload_id).first()
+            if upload is None:
+                return
             upload_session: LayerUploadSession = upload.upload_session
             dataset: Dataset = upload_session.dataset
             user_id = task_param[1]
@@ -354,7 +370,9 @@ def handle_task_interrupted(task: BackgroundTask):
                 'Invalid parameter process_batch_review')
         try:
             batch_id = task_param[0]
-            batch_review = BatchReview.objects.get(id=batch_id)
+            batch_review = BatchReview.objects.filter(id=batch_id).first()
+            if batch_review is None:
+                return
             batch_review.status = PENDING
             if batch_review.is_approve:
                 celery_task = revert_process_batch_review_approval.delay(
@@ -376,8 +394,10 @@ def handle_task_interrupted(task: BackgroundTask):
                 int(task_param[1]) if len(task_param) > 1 and
                 task_param[1] is not None else None
             )
-            upload_session = LayerUploadSession.objects.get(
-                id=upload_session_id)
+            upload_session = LayerUploadSession.objects.filter(
+                id=upload_session_id).first()
+            if upload_session is None:
+                return
             celery_task = layer_upload_preprocessing.delay(
                 upload_session.id,
                 log_object_id
