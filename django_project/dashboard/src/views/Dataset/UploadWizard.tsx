@@ -265,7 +265,7 @@ export default function UploadWizard (props: UploadWizardInterface) {
       <Grid container flexDirection='column' flex={1}>
         <Grid item>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabSelected} onChange={handleChange} aria-label="basic tabs example">
+            <Tabs className="WizardTabs" value={tabSelected} onChange={handleChange} aria-label="basic tabs example">
               {
                 props.steps.map((step, index) => {
                   return <Tab 

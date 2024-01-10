@@ -1,3 +1,4 @@
+import csv
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -16,7 +17,7 @@ from georepo.models import (
     Dataset,
     DatasetView
 )
-from georepo.models.base_task_request import COMPLETED_STATUS, PENDING
+from georepo.models.base_task_request import COMPLETED_STATUS, PENDING, DONE
 from georepo.tasks.dataset_view import check_affected_dataset_views
 from georepo.utils.permission import (
     EXTERNAL_READ_VIEW_PERMISSION_LIST,
@@ -32,6 +33,8 @@ from dashboard.tools.entity_edit import (
     try_delete_uploaded_file,
     get_entity_edit_importer
 )
+from dashboard.tasks.batch_edit import process_batch_entity_edit
+from georepo.utils.celery_helper import cancel_task
 
 
 class EntityRevisionSerializer(serializers.ModelSerializer):
@@ -279,7 +282,10 @@ class BatchEntityEditAPI(APIView):
             batch_edit.id_fields = id_fields
         if name_fields:
             batch_edit.name_fields = name_fields
-        batch_edit.task_id = ''
+        if batch_edit.task_id:
+            cancel_task(batch_edit.task_id)
+        task = process_batch_entity_edit.delay(batch_edit.id)
+        batch_edit.task_id = task.id
         batch_edit.save(
             update_fields=[
                 'id_fields', 'name_fields', 'ucode_field',
@@ -350,3 +356,28 @@ class BatchEntityEditFile(APIView):
             'success_count', 'input_file', 'headers'
         ])
         return Response(status=204)
+
+
+class BatchEntityEditResultAPI(APIView):
+    """API to fetch the result from batch entity edit."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, *args, **kwargs):
+        batch_edit_id = self.request.GET.get('batch_edit_id')
+        batch_edit = get_object_or_404(BatchEntityEdit, id=batch_edit_id)
+        if batch_edit.status != DONE or batch_edit.output_file is None:
+            return Response(
+                status=400,
+                data={
+                    'detail': (
+                        'Unable to fetch the output from batch edit '
+                        f'with status {batch_edit.status}'
+                    )
+                }
+            )
+        with batch_edit.output_file.open('rb') as csv_file:
+            file = csv_file.read().decode(
+                'utf-8', errors='ignore').splitlines()
+            csv_reader = csv.DictReader(file)
+            data = [row for row in csv_reader]
+        return Response(status=200, data=data)

@@ -1,5 +1,6 @@
 import json
 import random
+import mock
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIRequestFactory
@@ -10,7 +11,7 @@ from dateutil.parser import isoparse
 from georepo.utils import absolute_path
 from georepo.models import IdType
 from georepo.models.base_task_request import (
-    PENDING
+    PENDING, DONE
 )
 from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, EntityIdF,
@@ -19,8 +20,18 @@ from georepo.tests.model_factories import (
 from dashboard.models.batch_edit import BatchEntityEdit
 from dashboard.api_views.entity import (
     BatchEntityEditAPI,
-    BatchEntityEditFile
+    BatchEntityEditFile,
+    BatchEntityEditResultAPI
 )
+
+
+class DummyTask:
+    def __init__(self, id):
+        self.id = id
+
+
+def mocked_process_batch_job(*args, **kwargs):
+    return DummyTask('1')
 
 
 class TestBatchEdit(TestCase):
@@ -176,8 +187,12 @@ class TestBatchEdit(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['id'], batch_edit.id)
 
+    @mock.patch(
+        'dashboard.api_views.entity.'
+        'process_batch_entity_edit.delay',
+        mock.Mock(side_effect=mocked_process_batch_job)
+    )
     def test_update_batch_entity_edit(self):
-        # TODO: mock task
         batch_edit = BatchEntityEdit.objects.create(
             dataset=self.dataset,
             status=PENDING,
@@ -331,3 +346,40 @@ class TestBatchEdit(TestCase):
         self.assertFalse(batch_edit.input_file)
         self.assertFalse(batch_edit.headers)
         self.assertEqual(batch_edit.total_count, 0)
+
+    def test_fetch_result(self):
+        batch_edit = BatchEntityEdit.objects.create(
+            dataset=self.dataset,
+            status=PENDING,
+            submitted_by=self.superuser,
+            submitted_on=timezone.now()
+        )
+        request = self.factory.get(
+            reverse('batch-entity-edit-result') +
+            f'?batch_edit_id={batch_edit.id}'
+        )
+        request.user = self.superuser
+        view = BatchEntityEditResultAPI.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 400)
+        batch_edit.status = DONE
+        test_file_path = absolute_path(
+            'dashboard', 'tests',
+            'importer_data', 'import_valid_file.csv')
+        with open(test_file_path, 'rb') as data:
+            file = SimpleUploadedFile(
+                content=data.read(),
+                name='import_valid_file.csv',
+                content_type='text/csv')
+        batch_edit.output_file = file
+        batch_edit.save(update_fields=['output_file', 'status'])
+        request = self.factory.get(
+            reverse('batch-entity-edit-result') +
+            f'?batch_edit_id={batch_edit.id}'
+        )
+        request.user = self.superuser
+        view = BatchEntityEditResultAPI.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['ucode'], 'PAK_V1')

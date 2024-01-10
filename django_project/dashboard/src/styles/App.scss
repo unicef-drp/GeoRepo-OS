@@ -354,7 +354,7 @@ main {
   }
 }
 
-.DatasetTabs {
+.DatasetTabs, .WizardTabs {
   &.MuiTabs-root {
     .MuiTab-root {
       min-height: 48px;

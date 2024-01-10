@@ -2,6 +2,7 @@ import {DatasetRoute, RouteInterface, ReviewListRoute} from "../views/routes";
 import DatasetDetailWrapper from "./DatasetDetail"
 import UploadWizardWrapper from "./Wizard"
 import ReviewWrapper from "./ReviewWrapper";
+import BatchEntityEditWizard from "./BatchEntityEditWizard";
 
 
 export const DatasetEntityListAdminRoute: RouteInterface = {
@@ -28,8 +29,17 @@ const ReviewDetailRoute: RouteInterface = {
   parent: ReviewListRoute
 }
 
+const BatchEntityEditRoute: RouteInterface = {
+  id: 'batch_entity_edit',
+  name: 'Batch Entity Edit',
+  path: '/edit_entity/wizard',
+  element: BatchEntityEditWizard,
+  parent: DatasetEntityListAdminRoute
+}
+
 export const routes: Array<RouteInterface> = [
   DatasetEntityListAdminRoute,
   UploadWizardRoute,
   ReviewDetailRoute,
+  BatchEntityEditRoute
 ]

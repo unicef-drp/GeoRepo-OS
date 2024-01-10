@@ -40,6 +40,9 @@
   .MuiTouchRipple-root {
     display: none;
   }
+  &.MuiLoadingButton-root.MuiButton-outlined {
+    padding: 7px 15px !important;
+  }
 }
 
 .MuiButton-primary {

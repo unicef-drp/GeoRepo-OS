@@ -51,3 +51,20 @@
     overflow-y: auto;
   }
 }
+
+.text-success {
+  color: green;
+}
+
+.text-error {
+  color: red;
+}
+
+.UploadAlertMessage {
+  width: 750px;
+  text-align: left;
+
+  .MuiAlert-message {
+    width: 100%;
+  }
+}

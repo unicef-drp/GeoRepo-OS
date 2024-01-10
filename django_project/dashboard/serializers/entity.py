@@ -4,7 +4,7 @@ from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from georepo.models.entity import EntityName, EntityId, EntityType
 from dashboard.models import EntitiesUserConfig, BatchEntityEdit
-from georepo.models.base_task_request import PENDING, DONE
+from georepo.models.base_task_request import PENDING, READ_ONLY_STATUS
 
 
 class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
@@ -513,10 +513,13 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
     has_file = serializers.SerializerMethodField()
     step = serializers.SerializerMethodField()
     is_read_only = serializers.SerializerMethodField()
+    input_file_name = serializers.SerializerMethodField()
+    module = serializers.SerializerMethodField()
+    dataset = serializers.SerializerMethodField()
 
     def get_has_file(self, obj: BatchEntityEdit):
         return (
-            obj.input_file and
+            obj.input_file is not None and
             obj.input_file.storage.exists(obj.input_file.name)
         )
 
@@ -528,7 +531,16 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
         return 2
 
     def get_is_read_only(self, obj: BatchEntityEdit):
-        return obj.status == DONE
+        return obj.status in READ_ONLY_STATUS
+
+    def get_input_file_name(self, obj: BatchEntityEdit):
+        return obj.input_file.name if obj.input_file is not None else None
+
+    def get_module(self, obj: BatchEntityEdit):
+        return obj.dataset.module.name
+
+    def get_dataset(self, obj: BatchEntityEdit):
+        return obj.dataset.label
 
     class Meta:
         model = BatchEntityEdit
@@ -550,5 +562,8 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
             'has_file',
             'step',
             'is_read_only',
-            'headers'
+            'headers',
+            'input_file_name',
+            'module',
+            'dataset'
         ]

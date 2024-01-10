@@ -41,6 +41,12 @@ def try_delete_uploaded_file(file: FieldFile):
         logger.error('Failed to delete file!')
 
 
+def format_entities_count(count):
+    if count <= 1:
+        return f'{count} entity'
+    return f'{count} entities'
+
+
 class BatchEntityEditBaseImporter(object):
     request = BatchEntityEdit.objects.none()
     headers = []
@@ -167,17 +173,18 @@ class BatchEntityEditBaseImporter(object):
                 self.request.error_count == 0
             ):
                 self.request.success_notes = (
-                    f'{self.request.success_count} entities have '
-                    'been updated successfully.'
+                    f'{format_entities_count(self.request.success_count)} '
+                    'have been updated successfully.'
                 )
             if (
                 self.request.success_count > 0 and
                 self.request.error_count > 0
             ):
                 self.request.success_notes = (
-                    f'{self.request.success_count} '
-                    'entities have been updated successfully. '
-                    f'{self.request.error_count} entities have errors.'
+                    f'{format_entities_count(self.request.success_count)} '
+                    'have been updated successfully. '
+                    f'{format_entities_count(self.request.error_count)} '
+                    'have errors.'
                 )
             self.request.save(update_fields=[
                 'total_count', 'success_count', 'error_count', 'success_notes'
@@ -570,14 +577,16 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
         return line_count - 1, success_count, error_count
 
 
-def get_entity_edit_importer(obj: BatchEntityEdit):
+def get_entity_edit_importer(
+        obj: BatchEntityEdit) -> BatchEntityEditBaseImporter:
     if obj.input_file is None:
         raise RuntimeError('Batch session does not have input file uploaded!')
+    file_name = obj.input_file.name
     if (
-        obj.input_file.path.endswith('.xlsx') or
-        obj.input_file.path.endswith('.xls')
+        file_name.endswith('.xlsx') or
+        file_name.endswith('.xls')
     ):
         return ExcelBatchEntityEditImporter(obj)
-    elif obj.input_file.path.endswith('.csv'):
+    elif file_name.endswith('.csv'):
         return CSVBatchEntityEditImporter(obj)
     return None

@@ -98,7 +98,8 @@ from dashboard.api_views.entity import (
     EntityByConceptUCode,
     EntityEdit,
     BatchEntityEditAPI,
-    BatchEntityEditFile
+    BatchEntityEditFile,
+    BatchEntityEditResultAPI
 )
 
 from dashboard.api_views.views import (
@@ -173,6 +174,11 @@ urlpatterns = [
         r'api/batch-entity-edit/file/?$',
         BatchEntityEditFile.as_view(),
         name='batch-entity-edit-file'
+    ),
+    re_path(
+        r'api/batch-entity-edit/result/?$',
+        BatchEntityEditResultAPI.as_view(),
+        name='batch-entity-edit-result'
     ),
     re_path(
         r'api/batch-entity-edit/?$',
