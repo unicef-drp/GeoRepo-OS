@@ -147,7 +147,7 @@ export default function Step2(props: Step2Interface) {
                                     <p className="display-linebreak">
                                         { alertMessage }
                                     </p>
-                                    { loading ? <LinearProgressWithLabel value={props.batchEdit.progress} /> : null }
+                                    { loading ? <LinearProgressWithLabel value={props.batchEdit.progress} maxBarWidth={'90%'} /> : null }
                                 </Alert> : null }
                         </Grid>
                     </Grid>

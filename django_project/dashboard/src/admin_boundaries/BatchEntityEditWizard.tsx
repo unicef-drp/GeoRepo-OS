@@ -61,9 +61,29 @@ export default function BatchEntityEditWizard(props: any) {
         }
     }
 
+    const fetchStatus = () => {
+        if (!batchEdit) return;
+        axios.get(LOAD_BATCH_ENTITY_EDIT_URL + `?batch_edit_id=${batchEdit.id}&dataset_id=${batchEdit.dataset_id}`).then(
+            response => {
+                let _data: BatchEntityEditInterface = response.data as BatchEntityEditInterface
+                setBatchEdit(_data)
+            }, error => {
+                console.log(error)
+        })
+    }
+
     useEffect(() => {
         fetchBatchEditData()
     }, [searchParams])
+
+    useEffect(() => {
+        if (batchEdit && batchEdit.status === PROCESSING_STATUS) {
+            const interval = setInterval(() => {
+                fetchStatus()
+            }, 5000)
+            return () => clearInterval(interval)
+        }
+    }, [batchEdit?.status])
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
         if (newValue > 2) {

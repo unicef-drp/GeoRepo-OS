@@ -408,19 +408,16 @@ export default function List(
     }
 
     useEffect(() => {
-        console.log('useEffect initData')
         setData(initData)
     }, [initData])
 
     useEffect(() => {
-        console.log('useEffect data')
         if (data.length > 0 && tableColumns.length === 0) {
             updateTableColumns()
         }
     }, [data])
 
     useEffect(() => {
-        console.log('useEffect customOptions')
         if (data.length > 0 && tableColumns.length > 0) {
             updateTableColumns()
         }
