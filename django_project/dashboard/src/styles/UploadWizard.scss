@@ -27,6 +27,10 @@
   .MuiButtonBase-root {
     min-height: 40px;
     height: 100%;
+
+    &.MuiTableSortLabel-root {
+      min-height: unset;
+    }
   }
 }
 
