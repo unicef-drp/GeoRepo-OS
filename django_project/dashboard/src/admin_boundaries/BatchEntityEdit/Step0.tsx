@@ -63,7 +63,7 @@ export default function Step0(props: Step0Interface) {
           } else if (extension === 'xlsx') {
             _fileType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
           }
-          setInitialFiles([new File([], props.batchEdit.input_file_name, {
+          setInitialFiles([new File([new ArrayBuffer(props.batchEdit.input_file_size)], props.batchEdit.input_file_name, {
             type: _fileType
           })])
           setTimeout(() => {

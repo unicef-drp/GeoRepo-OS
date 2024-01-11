@@ -164,4 +164,5 @@ export interface BatchEntityEditInterface {
     input_file_name?: string;
     errors?: string;
     progress?: number;
+    input_file_size?: number;
 }

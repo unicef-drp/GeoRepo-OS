@@ -1,3 +1,4 @@
+import os
 from rest_framework import serializers
 from django.db.models import Q, Max
 from georepo.models.dataset import Dataset
@@ -514,6 +515,7 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
     step = serializers.SerializerMethodField()
     is_read_only = serializers.SerializerMethodField()
     input_file_name = serializers.SerializerMethodField()
+    input_file_size = serializers.SerializerMethodField()
     module = serializers.SerializerMethodField()
     dataset = serializers.SerializerMethodField()
 
@@ -534,7 +536,17 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
         return obj.status in READ_ONLY_STATUS
 
     def get_input_file_name(self, obj: BatchEntityEdit):
-        return obj.input_file.name if obj.input_file is not None else None
+        if obj.input_file is not None:
+            return os.path.basename(obj.input_file.name)
+        return None
+
+    def get_input_file_size(self, obj: BatchEntityEdit):
+        if (
+            obj.input_file is not None and
+            obj.input_file.storage.exists(obj.input_file.name)
+        ):
+            return obj.input_file.size
+        return 0
 
     def get_module(self, obj: BatchEntityEdit):
         return obj.dataset.module.name
@@ -565,5 +577,6 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
             'headers',
             'input_file_name',
             'module',
-            'dataset'
+            'dataset',
+            'input_file_size'
         ]
