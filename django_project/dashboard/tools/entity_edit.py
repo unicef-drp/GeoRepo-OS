@@ -104,7 +104,7 @@ class BatchEntityEditBaseImporter(object):
             'error_count', 'success_notes',
             'success_count'
         ])
-        # reload metadata    
+        # reload metadata
         self.id_types = IdType.objects.all()
         self.languages = Language.objects.all()
 
@@ -143,7 +143,6 @@ class BatchEntityEditBaseImporter(object):
             ' has finished! Click here to view!'
         )
         payload = {
-            'module': '',
             'session': self.request.id,
             'dataset': dataset.id,
             'step': 2,
