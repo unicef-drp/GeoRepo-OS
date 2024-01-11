@@ -38,6 +38,10 @@ TEMP_OUTPUT_DIRECTORY = (
 )
 
 
+if not os.path.exists(TEMP_OUTPUT_DIRECTORY):
+    os.makedirs(TEMP_OUTPUT_DIRECTORY)
+
+
 def try_delete_uploaded_file(file: FieldFile):
     try:
         file.delete(save=False)
@@ -100,6 +104,9 @@ class BatchEntityEditBaseImporter(object):
             'error_count', 'success_notes',
             'success_count'
         ])
+        # reload metadata    
+        self.id_types = IdType.objects.all()
+        self.languages = Language.objects.all()
 
     def remove_csv_output_file(self):
         if self.csv_output_file_path:
@@ -461,13 +468,13 @@ class BatchEntityEditBaseImporter(object):
         if len(id_errors) > 0 or len(name_errors) > 0:
             errors = []
             if id_errors:
-                errors.append(', '.join(id_errors))
+                errors.append('; '.join(id_errors))
             if name_errors:
-                errors.append(', '.join(name_errors))
+                errors.append('; '.join(name_errors))
             return (
                 False,
                 self.get_output_row_with_status(
-                    updated_row, False, ', '.join(errors))
+                    updated_row, False, '; '.join(errors))
             )
         if id_warns:
             warns = ', '.join(id_warns)
@@ -599,7 +606,7 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
                 self.csv_output_writer.writerow(output_row)
                 line_count += 1
                 self.on_update_progress(line_count, self.total_rows)
-        return line_count - 1, success_count, error_count
+        return line_count, success_count, error_count
 
 
 def get_entity_edit_importer(

@@ -521,7 +521,7 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
 
     def get_has_file(self, obj: BatchEntityEdit):
         return (
-            obj.input_file is not None and
+            obj.input_file.name and
             obj.input_file.storage.exists(obj.input_file.name)
         )
 
@@ -536,15 +536,12 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
         return obj.status in READ_ONLY_STATUS
 
     def get_input_file_name(self, obj: BatchEntityEdit):
-        if obj.input_file is not None:
+        if obj.input_file.name:
             return os.path.basename(obj.input_file.name)
         return None
 
     def get_input_file_size(self, obj: BatchEntityEdit):
-        if (
-            obj.input_file is not None and
-            obj.input_file.storage.exists(obj.input_file.name)
-        ):
+        if self.get_has_file(obj):
             return obj.input_file.size
         return 0
 

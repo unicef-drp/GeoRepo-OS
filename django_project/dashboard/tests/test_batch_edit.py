@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.contrib.gis.geos import GEOSGeometry
 from dateutil.parser import isoparse
 from georepo.utils import absolute_path
-from georepo.models import IdType
+from georepo.models import IdType, EntityId, EntityName
 from georepo.models.base_task_request import (
     PENDING, DONE
 )
@@ -23,6 +23,9 @@ from dashboard.api_views.entity import (
     BatchEntityEditFile,
     BatchEntityEditResultAPI
 )
+from dashboard.tools.entity_edit import (
+    get_entity_edit_importer
+)
 
 
 class DummyTask:
@@ -32,6 +35,12 @@ class DummyTask:
 
 def mocked_process_batch_job(*args, **kwargs):
     return DummyTask('1')
+
+
+XLSX_CONTENT_TYPE = (
+    'application/vnd.openxmlformats-'
+    'officedocument.spreadsheetml.sheet'
+)
 
 
 class TestBatchEdit(TestCase):
@@ -142,11 +151,95 @@ class TestBatchEdit(TestCase):
             v1_idx.sort()
             self.entities_1 = [temp_entities[i] for i in v1_idx]
 
+    def do_test_importer(self, file):
+        batch_edit = BatchEntityEdit.objects.create(
+            dataset=self.dataset,
+            status=PENDING,
+            submitted_by=self.superuser,
+            submitted_on=timezone.now(),
+            input_file=file,
+            ucode_field='ucode',
+            id_fields=[
+                {
+                    "id": "1",
+                    "field": "id_1",
+                    "idType": {
+                        "id": self.id_1.id,
+                        "name": self.id_1.name
+                    },
+                    "default": False
+                },
+                {
+                    "id": "2",
+                    "field": "id_2",
+                    "idType": {
+                        "id": self.id_2.id,
+                        "name": self.id_2.name
+                    },
+                    "default": False
+                }
+            ],
+            name_fields=[
+                {
+                    "id": "1",
+                    "field": "name_1",
+                    "label": "",
+                    "default": False,
+                    "duplicateError": False,
+                    "selectedLanguage": self.enLang.id
+                },
+                {
+                    "id": "2",
+                    "field": "name_2",
+                    "label": "",
+                    "default": False,
+                    "duplicateError": False,
+                    "selectedLanguage": self.esLang.id
+                }
+            ]
+        )
+        importer = get_entity_edit_importer(batch_edit)
+        importer.start()
+        batch_edit.refresh_from_db()
+        self.assertEqual(batch_edit.status, DONE)
+        self.assertTrue(batch_edit.success_notes)
+        self.assertFalse(batch_edit.errors)
+        self.assertEqual(batch_edit.total_count, 1)
+        self.assertEqual(batch_edit.success_count, 1)
+        self.assertEqual(batch_edit.error_count, 0)
+        self.assertTrue(EntityId.objects.filter(
+            geographical_entity=self.pak0_1,
+            code=self.id_1
+        ).exists())
+        self.assertTrue(EntityId.objects.filter(
+            geographical_entity=self.pak0_1,
+            code=self.id_2
+        ).exists())
+        self.assertEqual(EntityName.objects.filter(
+            geographical_entity=self.pak0_1
+        ).count(), 3)
+
     def test_import_csv(self):
-        pass
+        test_file_path = absolute_path(
+            'dashboard', 'tests',
+            'importer_data', 'import_valid_file.csv')
+        with open(test_file_path, 'rb') as data:
+            file = SimpleUploadedFile(
+                content=data.read(),
+                name='import_valid_file.csv',
+                content_type='text/csv')
+        self.do_test_importer(file)
 
     def test_import_excel(self):
-        pass
+        test_file_path = absolute_path(
+            'dashboard', 'tests',
+            'importer_data', 'import_valid_file.xlsx')
+        with open(test_file_path, 'rb') as data:
+            file = SimpleUploadedFile(
+                content=data.read(),
+                name='import_valid_file.xlsx',
+                content_type=XLSX_CONTENT_TYPE)
+        self.do_test_importer(file)
 
     def test_create_batch_entity_edit(self):
         request = self.factory.put(
@@ -289,12 +382,8 @@ class TestBatchEdit(TestCase):
         test_file_path = absolute_path(
             'dashboard', 'tests',
             'importer_data', 'import_empty.xlsx')
-        content_type = (
-            'application/vnd.openxmlformats-'
-            'officedocument.spreadsheetml.sheet'
-        )
         response = self.run_upload_file(test_file_path, 'import_empty.xlsx',
-                                        content_type, batch_edit)
+                                        XLSX_CONTENT_TYPE, batch_edit)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data['detail'],
                          'You have uploaded empty spreadsheet, '
@@ -306,7 +395,7 @@ class TestBatchEdit(TestCase):
             'importer_data', 'import_valid_file.xlsx')
         response = self.run_upload_file(test_file_path,
                                         'import_valid_file.xlsx',
-                                        content_type, batch_edit)
+                                        XLSX_CONTENT_TYPE, batch_edit)
         self.assertEqual(response.status_code, 204)
         batch_edit.refresh_from_db()
         self.assertTrue(batch_edit.input_file)
@@ -320,10 +409,6 @@ class TestBatchEdit(TestCase):
             submitted_by=self.superuser,
             submitted_on=timezone.now()
         )
-        content_type = (
-            'application/vnd.openxmlformats-'
-            'officedocument.spreadsheetml.sheet'
-        )
         test_file_path = absolute_path(
             'dashboard', 'tests',
             'importer_data', 'import_valid_file.xlsx')
@@ -331,7 +416,7 @@ class TestBatchEdit(TestCase):
             file = SimpleUploadedFile(
                 content=data.read(),
                 name='import_valid_file.xlsx',
-                content_type=content_type)
+                content_type=XLSX_CONTENT_TYPE)
         batch_edit.input_file = file
         batch_edit.save(update_fields=['input_file'])
         request = self.factory.delete(
