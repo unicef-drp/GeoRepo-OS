@@ -158,6 +158,13 @@ export default function Notification() {
             case 'BATCH_REVIEW':
                 navigate(ReviewListRoute.path)
                 break;
+            case 'BATCH_ENTITY_EDIT':
+                let moduleName2 = notification.payload.module
+                dispatch(setModule(moduleName2))
+                let _url2 = `/${moduleName2}/edit_entity/wizard/?session=${notification.payload.session}&`+
+                `dataset=${notification.payload.dataset}&step=${notification.payload.step}`
+                navigate(_url2)
+                break;
             default:
                 break;
         }

@@ -82,7 +82,7 @@ export default function Step1(props: Step1Interface) {
                   id: '1',
                   selectedLanguage: '',
                   field: '',
-                  default: true,
+                  default: false,
                   label: ''
               }])
           }
@@ -91,7 +91,7 @@ export default function Step1(props: Step1Interface) {
                 id: '1',
                 field: '',
                 idType: null,
-                default: true
+                default: false
             }])
         }
     }, [])
@@ -101,22 +101,37 @@ export default function Step1(props: Step1Interface) {
         languageId?: string,
         field?: string,
         label?: string) => {
-          const updatedNameFields = nameFields.map((nameField, index) => {
-              if (nameField.id === nameFieldId) {
-                  if (languageId !== null) {
-                      nameField.selectedLanguage = languageId
-                  }
-                  if (field) {
-                      nameField.field = field
-                  }
-                  if (label !== null) {
+          if (!languageId && !field && !label) {
+            // field has been cleared
+            let _updatedNameFields = nameFields.filter((nameField) => nameField.id !== nameFieldId)
+            if (_updatedNameFields.length === 0) {
+                _updatedNameFields.push({
+                    id: '1',
+                    selectedLanguage: '',
+                    field: '',
+                    default: false,
+                    label: ''
+                })
+            }
+            setNameFields(_updatedNameFields)
+          } else {
+            const updatedNameFields = nameFields.map((nameField, index) => {
+                if (nameField.id === nameFieldId) {
+                    if (languageId !== null) {
+                        nameField.selectedLanguage = languageId
+                    }
+                    if (field) {
+                        nameField.field = field
+                    }
+                    if (label !== null) {
                     nameField.label = label
-                  }
-                  nameField.duplicateError = false
-              }
-              return nameField
-          })
-          setNameFields(updatedNameFields);
+                    }
+                    nameField.duplicateError = false
+                }
+                return nameField
+            })
+            setNameFields(updatedNameFields)
+          }
           setIsDirty(true)
     }
   
@@ -124,19 +139,32 @@ export default function Step1(props: Step1Interface) {
         idFieldId: string,
         idTypeId?: string,
         field?: string) => {
-          const idType = idTypes.find(idType => idType.id == idTypeId)
-          const updatedIdFields = idFields.map(idField => {
-              if (idField.id === idFieldId) {
-                  if (idType) {
-                      idField.idType = idType
-                  }
-                  if (field) {
-                      idField.field = field
-                  }
-              }
-              return idField
-          })
-          setIdFields(updatedIdFields)
+          if (!idTypeId && !field) {
+            let _updatedIdFields = idFields.filter((idField) => idField.id !== idFieldId)
+            if (_updatedIdFields.length === 0) {
+                _updatedIdFields.push({
+                    id: '1',
+                    field: '',
+                    idType: null,
+                    default: false
+                })
+            }
+            setIdFields(_updatedIdFields)
+          } else {
+            const idType = idTypes.find(idType => idType.id == idTypeId)
+            const updatedIdFields = idFields.map(idField => {
+                if (idField.id === idFieldId) {
+                    if (idType) {
+                        idField.idType = idType
+                    }
+                    if (field) {
+                        idField.field = field
+                    }
+                }
+                return idField
+            })
+            setIdFields(updatedIdFields)
+          }
           setIsDirty(true)
     }
 
@@ -185,18 +213,16 @@ export default function Step1(props: Step1Interface) {
 
     const validateFieldConfig = ():string => {
         // Check at least there is 1 name/id field selected
-        if (nameFields.length === 0 || idFields.length === 0)
+        if (nameFields.length === 0 && idFields.length === 0)
             return 'Empty Id Fields and Name Fields'
-        let invalidNameFields = nameFields.filter(item => item.field === '')
-        if (invalidNameFields.length > 0)
-            return 'Name Fields'
+        let validNameFields = nameFields.filter(item => item.field && item.selectedLanguage)
+        let validIdFields = idFields.filter(item => item.field && item.idType)
+        if (validNameFields.length === 0 && validIdFields.length === 0)
+            return 'Empty Id Fields and Name Fields'
         let _noDupNames = validateNoDuplicateNameLabel()
         if (!_noDupNames) {
             return 'Duplicate Label in Name Fields'
         }
-        let invalidIdFields = idFields.filter(item => item.field === '' || item.idType === null)
-        if (invalidIdFields.length > 0)
-            return 'Id Field'
         if (ucodeField.trim() === '')
             return 'ucode field'
         return ''

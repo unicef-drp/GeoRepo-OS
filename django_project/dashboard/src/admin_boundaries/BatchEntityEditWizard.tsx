@@ -142,11 +142,11 @@ export default function BatchEntityEditWizard(props: any) {
                                     let _data = {
                                         'batch_edit_id': batchEdit.id,
                                         'ucode_field': ucodeField.trim(),
-                                        'id_fields': idFields.map(e => {
+                                        'id_fields': idFields.filter(e => e.field && e.idType).map(e => {
                                             e.default = false
                                             return e
                                         }),
-                                        'name_fields': nameFields.map(e => {
+                                        'name_fields': nameFields.filter(e => e.field && e.selectedLanguage).map(e => {
                                             e.default = false
                                             return e
                                         })

@@ -21,6 +21,10 @@ from georepo.models.entity import (
 )
 from dashboard.models.batch_edit import BatchEntityEdit
 from georepo.utils.unique_code import parse_unique_code
+from dashboard.models.notification import (
+    Notification,
+    NOTIF_TYPE_BATCH_ENTITY_EDIT
+)
 
 
 logger = logging.getLogger(__name__)
@@ -124,6 +128,27 @@ class BatchEntityEditBaseImporter(object):
                 )
             # delete the output
             self.remove_csv_output_file()
+        # trigger notifications
+        dataset = self.request.dataset
+        message = (
+            'Your batch entity edit for '
+            f'{dataset.label}'
+            ' has finished! Click here to view!'
+        )
+        payload = {
+            'module': '',
+            'session': self.request.id,
+            'dataset': dataset.id,
+            'step': 2,
+            'severity': 'success',
+            'module': 'admin_boundaries'
+        }
+        Notification.objects.create(
+            type=NOTIF_TYPE_BATCH_ENTITY_EDIT,
+            message=message,
+            recipient=self.request.submitted_by,
+            payload=payload
+        )
 
     def on_update_progress(self, row, total_count):
         # save progress of task
