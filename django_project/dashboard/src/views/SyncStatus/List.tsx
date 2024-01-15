@@ -634,6 +634,11 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   }, [allFinished])
 
   useEffect(() => {
+    if (currentInterval) {
+      clearInterval(currentInterval)
+      setCurrentInterval(null)
+      setAllFinished(true)
+    }
     fetchViewSyncList()
   }, [pagination, currentFilters, initialFilters, searchParams])
 
