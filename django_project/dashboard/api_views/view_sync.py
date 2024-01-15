@@ -485,3 +485,29 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
                 'sync_status': sync_status
             }
         )
+
+
+class ViewSyncSelectAllList(ViewSyncList):
+    """
+    API to fetch list of Id for select All
+    """
+    def post(self, *args, **kwargs):
+        dataset_id = kwargs.get('dataset_id', None)
+        (
+            _,
+            views_querysets
+        ) = get_views_for_user(self.request.user)
+        view_ids = [v.id for v in views_querysets]
+
+        filter_kwargs = {
+            'id__in': view_ids
+        }
+
+        if dataset_id:
+            filter_kwargs['dataset_id'] = dataset_id
+
+        views_querysets = DatasetView.objects.filter(**filter_kwargs)
+        views_querysets = self._search_queryset(views_querysets, self.request)
+        views_querysets = self._filter_queryset(views_querysets, self.request)
+        views_querysets = views_querysets.values_list('id', flat=True)
+        return Response(status=200, data=views_querysets)

@@ -132,7 +132,8 @@ from dashboard.api_views.view_sync import (
     ViewSyncFilterValue,
     ViewResourcesSyncList,
     SynchronizeView,
-    FetchSyncStatus
+    FetchSyncStatus,
+    ViewSyncSelectAllList
 )
 from dashboard.api_views.logs import (
     ExportLogs
@@ -558,6 +559,9 @@ urlpatterns = [
     re_path(r'api/view-sync-list/?$',
             ViewSyncList.as_view(),
             name='view-sync-list'),
+    re_path(r'api/view-sync-list-select-all/(?P<dataset_id>\d+)/?$',
+            ViewSyncSelectAllList.as_view(),
+            name='view-sync-list-per-dataset-select-all'),
     re_path(r'^api/view-sync-filter/values/'
             r'(?P<criteria>\w+)/?$',
             ViewSyncFilterValue.as_view(),
