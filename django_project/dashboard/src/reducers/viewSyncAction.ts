@@ -41,7 +41,8 @@ export const viewSyncActionSlice = createSlice({
 export const {
     toggleIsBatchAction,
     setIsBatchActionAvailable,
-    setSelectedViews
+    setSelectedViews,
+    onBatchActionSubmitted
 } = viewSyncActionSlice.actions
 
 export default viewSyncActionSlice.reducer;

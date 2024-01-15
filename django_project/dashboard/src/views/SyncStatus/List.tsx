@@ -13,7 +13,7 @@ import ResizeTableEvent from "../../components/ResizeTableEvent";
 import {RootState} from "../../app/store";
 import {TABLE_OFFSET_HEIGHT} from "../../components/List";
 import {getDefaultFilter, ViewSyncFilterInterface} from "./Filter"
-import {setSelectedViews, toggleIsBatchAction, setIsBatchActionAvailable} from "../../reducers/viewSyncAction";
+import {setSelectedViews, toggleIsBatchAction, onBatchActionSubmitted} from "../../reducers/viewSyncAction";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {setAvailableFilters, setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
 import Stack from '@mui/material/Stack';
@@ -64,7 +64,8 @@ export function ViewSyncActionButtons() {
         response => {
           setAlertLoading(false)
           setConfirmMessage('Successfully syncing Views. Your request will be processed in the background.')
-          dispatch(setInitialFilters(JSON.stringify({...initialFilters})))
+          dispatch(onBatchActionSubmitted())
+          setAlertOpen(false)
         }
       ).catch(error => {
             onToggleBatchAction()
@@ -237,6 +238,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   const initialColumns = useAppSelector((state: RootState) => state.viewSyncTable.currentColumns)
   const initialFilters = useAppSelector((state: RootState) => state.viewSyncTable.currentFilters)
   const availableFilters = useAppSelector((state: RootState) => state.viewSyncTable.availableFilters)
+  const syncStatusUpdatedAt = useAppSelector((state: RootState) => state.viewSyncAction.updatedAt)
   const [loading, setLoading] = useState<boolean>(true)
   const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState<any[]>([])
@@ -641,6 +643,17 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
     }
     fetchViewSyncList()
   }, [pagination, currentFilters, initialFilters, searchParams])
+
+  useEffect(() => {
+    if (syncStatusUpdatedAt) {
+      if (currentInterval) {
+        clearInterval(currentInterval)
+        setCurrentInterval(null)
+        setAllFinished(true)
+      }
+      fetchViewSyncList(true)
+    }
+  }, [syncStatusUpdatedAt])
 
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
