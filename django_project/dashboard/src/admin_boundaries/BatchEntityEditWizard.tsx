@@ -175,7 +175,7 @@ export default function BatchEntityEditWizard(props: any) {
                                     }
                                     postData(LOAD_BATCH_ENTITY_EDIT_URL, _data).then(
                                         response => {
-                                            handleNext()
+                                            fetchStatus()
                                         }
                                     ).catch(error => {
                                         alert('Error start to import the batch edit...')

@@ -527,11 +527,12 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
         )
 
     def get_has_preview(self, obj: BatchEntityEdit):
-        return (
-            obj.status == PENDING and
-            obj.preview_file.name and
-            obj.preview_file.storage.exists(obj.preview_file.name)
-        )
+        if obj.preview_file.name:
+            return (
+                obj.status == PENDING and
+                obj.preview_file.storage.exists(obj.preview_file.name)
+            )
+        return False
 
     def get_step(self, obj: BatchEntityEdit):
         if not self.get_has_file(obj):

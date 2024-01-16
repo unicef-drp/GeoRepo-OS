@@ -76,7 +76,7 @@ export default function Step2(props: Step2Interface) {
     const [customColumnOptions, setCustomColumnOptions] = useState(FIXED_COLUM_OPTIONS)
 
     const fetchResultData = () => {
-        let _preview = FINAL_STATUS_LIST.includes(props.batchEdit.status)
+        let _preview = props.batchEdit.status === 'PENDING' && props.batchEdit.has_preview
         axios.get(LOAD_RESULT_BATCH_ENTITY_EDIT_URL + `?batch_edit_id=${props.batchEdit.id}&preview=${_preview ? 'true':'false'}`).then(response => {
             if (response.data) {
                 setResultData(response.data)
@@ -194,7 +194,13 @@ export default function Step2(props: Step2Interface) {
                                 </LoadingButton> : null
                             }
                             { props.batchEdit.status === 'PENDING' && props.batchEdit.has_preview ?
-                                <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => props.onStartToImportClicked()} variant="contained" sx={{width: '220px !important'}}>
+                                <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => {
+                                    setAlertSeverity('info')
+                                    setAlertTitle('')
+                                    setAlertMessage('')
+                                    setLoading(true)
+                                    props.onStartToImportClicked()
+                                }} variant="contained" sx={{width: '220px !important'}}>
                                     {'Start to Import'}
                                 </LoadingButton> : null
                             }

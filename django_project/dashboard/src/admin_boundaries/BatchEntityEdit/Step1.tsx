@@ -375,7 +375,7 @@ export default function Step1(props: Step1Interface) {
                             </LoadingButton>
                         </Grid>
                         <Grid item>
-                            <LoadingButton loading={loading || saveLoading} disabled={!enableSaveLevelButton} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => onSaveClick()} variant="contained">
+                            <LoadingButton loading={loading || saveLoading} disabled={!enableSaveLevelButton} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => onSaveClick()} variant="contained" sx={{width: '220px !important'}}>
                                 { props.batchEdit.is_read_only ? 'Next' : 'Validate and Preview' }
                             </LoadingButton>
                         </Grid>
