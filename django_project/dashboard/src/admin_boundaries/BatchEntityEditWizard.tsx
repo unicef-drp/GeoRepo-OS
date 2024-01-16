@@ -140,6 +140,7 @@ export default function BatchEntityEditWizard(props: any) {
                                     handleNext()
                                 } else {
                                     let _data = {
+                                        'preview': true,
                                         'batch_edit_id': batchEdit.id,
                                         'ucode_field': ucodeField.trim(),
                                         'id_fields': idFields.filter(e => e.field && e.idType).map(e => {
@@ -157,14 +158,30 @@ export default function BatchEntityEditWizard(props: any) {
                                             handleNext()
                                         }
                                       ).catch(error => {
-                                        alert('Error saving level...')
+                                        alert('Error saving field mapping...')
                                         onSaved(error)
                                     })
-                                }                                
+                                }
                             }} />
                         </TabPanel>
                         <TabPanel key={2} value={tabSelected} index={2}>
-                            <Step2 batchEdit={batchEdit} onBackClicked={handleBack} onClickNext={handleNext} />
+                            <Step2 batchEdit={batchEdit} onBackClicked={handleBack} onClickNext={handleNext} onStartToImportClicked={() => {
+                                if (batchEdit.is_read_only) {
+                                    handleNext()
+                                } else {
+                                    let _data = {
+                                        'preview': false,
+                                        'batch_edit_id': batchEdit.id
+                                    }
+                                    postData(LOAD_BATCH_ENTITY_EDIT_URL, _data).then(
+                                        response => {
+                                            handleNext()
+                                        }
+                                    ).catch(error => {
+                                        alert('Error start to import the batch edit...')
+                                    })
+                                }
+                            }} />
                         </TabPanel>
                     </div>
                 }                

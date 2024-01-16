@@ -16,6 +16,7 @@ import { BatchEntityEditInterface } from "../../models/upload";
 
 interface Step2Interface {
     batchEdit: BatchEntityEditInterface,
+    onStartToImportClicked: () => void,
     onBackClicked?: () => void,
     onClickNext?: () => void,
 }
@@ -24,6 +25,47 @@ const FINAL_STATUS_LIST = ['DONE', 'ERROR', 'CANCELLED']
 const LOAD_RESULT_BATCH_ENTITY_EDIT_URL = '/api/batch-entity-edit/result/'
 
 const KNOWN_COLUMNS = ['Country', 'Level', 'Ucode', 'Default Name', 'Default Code', 'Status', 'Errors']
+const FIXED_COLUM_OPTIONS = {
+    'Country': {
+        filter: true,
+        sort: true,
+        display: true,
+        filterOptions: {
+          fullWidth: true,
+        }
+    },
+    'Level': {
+        filter: true,
+        filterOptions: {
+          fullWidth: true,
+        }
+    },
+    'Ucode': {
+        filter: false,
+    },
+    'Default Name': {
+        filter: false,
+    },
+    'Default Code': {
+        filter: false,
+    },
+    'Status': {
+        filter: true,
+        filterOptions: {
+          fullWidth: true,
+        },
+        customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+            if (value === 'ERROR') {
+                return <span className="text-error">{value}</span>
+            }
+            return <span className="text-success">{value}</span>
+        }
+    },
+    'Errors': {
+        filter: false,
+    }
+}
+
 
 export default function Step2(props: Step2Interface) {
     const [loading, setLoading] = useState(true)
@@ -31,52 +73,14 @@ export default function Step2(props: Step2Interface) {
     const [alertMessage, setAlertMessage] = useState('')
     const [alertSeverity, setAlertSeverity] = useState<AlertColor>('success')
     const [resultData, setResultData] = useState<any[]>([])
-    const [customColumnOptions, setCustomColumnOptions] = useState({
-        'Country': {
-            filter: true,
-            sort: true,
-            display: true,
-            filterOptions: {
-              fullWidth: true,
-            }
-        },
-        'Level': {
-            filter: true,
-            filterOptions: {
-              fullWidth: true,
-            }
-        },
-        'Ucode': {
-            filter: false,
-        },
-        'Default Name': {
-            filter: false,
-        },
-        'Default Code': {
-            filter: false,
-        },
-        'Status': {
-            filter: true,
-            filterOptions: {
-              fullWidth: true,
-            },
-            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-                if (value === 'ERROR') {
-                    return <span className="text-error">{value}</span>
-                }
-                return <span className="text-success">{value}</span>
-            }
-        },
-        'Errors': {
-            filter: false,
-        }
-    })
+    const [customColumnOptions, setCustomColumnOptions] = useState(FIXED_COLUM_OPTIONS)
 
     const fetchResultData = () => {
-        axios.get(LOAD_RESULT_BATCH_ENTITY_EDIT_URL + `?batch_edit_id=${props.batchEdit.id}`).then(response => {
+        let _preview = FINAL_STATUS_LIST.includes(props.batchEdit.status)
+        axios.get(LOAD_RESULT_BATCH_ENTITY_EDIT_URL + `?batch_edit_id=${props.batchEdit.id}&preview=${_preview ? 'true':'false'}`).then(response => {
             if (response.data) {
                 setResultData(response.data)
-                let _customOptions:any = {...customColumnOptions}
+                let _customOptions:any = {...FIXED_COLUM_OPTIONS}
                 let _itemKeys = Object.keys(response.data[0])
                 for (let _key of _itemKeys) {
                     if (KNOWN_COLUMNS.includes(_key)) continue
@@ -104,11 +108,13 @@ export default function Step2(props: Step2Interface) {
 
     useEffect(() => {
         if (FINAL_STATUS_LIST.includes(props.batchEdit.status)) {
-            if (props.batchEdit.status === 'DONE') {
+            if (props.batchEdit.status === 'DONE' || props.batchEdit.status === 'ERROR') {
                 fetchResultData()
             } else {
                 setLoading(false)
             }
+        } else if (props.batchEdit.status === 'PENDING' && props.batchEdit.has_preview) {
+            fetchResultData()
         }
     }, [props.batchEdit.status])
 
@@ -153,7 +159,7 @@ export default function Step2(props: Step2Interface) {
                     </Grid>
                     <Grid item flex={1}>
                         <Grid container flexDirection={'column'} sx={{height: '100%'}}>
-                            { FINAL_STATUS_LIST.includes(props.batchEdit.status) ? <List
+                            { FINAL_STATUS_LIST.includes(props.batchEdit.status) || props.batchEdit.has_preview ? <List
                                 pageName={'BatchEdit'}
                                 listUrl={''}
                                 initData={resultData}
@@ -182,9 +188,16 @@ export default function Step2(props: Step2Interface) {
                             </LoadingButton>
                         </Grid>
                         <Grid item>
-                            <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => props.onClickNext()} variant="contained" sx={{width: '220px !important'}}>
-                                {'Back to Dataset Detail'}
-                            </LoadingButton>
+                            { FINAL_STATUS_LIST.includes(props.batchEdit.status) ?
+                                <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => props.onClickNext()} variant="contained" sx={{width: '220px !important'}}>
+                                    {'Back to Dataset Detail'}
+                                </LoadingButton> : null
+                            }
+                            { props.batchEdit.status === 'PENDING' && props.batchEdit.has_preview ?
+                                <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => props.onStartToImportClicked()} variant="contained" sx={{width: '220px !important'}}>
+                                    {'Start to Import'}
+                                </LoadingButton> : null
+                            }
                         </Grid>
                     </Grid>
                 </div>

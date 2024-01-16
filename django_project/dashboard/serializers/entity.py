@@ -512,6 +512,7 @@ class EntityEditSerializer(serializers.ModelSerializer):
 
 class BatchEntityEditSerializer(serializers.ModelSerializer):
     has_file = serializers.SerializerMethodField()
+    has_preview = serializers.SerializerMethodField()
     step = serializers.SerializerMethodField()
     is_read_only = serializers.SerializerMethodField()
     input_file_name = serializers.SerializerMethodField()
@@ -523,6 +524,13 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
         return (
             obj.input_file.name and
             obj.input_file.storage.exists(obj.input_file.name)
+        )
+
+    def get_has_preview(self, obj: BatchEntityEdit):
+        return (
+            obj.status == PENDING and
+            obj.preview_file.name and
+            obj.preview_file.storage.exists(obj.preview_file.name)
         )
 
     def get_step(self, obj: BatchEntityEdit):
@@ -575,5 +583,6 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
             'input_file_name',
             'module',
             'dataset',
-            'input_file_size'
+            'input_file_size',
+            'has_preview'
         ]

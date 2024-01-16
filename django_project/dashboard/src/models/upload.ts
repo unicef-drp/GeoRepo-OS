@@ -165,4 +165,5 @@ export interface BatchEntityEditInterface {
     errors?: string;
     progress?: number;
     input_file_size?: number;
+    has_preview?: boolean;
 }
