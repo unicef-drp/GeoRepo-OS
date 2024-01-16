@@ -198,7 +198,7 @@ class TestBatchEdit(TestCase):
                 }
             ]
         )
-        importer = get_entity_edit_importer(batch_edit)
+        importer = get_entity_edit_importer(batch_edit, False)
         importer.start()
         batch_edit.refresh_from_db()
         self.assertEqual(batch_edit.status, DONE)

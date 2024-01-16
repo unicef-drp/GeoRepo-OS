@@ -13,7 +13,7 @@ from django.db.models.fields.files import FieldFile
 
 from georepo.models.id_type import IdType
 from georepo.models.language import Language
-from georepo.models.base_task_request import PROCESSING, DONE, ERROR
+from georepo.models.base_task_request import PROCESSING, DONE, ERROR, PENDING
 from georepo.models.entity import (
     GeographicalEntity,
     EntityId,
@@ -56,6 +56,7 @@ def format_entities_count(count):
 
 
 class BatchEntityEditBaseImporter(object):
+    preview = False
     request = BatchEntityEdit.objects.none()
     headers = []
     total_rows = 0
@@ -74,8 +75,9 @@ class BatchEntityEditBaseImporter(object):
     csv_output_file = None
     csv_output_writer = None
 
-    def __init__(self, request: BatchEntityEdit) -> None:
+    def __init__(self, request: BatchEntityEdit, preview: bool) -> None:
         self.request = request
+        self.preview = preview
 
     def process_started(self):
         # reset state, clear exiting output
@@ -94,6 +96,10 @@ class BatchEntityEditBaseImporter(object):
         if self.request.output_file:
             try_delete_uploaded_file(self.request.output_file)
             self.request.output_file = None
+        if self.preview:
+            if self.request.preview_file:
+                try_delete_uploaded_file(self.request.preview_file)
+                self.request.preview_file = None
         self.request.error_notes = None
         self.request.error_count = 0
         self.request.success_notes = None
@@ -102,13 +108,14 @@ class BatchEntityEditBaseImporter(object):
             'status', 'started_at', 'progress', 'errors',
             'finished_at', 'output_file', 'error_notes',
             'error_count', 'success_notes',
-            'success_count'
+            'success_count', 'preview_file'
         ])
         # reload metadata
         self.id_types = IdType.objects.all()
         self.languages = Language.objects.all()
 
     def remove_csv_output_file(self):
+        """Remove temporary output file."""
         if self.csv_output_file_path:
             try:
                 if os.path.exists(self.csv_output_file_path):
@@ -120,7 +127,8 @@ class BatchEntityEditBaseImporter(object):
 
     def process_ended(self, is_success, errors = None):
         # set final state, clear temp resource
-        self.request.status = DONE if is_success else ERROR
+        final_state = DONE if not self.preview else PENDING
+        self.request.status = final_state if is_success else ERROR
         if not is_success:
             self.request.errors = errors
         self.request.finished_at = timezone.now()
@@ -129,32 +137,39 @@ class BatchEntityEditBaseImporter(object):
             self.csv_output_file.close()
             # open the file in binary to upload to blob storage
             with open(self.csv_output_file_path, 'rb') as output_file:
-                self.request.output_file.save(
-                    os.path.basename(output_file.name),
-                    output_file
-                )
+                if self.preview:
+                    self.request.preview_file.save(
+                        os.path.basename(output_file.name),
+                        output_file
+                    )
+                else:
+                    self.request.output_file.save(
+                        os.path.basename(output_file.name),
+                        output_file
+                    )
             # delete the output
             self.remove_csv_output_file()
-        # trigger notifications
-        dataset = self.request.dataset
-        message = (
-            'Your batch entity edit for '
-            f'{dataset.label}'
-            ' has finished! Click here to view!'
-        )
-        payload = {
-            'session': self.request.id,
-            'dataset': dataset.id,
-            'step': 2,
-            'severity': 'success',
-            'module': 'admin_boundaries'
-        }
-        Notification.objects.create(
-            type=NOTIF_TYPE_BATCH_ENTITY_EDIT,
-            message=message,
-            recipient=self.request.submitted_by,
-            payload=payload
-        )
+        if not self.preview:
+            # trigger notifications
+            dataset = self.request.dataset
+            message = (
+                'Your batch entity edit for '
+                f'{dataset.label}'
+                ' has finished! Click here to view!'
+            )
+            payload = {
+                'session': self.request.id,
+                'dataset': dataset.id,
+                'step': 2,
+                'severity': 'success',
+                'module': 'admin_boundaries'
+            }
+            Notification.objects.create(
+                type=NOTIF_TYPE_BATCH_ENTITY_EDIT,
+                message=message,
+                recipient=self.request.submitted_by,
+                payload=payload
+            )
 
     def on_update_progress(self, row, total_count):
         # save progress of task
@@ -203,20 +218,34 @@ class BatchEntityEditBaseImporter(object):
                 self.request.success_count > 0 and
                 self.request.error_count == 0
             ):
-                self.request.success_notes = (
-                    f'{format_entities_count(self.request.success_count)} '
-                    'have been updated successfully.'
-                )
+                if self.preview:
+                    self.request.success_notes = (
+                        f'{format_entities_count(self.request.success_count)} '
+                        'can be updated.'
+                    )
+                else:
+                    self.request.success_notes = (
+                        f'{format_entities_count(self.request.success_count)} '
+                        'have been updated successfully.'
+                    )
             if (
                 self.request.success_count > 0 and
                 self.request.error_count > 0
             ):
-                self.request.success_notes = (
-                    f'{format_entities_count(self.request.success_count)} '
-                    'have been updated successfully. '
-                    f'{format_entities_count(self.request.error_count)} '
-                    'have errors.'
-                )
+                if self.preview:
+                    self.request.success_notes = (
+                        f'{format_entities_count(self.request.success_count)} '
+                        'can be updated. '
+                        f'{format_entities_count(self.request.error_count)} '
+                        'have errors.'
+                    )
+                else:
+                    self.request.success_notes = (
+                        f'{format_entities_count(self.request.success_count)} '
+                        'have been updated successfully. '
+                        f'{format_entities_count(self.request.error_count)} '
+                        'have errors.'
+                    )
             self.request.save(update_fields=[
                 'total_count', 'success_count', 'error_count', 'success_notes'
             ])
@@ -377,8 +406,8 @@ class BatchEntityEditBaseImporter(object):
         ).all())
         # process new id_fields
         id_errors = []
-        id_warns = []
         new_ids = []
+        updated_ids = []
         for id_field_idx, id_field in self.id_fields.items():
             field_name = id_field['field']
             id_value = self.row_value(row, id_field_idx)
@@ -398,25 +427,26 @@ class BatchEntityEditBaseImporter(object):
                 continue
             id_type = id_type[0]
             # validate non-duplicate id type
-            is_existing_id = (
+            existing_ids = (
                 [id for id in entity_ids if id.code.id == id_type.id]
             )
-            if len(is_existing_id) > 0:
-                id_warns.append(f'Existing ID {field_name}')
-                continue
-            # validate non-duplicate id value
-            is_existing_value = (
-                [id for id in entity_ids if id.value == id_value]
-            )
-            if len(is_existing_value) > 0:
-                id_warns.append(f'Existing ID value {id_value}')
-                continue
-            # add to new_ids
-            new_ids.append(EntityId(
-                geographical_entity=entity,
-                code=id_type,
-                value=id_value
-            ))
+            if len(existing_ids) > 0:
+                # if there is existing id, overwrite if it's not default id
+                existing_id = existing_ids[0]
+                if existing_id.default:
+                    id_errors.append(
+                        'Cannot overwrite default ID '
+                        f'{existing_id.code.name}')
+                else:
+                    existing_id.value = id_value
+                    updated_ids.append(existing_id)
+            else:
+                # add to new_ids
+                new_ids.append(EntityId(
+                    geographical_entity=entity,
+                    code=id_type,
+                    value=id_value
+                ))
 
         # get max value of idx in EntityName
         name_idx_start = 0
@@ -427,8 +457,8 @@ class BatchEntityEditBaseImporter(object):
             name_idx_start = max_idx_res['idx__max'] + 1
         # process new name_fields
         name_errors = []
-        name_warns = []
         new_names = []
+        updated_names = []
         for name_field_idx, name_field in self.name_fields.items():
             field_name = name_field['field']
             name_value = self.row_value(row, name_field_idx)
@@ -445,50 +475,64 @@ class BatchEntityEditBaseImporter(object):
                 name_errors.append(f'Invalid language of {field_name}')
                 continue
             language = language[0]
-            # find duplicate name by language and value
-            is_existing_name = (
-                [name for name in entity_names if
-                 name.name == name_value and name.language.id == lang_in]
-            )
-            if len(is_existing_name) > 0:
-                name_warns.append(f'Existing name {name_value}')
-                continue
+            name_label = name_field['label']
+            if name_label:
+                # find duplicate by label
+                existing_names = (
+                    [name for name in entity_names
+                     if name.label == name_label]
+                )
+                if len(existing_names) > 0:
+                    existing_name = existing_names[0]
+                    existing_name.name = name_value
+                    existing_name.language = language
+                    updated_names.append(existing_name)
+                    continue
+            else:
+                # find duplicate name by language and value
+                is_existing_name = (
+                    [name for name in entity_names if
+                     name.name == name_value and name.language.id == lang_in
+                     and not name.label]
+                )
+                if len(is_existing_name) > 0:
+                    name_errors.append(
+                        f'Existing name {name_value} with '
+                        f'language {language.name}')
+                    continue
             # add to new_names
             new_names.append(EntityName(
                 name=name_value,
                 geographical_entity=entity,
                 language=language,
-                label=name_field['label'],
+                label=name_label,
                 idx=name_idx_start
             ))
             name_idx_start += 1
 
-        # if there is no errors, then save the new ids and names
-        if len(id_errors) > 0 or len(name_errors) > 0:
-            errors = []
-            if id_errors:
-                errors.append('; '.join(id_errors))
-            if name_errors:
-                errors.append('; '.join(name_errors))
-            return (
-                False,
-                self.get_output_row_with_status(
-                    updated_row, False, '; '.join(errors))
-            )
-        if id_warns:
-            warns = ', '.join(id_warns)
-            logger.warning(
-                f'Processing new ids for {ucode} with warnings: {warns}')
-        if name_warns:
-            warns = ', '.join(name_warns)
-            logger.warning(
-                f'Processing new names for {ucode} with warnings: {warns}')
-        if new_ids:
-            EntityId.objects.bulk_create(new_ids)
-        if new_names:
-            EntityName.objects.bulk_create(new_names)
-        return True, self.get_output_row_with_status(
-            updated_row, True, None)
+        # insert record for new ids and new names
+        if not self.preview:
+            if new_ids:
+                EntityId.objects.bulk_create(new_ids)
+            if updated_ids:
+                EntityId.objects.bulk_update(updated_ids, ['value'])
+            if new_names:
+                EntityName.objects.bulk_create(new_names)
+            if updated_names:
+                EntityName.objects.bulk_update(
+                    updated_names, ['name', 'language'])
+        # success if there is new ids/names are inserted or
+        # existing ids are updated
+        success = (
+            len(new_ids) > 0 or len(new_names) > 0 or len(updated_ids) > 0
+        )
+        errors = []
+        if id_errors:
+            errors.append('; '.join(id_errors))
+        if name_errors:
+            errors.append('; '.join(name_errors))
+        return success, self.get_output_row_with_status(
+            updated_row, success, '; '.join(errors))
 
     def row_value(self, row, index):
         """
@@ -609,7 +653,7 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
 
 
 def get_entity_edit_importer(
-        obj: BatchEntityEdit) -> BatchEntityEditBaseImporter:
+        obj: BatchEntityEdit, preview: bool) -> BatchEntityEditBaseImporter:
     if obj.input_file is None:
         raise RuntimeError('Batch session does not have input file uploaded!')
     file_name = obj.input_file.name
@@ -617,7 +661,7 @@ def get_entity_edit_importer(
         file_name.endswith('.xlsx') or
         file_name.endswith('.xls')
     ):
-        return ExcelBatchEntityEditImporter(obj)
+        return ExcelBatchEntityEditImporter(obj, preview)
     elif file_name.endswith('.csv'):
-        return CSVBatchEntityEditImporter(obj)
+        return CSVBatchEntityEditImporter(obj, preview)
     return None

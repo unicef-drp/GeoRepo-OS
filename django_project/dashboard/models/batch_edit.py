@@ -15,6 +15,12 @@ class BatchEntityEdit(BaseTaskRequest):
         blank=True
     )
 
+    preview_file = models.FileField(
+        upload_to='batch_entity_edit/preview/%Y/%m/%d/',
+        null=True,
+        blank=True
+    )
+
     output_file = models.FileField(
         upload_to='batch_entity_edit/output/%Y/%m/%d/',
         null=True,

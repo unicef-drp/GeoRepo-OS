@@ -284,7 +284,7 @@ class BatchEntityEditAPI(APIView):
             batch_edit.name_fields = name_fields
         if batch_edit.task_id:
             cancel_task(batch_edit.task_id)
-        task = process_batch_entity_edit.delay(batch_edit.id)
+        task = process_batch_entity_edit.delay(batch_edit.id, False)
         batch_edit.task_id = task.id
         batch_edit.save(
             update_fields=[
@@ -306,7 +306,7 @@ class BatchEntityEditFile(APIView):
         - Column Headers > 0
         - Total rows > 0
         """
-        importer = get_entity_edit_importer(batch_edit)
+        importer = get_entity_edit_importer(batch_edit, True)
         if importer is None:
             # invalid file type
             return False, (
