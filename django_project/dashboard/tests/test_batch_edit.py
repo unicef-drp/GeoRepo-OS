@@ -293,6 +293,7 @@ class TestBatchEdit(TestCase):
             submitted_on=timezone.now()
         )
         data = {
+            'preview': True,
             'batch_edit_id': batch_edit.id,
             'ucode_field': 'test_field1',
             'name_fields': [
@@ -441,7 +442,7 @@ class TestBatchEdit(TestCase):
         )
         request = self.factory.get(
             reverse('batch-entity-edit-result') +
-            f'?batch_edit_id={batch_edit.id}'
+            f'?batch_edit_id={batch_edit.id}&preview=false'
         )
         request.user = self.superuser
         view = BatchEntityEditResultAPI.as_view()
@@ -460,7 +461,7 @@ class TestBatchEdit(TestCase):
         batch_edit.save(update_fields=['output_file', 'status'])
         request = self.factory.get(
             reverse('batch-entity-edit-result') +
-            f'?batch_edit_id={batch_edit.id}'
+            f'?batch_edit_id={batch_edit.id}&preview=false'
         )
         request.user = self.superuser
         view = BatchEntityEditResultAPI.as_view()

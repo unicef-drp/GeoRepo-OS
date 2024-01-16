@@ -274,23 +274,27 @@ class BatchEntityEditAPI(APIView):
         """Update fields mappping and trigger the importer."""
         batch_edit_id = self.request.data.get('batch_edit_id')
         batch_edit = get_object_or_404(BatchEntityEdit, id=batch_edit_id)
-        ucode_field = self.request.data.get('ucode_field')
-        id_fields = self.request.data.get('id_fields')
-        name_fields = self.request.data.get('name_fields')
-        batch_edit.ucode_field = ucode_field
-        if id_fields:
-            batch_edit.id_fields = id_fields
-        if name_fields:
-            batch_edit.name_fields = name_fields
         if batch_edit.task_id:
             cancel_task(batch_edit.task_id)
-        task = process_batch_entity_edit.delay(batch_edit.id, False)
+        preview = self.request.data.get('preview')
+        if preview:
+            ucode_field = self.request.data.get('ucode_field')
+            id_fields = self.request.data.get('id_fields')
+            name_fields = self.request.data.get('name_fields')
+            batch_edit.ucode_field = ucode_field
+            if id_fields:
+                batch_edit.id_fields = id_fields
+            if name_fields:
+                batch_edit.name_fields = name_fields
+            batch_edit.save(
+                update_fields=[
+                    'id_fields', 'name_fields', 'ucode_field'
+                ]
+            )
+        task = process_batch_entity_edit.delay(batch_edit.id, preview)
         batch_edit.task_id = task.id
         batch_edit.save(
-            update_fields=[
-                'id_fields', 'name_fields', 'ucode_field',
-                'task_id'
-            ]
+            update_fields=['task_id']
         )
         return Response(
             status=200, data=BatchEntityEditSerializer(batch_edit).data)
@@ -364,18 +368,35 @@ class BatchEntityEditResultAPI(APIView):
 
     def get(self, *args, **kwargs):
         batch_edit_id = self.request.GET.get('batch_edit_id')
+        preview = self.request.GET.get('preview', 'false')
+        preview = preview.lower() == 'true'
         batch_edit = get_object_or_404(BatchEntityEdit, id=batch_edit_id)
-        if batch_edit.status != DONE or batch_edit.output_file is None:
-            return Response(
-                status=400,
-                data={
-                    'detail': (
-                        'Unable to fetch the output from batch edit '
-                        f'with status {batch_edit.status}'
-                    )
-                }
-            )
-        with batch_edit.output_file.open('rb') as csv_file:
+        if preview:
+            if batch_edit.preview_file is None:
+                return Response(
+                    status=400,
+                    data={
+                        'detail': (
+                            'Unable to fetch the preview from batch edit '
+                            f'with status {batch_edit.status}'
+                        )
+                    }
+                )
+        else:
+            if batch_edit.status != DONE or batch_edit.output_file is None:
+                return Response(
+                    status=400,
+                    data={
+                        'detail': (
+                            'Unable to fetch the output from batch edit '
+                            f'with status {batch_edit.status}'
+                        )
+                    }
+                )
+        file = (
+            batch_edit.output_file if not preview else batch_edit.preview_file
+        )
+        with file.open('rb') as csv_file:
             file = csv_file.read().decode(
                 'utf-8', errors='ignore').splitlines()
             csv_reader = csv.DictReader(file)
