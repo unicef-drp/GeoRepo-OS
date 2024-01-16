@@ -132,7 +132,9 @@ class BatchEntityEditBaseImporter(object):
         if not is_success:
             self.request.errors = errors
         self.request.finished_at = timezone.now()
-        self.request.save(update_fields=['status', 'finished_at', 'errors'])
+        self.request.task_id = None
+        self.request.save(update_fields=[
+            'status', 'finished_at', 'errors', 'task_id'])
         if self.csv_output_file:
             self.csv_output_file.close()
             # open the file in binary to upload to blob storage
@@ -343,7 +345,8 @@ class BatchEntityEditBaseImporter(object):
     def get_output_row_with_status(self, output_row, is_success, error):
         """Set output row with status and error."""
         # status column should the last 2 index
-        output_row[-2] = 'SUCCESS' if is_success else 'ERROR'
+        success_text = 'OK' if self.preview else 'SUCCESS'
+        output_row[-2] = success_text if is_success else 'ERROR'
         if not is_success:
             output_row[-1] = error
         return output_row
