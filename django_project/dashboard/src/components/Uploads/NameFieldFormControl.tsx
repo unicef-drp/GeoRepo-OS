@@ -22,7 +22,8 @@ interface NameFieldFormControlProps {
     index: Number,
     handleNameLanguageChange: (nameFieldId: string, languageId?: string, field?: string, label?: string) => void,
     removeNameField: (id: string) => void,
-    addNameField: () => void
+    addNameField: () => void,
+    hideCheckbox?: boolean
   }
   
   export default function NameFieldFormControl(props: NameFieldFormControlProps) {
@@ -36,9 +37,11 @@ interface NameFieldFormControlProps {
     return (
       <Grid container flexDirection={'column'}>
         <Grid container columnSpacing={1} className='field-container'>
-          <Grid item md={1} xs={12}>
-            <FormControlLabel value={props.nameField.id} checked={checked} label='' disableTypography control={<Radio />} />
-          </Grid>
+          {!props.hideCheckbox && 
+            <Grid item md={1} xs={12}>
+              <FormControlLabel value={props.nameField.id} checked={checked} label='' disableTypography control={<Radio />} />
+            </Grid>
+          }          
           <Grid item md={3} xs={12}>
             <TextField 
               label={'Label'}
@@ -50,6 +53,7 @@ interface NameFieldFormControlProps {
               inputProps={{
                 'maxLength': 10
               }}
+              style={{width: '100%'}}
             />
           </Grid>
           <Grid item md={3} xs={12}>
@@ -63,7 +67,7 @@ interface NameFieldFormControlProps {
                   isReadOnly={props.isReadOnly}
               />
           </Grid>
-          <Grid item md={4} xs={12}>
+          <Grid item md={props.hideCheckbox?5:4} xs={12}>
             <AttributeSelect
               id={'name-field-' + props.nameField.id}
               name={'Name Field'}
@@ -72,7 +76,7 @@ interface NameFieldFormControlProps {
               selectionChanged={(value: any) => props.handleNameLanguageChange(
                 props.nameField.id, null, value as string, null)
               }
-              required
+              required={!props.hideCheckbox}
               isReadOnly={props.isReadOnly}
             />
           </Grid>
@@ -84,7 +88,7 @@ interface NameFieldFormControlProps {
                 </Tooltip>
               </IconButton>
             ) : null }
-            {(props.index > 0 && !props.isReadOnly) ? (
+            {(props.index as number > 0 && !props.isReadOnly) ? (
               <IconButton aria-label="delete" size="medium" onClick={()=>props.removeNameField(props.nameField.id)}>
                 <Tooltip title="Delete Name Field">
                   <DeleteIcon />

@@ -1,3 +1,4 @@
+from typing import List
 from celery import shared_task
 from django.db import connection
 from django.db.models import Q
@@ -12,8 +13,9 @@ from georepo.utils.celery_helper import cancel_task
 @shared_task(name="check_affected_views")
 def check_affected_dataset_views(
     dataset_id: int,
-    entity_id: int = None,
-    unique_codes=[]
+    entity_id: List[int] = [],
+    unique_codes = [],
+    is_geom_changed: bool = True
 ):
     """
     Trigger checking affected views for entity update or revision approve.
@@ -40,11 +42,17 @@ def check_affected_dataset_views(
         unique_codes = str(unique_codes)
         if unique_codes[-2] == ',':
             unique_codes = unique_codes[:-2] + unique_codes[-1]
+    if entity_id:
+        entity_id = tuple(entity_id)
+        entity_id = str(entity_id)
+        if entity_id[-2] == ',':
+            entity_id = entity_id[:-2] + entity_id[-1]
 
-    for view in views_to_check:
+    for view in views_to_check.iterator(chunk_size=1):
         if entity_id:
             raw_sql = (
-                'select count(*) from "{}" where id={} or ancestor_id={};'
+                'select count(*) from "{}" where '
+                'id in {} or ancestor_id in {};'
             ).format(
                 view.uuid,
                 entity_id,
@@ -84,13 +92,19 @@ def check_affected_dataset_views(
                     product=True,
                     skip_signal=False
                 )
-                # update dataset simplification to out of sync
-                view.dataset.sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
-                view.dataset.simplification_sync_status = (
-                    DatasetView.SyncStatus.OUT_OF_SYNC
-                )
-                view.dataset.is_simplified = False
-                view.dataset.save()
+                if (
+                    is_geom_changed and
+                    not view.datasetviewtilingconfig_set.all().exists()
+                ):
+                    # update dataset simplification to out of sync
+                    view.dataset.sync_status = (
+                        DatasetView.SyncStatus.OUT_OF_SYNC
+                    )
+                    view.dataset.simplification_sync_status = (
+                        DatasetView.SyncStatus.OUT_OF_SYNC
+                    )
+                    view.dataset.is_simplified = False
+                    view.dataset.save()
 
 
 @shared_task(name="check_affected_views_from_tiling_config")
@@ -108,7 +122,7 @@ def check_affected_views_from_tiling_config(
         Q(simplification_sync_status=DatasetView.SyncStatus.SYNCED) |
         Q(simplification_sync_status=DatasetView.SyncStatus.SYNCING)
     )
-    for view in views_to_check:
+    for view in views_to_check.iterator(chunk_size=1):
         if view.datasetviewtilingconfig_set.all().exists():
             continue
         # cancel ongoing task

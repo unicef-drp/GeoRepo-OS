@@ -8,6 +8,7 @@ import DatasetAdminLevelNames from "./Configurations/DatasetAdminLevelNames";
 import DatasetEntities from "../views/Dataset/DatasetEntities";
 import ViewSyncList from "../views/SyncStatus/List";
 import TilingConfiguration from "../views/TilingConfig/TilingConfigRevamp";
+import EntityEditHistory from "./EntityEditHistory";
 
 
 export function NavigateComponent() {
@@ -60,6 +61,11 @@ export default function DatasetDetailWrapper() {
         {
             title: 'SYNC STATUS',
             element: ViewSyncList,
+            permissions: ['Manage']
+        },
+        {
+            title: 'EDIT HISTORY',
+            element: EntityEditHistory,
             permissions: ['Manage']
         }
     ])

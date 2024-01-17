@@ -137,7 +137,6 @@ export default function Step1(props: WizardStepInterface) {
   // called every time a file's `status` changes
   // @ts-ignore
   const handleChangeStatus = (file, status) => {
-    console.log('***status***', status)
     let {meta, f, xhr} = file
     const _levels: Level = levels!
     meta.uploadSession = props.uploadSession

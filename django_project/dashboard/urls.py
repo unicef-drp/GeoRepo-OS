@@ -1,5 +1,11 @@
 from django.urls import re_path, path, include
-
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import (
+    permission_classes,
+    api_view,
+    authentication_classes
+)
+from rest_framework.authentication import SessionAuthentication
 from dashboard.api_views.reviews import (
     ReadyToReview,
     ReviewList,
@@ -96,7 +102,11 @@ from dashboard.api_views.module import ModuleDashboard
 from dashboard.api_views.entity import (
     EntityRevisionList,
     EntityByConceptUCode,
-    EntityEdit
+    EntityEdit,
+    BatchEntityEditAPI,
+    BatchEntityEditFile,
+    BatchEntityEditResultAPI,
+    DatasetEntityEditHistory
 )
 
 from dashboard.api_views.views import (
@@ -141,7 +151,17 @@ from dashboard.api_views.logs import (
 from dashboard.views.flower_proxy_view import FlowerProxyView
 from dashboard.api_views.task_status import CheckTaskStatus
 
+
+@api_view(['GET'])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def trigger_error(request):
+    division_by_zero = 1 / 0
+    print(division_by_zero)
+
+
 urlpatterns = [
+    path('sentry-debug/', trigger_error),
     path('tinymce/', include('tinymce.urls')),
     re_path(
         r'api/dataset-group/list/?$',
@@ -167,6 +187,26 @@ urlpatterns = [
         r'(?P<entity_id>\d+)/?$',
         EntityEdit.as_view(),
         name='entity-edit'
+    ),
+    re_path(
+        r'api/batch-entity-edit/file/?$',
+        BatchEntityEditFile.as_view(),
+        name='batch-entity-edit-file'
+    ),
+    re_path(
+        r'api/batch-entity-edit/result/?$',
+        BatchEntityEditResultAPI.as_view(),
+        name='batch-entity-edit-result'
+    ),
+    re_path(
+        r'api/batch-entity-edit/?$',
+        BatchEntityEditAPI.as_view(),
+        name='batch-entity-edit'
+    ),
+    re_path(
+        r'api/entity-edit-history/?$',
+        DatasetEntityEditHistory.as_view(),
+        name='entity-edit-history'
     ),
     re_path(
         r'api/language/list/?$',

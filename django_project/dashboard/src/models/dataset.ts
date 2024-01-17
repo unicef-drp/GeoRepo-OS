@@ -14,7 +14,8 @@ export default interface Dataset {
     max_privacy_level?: number,
     min_privacy_level?: number,
     permissions?: string[],
-    is_active?: boolean
+    is_active?: boolean,
+    is_empty?: boolean,
 }
 
 
