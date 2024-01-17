@@ -156,6 +156,7 @@ from dashboard.api_views.task_status import CheckTaskStatus
 @permission_classes([IsAuthenticated])
 def trigger_error(request):
     division_by_zero = 1 / 0
+    print(division_by_zero)
 
 
 urlpatterns = [

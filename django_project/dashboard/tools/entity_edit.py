@@ -506,8 +506,9 @@ class BatchEntityEditBaseImporter(object):
                 # find duplicate name by language and value
                 is_existing_name = (
                     [name for name in entity_names if
-                     name.name == name_value and name.language.id == lang_in
-                     and not name.label]
+                     name.name == name_value and
+                     name.language.id == lang_in and
+                     not name.label]
                 )
                 if len(is_existing_name) > 0:
                     name_errors.append(
