@@ -10,6 +10,7 @@ import {
   Box
 } from "@mui/material";
 import LoadingButton from '@mui/lab/LoadingButton';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import Dropzone, { ILayoutProps } from "react-dropzone-uploader";
 import Scrollable from '../../components/Scrollable';
 import { BatchEntityEditInterface } from "../../models/upload";
@@ -75,6 +76,30 @@ export default function Step0(props: Step0Interface) {
         }
     }, [props.batchEdit.input_file_name])
 
+    const clearFiles = (onCleared?: () => void) => {
+      // we need to disable the dropzone
+      setLoading(true)
+      axios.delete(`/api/batch-entity-edit/file/?batch_edit_id=${props.batchEdit.id}`).then(response => {
+          setLoading(false)
+          if (response) {
+            setFormValid(false)
+            if (onCleared) {
+              onCleared()
+            }
+          } else {
+            setIsError(true)
+            setAlertMessage('Could not remove the uploaded file, please try again later!')
+          }
+      }).catch(
+          error => {
+            console.error('Error calling file-remove api :', error)
+            setIsError(true)
+            setAlertMessage('Could not remove the uploaded file, please try again later!')
+            setLoading(false)
+          }
+      )
+    }
+
     // called every time a file's `status` changes
     // @ts-ignore
     const handleChangeStatus = (file, status) => {
@@ -100,25 +125,7 @@ export default function Step0(props: Step0Interface) {
               // exit if ref dropZone is not found
               return;
           }
-          // we need to disable the dropzone
-          setLoading(true)
-          axios.delete(`/api/batch-entity-edit/file/?batch_edit_id=${props.batchEdit.id}`).then( response => {
-              setLoading(false)
-              if (response) {
-                setFormValid(false)
-              } else {
-                setIsError(true)
-                setAlertMessage('Could not remove the uploaded file, please try again later!')
-                // TODO: add back the file if failed to remove
-              }
-          }).catch(
-              error => {
-                console.error('Error calling file-remove api :', error)
-                setIsError(true)
-                setAlertMessage('Could not remove the uploaded file, please try again later!')
-                setLoading(false)
-              }
-          )
+          clearFiles()
         }
         if (status === 'error_upload') {
           setTimeout(() => {
@@ -162,6 +169,16 @@ export default function Step0(props: Step0Interface) {
                 </LoadingButton> :
                 (<Grid container direction='row' justifyContent='space-between'>
                   <Grid item>
+                    {files.length > 0 && !props.batchEdit.is_read_only && (
+                      <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>} onClick={() => {
+                        if (files.length > 0) {
+                          let _file = files[0]
+                          _file.remove()
+                        }
+                      }} variant="outlined" disabled={loading}>
+                        Remove File
+                      </LoadingButton>
+                    )}
                   </Grid>
                   <Grid item>
                     {files.length > 0 && files.length < maxFiles && !props.batchEdit.is_read_only && input}
@@ -182,7 +199,20 @@ export default function Step0(props: Step0Interface) {
     return (
         <Box>
             <Box className={"description-box"}>
-                <p>Drag and drop or click to browse for a csv or excel file.</p>
+                <p className="display-linebreak">
+                  {
+                    'The batch editor allows you to update many entities in a single operation. You can do three things in this process:\r\n' +
+                    '1. Update names of entities\r\n' +
+                    '2. Add new id columns (e.g. internet domain, ISO Code etc.) to entities\r\n'+
+                    '3. Update existing id columns (e.g. update pcodes)\r\n'
+                  }
+                </p>
+                <p className='vertical-center'>
+                  <WarningAmberIcon color="warning" sx={{paddingRight: '5px'}} />
+                  {
+                    'Note: You cannot update the default code in this process since it is embedded in the ucode for every entity.'
+                  }
+                </p>
             </Box>
             <Scrollable>
                 <div className='Step1'>
@@ -206,6 +236,36 @@ export default function Step0(props: Step0Interface) {
                         inputContent={'Drag and drop or click to browse for a csv or excel file.'}
                         />
                 </div>
+                <Box className={"description-box"}>
+                  <p className="display-linebreak">
+                      Sample csv or excel file:
+                  </p>
+                  <table className="tg-sample-excel">
+                    <thead>
+                      <tr>
+                        <th className="tg-0lax">ucode</th>
+                        <th className="tg-0lax">name_new</th>
+                        <th className="tg-0lax">id_new</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="tg-0lax">MWI_V1</td>
+                        <td className="tg-0lax"></td>
+                        <td className="tg-0lax"></td>
+                      </tr>
+                      <tr>
+                        <td className="tg-0lax">MWI_0001_V1</td>
+                        <td className="tg-0lax"></td>
+                        <td className="tg-0lax"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p className="display-linebreak">
+                      Your spreadsheet should have, at minimum, a <span className='bold-text'>ucode</span> column whose contents should match existing entities, and one more columns containing either names or ids that will be added / updated. 
+                      In the next steps you will be able to do the type mappings for these columns to determine how they are overlaid with the existing data.
+                  </p>
+                </Box>
             </Scrollable>
         </Box>
     )

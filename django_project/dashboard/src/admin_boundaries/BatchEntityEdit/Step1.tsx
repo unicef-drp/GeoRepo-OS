@@ -15,6 +15,7 @@ import AttributeSelect from "../../components/Uploads/AttributeSelect"
 import Scrollable from '../../components/Scrollable';
 import { BatchEntityEditInterface } from "../../models/upload";
 import {LanguageOption, fetchLanguages} from "../../utils/Requests";
+import HtmlTooltip from "../../components/HtmlTooltip";
 
 const LOAD_ID_TYPE_LIST_URL = '/api/id-type/list/'
 
@@ -329,7 +330,12 @@ export default function Step1(props: Step1Interface) {
                                                 </Grid>
                                                 <Grid container className='field-container align-start' columnSpacing={1}>
                                                     <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
-                                                        <Typography variant={'subtitle1'}>Name Fields</Typography>
+                                                        <Typography variant={'subtitle1'}>
+                                                            Name Fields
+                                                            <HtmlTooltip tooltipTitle='Name Fields'
+                                                                tooltipDescription={<p>Existing entity name with the same label will be overwritten.</p>}
+                                                            />
+                                                        </Typography>
                                                     </Grid>
                                                     <Grid item md={8} xl={8} xs={12}>
                                                         {nameFields.map((nameField: NameField, index: Number) => (
@@ -342,7 +348,12 @@ export default function Step1(props: Step1Interface) {
                                                 </Grid>
                                                 <Grid container className='field-container align-start' columnSpacing={1}>
                                                     <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
-                                                        <Typography variant={'subtitle1'}>Id Fields</Typography>
+                                                        <Typography variant={'subtitle1'}>
+                                                            Id Fields
+                                                            <HtmlTooltip tooltipTitle='Id Fields'
+                                                                tooltipDescription={<p>Existing entity id with the same id type will be overwritten unless it is a default code.</p>}
+                                                            />
+                                                        </Typography>
                                                     </Grid>
                                                     <Grid item md={8} xl={8} xs={12}>
                                                         {idFields.map((idField: IdField, index: number) => (

@@ -31,7 +31,7 @@ const ReviewDetailRoute: RouteInterface = {
 
 const BatchEntityEditRoute: RouteInterface = {
   id: 'batch_entity_edit',
-  name: 'Batch Entity Edit',
+  name: 'Batch Editor',
   path: '/edit_entity/wizard',
   element: BatchEntityEditWizard,
   parent: DatasetEntityListAdminRoute

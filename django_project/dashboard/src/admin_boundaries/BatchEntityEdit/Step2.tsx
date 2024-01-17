@@ -9,6 +9,7 @@ import {
 import axios from "axios";
 import '../../styles/UploadWizard.scss'
 import LoadingButton from '@mui/lab/LoadingButton';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import Scrollable from '../../components/Scrollable';
 import List from "../../components/List";
 import LinearProgressWithLabel from "../../components/LinearProgressWithLabel";
@@ -121,11 +122,11 @@ export default function Step2(props: Step2Interface) {
     useEffect(() => {
         if (loading) {
             setAlertSeverity('info')
-            setAlertTitle('Processing Batch Entity Edit in the background!')
+            setAlertTitle('Batch Editor is processing, please stand by...')
         } else {
             if (props.batchEdit.errors) {
                 setAlertSeverity('error')
-                setAlertTitle('Failed to process batch entity edit!')
+                setAlertTitle('Failed to process batch editor!')
                 setAlertMessage(props.batchEdit.errors)
             } else {
                 if (props.batchEdit.success_count > 0 && props.batchEdit.error_count > 0) {
@@ -135,7 +136,7 @@ export default function Step2(props: Step2Interface) {
                 } else if (props.batchEdit.success_count === 0 && props.batchEdit.error_count > 0) {
                     setAlertSeverity('error')
                 }
-                setAlertTitle('System has finished processing batch entity edit!')
+                setAlertTitle('Batch editor processing completed.')
                 setAlertMessage(props.batchEdit.success_notes)
             }
         }
@@ -154,6 +155,12 @@ export default function Step2(props: Step2Interface) {
                                         { alertMessage }
                                     </p>
                                     { loading ? <LinearProgressWithLabel value={props.batchEdit.progress} maxBarWidth={'90%'} /> : null }
+                                    { props.batchEdit.status === 'DONE' && (
+                                        <span className='vertical-center'>
+                                            <LightbulbIcon color="warning" sx={{paddingRight: '3px'}} fontSize="small" />
+                                            Please note that you will need to regenerate your vector tiles for these changes to propagate to end users.
+                                        </span>
+                                    )}
                                 </Alert> : null }
                         </Grid>
                     </Grid>
@@ -201,7 +208,7 @@ export default function Step2(props: Step2Interface) {
                                     setLoading(true)
                                     props.onStartToImportClicked()
                                 }} variant="contained" sx={{width: '220px !important'}}>
-                                    {'Start to Import'}
+                                    {'Start Import'}
                                 </LoadingButton> : null
                             }
                         </Grid>

@@ -12,41 +12,32 @@ const LOAD_BATCH_ENTITY_EDIT_URL = '/api/batch-entity-edit/'
 
 const BatchEditButton = (props: any) => {
   const {dataset} = props
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const menuAsOpen = Boolean(anchorEl)
   const navigate = useNavigate()
-  const [ongoingBatchEdit, setOngoingBatchEdit] = useState<BatchEntityEditInterface>(null)
-  
-  const fetchOngoingBatchEdit = () => {
-    axios.get(LOAD_BATCH_ENTITY_EDIT_URL + `?dataset_id=${dataset.id}`).then(
-      response => {
-        if (response.data) {
-            let _data: BatchEntityEditInterface = response.data as BatchEntityEditInterface
-            setOngoingBatchEdit(_data)
-        }
-      }, error => {
-        console.log(error)
-    })
-  }
-
-  useEffect(() => {
-    if (dataset && dataset.id) {
-      fetchOngoingBatchEdit()
-    }
-  }, [dataset])
 
   const createNewBatchEdit = () => {
     axios.put(LOAD_BATCH_ENTITY_EDIT_URL + `?dataset_id=${dataset.id}`).then(
         response => {
             let _data: BatchEntityEditInterface = response.data as BatchEntityEditInterface
-            let _navigate_to = `/admin_boundaries/edit_entity/wizard?session=${_data.id}&step=0&dataset=${dataset.id}`
-            navigate(_navigate_to)
+            goToBatchEdit(_data)
         }, error => {
             console.log(error)
+            // check if has existing batch edit
+            if (error.response) {
+              if ('batch_edit' in error.response.data) {
+                  let _batchEdit = error.response.data['batch_edit'] as BatchEntityEditInterface
+                  goToBatchEdit(_batchEdit)
+              } else if ('detail' in error.response.data) {
+                alert(error.response.data['detail'])
+              } else {
+                alert('There is unexpected error when creating batch editor session, please try again later or contact administrator!')
+              }
+          } else {
+            alert('There is unexpected error when creating batch editor session, please try again later or contact administrator!')
+          }
     })
   }
 
-  const goToPendingBatchEdit = () => {
+  const goToBatchEdit = (ongoingBatchEdit: BatchEntityEditInterface) => {
     let _navigate_to = `/admin_boundaries/edit_entity/wizard?session=${ongoingBatchEdit.id}&step=${ongoingBatchEdit.step}&dataset=${dataset.id}`
     navigate(_navigate_to)
   }
@@ -56,28 +47,11 @@ const BatchEditButton = (props: any) => {
       <Button
           id='batch-edit-button'
           className={'ThemeButton MuiButton-secondary DatasetBatchEditButton'}
-          onClick={(event: React.MouseEvent<HTMLButtonElement>) => setAnchorEl(event.currentTarget)}
-          aria-controls={menuAsOpen ? 'batch-edit-menu' : undefined}
-          aria-haspopup="true"
-          aria-expanded={menuAsOpen ? 'true' : undefined}
+          onClick={(event: React.MouseEvent<HTMLButtonElement>) => createNewBatchEdit()}
           disableElevation
-          endIcon={<KeyboardArrowDownIcon />}
       >
-          Batch Edit
+          Batch Editor
       </Button>
-      <Menu
-          id="batch-edit-menu"
-          anchorEl={anchorEl}
-          open={menuAsOpen}
-          onClose={() => setAnchorEl(null)}
-          MenuListProps={{
-              'aria-labelledby': 'batch-edit-button',
-          }}
-      >
-          { ongoingBatchEdit === null ? <MenuItem onClick={createNewBatchEdit}>Create</MenuItem> : null }
-          { ongoingBatchEdit !== null ? <MenuItem onClick={goToPendingBatchEdit}>Pending Batch Edit</MenuItem> : null }
-          <MenuItem onClick={() => {}}>View History</MenuItem>
-      </Menu>
     </Box>
   )
 }

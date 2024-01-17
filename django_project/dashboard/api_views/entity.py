@@ -243,7 +243,8 @@ class BatchEntityEditAPI(APIView):
                 'detail': (
                     'There is ongoing batch entity edit for this dataset!'
                 ),
-                'batch_edit_id': existing_batch_edit.id
+                'batch_edit': BatchEntityEditSerializer(
+                    existing_batch_edit).data
             }, 400)
         batch_edit = BatchEntityEdit.objects.create(
             dataset=dataset,
