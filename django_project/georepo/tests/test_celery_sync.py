@@ -1,9 +1,12 @@
 import json
+import datetime
+from django.utils import timezone
 from django.test import TestCase
 from django.contrib.gis.geos import GEOSGeometry
 from georepo.utils import absolute_path
 from georepo.models import (
-    IdType
+    IdType,
+    BackgroundTask
 )
 from georepo.tests.model_factories import (
     EntityTypeF,
@@ -17,6 +20,9 @@ from georepo.utils.dataset_view import (
 )
 from georepo.utils.dataset_view import (
     init_view_privacy_level
+)
+from georepo.tasks.celery_sync import (
+    remove_old_background_tasks
 )
 
 
@@ -61,3 +67,19 @@ class TestCelerySync(TestCase):
                 value=self.entity_1.id
             )
         init_view_privacy_level(self.view_latest)
+
+    def test_clear_old_background_task(self):
+        task1 = BackgroundTask.objects.create(
+            name='task1',
+            last_update=timezone.now(),
+            task_id='task1'
+        )
+        BackgroundTask.objects.create(
+            name='task2',
+            last_update=datetime.datetime(2000, 8, 14, 8, 8, 8),
+            task_id='task2'
+        )
+        remove_old_background_tasks()
+        tasks = BackgroundTask.objects.all()
+        self.assertEqual(tasks.count(), 1)
+        self.assertEqual(tasks.first().name, task1.name)

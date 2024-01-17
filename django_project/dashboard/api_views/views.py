@@ -1,6 +1,7 @@
 import re
 import uuid
 import math
+import logging
 from django.db.models.expressions import RawSQL, Q
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import connection
@@ -42,6 +43,8 @@ from georepo.utils.permission import (
 from georepo.utils.exporter_base import APIDownloaderBase
 
 
+logger = logging.getLogger(__name__)
+
 TABLE_NAMES = [
     'geographicalentity',
     'entityname',
@@ -65,7 +68,12 @@ class QueryStringCheck(object):
 
     def check_query(self):
         for prohibited_command in RESTRICTED_COMMANDS:
-            if prohibited_command in self.query_string.lower():
+            search_reqex = r'\b' + re.escape(prohibited_command) + r'\b'
+            if re.search(search_reqex, self.query_string, re.IGNORECASE):
+                logger.error(
+                    'Invalid query: '
+                    f'prohibited command {prohibited_command}!'
+                )
                 return False
 
         if ';' not in self.query_string:
@@ -111,6 +119,10 @@ class QueryStringCheck(object):
                         self.query_string.replace(
                             ';', f' {and_cond} {key}={value};')
                     )
+        # replace double qoutes with single quote
+        self.query_string = (
+            self.query_string.replace('"', '\'')
+        )
         return True
 
 
