@@ -25,6 +25,7 @@ from dashboard.models.notification import (
     Notification,
     NOTIF_TYPE_BATCH_ENTITY_EDIT
 )
+from georepo.tasks.dataset_view import check_affected_dataset_views
 
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,7 @@ class BatchEntityEditBaseImporter(object):
     csv_output_file_path = None
     csv_output_file = None
     csv_output_writer = None
+    entity_ids = []
 
     def __init__(self, request: BatchEntityEdit, preview: bool) -> None:
         self.request = request
@@ -113,6 +115,7 @@ class BatchEntityEditBaseImporter(object):
         # reload metadata
         self.id_types = IdType.objects.all()
         self.languages = Language.objects.all()
+        self.entity_ids = []
 
     def remove_csv_output_file(self):
         """Remove temporary output file."""
@@ -151,6 +154,13 @@ class BatchEntityEditBaseImporter(object):
                     )
             # delete the output
             self.remove_csv_output_file()
+        if is_success and not self.preview and self.entity_ids:
+            # trigger check_affected_dataset_views
+            check_affected_dataset_views(
+                self.request.dataset.id, self.entity_ids, [], False)
+            # update task to 100
+            self.request.progress = 100
+            self.request.save(update_fields=['progress'])
         if not self.preview:
             # trigger notifications
             dataset = self.request.dataset
@@ -174,9 +184,10 @@ class BatchEntityEditBaseImporter(object):
             )
 
     def on_update_progress(self, row, total_count):
+        max_progress = 100 if self.preview else 80
         # save progress of task
         self.request.progress = (
-            (row / total_count) * 100 if total_count else 0
+            (row / total_count) * max_progress if total_count else 0
         )
         self.request.save(update_fields=['progress'])
 
@@ -347,7 +358,7 @@ class BatchEntityEditBaseImporter(object):
         # status column should the last 2 index
         success_text = 'OK' if self.preview else 'SUCCESS'
         output_row[-2] = success_text if is_success else 'ERROR'
-        if not is_success:
+        if error:
             output_row[-1] = error
         return output_row
 
@@ -534,6 +545,9 @@ class BatchEntityEditBaseImporter(object):
             errors.append('; '.join(id_errors))
         if name_errors:
             errors.append('; '.join(name_errors))
+        if success:
+            if entity.id not in self.entity_ids:
+                self.entity_ids.append(entity.id)
         return success, self.get_output_row_with_status(
             updated_row, success, '; '.join(errors))
 
