@@ -1,9 +1,8 @@
 
-import React, {useState, useEffect} from "react";
+import React from "react";
 import axios from "axios";
 import {useNavigate} from "react-router-dom";
-import { Box, Button, Menu, MenuItem } from "@mui/material";
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import { Box, Button } from "@mui/material";
 import {HeaderButtonsInterface, UploadDataButton} from "../components/HeaderButtons";
 import { BatchEntityEditInterface } from "../models/upload";
 
@@ -46,6 +45,7 @@ const BatchEditButton = (props: any) => {
     <Box>
       <Button
           id='batch-edit-button'
+          disabled={dataset?.is_empty}
           className={'ThemeButton MuiButton-secondary DatasetBatchEditButton'}
           onClick={(event: React.MouseEvent<HTMLButtonElement>) => createNewBatchEdit()}
           disableElevation
