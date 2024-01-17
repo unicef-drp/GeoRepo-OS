@@ -587,3 +587,31 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
             'input_file_size',
             'has_preview'
         ]
+
+
+class BatchEntityEditListItemSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+
+    def get_user(self, obj: BatchEntityEdit):
+        if obj.submitted_by and obj.submitted_by.first_name:
+            name = obj.submitted_by.first_name
+            if obj.submitted_by.last_name:
+                name = f'{name} {obj.submitted_by.last_name}'
+            return name
+        return '-'
+
+    class Meta:
+        model = BatchEntityEdit
+        fields = [
+            'id',
+            'uuid',
+            'status',
+            'dataset_id',
+            'success_notes',
+            'total_count',
+            'success_count',
+            'error_count',
+            'progress',
+            'submitted_on',
+            'user'
+        ]

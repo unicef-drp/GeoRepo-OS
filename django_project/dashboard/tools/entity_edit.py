@@ -239,7 +239,7 @@ class BatchEntityEditBaseImporter(object):
                 else:
                     self.request.success_notes = (
                         f'{format_entities_count(self.request.success_count)} '
-                        'have been updated successfully.'
+                        'have been updated.'
                     )
             if (
                 self.request.success_count > 0 and
@@ -255,7 +255,7 @@ class BatchEntityEditBaseImporter(object):
                 else:
                     self.request.success_notes = (
                         f'{format_entities_count(self.request.success_count)} '
-                        'have been updated successfully. '
+                        'have been updated. '
                         f'{format_entities_count(self.request.error_count)} '
                         'have errors.'
                     )

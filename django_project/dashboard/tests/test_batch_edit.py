@@ -21,7 +21,8 @@ from dashboard.models.batch_edit import BatchEntityEdit
 from dashboard.api_views.entity import (
     BatchEntityEditAPI,
     BatchEntityEditFile,
-    BatchEntityEditResultAPI
+    BatchEntityEditResultAPI,
+    DatasetEntityEditHistory
 )
 from dashboard.tools.entity_edit import (
     get_entity_edit_importer
@@ -469,3 +470,21 @@ class TestBatchEdit(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['ucode'], 'PAK_V1')
+
+    def test_entity_edit_history(self):
+        batch_edit = BatchEntityEdit.objects.create(
+            dataset=self.dataset,
+            status=PENDING,
+            submitted_by=self.superuser,
+            submitted_on=timezone.now()
+        )
+        request = self.factory.get(
+            reverse('entity-edit-history') +
+            f'?dataset_id={self.dataset.id}'
+        )
+        request.user = self.superuser
+        view = DatasetEntityEditHistory.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['id'], batch_edit.id)

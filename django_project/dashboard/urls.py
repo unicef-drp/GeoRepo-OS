@@ -105,7 +105,8 @@ from dashboard.api_views.entity import (
     EntityEdit,
     BatchEntityEditAPI,
     BatchEntityEditFile,
-    BatchEntityEditResultAPI
+    BatchEntityEditResultAPI,
+    DatasetEntityEditHistory
 )
 
 from dashboard.api_views.views import (
@@ -199,6 +200,11 @@ urlpatterns = [
         r'api/batch-entity-edit/?$',
         BatchEntityEditAPI.as_view(),
         name='batch-entity-edit'
+    ),
+    re_path(
+        r'api/entity-edit-history/?$',
+        DatasetEntityEditHistory.as_view(),
+        name='entity-edit-history'
     ),
     re_path(
         r'api/language/list/?$',

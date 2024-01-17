@@ -27,7 +27,8 @@ from georepo.utils.permission import (
 from dashboard.serializers.entity import (
     EntityConceptUCodeSerializer,
     EntityEditSerializer,
-    BatchEntityEditSerializer
+    BatchEntityEditSerializer,
+    BatchEntityEditListItemSerializer
 )
 from dashboard.tools.entity_edit import (
     try_delete_uploaded_file,
@@ -412,5 +413,11 @@ class DatasetEntityEditHistory(APIView):
     def get(self, *args, **kwargs):
         dataset_id = self.request.GET.get('dataset_id')
         dataset = get_object_or_404(Dataset, id=dataset_id)
-
-
+        batch_edits = BatchEntityEdit.objects.filter(
+            dataset=dataset
+        ).order_by('-id')
+        return Response(
+            data=BatchEntityEditListItemSerializer(
+                batch_edits, many=True).data,
+            status=200
+        )
