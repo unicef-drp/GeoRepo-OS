@@ -13,9 +13,9 @@ from georepo.utils.celery_helper import cancel_task
 @shared_task(name="check_affected_views")
 def check_affected_dataset_views(
     dataset_id: int,
-    entity_id: List[int]=[],
-    unique_codes=[],
-    is_geom_changed: bool=True
+    entity_id: List[int] = [],
+    unique_codes = [],
+    is_geom_changed: bool = True
 ):
     """
     Trigger checking affected views for entity update or revision approve.
