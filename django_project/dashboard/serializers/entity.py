@@ -590,7 +590,11 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
 
 
 class BatchEntityEditListItemSerializer(serializers.ModelSerializer):
+    date = serializers.SerializerMethodField()
     user = serializers.SerializerMethodField()
+    object_id = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
 
     def get_user(self, obj: BatchEntityEdit):
         if obj.submitted_by and obj.submitted_by.first_name:
@@ -600,18 +604,30 @@ class BatchEntityEditListItemSerializer(serializers.ModelSerializer):
             return name
         return '-'
 
+    def get_object_id(self, obj: BatchEntityEdit):
+        return obj.id
+
+    def get_summary(self, obj: BatchEntityEdit):
+        return obj.success_notes if obj.success_notes else '-'
+
+    def get_type(self, obj: BatchEntityEdit):
+        return 'Batch'
+
+    def get_date(self, obj: BatchEntityEdit):
+        return obj.submitted_on
+
     class Meta:
         model = BatchEntityEdit
         fields = [
-            'id',
-            'uuid',
+            'date',
+            'type',
+            'user',
             'status',
+            'summary',
+            'object_id',
             'dataset_id',
-            'success_notes',
             'total_count',
             'success_count',
             'error_count',
             'progress',
-            'submitted_on',
-            'user'
         ]

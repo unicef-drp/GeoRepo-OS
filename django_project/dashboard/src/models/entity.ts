@@ -26,3 +26,18 @@ export default interface EntityEditInterface {
     label: string,
     is_dirty: boolean
 }
+
+export interface EntityEditHistoryItemInterface {
+    object_id: number,
+    type: string,
+    status: string,
+    dataset_id: number,
+    submitted_on: Date,
+    user: string,
+    summary?: string,
+    total_count?: number,
+    success_count?: number,
+    error_count?: number,
+    progress?: number,
+}
+
