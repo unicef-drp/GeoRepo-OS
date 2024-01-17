@@ -142,3 +142,28 @@ export const getUploadStatusLabel = (status: string): string => {
     if (status === PROCESSING_APPROVAL) return 'Processing'
     return status
 }
+
+export interface BatchEntityEditInterface {
+    id: number;
+    uuid: string;
+    status: string;
+    dataset_id: number;
+    name_fields?: NameField[];
+    id_fields?: IdField[];
+    ucode_field: string;
+    error_notes: string;
+    success_notes: string;
+    total_count: number;
+    success_count: number;
+    error_count: number;
+    headers: string[];
+    has_file: boolean;
+    step: number;
+    is_read_only: boolean;
+    dataset: string;
+    input_file_name?: string;
+    errors?: string;
+    progress?: number;
+    input_file_size?: number;
+    has_preview?: boolean;
+}

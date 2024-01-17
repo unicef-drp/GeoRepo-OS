@@ -354,7 +354,7 @@ main {
   }
 }
 
-.DatasetTabs {
+.DatasetTabs, .WizardTabs {
   &.MuiTabs-root {
     .MuiTab-root {
       min-height: 48px;
@@ -367,4 +367,14 @@ p {
   &.compact {
     margin-block: 0;
   }
+}
+
+.vertical-center {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.bold-text {
+  font-weight: bold;
 }

@@ -1,9 +1,11 @@
+import os
 from rest_framework import serializers
 from django.db.models import Q, Max
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from georepo.models.entity import EntityName, EntityId, EntityType
-from dashboard.models import EntitiesUserConfig
+from dashboard.models import EntitiesUserConfig, BatchEntityEdit
+from georepo.models.base_task_request import PENDING, READ_ONLY_STATUS
 
 
 class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
@@ -505,4 +507,127 @@ class EntityEditSerializer(serializers.ModelSerializer):
             'names',
             'codes',
             'label'
+        ]
+
+
+class BatchEntityEditSerializer(serializers.ModelSerializer):
+    has_file = serializers.SerializerMethodField()
+    has_preview = serializers.SerializerMethodField()
+    step = serializers.SerializerMethodField()
+    is_read_only = serializers.SerializerMethodField()
+    input_file_name = serializers.SerializerMethodField()
+    input_file_size = serializers.SerializerMethodField()
+    module = serializers.SerializerMethodField()
+    dataset = serializers.SerializerMethodField()
+
+    def get_has_file(self, obj: BatchEntityEdit):
+        return (
+            obj.input_file.name and
+            obj.input_file.storage.exists(obj.input_file.name)
+        )
+
+    def get_has_preview(self, obj: BatchEntityEdit):
+        if obj.preview_file.name:
+            return (
+                obj.status == PENDING and
+                obj.preview_file.storage.exists(obj.preview_file.name)
+            )
+        return False
+
+    def get_step(self, obj: BatchEntityEdit):
+        if not self.get_has_file(obj):
+            return 0
+        if obj.status == PENDING and obj.headers and obj.total_count > 0:
+            return 1
+        return 2
+
+    def get_is_read_only(self, obj: BatchEntityEdit):
+        return obj.status in READ_ONLY_STATUS
+
+    def get_input_file_name(self, obj: BatchEntityEdit):
+        if obj.input_file.name:
+            return os.path.basename(obj.input_file.name)
+        return None
+
+    def get_input_file_size(self, obj: BatchEntityEdit):
+        if self.get_has_file(obj):
+            return obj.input_file.size
+        return 0
+
+    def get_module(self, obj: BatchEntityEdit):
+        return obj.dataset.module.name
+
+    def get_dataset(self, obj: BatchEntityEdit):
+        return obj.dataset.label
+
+    class Meta:
+        model = BatchEntityEdit
+        fields = [
+            'id',
+            'uuid',
+            'status',
+            'dataset_id',
+            'id_fields',
+            'name_fields',
+            'ucode_field',
+            'error_notes',
+            'success_notes',
+            'total_count',
+            'success_count',
+            'error_count',
+            'progress',
+            'errors',
+            'has_file',
+            'step',
+            'is_read_only',
+            'headers',
+            'input_file_name',
+            'module',
+            'dataset',
+            'input_file_size',
+            'has_preview'
+        ]
+
+
+class BatchEntityEditListItemSerializer(serializers.ModelSerializer):
+    date = serializers.SerializerMethodField()
+    user = serializers.SerializerMethodField()
+    object_id = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+
+    def get_user(self, obj: BatchEntityEdit):
+        if obj.submitted_by and obj.submitted_by.first_name:
+            name = obj.submitted_by.first_name
+            if obj.submitted_by.last_name:
+                name = f'{name} {obj.submitted_by.last_name}'
+            return name
+        return '-'
+
+    def get_object_id(self, obj: BatchEntityEdit):
+        return obj.id
+
+    def get_summary(self, obj: BatchEntityEdit):
+        return obj.success_notes if obj.success_notes else '-'
+
+    def get_type(self, obj: BatchEntityEdit):
+        return 'Batch'
+
+    def get_date(self, obj: BatchEntityEdit):
+        return obj.submitted_on
+
+    class Meta:
+        model = BatchEntityEdit
+        fields = [
+            'date',
+            'type',
+            'user',
+            'status',
+            'summary',
+            'object_id',
+            'dataset_id',
+            'total_count',
+            'success_count',
+            'error_count',
+            'progress',
         ]
