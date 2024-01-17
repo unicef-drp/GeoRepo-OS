@@ -104,7 +104,7 @@ class TestCheckAffectedViews(TestCase):
         )
         check_affected_dataset_views(
             dataset_id=self.dataset_1.id,
-            entity_id=self.geographical_entity.id
+            entity_id=[self.geographical_entity.id]
         )
 
         for dataset_view in DatasetView.objects.filter(dataset=self.dataset_1):
@@ -177,7 +177,7 @@ class TestCheckAffectedViews(TestCase):
         calculate_entity_count_in_view(self.dataset_view_1)
         check_affected_dataset_views(
             dataset_id=self.dataset_1.id,
-            entity_id=self.geographical_entity.id
+            entity_id=[self.geographical_entity.id]
         )
 
         # Dataset View 1 is not affected, since it does not contain the entity.
@@ -238,7 +238,7 @@ class TestCheckAffectedViews(TestCase):
 
         check_affected_dataset_views(
             dataset_id=self.dataset_1.id,
-            entity_id=self.geographical_entity.id
+            entity_id=[self.geographical_entity.id]
         )
 
         # Static View is not affected.

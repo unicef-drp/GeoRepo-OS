@@ -52,7 +52,9 @@ def review_approval(
     if entity_upload.revised_geographical_entity:
         check_affected_dataset_views.delay(
             dataset.id,
-            entity_id=entity_upload.revised_geographical_entity.id
+            [entity_upload.revised_geographical_entity.id],
+            [],
+            True
         )
     # remove task id
     entity_upload = EntityUploadStatus.objects.get(id=entity_upload_id)
@@ -159,7 +161,9 @@ def process_batch_review(batch_review_id):
             trigger_generate_dynamic_views(dataset, adm0_list=adm0_list)
             check_affected_dataset_views.delay(
                 dataset.id,
-                unique_codes=adm0_list
+                None,
+                adm0_list,
+                True
             )
     # finished processing
     logger.info(f'Finished process_batch_review {batch_review_id}')

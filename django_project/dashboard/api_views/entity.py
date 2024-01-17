@@ -206,7 +206,8 @@ class EntityEdit(APIView):
         serializer.is_valid(raise_exception=True)
         if request.data.get('is_dirty', False):
             entity = serializer.save()
-            check_affected_dataset_views.delay(entity.dataset.id, entity.id)
+            check_affected_dataset_views.delay(
+                entity.dataset.id, [entity.id], [], False)
             entity.refresh_from_db()
         return Response(EntityEditSerializer(entity).data, 200)
 
@@ -241,7 +242,7 @@ class BatchEntityEditAPI(APIView):
                 'detail': (
                     'There is ongoing batch entity edit for this dataset!'
                 ),
-                'batch_id': existing_batch_edit.id
+                'batch_edit_id': existing_batch_edit.id
             }, 400)
         batch_edit = BatchEntityEdit.objects.create(
             dataset=dataset,
@@ -402,3 +403,14 @@ class BatchEntityEditResultAPI(APIView):
             csv_reader = csv.DictReader(file)
             data = [row for row in csv_reader]
         return Response(status=200, data=data)
+
+
+class DatasetEntityEditHistory(APIView):
+    """API to fetch the history of entity edit."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, *args, **kwargs):
+        dataset_id = self.request.GET.get('dataset_id')
+        dataset = get_object_or_404(Dataset, id=dataset_id)
+
+
