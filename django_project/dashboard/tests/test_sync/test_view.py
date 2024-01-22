@@ -128,11 +128,12 @@ class TestViewSyncList(TestCase):
 
     def test_sort(self):
         dataset_view_2 = DatasetViewF.create(
-            created_by=self.creator
+            created_by=self.creator,
+            dataset=self.dataset,
         )
         grant_dataset_manager(dataset_view_2.dataset, self.creator)
         query_params = {
-            'sort_by': 'id',
+            'sort_by': 'name',
             'sort_direction': 'desc'
         }
         request = self.factory.post(
@@ -156,7 +157,8 @@ class TestViewSyncList(TestCase):
 
     def test_pagination(self):
         dataset_view_2 = DatasetViewF.create(
-            created_by=self.creator
+            created_by=self.creator,
+            dataset=self.dataset,
         )
         grant_dataset_manager(dataset_view_2.dataset, self.creator)
         query_params = {
@@ -180,7 +182,8 @@ class TestViewSyncList(TestCase):
 
     def test_search(self):
         dataset_view_2 = DatasetViewF.create(
-            created_by=self.creator
+            created_by=self.creator,
+            dataset=self.dataset,
         )
         grant_dataset_manager(dataset_view_2.dataset, self.creator)
         request = self.factory.post(
@@ -202,19 +205,16 @@ class TestViewSyncList(TestCase):
 
     def test_filter(self):
         dataset_view_2 = DatasetViewF.create(
-            created_by=self.creator
+            created_by=self.creator,
+            dataset=self.dataset,
         )
         grant_dataset_manager(dataset_view_2.dataset, self.creator)
         request = self.factory.post(
             reverse('view-sync-list-per-dataset', args=[self.dataset.id]),
             {
-                'dataset': [
-                    dataset_view_2.dataset.label,
-                    dataset_view_2.dataset.uuid,
-                    dataset_view_2.dataset_id,
-                ],
-                'min_privacy': [4],
-            }
+                'vector_tile_sync_status': ['Done']
+            },
+            format='json'
         )
         request.user = self.superuser
         list_view = ViewSyncList.as_view()
@@ -224,5 +224,5 @@ class TestViewSyncList(TestCase):
         self.assertEqual(response.data['total_page'], 1)
         self.assertEqual(
             response.data['results'][0].get('id'),
-            dataset_view_2.id
+            self.dataset_view_1.id
         )

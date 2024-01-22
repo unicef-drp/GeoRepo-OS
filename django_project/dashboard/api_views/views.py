@@ -33,7 +33,8 @@ from georepo.models.dataset_view import (
 from georepo.utils.dataset_view import (
     create_sql_view,
     init_view_privacy_level,
-    get_view_resource_from_view
+    get_view_resource_from_view,
+    calculate_entity_count_in_view
 )
 from georepo.utils.permission import (
     check_user_has_view_permission,
@@ -490,6 +491,7 @@ class UpdateView(AzureAuthRequiredMixin,
         dataset_view.save()
         create_sql_view(dataset_view)
         init_view_privacy_level(dataset_view)
+        calculate_entity_count_in_view(dataset_view)
         return Response(status=200)
 
 
@@ -543,7 +545,7 @@ class CreateNewView(AzureAuthRequiredMixin,
         dataset_view.save()
         create_sql_view(dataset_view)
         init_view_privacy_level(dataset_view)
-
+        calculate_entity_count_in_view(dataset_view)
         return Response(status=201)
 
 

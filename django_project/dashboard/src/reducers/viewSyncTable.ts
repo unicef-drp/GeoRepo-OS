@@ -1,5 +1,5 @@
 import {createSlice, PayloadAction} from "@reduxjs/toolkit";
-import {getDefaultFilter, ViewSyncFilterInterface} from "../views/SyncStatus/Filter"
+import {getDefaultFilter, ViewSyncFilterInterface} from "../models/syncStatus"
 import {RootState} from "../app/store";
 
 
