@@ -53,7 +53,8 @@ from georepo.models import (
     BackgroundTask,
     GeocodingRequest,
     SearchIdRequest,
-    PENDING
+    PENDING,
+    EntityEditHistory
 )
 from georepo.utils.admin import (
     get_deleted_objects,
@@ -907,6 +908,30 @@ class SearchIdRequestAdmin(admin.ModelAdmin):
     actions = [trigger_process_search_id_request]
 
 
+class EntityEditHistoryAdmin(admin.ModelAdmin):
+    list_display = ('get_dataset',
+                    'geographical_entity',
+                    'get_level', 'date_time', 'updated_by')
+    search_fields = ['geographical_entity__label',
+                     'geographical_entity__unique_code',
+                     'geographical_entity__dataset__label']
+    list_filter = ['geographical_entity__dataset__label',
+                   'geographical_entity__level']
+
+    def get_readonly_fields(self, request, obj=None):
+        return [f.name for f in self.model._meta.fields]
+
+    def get_dataset(self, obj):
+        return obj.geographical_entity.dataset
+    get_dataset.short_description = 'Dataset'
+    get_dataset.admin_order_field = 'geographical_entity__dataset'
+
+    def get_level(self, obj):
+        return obj.geographical_entity.level
+    get_level.short_description = 'Level'
+    get_level.admin_order_field = 'geographical_entity__level'
+
+
 admin.site.register(GeographicalEntity, GeographicalEntityAdmin)
 admin.site.register(Language, LanguageAdmin)
 admin.site.register(EntityType)
@@ -929,6 +954,7 @@ admin.site.register(UserAccessRequest, UserAccessRequestAdmin)
 admin.site.register(BackgroundTask, BackgroundTaskAdmin)
 admin.site.register(GeocodingRequest, GeocodingRequestAdmin)
 admin.site.register(SearchIdRequest, SearchIdRequestAdmin)
+admin.site.register(EntityEditHistory, EntityEditHistoryAdmin)
 
 
 # Define inline formset

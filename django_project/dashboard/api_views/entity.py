@@ -15,7 +15,8 @@ from dashboard.models import (
 from georepo.models import (
     GeographicalEntity,
     Dataset,
-    DatasetView
+    DatasetView,
+    EntityEditHistory
 )
 from georepo.models.base_task_request import COMPLETED_STATUS, PENDING, DONE
 from georepo.tasks.dataset_view import check_affected_dataset_views
@@ -196,6 +197,8 @@ class EntityEdit(APIView):
             return Response({
                 'detail': 'Insufficient permission'
             }, 403)
+        # store old entity data
+        old_entity_data = EntityEditSerializer(entity).data
         serializer = EntityEditSerializer(
             data=request.data,
             context={
@@ -210,6 +213,15 @@ class EntityEdit(APIView):
             check_affected_dataset_views.delay(
                 entity.dataset.id, [entity.id], [], False)
             entity.refresh_from_db()
+            new_entity_data = EntityEditSerializer(entity).data
+            EntityEditHistory.objects.create(
+                geographical_entity=entity,
+                date_time=timezone.now(),
+                updated_by=request.user,
+                entity_old=old_entity_data,
+                entity_new=new_entity_data,
+                summary='-'
+            )
         return Response(EntityEditSerializer(entity).data, 200)
 
     def get(self, request, entity_id: int, *args, **kwargs):
