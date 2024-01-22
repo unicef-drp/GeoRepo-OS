@@ -14,17 +14,70 @@ export default function EntityEditHistory(props: any) {
     const navigate = useNavigate()
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState<EntityEditHistoryItemInterface[]>([])
-    const [customColumnOptions, setCustomColumnOptions] = useState({
-        'Status': {
-            filter: true,
-            sort: true,
-            display: true,
-            filterOptions: {
-              fullWidth: true,
+    const customColumnOptions = {
+        'epoch': {
+            'label': 'Date',
+            'customBodyRender': (value: any, tableMeta: any, updateValue: any) => {
+                let rowData = tableMeta.rowData
+                return (
+                    <span>{new Date(rowData[0] * 1000).toDateString()}</span>
+                )
+            },
+            'filter': false
+        },
+        'user_first_name': {
+            'name': 'user_first_name',
+            'label': 'User',
+            'customBodyRender': (value: any, tableMeta: any, updateValue: any) => {
+                let rowData = tableMeta.rowData
+                let _name = rowData[1]
+                let _lastName = rowData[2]
+                if (_lastName) {
+                    _name = _name + ' ' + _lastName
+                }
+                return (
+                    <span>{_name ? _name : '-'}</span>
+                )
+            },
+            'filter': false
+        },
+        'object_id': {
+            'display': false,
+            'filter': false
+        },
+        'user_last_name': {
+            'display': false,
+            'filter': false
+        },
+        'type': {
+            'name': 'type',
+            'label': 'Type',
+            'filter': true,
+            'filterOptions': {
+                fullWidth: true,
+            },
+            'customBodyRender': (value: any, tableMeta: any, updateValue: any) => {
+                let rowData = tableMeta.rowData
+                let _type = rowData[3]
+                if (_type !== 'Batch') return <span>{value}</span>
+                return <span className="TableCellLink">{value}</span>
             }
         },
-    })
-    const excludedColumns = ['object_id', 'dataset_id', 'progress', 'total_count', 'success_count', 'error_count']
+        'status_text': {
+            'name': 'status_text',
+            'label': 'Status',
+            'filter': true,
+            'filterOptions': {
+                fullWidth: true,
+            }
+        },
+        'summary_text': {
+            'name': 'summary_text',
+            'label': 'Summary',
+            'filter': false,
+            'sort': false
+        }
+    }
 
     const fetchData = () => {
         setLoading(true)
@@ -53,7 +106,9 @@ export default function EntityEditHistory(props: any) {
     }, [dataset])
 
     const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-        const objectId = rowData[5]
+        const type = data[rowMeta.dataIndex].type
+        if (type !== 'Batch') return;
+        const objectId = rowData[4]
         let _navigate_to = `/admin_boundaries/edit_entity/wizard?session=${objectId}&dataset=${dataset.id}`
         navigate(_navigate_to)
     }
@@ -70,7 +125,6 @@ export default function EntityEditHistory(props: any) {
                             selectionChanged={null}
                             onRowClick={handleRowClick}
                             customOptions={customColumnOptions}
-                            excludedColumns={excludedColumns}
                             options={{
                                 'confirmFilters': true,
                                 'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {

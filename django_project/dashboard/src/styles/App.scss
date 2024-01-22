@@ -378,3 +378,13 @@ p {
 .bold-text {
   font-weight: bold;
 }
+
+.TableCellLink {
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+.TableCellLink:hover {
+  color: var(--primary-color-transparent);
+}
+

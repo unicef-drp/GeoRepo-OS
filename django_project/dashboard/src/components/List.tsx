@@ -262,7 +262,7 @@ export default function List(
                     _column['options'] = {
                         filter: false,
                         customBodyRender: (value, tableMeta, updateValue) => {
-                            if (value.includes('T') && value.includes('Z')) {
+                            if (value.includes('T') && value.includes('Z') || !isNaN(value)) {
                                 return new Date(value).toDateString()
                             }
                             return value

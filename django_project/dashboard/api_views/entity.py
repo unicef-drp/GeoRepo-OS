@@ -2,6 +2,8 @@ import csv
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db.models import Value, CharField, F
+from django.db.models.functions import Extract
 from guardian.core import ObjectPermissionChecker
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -15,7 +17,8 @@ from dashboard.models import (
 from georepo.models import (
     GeographicalEntity,
     Dataset,
-    DatasetView
+    DatasetView,
+    EntityEditHistory
 )
 from georepo.models.base_task_request import COMPLETED_STATUS, PENDING, DONE
 from georepo.tasks.dataset_view import check_affected_dataset_views
@@ -27,8 +30,7 @@ from georepo.utils.permission import (
 from dashboard.serializers.entity import (
     EntityConceptUCodeSerializer,
     EntityEditSerializer,
-    BatchEntityEditSerializer,
-    BatchEntityEditListItemSerializer
+    BatchEntityEditSerializer
 )
 from dashboard.tools.entity_edit import (
     try_delete_uploaded_file,
@@ -196,6 +198,8 @@ class EntityEdit(APIView):
             return Response({
                 'detail': 'Insufficient permission'
             }, 403)
+        # store old entity data
+        old_entity_data = EntityEditSerializer(entity).data
         serializer = EntityEditSerializer(
             data=request.data,
             context={
@@ -210,6 +214,15 @@ class EntityEdit(APIView):
             check_affected_dataset_views.delay(
                 entity.dataset.id, [entity.id], [], False)
             entity.refresh_from_db()
+            new_entity_data = EntityEditSerializer(entity).data
+            EntityEditHistory.objects.create(
+                geographical_entity=entity,
+                date_time=timezone.now(),
+                updated_by=request.user,
+                entity_old=old_entity_data,
+                entity_new=new_entity_data,
+                summary='-'
+            )
         return Response(EntityEditSerializer(entity).data, 200)
 
     def get(self, request, entity_id: int, *args, **kwargs):
@@ -416,9 +429,37 @@ class DatasetEntityEditHistory(APIView):
         dataset = get_object_or_404(Dataset, id=dataset_id)
         batch_edits = BatchEntityEdit.objects.filter(
             dataset=dataset
-        ).order_by('-id')
+        ).annotate(
+            epoch=Extract('submitted_on', 'epoch'),
+            user_first_name=F('submitted_by__first_name'),
+            user_last_name=F('submitted_by__last_name'),
+            type=Value('Batch', CharField()),
+            object_id=F('id'),
+            status_text=F('status'),
+            summary_text=F('success_notes'),
+        ).values('epoch', 'user_first_name', 'user_last_name',
+                 'type', 'object_id', 'status_text', 'summary_text')
+        single_edits = EntityEditHistory.objects.filter(
+            geographical_entity__dataset=dataset
+        ).annotate(
+            epoch=Extract('date_time', 'epoch'),
+            user_first_name=F('updated_by__first_name'),
+            user_last_name=F('updated_by__last_name'),
+            type=Value('Single', CharField()),
+            object_id=F('id'),
+            status_text=Value('DONE', CharField()),
+            summary_text=F('summary'),
+        ).values('epoch', 'user_first_name', 'user_last_name',
+                 'type', 'object_id', 'status_text', 'summary_text')
+        history_qs = batch_edits.union(single_edits).order_by('-epoch')
         return Response(
-            data=BatchEntityEditListItemSerializer(
-                batch_edits, many=True).data,
+            data=list(history_qs),
             status=200
         )
+
+
+# class DatasetEntitySingleEditHistory(APIView):
+#     """API to fetch the detail of single edit history of entity."""
+
+#     def get(self, *args, **kwargs):
+#         id = self.request.GET.get('id')

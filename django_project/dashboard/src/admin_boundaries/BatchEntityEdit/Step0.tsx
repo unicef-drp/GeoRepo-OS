@@ -240,29 +240,36 @@ export default function Step0(props: Step0Interface) {
                   <p className="display-linebreak">
                       Sample csv or excel file:
                   </p>
-                  <table className="tg-sample-excel">
-                    <thead>
+                  <div className='SampleCSVImporter'>
+                    <table className="blueTable">
+                      <thead>
                       <tr>
-                        <th className="tg-0lax">ucode</th>
-                        <th className="tg-0lax">name_new</th>
-                        <th className="tg-0lax">id_new</th>
+                      <th>Ucode</th>
+                      <th>New Name</th>
+                      <th>New ID</th>
                       </tr>
-                    </thead>
-                    <tbody>
+                      </thead>
+                      <tbody>
                       <tr>
-                        <td className="tg-0lax">MWI_V1</td>
-                        <td className="tg-0lax"></td>
-                        <td className="tg-0lax"></td>
+                      <td>MWI_V1</td>
+                      <td>&nbsp;</td>
+                      <td>&nbsp;</td>
                       </tr>
                       <tr>
-                        <td className="tg-0lax">MWI_0001_V1</td>
-                        <td className="tg-0lax"></td>
-                        <td className="tg-0lax"></td>
+                      <td>MWI_0001_V1</td>
+                      <td>&nbsp;</td>
+                      <td>&nbsp;</td>
                       </tr>
-                    </tbody>
-                  </table>
+                      <tr>
+                      <td>MWI_0002_V1</td>
+                      <td>&nbsp;</td>
+                      <td>&nbsp;</td>
+                      </tr>
+                      </tbody>
+                    </table>
+                  </div>
                   <p className="display-linebreak">
-                      Your spreadsheet should have, at minimum, a <span className='bold-text'>ucode</span> column whose contents should match existing entities, and one more columns containing either names or ids that will be added / updated. 
+                      Your spreadsheet should have, at minimum, a <span className='bold-text'>ucode</span> column whose contents should match existing entities, and one or more columns containing either names or ids that will be added / updated. 
                       In the next steps you will be able to do the type mappings for these columns to determine how they are overlaid with the existing data.
                   </p>
                 </Box>
