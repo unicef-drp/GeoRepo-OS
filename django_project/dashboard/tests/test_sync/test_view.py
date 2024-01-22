@@ -212,7 +212,7 @@ class TestViewSyncList(TestCase):
         request = self.factory.post(
             reverse('view-sync-list-per-dataset', args=[self.dataset.id]),
             {
-                'sync_status': ['Done']
+                'vector_tile_sync_status': ['Done']
             },
             format='json'
         )
