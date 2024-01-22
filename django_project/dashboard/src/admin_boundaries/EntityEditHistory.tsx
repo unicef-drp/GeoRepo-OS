@@ -14,17 +14,68 @@ export default function EntityEditHistory(props: any) {
     const navigate = useNavigate()
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState<EntityEditHistoryItemInterface[]>([])
-    const [customColumnOptions, setCustomColumnOptions] = useState({
-        'Status': {
-            filter: true,
-            sort: true,
-            display: true,
-            filterOptions: {
-              fullWidth: true,
+    const excludedColumns = ['object_id', 'user_last_name']
+    const customColumnOptions = {
+        'epoch': {
+            'name': 'epoch',
+            'label': 'Date',
+            'options': {
+                customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+                let rowData = tableMeta.rowData
+                return (
+                    <span>{new Date(rowData[0]).toDateString()}</span>
+                )
+                },
+                filter: false
             }
         },
-    })
-    const excludedColumns = ['object_id', 'dataset_id', 'progress', 'total_count', 'success_count', 'error_count']
+        'user_first_name': {
+            'name': 'user_first_name',
+            'label': 'User',
+            'options': {
+                customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+                    let rowData = tableMeta.rowData
+                    let _name = rowData[1]
+                    let _lastName = rowData[2]
+                    if (_lastName) {
+                        _name = ' ' + _lastName
+                    }
+                    return (
+                        <span>{_name ? _name : '-'}</span>
+                    )
+                },
+                filter: false
+            }
+        },
+        'type': {
+            'name': 'type',
+            'label': 'Type',
+            'options': {
+                filter: true,
+                filterOptions: {
+                fullWidth: true,
+                }
+            }
+        },
+        'status_text': {
+            'name': 'status_text',
+            'label': 'Status',
+            'options': {
+                filter: true,
+                filterOptions: {
+                fullWidth: true,
+                }
+            }
+        },
+        'summary_text': {
+            'name': 'summary_text',
+            'label': 'Summary',
+            'options': {
+                filter: false,
+                sort: false
+            }
+        }
+    }
 
     const fetchData = () => {
         setLoading(true)
@@ -53,7 +104,9 @@ export default function EntityEditHistory(props: any) {
     }, [dataset])
 
     const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-        const objectId = rowData[5]
+        const type = rowData[3]
+        if (type !== 'Batch') return;
+        const objectId = rowData[4]
         let _navigate_to = `/admin_boundaries/edit_entity/wizard?session=${objectId}&dataset=${dataset.id}`
         navigate(_navigate_to)
     }

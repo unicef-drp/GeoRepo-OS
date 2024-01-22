@@ -257,12 +257,12 @@ export default function List(
                 }
                 if (customOptions[rowKey] !== undefined) {
                     _column['options'] = customOptions[rowKey]
-                }
-                if (rowKey.toLowerCase().includes('date')) {
+                } else if (rowKey.toLowerCase().includes('date')) {
                     _column['options'] = {
                         filter: false,
                         customBodyRender: (value, tableMeta, updateValue) => {
-                            if (value.includes('T') && value.includes('Z')) {
+                            console.log('testetst')
+                            if (value.includes('T') && value.includes('Z') || !isNaN(value)) {
                                 return new Date(value).toDateString()
                             }
                             return value
