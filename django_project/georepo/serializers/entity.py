@@ -143,6 +143,8 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
             if val is None or val == '':
                 continue
             lang = obj.get(f'{field_key}__language__code', default_lang_code)
+            if lang is None:
+                lang = default_lang_code
             label = obj.get(f'{field_key}__label', None)
             name_label = ''
             if label:

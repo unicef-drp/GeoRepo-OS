@@ -301,7 +301,7 @@ function Step2LevelUpload(props: LevelUploadInterface) {
       // Check at least there is 1 Name Fields - Languange + Name Field selected
       if (nameFields.length === 0)
         return 'Name Fields'
-      let invalidNameFields = nameFields.filter(item => item.field === '')
+      let invalidNameFields = nameFields.filter(item => !(item.field && item.selectedLanguage))
       if (invalidNameFields.length > 0)
         return 'Name Fields'
       let _noDupNames = validateNoDuplicateNameLabel()
@@ -311,9 +311,9 @@ function Step2LevelUpload(props: LevelUploadInterface) {
       // Check at least there is 1 Id Fields - Type + Id Field selected
       if (idFields.length === 0)
         return 'Id Field'
-        let invalidIdFields = idFields.filter(item => item.field === '' || item.idType === null)
-        if (invalidIdFields.length > 0)
-          return 'Id Field'
+      let invalidIdFields = idFields.filter(item => !(item.field && item.idType))
+      if (invalidIdFields.length > 0)
+        return 'Id Field'
       // Check Parent Id Field
       if (props.uploadData.level !== '0') {
         if (parentIdField === '')

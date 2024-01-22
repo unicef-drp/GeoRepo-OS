@@ -20,7 +20,7 @@ interface NameFieldFormControlProps {
     attributes: string[],
     isReadOnly: boolean,
     index: Number,
-    handleNameLanguageChange: (nameFieldId: string, languageId?: string, field?: string, label?: string) => void,
+    handleNameLanguageChange: (nameFieldId: string, languageId?: string, field?: string, label?: string, clearedFieldName?: string) => void,
     removeNameField: (id: string) => void,
     addNameField: () => void,
     hideCheckbox?: boolean
@@ -47,7 +47,7 @@ interface NameFieldFormControlProps {
               label={'Label'}
               type={"text"}
               value={props.nameField.label}
-              onChange={val => props.handleNameLanguageChange(props.nameField.id, null, null, val.target.value)}
+              onChange={val => props.handleNameLanguageChange(props.nameField.id, null, null, val.target.value, 'label')}
               disabled={props.isReadOnly}
               error={props.nameField.duplicateError}
               inputProps={{
@@ -62,8 +62,8 @@ interface NameFieldFormControlProps {
                   name={'Language'}
                   value={props.nameField.selectedLanguage ? props.languageOptions.find(({id}) => id === props.nameField.selectedLanguage).name : '' }
                   attributes={props.languageOptions.map((languageOption: LanguageOption) => ({id: languageOption.id, label: languageOption.name}))}
-                  selectionChanged={(value: any) => props.handleNameLanguageChange(props.nameField.id, value.id as string, null, null)}
-                  onSelectionCleared={() => props.handleNameLanguageChange(props.nameField.id, '', null, null)}
+                  selectionChanged={(value: any) => props.handleNameLanguageChange(props.nameField.id, value.id as string, null, null, 'language')}
+                  onSelectionCleared={() => props.handleNameLanguageChange(props.nameField.id, '', null, null, 'language')}
                   isReadOnly={props.isReadOnly}
               />
           </Grid>
@@ -74,7 +74,7 @@ interface NameFieldFormControlProps {
               value={props.nameField.field}
               attributes={props.attributes}
               selectionChanged={(value: any) => props.handleNameLanguageChange(
-                props.nameField.id, null, value as string, null)
+                props.nameField.id, null, value as string, null, 'nameField')
               }
               required={!props.hideCheckbox}
               isReadOnly={props.isReadOnly}

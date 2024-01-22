@@ -101,57 +101,38 @@ export default function Step1(props: Step1Interface) {
         nameFieldId: string,
         languageId?: string,
         field?: string,
-        label?: string) => {
-          if (!languageId && !field && !label) {
-            // field has been cleared
-            let _updatedNameFields = nameFields.filter((nameField) => nameField.id !== nameFieldId)
-            if (_updatedNameFields.length === 0) {
-                _updatedNameFields.push({
-                    id: '1',
-                    selectedLanguage: '',
-                    field: '',
-                    default: false,
-                    label: ''
-                })
-            }
-            setNameFields(_updatedNameFields)
-          } else {
-            const updatedNameFields = nameFields.map((nameField, index) => {
-                if (nameField.id === nameFieldId) {
-                    if (languageId !== null) {
-                        nameField.selectedLanguage = languageId
-                    }
-                    if (field) {
-                        nameField.field = field
-                    }
-                    if (label !== null) {
-                    nameField.label = label
-                    }
-                    nameField.duplicateError = false
+        label?: string,
+        clearedFieldName?: string) => {
+        const updatedNameFields = nameFields.map((nameField, index) => {
+            if (nameField.id === nameFieldId) {
+                if (languageId !== null) {
+                    nameField.selectedLanguage = languageId
+                } else if (clearedFieldName === 'language') {
+                    nameField.selectedLanguage = ''
                 }
-                return nameField
-            })
-            setNameFields(updatedNameFields)
-          }
-          setIsDirty(true)
+                if (field) {
+                    nameField.field = field
+                } else if (clearedFieldName === 'nameField') {
+                    nameField.field = ''
+                }
+                if (label !== null) {
+                    nameField.label = label
+                } else if (clearedFieldName === 'label') {
+                    nameField.label = ''
+                }
+                nameField.duplicateError = false
+            }
+            return nameField
+        })
+        setNameFields(updatedNameFields)
+        setIsDirty(true)
     }
   
     const handleIdTypeChange = (
         idFieldId: string,
         idTypeId?: string,
-        field?: string) => {
-          if (!idTypeId && !field) {
-            let _updatedIdFields = idFields.filter((idField) => idField.id !== idFieldId)
-            if (_updatedIdFields.length === 0) {
-                _updatedIdFields.push({
-                    id: '1',
-                    field: '',
-                    idType: null,
-                    default: false
-                })
-            }
-            setIdFields(_updatedIdFields)
-          } else {
+        field?: string,
+        clearedFieldName?: string) => {
             const idType = idTypes.find(idType => idType.id == idTypeId)
             const updatedIdFields = idFields.map(idField => {
                 if (idField.id === idFieldId) {
@@ -160,13 +141,14 @@ export default function Step1(props: Step1Interface) {
                     }
                     if (field) {
                         idField.field = field
+                    } else if (clearedFieldName === 'idField') {
+                        idField.field = ''
                     }
                 }
                 return idField
             })
             setIdFields(updatedIdFields)
-          }
-          setIsDirty(true)
+            setIsDirty(true)
     }
 
     const addNameField = () => {
@@ -226,6 +208,17 @@ export default function Step1(props: Step1Interface) {
         }
         if (ucodeField.trim() === '')
             return 'ucode field'
+        // check if all name fields are valid
+        if (nameFields.length > 0) {
+            let invalidNameFields = nameFields.filter(item => !(item.field && item.selectedLanguage))
+            if (invalidNameFields.length > 0)
+                return 'Invalid Name Field'
+        }
+        if (idFields.length > 0) {
+            let invalidIdFields = idFields.filter(item => !(item.field && item.idType))
+            if (invalidIdFields.length > 0)
+                return 'Invalid Id Field'
+        }
         return ''
     }
 
