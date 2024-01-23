@@ -95,25 +95,11 @@ def handle_task_failure(task: BackgroundTask):
                 id=view_resource_id).first()
             if resource is None:
                 return
-            export_data = (
-                task_param[1] if len(task_param) > 1 else True
-            )
             resource.status = DatasetView.DatasetViewStatus.ERROR
             resource.vector_tile_sync_status = (
                 DatasetViewResource.SyncStatus.OUT_OF_SYNC
             )
-            if export_data:
-                fields = [
-                    'geojson_sync_status',
-                    'shapefile_sync_status',
-                    'kml_sync_status',
-                    'topojson_sync_status'
-                ]
-                for field in fields:
-                    setattr(resource, field,
-                            DatasetViewResource.SyncStatus.OUT_OF_SYNC)
             resource.tiling_current_task = None
-            resource.product_current_task = None
             resource.save()
         except DatasetViewResource.DoesNotExist as ex:
             logger.error(ex)
@@ -205,16 +191,10 @@ def handle_task_interrupted(task: BackgroundTask):
                 id=view_resource_id).first()
             if resource is None:
                 return
-            export_data = (
-                task_param[1] if len(task_param) > 1 else True
-            )
-            export_vector_tile = (
-                task_param[2] if len(task_param) > 2 else True
-            )
             overwrite = False
             log_object_id = (
-                int(task_param[4]) if len(task_param) > 4 and
-                task_param[4] is not None else None
+                int(task_param[2]) if len(task_param) > 2 and
+                task_param[2] is not None else None
             )
             resource.status = (
                 DatasetView.DatasetViewStatus.PENDING
@@ -222,25 +202,12 @@ def handle_task_interrupted(task: BackgroundTask):
             resource.vector_tile_sync_status = (
                 DatasetViewResource.SyncStatus.SYNCING
             )
-            if export_data:
-                fields = [
-                    'geojson_sync_status',
-                    'shapefile_sync_status',
-                    'kml_sync_status',
-                    'topojson_sync_status'
-                ]
-                for field in fields:
-                    setattr(resource, field,
-                            DatasetViewResource.SyncStatus.SYNCING)
             resource.tiling_current_task = None
-            resource.product_current_task = None
             resource.save()
             task_celery = (
                 generate_view_resource_vector_tiles_task.apply_async(
                     (
                         view_resource_id,
-                        export_data,
-                        export_vector_tile,
                         overwrite,
                         log_object_id
                     ),
@@ -257,18 +224,14 @@ def handle_task_interrupted(task: BackgroundTask):
                 'Invalid parameter view_vector_tiles_task')
         try:
             view_id = task_param[0]
-            export_data = task_param[1] if len(task_param) > 1 else True
-            export_vector_tile = (
-                task_param[2] if len(task_param) > 2 else True
-            )
-            overwrite = task_param[3] if len(task_param) > 3 else True
+            overwrite = task_param[1] if len(task_param) > 2 else True
             view = DatasetView.objects.filter(id=view_id).first()
             if view is None:
                 return
             view.simplification_current_task = None
             view.save(update_fields=['simplification_current_task'])
             task_celery = view_vector_tiles_task.delay(
-                view.id, export_data, export_vector_tile, overwrite)
+                view.id, overwrite)
             view.task_id = task_celery.id
             view.save(update_fields=['task_id'])
         except DatasetView.DoesNotExist as ex:

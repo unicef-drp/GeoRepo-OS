@@ -60,8 +60,7 @@ def trigger_generate_dynamic_views(dataset: Dataset,
         generate_view_bbox(dataset_view)
 
 
-def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
-                                          export_data: bool = True):
+def trigger_generate_vector_tile_for_view(dataset_view: DatasetView):
     """
     Trigger generate vector tiles for a view
     """
@@ -70,9 +69,6 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
     )
     dataset_view.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
     dataset_view.vector_tiles_progress = 0
-    if export_data:
-        dataset_view.product_sync_status = DatasetView.SyncStatus.SYNCING
-        dataset_view.product_progress = 0
     if dataset_view.task_id:
         res = AsyncResult(dataset_view.task_id)
         if not res.ready():
@@ -83,7 +79,7 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
                 signal='SIGKILL'
             )
     dataset_view.save()
-    task = view_vector_tiles_task.delay(dataset_view.id, export_data)
+    task = view_vector_tiles_task.delay(dataset_view.id)
     dataset_view.task_id = task.id
     dataset_view.save(update_fields=['task_id'])
 

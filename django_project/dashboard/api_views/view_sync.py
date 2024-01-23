@@ -1,8 +1,6 @@
 import math
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
-from celery.result import AsyncResult
-from core.celery import app
 from django.db.models.expressions import Q
 from django.core.paginator import Paginator
 from rest_framework.permissions import IsAuthenticated
@@ -16,13 +14,11 @@ from dashboard.serializers.view import (
     ViewSyncSerializer
 )
 from dashboard.tasks import (
-    generate_view_export_data,
     view_simplification_task
 )
 from georepo.models import (
     Dataset,
-    DatasetView, DatasetViewResource,
-    DatasetViewTilingConfig
+    DatasetView, DatasetViewTilingConfig
 )
 from georepo.utils.dataset_view import (
     trigger_generate_vector_tile_for_view
@@ -314,69 +310,19 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
         if 'tiling_config' in sync_options:
             for view in views:
                 view.match_tiling_config()
-        if len({'vector_tiles', 'products'}.difference(
+        if len({'vector_tiles'}.difference(
             set(sync_options))
         ) == 0:
             for view in views:
                 trigger_generate_vector_tile_for_view(
-                    view,
-                    export_data=True
+                    view
                 )
         # if sync only vector tiles
         elif 'vector_tiles' in sync_options:
             for view in views:
                 trigger_generate_vector_tile_for_view(
-                    view,
-                    export_data=False
+                    view
                 )
-        elif 'products' in sync_options:
-            for view in views:
-                view.product_sync_status = DatasetView.SyncStatus.SYNCING
-                view.save(
-                    update_fields=['product_sync_status']
-                )
-                view_resources = DatasetViewResource.objects.filter(
-                    dataset_view=view
-                )
-                for view_resource in view_resources:
-                    if view_resource.product_task_id:
-                        res = AsyncResult(view_resource.product_task_id)
-                        if not res.ready():
-                            # find if there is running task and stop it
-                            app.control.revoke(
-                                view_resource.product_task_id,
-                                terminate=True,
-                                signal='SIGKILL'
-                            )
-                    view_resource.status = (
-                        DatasetView.DatasetViewStatus.PENDING
-                    )
-                    view_resource.geojson_progress = 0
-                    view_resource.shapefile_progress = 0
-                    view_resource.kml_progress = 0
-                    view_resource.topojson_progress = 0
-                    view_resource.geojson_sync_status = (
-                        DatasetView.SyncStatus.SYNCING
-                    )
-                    view_resource.shapefile_sync_status = (
-                        DatasetView.SyncStatus.SYNCING
-                    )
-                    view_resource.kml_sync_status = (
-                        DatasetView.SyncStatus.SYNCING
-                    )
-                    view_resource.topojson_sync_status = (
-                        DatasetView.SyncStatus.SYNCING
-                    )
-                    view_resource.save(update_fields=[
-                        'status', 'geojson_progress', 'shapefile_progress',
-                        'kml_progress', 'topojson_progress',
-                        'shapefile_sync_status', 'kml_sync_status',
-                        'topojson_sync_status', 'geojson_sync_status'
-                    ])
-                    task = generate_view_export_data.delay(
-                        view_resource.id)
-                    view_resource.product_task_id = task.id
-                    view_resource.save(update_fields=['product_task_id'])
         elif 'simplify' in sync_options:
             for view in views:
                 # check if view has custom tiling config

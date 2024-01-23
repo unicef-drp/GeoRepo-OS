@@ -446,8 +446,7 @@ def generate_view_vector_tiles(modeladmin, request, queryset):
         trigger_generate_vector_tile_for_view
     )
     for dataset_view in queryset:
-        trigger_generate_vector_tile_for_view(dataset_view,
-                                              export_data=False)
+        trigger_generate_vector_tile_for_view(dataset_view)
 
 
 def populate_view_default_tile_config(modeladmin, request, queryset):
@@ -636,7 +635,7 @@ def trigger_resource_vt_generation(view_resource, is_overwrite):
         view_resource.vector_tiles_size = 1
     view_resource.save()
     task = generate_view_resource_vector_tiles_task.apply_async(
-        (view_resource.id, True, True, is_overwrite),
+        (view_resource.id, is_overwrite),
         queue='tegola'
     )
     view_resource.vector_tiles_task_id = task.id

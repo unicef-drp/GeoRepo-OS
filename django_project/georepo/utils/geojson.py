@@ -1,13 +1,11 @@
 import os
 import json
-import time
 from uuid import UUID
 from datetime import date, datetime
 from django.conf import settings
 
 from georepo.models import (
-    Dataset, DatasetView,
-    DatasetViewResource
+    Dataset
 )
 from georepo.utils.exporter_base import (
     DatasetViewExporterBase
@@ -97,26 +95,6 @@ class GeojsonViewExporter(DatasetViewExporterBase):
             geojson_file.write(']\n')
             geojson_file.write('}\n')
         return geojson_file_path
-
-
-def generate_view_geojson(dataset_view: DatasetView,
-                          view_resource: DatasetViewResource = None,
-                          **kwargs):
-    """
-    Extract geojson from dataset_view and then save it to
-    geojson dataset_view folder
-    :param dataset_view: dataset_view object
-    """
-    start = time.time()
-    exporter = GeojsonViewExporter(dataset_view, view_resource=view_resource)
-    exporter.init_exporter()
-    exporter.run()
-    end = time.time()
-    if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log(
-            'generate_view_geojson',
-            end - start)
-    return exporter
 
 
 def validate_geojson(geojson: dict) -> bool:

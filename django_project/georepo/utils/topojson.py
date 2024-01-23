@@ -1,12 +1,7 @@
-import time
 import logging
 import os
 import subprocess
 from django.conf import settings
-from georepo.models import (
-    DatasetView,
-    DatasetViewResource
-)
 from georepo.utils.exporter_base import (
     DatasetViewExporterBase
 )
@@ -44,23 +39,3 @@ class TopojsonViewExporter(DatasetViewExporterBase):
             logger.error(f'Failed to generate Topojson: {topojson_file}')
             return ''
         return topojson_file
-
-
-def generate_view_topojson(dataset_view: DatasetView,
-                           view_resource: DatasetViewResource = None,
-                           **kwargs):
-    """
-    Extract topojson from dataset_view and then save it to
-    topojson dataset_view folder
-    :param dataset: dataset_view object
-    """
-    start = time.time()
-    exporter = TopojsonViewExporter(dataset_view,
-                                    view_resource=view_resource)
-    exporter.init_exporter()
-    exporter.run()
-    end = time.time()
-    if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log(
-            'generate_view_topojson',
-            end - start)
