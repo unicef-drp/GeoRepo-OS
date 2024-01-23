@@ -468,9 +468,11 @@ class DatasetMVTTiles(APIView):
         )
         if not len(tile):
             raise Http404()
-        return HttpResponse(
+        response = HttpResponse(
             tile,
             content_type="application/x-protobuf")
+        response['X-Accel-Buffering'] = 'no'
+        return response
 
 
 class DatasetMVTTilesView(DatasetMVTTiles):
