@@ -100,9 +100,6 @@ def validate_shapefile_zip(layer_file_path: any):
 class ShapefileViewExporter(DatasetViewExporterBase):
     output = 'shapefile'
 
-    def get_base_output_dir(self) -> str:
-        return settings.SHAPEFILE_FOLDER_OUTPUT
-
     def write_entities(self, schema, entities, context,
                        exported_name, tmp_output_dir,
                        tmp_metadata_file, resource) -> str:

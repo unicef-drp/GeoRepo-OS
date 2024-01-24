@@ -57,9 +57,6 @@ def json_serial(obj):
 class GeojsonViewExporter(DatasetViewExporterBase):
     output = 'geojson'
 
-    def get_base_output_dir(self) -> str:
-        return settings.GEOJSON_FOLDER_OUTPUT
-
     def write_entities(self, schema, entities, context,
                        exported_name, tmp_output_dir,
                        tmp_metadata_file, resource) -> str:

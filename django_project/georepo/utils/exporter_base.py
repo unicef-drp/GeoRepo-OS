@@ -4,6 +4,7 @@ import os
 import shutil
 import datetime
 import zipfly
+import logging
 from django.db import connection
 from django.http import StreamingHttpResponse
 import xml.etree.ElementTree as ET
@@ -43,6 +44,14 @@ from georepo.utils.azure_blob_storage import (
 from georepo.utils.directory_helper import (
     get_folder_size
 )
+from georepo.utils.permission import (
+    get_view_permission_privacy_level
+)
+from georepo.models.export_request import ExportRequest
+
+
+logger = logging.getLogger(__name__)
+
 
 PROPERTY_INT_VALUES = ['admin_level']
 PROPERTY_BOOL_VALUES = ['is_latest']
@@ -70,152 +79,135 @@ def get_dataset_exported_file_name(level: int,
 
 
 class DatasetViewExporterBase(object):
-    output = None
-
-    def __init__(self, dataset_view: DatasetView,
-                 view_resource: DatasetViewResource = None) -> None:
-        self.dataset_view = dataset_view
+    def __init__(self, request: ExportRequest, is_temp: bool = False) -> None:
+        self.request = request
+        self.is_temp = is_temp
+        self.dataset_view = request.dataset_view
         self.total_to_be_exported = 0
         self.total_exported = 0
         self.generated_files = []
-        self.resources = []
-        self.view_resource = view_resource
+        self.levels = []
+        self.privacy_level = get_view_permission_privacy_level(
+            request.submitted_by, self.dataset_view.dataset,
+            self.dataset_view
+        )
+        self.view_resource = DatasetViewResource.objects.filter(
+            dataset_view=self.dataset_view,
+            privacy_level=self.privacy_level
+        ).get()
 
     def get_exported_file_name(self, level: int):
         exported_name = f'adm{level}'
         return exported_name
 
+    def generate_queryset(self):
+        entities = GeographicalEntity.objects.filter(
+            dataset=self.dataset_view.dataset,
+            is_approved=True,
+            privacy_level__lte=self.privacy_level
+        )
+        # raw_sql to view to select id
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(self.dataset_view.uuid))
+        entities = entities.filter(
+            id__in=RawSQL(raw_sql, [])
+        )
+
+        # do other filters
+
+        return entities
+
     def init_exporter(self):
         self.total_to_be_exported = 0
-        resources = DatasetViewResource.objects.filter(
-            dataset_view=self.dataset_view
-        ).order_by('privacy_level')
-        if self.view_resource:
-            resources = resources.filter(
-                id=self.view_resource.id
-            )
-        for resource in resources:
-            # check entities count in current privacy level
-            entity_count = get_entities_count_in_view(
-                self.dataset_view,
-                resource.privacy_level
-            )
-            # skip generation if no entity at current level
-            if entity_count == 0:
-                continue
-            # check if view at privacy level has data
-            entities = GeographicalEntity.objects.filter(
-                dataset=self.dataset_view.dataset,
-                is_approved=True,
-                privacy_level__lte=resource.privacy_level
-            )
-            # raw_sql to view to select id
-            raw_sql = (
-                'SELECT id from "{}"'
-            ).format(str(self.dataset_view.uuid))
-            entities = entities.filter(
-                id__in=RawSQL(raw_sql, [])
-            )
-            if not entities.exists():
-                continue
-            # count levels
-            levels = entities.order_by('level').values_list(
-                'level',
-                flat=True
-            ).distinct()
-            self.resources.append({
-                'resource': resource,
-                'levels': levels
-            })
-            self.total_to_be_exported += len(levels)
-
-        self.countries = {}
         self.total_exported = 0
         self.generated_files = []
+        # check if view at privacy level has data
+        entities = self.generate_queryset()
+        # count levels
+        self.levels = entities.order_by('level').values_list(
+            'level',
+            flat=True
+        ).distinct()
+        self.total_to_be_exported += len(self.levels)
 
     def get_serializer(self):
         return ExportGeojsonSerializer
 
+    def get_extracted_on(self):
+        return (
+            self.request.submitted_on if self.request.submitted_on else
+            datetime.datetime.now()
+        )
+
     def write_entities(self, schema, entities, context,
                        exported_name, tmp_output_dir,
-                       tmp_metadata_file, resource) -> str:
+                       tmp_metadata_file) -> str:
         raise NotImplementedError
 
     def get_base_output_dir(self) -> str:
-        raise NotImplementedError
+        return settings.EXPORT_FOLDER_OUTPUT
 
-    def get_tmp_output_dir(self, resource: DatasetViewResource) -> str:
+    def get_tmp_output_dir(self) -> str:
         tmp_output_dir = os.path.join(
             self.get_base_output_dir(),
-            f'temp_{str(resource.uuid)}'
+            f'temp_{str(self.request.uuid)}'
         )
         if not os.path.exists(tmp_output_dir):
             os.makedirs(tmp_output_dir)
         return tmp_output_dir
 
-    def update_progress(self, view_resource=None, progress=0):
-        view_resource = view_resource['resource'] if \
-            view_resource else \
-            self.view_resource
-        setattr(view_resource, f'{self.output}_progress', progress)
-        if math.isclose(progress, 100, abs_tol=1e-4):
-            setattr(
-                view_resource,
-                f'{self.output}_sync_status',
-                DatasetViewResource.SyncStatus.SYNCED
-            )
-            output_path = self.get_tmp_output_dir(view_resource)
-            setattr(
-                view_resource,
-                f'{self.output}_size',
-                get_folder_size(output_path)
-            )
-        view_resource.save()
+    def update_progress(self, progress=0):
+        self.request.progress = progress
+        # if math.isclose(progress, 100, abs_tol=1e-4):
+        #     setattr(
+        #         view_resource,
+        #         f'{self.output}_sync_status',
+        #         DatasetViewResource.SyncStatus.SYNCED
+        #     )
+        #     output_path = self.get_tmp_output_dir(view_resource)
+        #     setattr(
+        #         view_resource,
+        #         f'{self.output}_size',
+        #         get_folder_size(output_path)
+        #     )
+        self.request.save(update_fields=['progress'])
 
     def run(self):
-        print(
-            f'Exporting {self.output} from View {self.dataset_view.name} '
+        logger.info(
+            f'Exporting {self.request.format} from View {self.dataset_view.name} '
             f'(0/{self.total_to_be_exported})'
         )
-        # check if view has been created
-        is_view_exists = check_view_exists(str(self.dataset_view.uuid))
-        if not is_view_exists:
-            create_sql_view(self.dataset_view)
-
-        for res in self.resources:
-            resource = res['resource']
-            levels = res['levels']
-            tmp_output_dir = self.get_tmp_output_dir(resource)
-            # export for each admin level
-            for level in levels:
-                print(
-                    f'Exporting {self.output} of level {level} from '
-                    f'{self.dataset_view.name} - {resource.privacy_level} '
-                    f'({self.total_exported}/{self.total_to_be_exported})'
-                )
-                self.do_export(resource, resource.privacy_level,
-                               level, tmp_output_dir)
-                self.total_exported += 1
-                self.update_progress(
-                    res,
-                    (self.total_exported / self.total_to_be_exported) * 100
-                )
-            # export readme
-            self.export_readme(tmp_output_dir)
-            self.do_export_post_process(resource)
-        print(
-            f'Exporting {self.output} is finished '
+        tmp_output_dir = self.get_tmp_output_dir()
+        # export for each admin level
+        for level in self.levels:
+            logger.info(
+                f'Exporting {self.request.format} of level {level} from '
+                f'{self.dataset_view.name} - {self.privacy_level} '
+                f'({self.total_exported}/{self.total_to_be_exported})'
+            )
+            self.do_export(level, tmp_output_dir)
+            self.total_exported += 1
+            self.update_progress(
+                (self.total_exported / self.total_to_be_exported) * 100
+            )
+        # export readme
+        self.export_readme(tmp_output_dir)
+        self.do_export_post_process()
+        logger.info(
+            f'Exporting {self.request.format} is finished '
             f'from {self.dataset_view.name} '
             f'({self.total_exported}/{self.total_to_be_exported})'
         )
-        print(self.generated_files)
+        logger.info(self.generated_files)
 
-    def do_export(self, resource, privacy_level: int, level: int,
+    def do_export(self, level: int,
                   tmp_output_dir: str):
         exported_name = self.get_exported_file_name(level)
+        entities = self.generate_queryset()
         entities, max_level, ids, names = self.get_dataset_entity_query(
-            privacy_level,
-            level=level
+            entities,
+            level
         )
         if entities.count() == 0:
             return None
@@ -234,13 +226,12 @@ class DatasetViewExporterBase(object):
             context,
             exported_name,
             tmp_output_dir,
-            tmp_metadata_file,
-            resource
+            tmp_metadata_file
         )
         if exported_file_path:
             self.generated_files.append(exported_file_path)
 
-    def get_dataset_entity_query(self, privacy_level: int, level: int = None):
+    def get_dataset_entity_query(self, entities, level: int):
         # initial fields to select
         values = [
             'id', 'label', 'internal_code',
@@ -249,22 +240,9 @@ class DatasetViewExporterBase(object):
             'type__label', 'level', 'start_date', 'end_date',
             'is_latest', 'admin_level_name'
         ]
-        entities = GeographicalEntity.objects.filter(
-            dataset=self.dataset_view.dataset,
-            is_approved=True,
-            privacy_level__lte=privacy_level
-        )
-        # raw_sql to view to select id
-        raw_sql = (
-            'SELECT id from "{}"'
-        ).format(str(self.dataset_view.uuid))
         entities = entities.filter(
-            id__in=RawSQL(raw_sql, [])
+            level=level
         )
-        if level is not None:
-            entities = entities.filter(
-                level=level
-            )
         entities = entities.annotate(
             rhr_geom=AsGeoJSON(ForcePolygonCCW(F('geometry')))
         )
@@ -287,6 +265,10 @@ class DatasetViewExporterBase(object):
             values.append(f'{related}__unique_code_version')
             values.append(f'{related}__level')
             values.append(f'{related}__type__label')
+        # raw_sql to view to select id
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(self.dataset_view.uuid))
         # retrieve all ids in current dataset
         ids = EntityId.objects.filter(
             geographical_entity__dataset__id=self.dataset_view.dataset.id,
@@ -359,21 +341,33 @@ class DatasetViewExporterBase(object):
         return schema
 
     def export_readme(self, tmp_output_dir: str):
-        print('Generating readme file')
+        logger.info('Generating readme file')
         dataset = self.dataset_view.dataset
-        extracted_on = datetime.datetime.now()
+        simplification_zoom_level = (
+            str(self.request.simplification_zoom_level) if
+            self.request.is_simplified_entities else '-' 
+        )
         lines = [
             'Readme',
             f'Dataset: {dataset.label}',
             f'Description: {dataset.description}',
+            f"Extracted on {self.get_extracted_on().strftime('%d-%m-%Y')}"
             '',
             f'View: {self.dataset_view.name}',
             f'View Description: {self.dataset_view.description}',
             f'View UUID: {self.dataset_view.uuid}',
             f'View Query: {self.dataset_view.query_string}',
             '',
-            f"Extracted on {extracted_on.strftime('%d-%m-%Y')}"
+            f'Is Simplified Entities: {self.request.is_simplified_entities}',
+            f'Simplification Zoom Level: {simplification_zoom_level}',
         ]
+        if self.request.filters:
+            lines.append('Filters:')
+            for key, value in self.request.filters.items():
+                lines.append(f'{key}: {str(value)}')
+        else:
+            lines.append('Filters: -')
+        lines.append('')
         readme_filepath = os.path.join(
             tmp_output_dir,
             'readme.txt'
@@ -384,9 +378,8 @@ class DatasetViewExporterBase(object):
                 f.write('\n')
 
     def export_metadata(self, tmp_output_dir: str):
-        print('Generating metadata file')
+        logger.info('Generating metadata file')
         dataset = self.dataset_view.dataset
-        extracted_on = datetime.datetime.now()
         dataset_desc = (
             dataset.description if dataset.description else '-'
         )
@@ -400,17 +393,7 @@ class DatasetViewExporterBase(object):
             DatasetView.DefaultViewType.IS_LATEST
         ):
             # find versions in the dataset
-            entities = GeographicalEntity.objects.filter(
-                dataset=dataset,
-                is_approved=True
-            )
-            # raw_sql to view to select id
-            raw_sql = (
-                'SELECT id from "{}"'
-            ).format(str(self.dataset_view.uuid))
-            entities = entities.filter(
-                id__in=RawSQL(raw_sql, [])
-            )
+            entities = self.generate_queryset()
             revisions = entities.order_by('unique_code_version').values_list(
                 'unique_code_version',
                 flat=True
@@ -429,7 +412,7 @@ class DatasetViewExporterBase(object):
             f'UUID: {self.dataset_view.uuid}',
             f'Query: {self.dataset_view.query_string}',
             '',
-            f"Extracted on {extracted_on.strftime('%d-%m-%Y')}"
+            f"Extracted on {self.get_extracted_on().strftime('%d-%m-%Y')}"
         ])
         metadata_filepath = os.path.join(
             tmp_output_dir,
@@ -492,7 +475,7 @@ class DatasetViewExporterBase(object):
             'gmd:dateStamp/gco:DateTime'
         )
         xml_el = root.find(xml_path, nsmap)
-        xml_el.text = datetime.datetime.now().isoformat()
+        xml_el.text = self.get_extracted_on().isoformat()
         # replace view name
         xml_path = (
             'gmd:identificationInfo/'
@@ -620,10 +603,9 @@ class DatasetViewExporterBase(object):
         return metadata_filepath
 
     def do_export_post_process(self, resource: DatasetViewResource):
-        tmp_output_dir = os.path.join(
-            self.get_base_output_dir(),
-            f'temp_{str(resource.uuid)}'
-        )
+        if self.is_temp:
+            return
+        tmp_output_dir = self.get_tmp_output_dir()
         if settings.USE_AZURE:
             output_dir = (
                 f'media/export_data/{self.output}/'
@@ -649,32 +631,12 @@ class DatasetViewExporterBase(object):
                     output_dir
                 )
             except FileNotFoundError as ex:
-                print(ex)
+                logger.error(ex)
 
-    def do_remove_temp_dir(self, resource: DatasetViewResource):
-        tmp_output_dir = os.path.join(
-            self.get_base_output_dir(),
-            f'temp_{str(resource.uuid)}'
-        )
+    def do_remove_temp_dir(self):
+        tmp_output_dir = self.get_tmp_output_dir()
         if os.path.exists(tmp_output_dir):
             shutil.rmtree(tmp_output_dir)
-
-    def do_remove_temp_dirs(self):
-        for res in self.resources:
-            resource = res['resource']
-            self.do_remove_temp_dir(resource)
-
-    def get_geojson_reference_file(self, resource: DatasetViewResource,
-                                   exported_name: str):
-        res_name = str(resource.uuid)
-        if settings.USE_AZURE:
-            res_name = f'temp_{str(resource.uuid)}'
-        file_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            res_name,
-            exported_name
-        ) + '.geojson'
-        return file_path
 
 
 class APIDownloaderBase(GenericAPIView):
