@@ -12,7 +12,14 @@ from rest_framework.reverse import reverse
 from rest_framework.generics import GenericAPIView
 from django.contrib.sites.models import Site
 from django.db.models.expressions import RawSQL
-from django.db.models import FilteredRelation, Q, F, Max
+from django.db.models import (
+    FilteredRelation,
+    Q,
+    F,
+    Max,
+    Exists,
+    OuterRef
+)
 from django.contrib.gis.db.models.functions import AsGeoJSON
 from core.models.preferences import SitePreferences
 from django.conf import settings
@@ -36,6 +43,7 @@ from georepo.utils.azure_blob_storage import (
 from georepo.utils.permission import (
     get_view_permission_privacy_level
 )
+from georepo.utils.entity_query import validate_datetime
 from georepo.models.export_request import ExportRequest
 
 
@@ -103,9 +111,112 @@ class DatasetViewExporterBase(object):
         entities = entities.filter(
             id__in=RawSQL(raw_sql, [])
         )
-
         # do other filters
-
+        if (
+            'country' in self.request.filters and
+            len(self.request.filters['country']) > 0
+        ):
+            entities = entities.filter(
+                Q(ancestor__label__in=self.request.filters['country']) |
+                (
+                    Q(ancestor__isnull=True) &
+                    Q(label__in=self.request.filters['country'])
+                )
+            )
+        if (
+            'privacy_level' in self.request.filters and
+            len(self.request.filters['privacy_level']) > 0
+        ):
+            entities = entities.filter(
+                privacy_level__in=self.request.filters['privacy_level']
+            )
+        if (
+            'level' in self.request.filters and
+            len(self.request.filters['level']) > 0
+        ):
+            entities = entities.filter(
+                level__in=self.request.filters['level']
+            )
+        if (
+            'admin_level_name' in self.request.filters and
+            len(self.request.filters['admin_level_name']) > 0
+        ):
+            entities = entities.filter(
+                admin_level_name__in=self.request.filters['admin_level_name']
+            )
+        if (
+            'type' in self.request.filters and
+            len(self.request.filters['type']) > 0
+        ):
+            entities = entities.filter(
+                type__label__in=self.request.filters['type']
+            )
+        if (
+            'revision' in self.request.filters and
+            len(self.request.filters['revision']) > 0
+        ):
+            entities = entities.filter(
+                revision_number__in=self.request.filters['revision']
+            )
+        if (
+            'source' in self.request.filters and
+            len(self.request.filters['source']) > 0
+        ):
+            entities = entities.filter(
+                source__in=self.request.filters['source']
+            )
+        if 'valid_from' in self.request.filters:
+            valid_from = validate_datetime(self.request.filters['valid_from'])
+            if valid_from:
+                entities = entities.filter(
+                    start_date__lte=valid_from
+                )
+                entities = entities.filter(
+                    Q(end_date__isnull=True) | Q(end_date__gte=valid_from)
+                )
+        if (
+            'search_text' in self.request.filters and
+            len(self.request.filters['search_text']) > 0
+        ):
+            entity_id_qs = EntityId.objects.filter(
+                geographical_entity=OuterRef('pk'),
+                value__icontains=self.request.filters['search_text']
+            )
+            entity_name_qs = EntityName.objects.filter(
+                geographical_entity=OuterRef('pk'),
+                name__icontains=self.request.filters['search_text']
+            )
+            entities = entities.filter(
+                Q(label__icontains=self.request.filters['search_text']) |
+                Q(
+                    unique_code__icontains=self.request.filters['search_text']
+                ) |
+                Q(
+                    concept_ucode__icontains=(
+                        self.request.filters['search_text']
+                    )
+                ) |
+                Q(
+                    internal_code__icontains=(
+                        self.request.filters['search_text']
+                    )
+                ) |
+                Q(
+                    source__icontains=self.request.filters['search_text']
+                ) |
+                Q(
+                    admin_level_name__icontains=(
+                        self.request.filters['search_text']
+                    )
+                ) |
+                Q(
+                    ancestor__label__icontains=(
+                        self.request.filters['search_text']
+                    )
+                ) |
+                Q(Exists(entity_id_qs)) |
+                Q(Exists(entity_name_qs))
+            )
         return entities
 
     def init_exporter(self):

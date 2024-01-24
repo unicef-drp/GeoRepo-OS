@@ -1,5 +1,7 @@
 from enum import Enum
 import math
+from dateutil.parser import parse
+from datetime import datetime
 from django.db.models import FilteredRelation, Q, F, Max
 from georepo.models.id_type import IdType
 from georepo.models.entity import (
@@ -341,3 +343,14 @@ def normalize_attribute_name(name: str, name_idx: int) -> str:
         label=label_for_current_val,
         label_idx=name_idx + 1
     )
+
+
+def validate_datetime(value: str) -> datetime:
+    res = None
+    if value is None:
+        return res
+    try:
+        res = parse(value)
+    except ValueError:
+        pass
+    return res

@@ -1,7 +1,6 @@
 import json
 import random
 import mock
-from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIRequestFactory
 from django.contrib.gis.geos import GEOSGeometry
@@ -35,18 +34,13 @@ from georepo.api_views.entity_view import (
     ViewEntityBatchGeocodingStatus,
     ViewEntityBatchGeocodingResult
 )
+from georepo.tests.common import (
+    BaseDatasetViewTest,
+    mocked_process
+)
 
 
-class DummyTask:
-    def __init__(self, id):
-        self.id = id
-
-
-def mocked_process(*args, **kwargs):
-    return DummyTask('1')
-
-
-class TestProcessGeocodingRequest(TestCase):
+class TestProcessGeocodingRequest(BaseDatasetViewTest):
 
     def setUp(self):
         self.factory = APIRequestFactory()
