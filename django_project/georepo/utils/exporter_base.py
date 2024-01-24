@@ -698,6 +698,35 @@ class DatasetViewExporterBase(object):
                 zip_file
             )
         self.do_remove_temp_dir()
+        # generate download link and expiry
+        expired_on = (
+            datetime.datetime.now() +
+            datetime.timedelta(hours=settings.EXPORT_DATA_EXPIRY_IN_HOURS)
+        )
+        download_link = None
+        if settings.USE_AZURE:
+            file_path = f'media/{self.request.output_file.name}' 
+            bc = StorageContainerClient.get_blob_client(blob=file_path)
+            if bc.exists():
+                # generate temporary url with sas token
+                # Create sas token for blob
+                # sas_token = generate_blob_sas(
+                #     blob_name=source_path + blob,
+                #     account_name=self.client.credential.account_name,
+                #     container_name=self.container_name,
+                #     account_key=self.client.credential.account_key,
+                #     permission=BlobSasPermissions(read=True),
+                #     start=datetime.now(),
+                #     expiry=datetime.utcnow() + timedelta(hours=1)
+                # )
+                pass
+        else:
+            # TODO: to test this on staging kartoza
+            download_link = self.request.output_file.url
+        self.request.download_link_expired_on = expired_on
+        self.request.download_link = download_link
+        self.request.save(
+            update_fields=['download_link', 'download_link_expired_on'])
 
     def do_remove_temp_dir(self):
         tmp_output_dir = self.get_tmp_output_dir()

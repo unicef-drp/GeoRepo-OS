@@ -165,3 +165,6 @@ if USE_AZURE:
         os.makedirs(FILE_UPLOAD_TEMP_DIR)
 
 CODE_RELEASE_VERSION = code_release_version()
+EXPORT_DATA_EXPIRY_IN_HOURS = os.environ.get(
+    'EXPORT_DATA_EXPIRY_IN_HOURS', 48
+)
