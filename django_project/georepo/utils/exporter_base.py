@@ -47,6 +47,10 @@ from georepo.utils.permission import (
 )
 from georepo.utils.entity_query import validate_datetime
 from georepo.models.export_request import ExportRequest
+from georepo.utils.tile_configs import (
+    get_view_tiling_configs,
+    get_admin_level_tiling_config
+)
 
 
 logger = logging.getLogger(__name__)
@@ -95,6 +99,8 @@ class DatasetViewExporterBase(object):
             dataset_view=self.dataset_view,
             privacy_level=self.privacy_level
         ).get()
+        self.tiling_configs = []
+        self.has_custom_tiling_config = False
 
     def get_exported_file_name(self, level: int):
         exported_name = f'adm{level}'
@@ -225,14 +231,52 @@ class DatasetViewExporterBase(object):
         self.total_to_be_exported = 0
         self.total_exported = 0
         self.generated_files = []
+        self.levels = []
+        self.tiling_configs = []
+        self.has_custom_tiling_config = False
+        if self.request.is_simplified_entities:
+            self.tiling_configs, self.has_custom_tiling_config = (
+                get_view_tiling_configs(
+                    self.request.dataset_view,
+                    self.request.simplification_zoom_level
+                )
+            )
         # check if view at privacy level has data
         entities = self.generate_queryset()
         # count levels
-        self.levels = entities.order_by('level').values_list(
+        entity_levels = entities.order_by('level').values_list(
             'level',
             flat=True
         ).distinct()
+        for admin_level in entity_levels:
+            if self.request.is_simplified_entities:
+                # check if this admin level is included in tiling config
+                is_included, _ = get_admin_level_tiling_config(
+                    admin_level,
+                    self.tiling_configs,
+                    self.request.simplification_zoom_level
+                )
+                if is_included:
+                    self.levels.append(admin_level)
+            else:
+                self.levels.append(admin_level)
         self.total_to_be_exported += len(self.levels)
+
+    def get_simplification_condition_qs(self, admin_level):
+        _, tolerance = get_admin_level_tiling_config(
+            admin_level,
+            self.tiling_configs,
+            self.request.simplification_zoom_level
+        )
+        if self.has_custom_tiling_config:
+            return (
+                Q(entitysimplified__simplify_tolerance=tolerance) &
+                Q(entitysimplified__dataset_view=self.dataset_view)
+            )
+        return (
+            Q(entitysimplified__simplify_tolerance=tolerance) &
+            Q(entitysimplified__dataset_view__isnull=True)
+        )
 
     def get_serializer(self):
         return ExportGeojsonSerializer
@@ -336,8 +380,20 @@ class DatasetViewExporterBase(object):
         entities = entities.filter(
             level=level
         )
+        geom_field = 'geometry'
+        if self.request.is_simplified_entities:
+            entities = entities.annotate(
+                simplified=FilteredRelation(
+                    'entitysimplified',
+                    condition=self.get_simplification_condition_qs(level)
+                )
+            )
+            entities = entities.exclude(
+                simplified__simplified_geometry__isnull=True
+            )
+            geom_field = 'simplified__simplified_geometry'
         entities = entities.annotate(
-            rhr_geom=AsGeoJSON(ForcePolygonCCW(F('geometry')))
+            rhr_geom=AsGeoJSON(ForcePolygonCCW(F(geom_field)))
         )
         values.append('rhr_geom')
         # get max levels

@@ -17,6 +17,7 @@ from georepo.utils.dataset_view import (
 )
 from georepo.models.entity import GeographicalEntity
 from georepo.utils.permission import get_view_permission_privacy_level
+from georepo.utils.tile_configs import populate_tile_configs
 
 
 class DummyTask:
@@ -199,6 +200,7 @@ class BaseDatasetViewTest(TestCase):
         self.entity_type0 = EntityTypeF.create(label='Country')
         self.entity_type1 = EntityTypeF.create(label='Region')
         self.dataset = DatasetF.create()
+        populate_tile_configs(self.dataset.id)
         geojson_0_path = absolute_path(
             'georepo', 'tests',
             'geojson_dataset', 'level_0.geojson')

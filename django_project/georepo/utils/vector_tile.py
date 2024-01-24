@@ -24,6 +24,8 @@ from georepo.utils.azure_blob_storage import (
     DirectoryClient,
     get_tegola_cache_config
 )
+from georepo.utils.tile_configs import get_view_tiling_configs
+
 
 logger = logging.getLogger(__name__)
 
@@ -195,84 +197,6 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
             'dataset_view_sql_query',
             end - start)
     return sql
-
-
-class TilingConfigItem(object):
-
-    def __init__(self, level: int, tolerance=None) -> None:
-        self.level = level
-        self.tolerance = tolerance
-
-
-class TilingConfigZoomLevels(object):
-
-    def __init__(self, zoom_level: int,
-                 items: List[TilingConfigItem]) -> None:
-        self.zoom_level = zoom_level
-        self.items = items
-
-
-def get_view_tiling_configs(dataset_view: DatasetView, zoom_level: int = None,
-                            **kwargs) -> List[TilingConfigZoomLevels]:
-    # return list of tiling configs for dataset_view
-    from georepo.models.dataset_tile_config import (
-        DatasetTilingConfig
-    )
-    from georepo.models.dataset_view_tile_config import (
-        DatasetViewTilingConfig
-    )
-    start = time.time()
-    tiling_configs: List[TilingConfigZoomLevels] = []
-    view_tiling_conf = DatasetViewTilingConfig.objects.filter(
-        dataset_view=dataset_view
-    ).order_by('zoom_level')
-    if zoom_level is not None:
-        view_tiling_conf = view_tiling_conf.filter(
-            zoom_level=zoom_level
-        )
-    if view_tiling_conf.exists():
-        for conf in view_tiling_conf:
-            items = []
-            tiling_levels = conf.viewadminleveltilingconfig_set.all()
-            for item in tiling_levels:
-                items.append(
-                    TilingConfigItem(item.level, item.simplify_tolerance)
-                )
-            tiling_configs.append(
-                TilingConfigZoomLevels(conf.zoom_level, items)
-            )
-        return tiling_configs, True
-    # check for dataset tiling configs
-    dataset_tiling_conf = DatasetTilingConfig.objects.filter(
-        dataset=dataset_view.dataset
-    ).order_by('zoom_level')
-    if zoom_level is not None:
-        dataset_tiling_conf = dataset_tiling_conf.filter(
-            zoom_level=zoom_level
-        )
-    if dataset_tiling_conf.exists():
-        for conf in dataset_tiling_conf:
-            items = []
-            tiling_levels = conf.adminleveltilingconfig_set.all()
-            for item in tiling_levels:
-                items.append(
-                    TilingConfigItem(item.level, item.simplify_tolerance)
-                )
-            tiling_configs.append(
-                TilingConfigZoomLevels(conf.zoom_level, items)
-            )
-        end = time.time()
-        if kwargs.get('log_object'):
-            kwargs.get('log_object').add_log(
-                'get_view_tiling_configs',
-                end - start)
-        return tiling_configs, False
-    end = time.time()
-    if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log(
-            'get_view_tiling_configs',
-            end - start)
-    return tiling_configs, False
 
 
 def create_view_configuration_files(

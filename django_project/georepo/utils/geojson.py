@@ -81,9 +81,12 @@ class GeojsonViewExporter(DatasetViewExporterBase):
                 ).data
                 data['geometry'] = '{geom_placeholder}'
                 feature_str = json.dumps(data)
+                geom_data = entity['rhr_geom']
+                if geom_data is None:
+                    geom_data = '{"type": "Point", "coordinates": [0, 0]}'
                 feature_str = feature_str.replace(
                     '"{geom_placeholder}"',
-                    entity['rhr_geom']
+                    geom_data
                 )
                 geojson_file.write(feature_str)
                 if idx == total_count - 1:

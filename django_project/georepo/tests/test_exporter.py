@@ -7,7 +7,7 @@ from georepo.models.export_request import (
     KML_EXPORT_TYPE,
     TOPOJSON_EXPORT_TYPE
 )
-from georepo.models.entity import EntityName
+from georepo.models.entity import EntityName, EntitySimplified
 from georepo.utils.exporter_base import DatasetViewExporterBase
 from georepo.utils.geojson import GeojsonViewExporter
 from georepo.utils.shapefile import ShapefileViewExporter
@@ -224,6 +224,35 @@ class TestExporter(BaseDatasetViewTest):
         )
         exporter = TopojsonViewExporter(request)
         exporter.init_exporter()
+        exporter.run()
+        request.refresh_from_db()
+        self.assertTrue(request.download_link_expired_on)
+        self.assertTrue(request.output_file)
+        self.assertTrue(request.download_link)
+
+    def test_geojson_exporter_with_simplified_entities(self):
+        # insert geometry to entity simplified
+        EntitySimplified.objects.create(
+            geographical_entity=self.pak0_2,
+            simplify_tolerance=1,
+            simplified_geometry=self.pak0_2.geometry
+        )
+        filters = {
+            'country': ['Pakistan'],
+            'level': [0]
+        }
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=GEOJSON_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser,
+            filters=filters,
+            is_simplified_entities=True,
+            simplification_zoom_level=0
+        )
+        exporter = GeojsonViewExporter(request)
+        exporter.init_exporter()
+        self.assertEqual(len(exporter.levels), 1)
         exporter.run()
         request.refresh_from_db()
         self.assertTrue(request.download_link_expired_on)
