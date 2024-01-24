@@ -7,7 +7,7 @@ from azure.storage.blob import (
     ContainerClient
 )
 from django.conf import settings
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import zipfile
 from zipfly import ZipFly
 
@@ -230,6 +230,24 @@ class DirectoryClient:
             total_size += blob.size
             total_files += 1
         return total_size, total_files
+
+    def generate_url_for_file(self, path, expiry_in_hours=48):
+        """
+        Generate temporary URL for file download that has expiry in hours.
+        """
+        start_time = datetime.now(timezone.utc)
+        expiry_time = start_time + timedelta(hours=expiry_in_hours)
+        sas_token = generate_blob_sas(
+            blob_name=path,
+            account_name=self.client.credential.account_name,
+            container_name=self.container_name,
+            account_key=self.client.credential.account_key,
+            permission=BlobSasPermissions(read=True),
+            start=start_time,
+            expiry=expiry_time
+        )
+        bc = self.client.get_blob_client(blob=path)
+        return f"{bc.url}?{sas_token}"
 
 
 def get_tegola_cache_config(connection_string, container_name):

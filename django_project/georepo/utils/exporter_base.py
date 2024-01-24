@@ -23,6 +23,7 @@ from django.db.models import (
 from django.contrib.gis.db.models.functions import AsGeoJSON
 from core.models.preferences import SitePreferences
 from django.conf import settings
+from django.utils import timezone
 from georepo.models import (
     EntityId, EntityName, GeographicalEntity,
     DatasetView, DatasetViewResource
@@ -38,7 +39,8 @@ from georepo.utils.renderers import (
 )
 from georepo.utils.azure_blob_storage import (
     StorageContainerClient,
-    AzureStorageZipfly
+    AzureStorageZipfly,
+    DirectoryClient
 )
 from georepo.utils.permission import (
     get_view_permission_privacy_level
@@ -700,26 +702,21 @@ class DatasetViewExporterBase(object):
         self.do_remove_temp_dir()
         # generate download link and expiry
         expired_on = (
-            datetime.datetime.now() +
+            timezone.now() +
             datetime.timedelta(hours=settings.EXPORT_DATA_EXPIRY_IN_HOURS)
         )
         download_link = None
         if settings.USE_AZURE:
-            file_path = f'media/{self.request.output_file.name}' 
+            file_path = f'media/{self.request.output_file.name}'
             bc = StorageContainerClient.get_blob_client(blob=file_path)
             if bc.exists():
                 # generate temporary url with sas token
-                # Create sas token for blob
-                # sas_token = generate_blob_sas(
-                #     blob_name=source_path + blob,
-                #     account_name=self.client.credential.account_name,
-                #     container_name=self.container_name,
-                #     account_key=self.client.credential.account_key,
-                #     permission=BlobSasPermissions(read=True),
-                #     start=datetime.now(),
-                #     expiry=datetime.utcnow() + timedelta(hours=1)
-                # )
-                pass
+                client = DirectoryClient(settings.AZURE_STORAGE,
+                                         settings.AZURE_STORAGE_CONTAINER)
+                download_link = client.generate_url_for_file(
+                    file_path, settings.EXPORT_DATA_EXPIRY_IN_HOURS)
+            else:
+                expired_on = None
         else:
             # TODO: to test this on staging kartoza
             download_link = self.request.output_file.url
