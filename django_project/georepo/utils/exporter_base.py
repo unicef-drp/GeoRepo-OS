@@ -718,8 +718,11 @@ class DatasetViewExporterBase(object):
             else:
                 expired_on = None
         else:
-            # TODO: to test this on staging kartoza
-            download_link = self.request.output_file.url
+            current_site = Site.objects.get_current()
+            scheme = 'https://'
+            download_link = (
+                f'{scheme}{current_site.domain}{self.request.output_file.url}'
+            )
         self.request.download_link_expired_on = expired_on
         self.request.download_link = download_link
         self.request.save(

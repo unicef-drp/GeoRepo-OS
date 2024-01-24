@@ -2,10 +2,17 @@ from django.utils import timezone
 
 from georepo.models.export_request import (
     ExportRequest,
-    GEOJSON_EXPORT_TYPE
+    GEOJSON_EXPORT_TYPE,
+    SHAPEFILE_EXPORT_TYPE,
+    KML_EXPORT_TYPE,
+    TOPOJSON_EXPORT_TYPE
 )
 from georepo.models.entity import EntityName
 from georepo.utils.exporter_base import DatasetViewExporterBase
+from georepo.utils.geojson import GeojsonViewExporter
+from georepo.utils.shapefile import ShapefileViewExporter
+from georepo.utils.kml import KmlViewExporter
+from georepo.utils.topojson import TopojsonViewExporter
 from georepo.tests.common import BaseDatasetViewTest
 
 
@@ -29,7 +36,6 @@ class TestExporter(BaseDatasetViewTest):
         exporter.init_exporter()
         qs = exporter.generate_queryset()
         self.assertEqual(qs.count(), 4)
-
 
     def test_filter_privacy_level(self):
         filters = {
@@ -163,3 +169,63 @@ class TestExporter(BaseDatasetViewTest):
         exporter.init_exporter()
         qs = exporter.generate_queryset()
         self.assertEqual(qs.count(), 1)
+
+    def test_geojson_exporter(self):
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=GEOJSON_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser
+        )
+        exporter = GeojsonViewExporter(request)
+        exporter.init_exporter()
+        exporter.run()
+        request.refresh_from_db()
+        self.assertTrue(request.download_link_expired_on)
+        self.assertTrue(request.output_file)
+        self.assertTrue(request.download_link)
+
+    def test_shapefile_exporter(self):
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=SHAPEFILE_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser
+        )
+        exporter = ShapefileViewExporter(request)
+        exporter.init_exporter()
+        exporter.run()
+        request.refresh_from_db()
+        self.assertTrue(request.download_link_expired_on)
+        self.assertTrue(request.output_file)
+        self.assertTrue(request.download_link)
+
+    def test_kml_exporter(self):
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=KML_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser
+        )
+        exporter = KmlViewExporter(request)
+        exporter.init_exporter()
+        exporter.run()
+        request.refresh_from_db()
+        self.assertTrue(request.download_link_expired_on)
+        self.assertTrue(request.output_file)
+        self.assertTrue(request.download_link)
+
+    def test_topojson_exporter(self):
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=TOPOJSON_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser
+        )
+        exporter = TopojsonViewExporter(request)
+        exporter.init_exporter()
+        exporter.run()
+        request.refresh_from_db()
+        self.assertTrue(request.download_link_expired_on)
+        self.assertTrue(request.output_file)
+        self.assertTrue(request.download_link)
