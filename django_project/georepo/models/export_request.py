@@ -44,7 +44,9 @@ class ExportRequest(BaseTaskRequest):
     )
 
     filters = models.JSONField(
-        default=dict
+        default=dict,
+        null=True,
+        blank=True
     )
 
     download_link = models.TextField(

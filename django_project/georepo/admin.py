@@ -54,7 +54,8 @@ from georepo.models import (
     GeocodingRequest,
     SearchIdRequest,
     PENDING,
-    EntityEditHistory
+    EntityEditHistory,
+    ExportRequest
 )
 from georepo.utils.admin import (
     get_deleted_objects,
@@ -931,6 +932,13 @@ class EntityEditHistoryAdmin(admin.ModelAdmin):
     get_level.admin_order_field = 'geographical_entity__level'
 
 
+class ExportRequestAdmin(admin.ModelAdmin):
+    list_display = ('dataset_view', 'format', 'status',
+                    'submitted_on', 'submitted_by',
+                    'status_text', 'download_link_expired_on')
+    list_filter = ['dataset_view', 'submitted_by', 'status', 'format']
+
+
 admin.site.register(GeographicalEntity, GeographicalEntityAdmin)
 admin.site.register(Language, LanguageAdmin)
 admin.site.register(EntityType)
@@ -954,6 +962,7 @@ admin.site.register(BackgroundTask, BackgroundTaskAdmin)
 admin.site.register(GeocodingRequest, GeocodingRequestAdmin)
 admin.site.register(SearchIdRequest, SearchIdRequestAdmin)
 admin.site.register(EntityEditHistory, EntityEditHistoryAdmin)
+admin.site.register(ExportRequest, ExportRequestAdmin)
 
 
 # Define inline formset

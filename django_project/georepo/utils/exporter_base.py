@@ -1,20 +1,18 @@
 import re
-import math
 import os
 import shutil
 import datetime
 import zipfly
 import logging
+import zipfile
 from django.db import connection
 from django.http import StreamingHttpResponse
 import xml.etree.ElementTree as ET
-from collections import OrderedDict
 from rest_framework.reverse import reverse
 from rest_framework.generics import GenericAPIView
 from django.contrib.sites.models import Site
 from django.db.models.expressions import RawSQL
 from django.db.models import FilteredRelation, Q, F, Max
-from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.db.models.functions import AsGeoJSON
 from core.models.preferences import SitePreferences
 from django.conf import settings
@@ -25,11 +23,6 @@ from georepo.models import (
 from georepo.utils.custom_geo_functions import ForcePolygonCCW
 from core.settings.utils import absolute_path
 from georepo.serializers.entity import ExportGeojsonSerializer
-from georepo.utils.dataset_view import (
-    check_view_exists,
-    create_sql_view,
-    get_entities_count_in_view
-)
 from georepo.utils.renderers import (
     GeojsonRenderer,
     ShapefileRenderer,
@@ -37,12 +30,8 @@ from georepo.utils.renderers import (
     TopojsonRenderer
 )
 from georepo.utils.azure_blob_storage import (
-    DirectoryClient,
     StorageContainerClient,
     AzureStorageZipfly
-)
-from georepo.utils.directory_helper import (
-    get_folder_size
 )
 from georepo.utils.permission import (
     get_view_permission_privacy_level
@@ -82,6 +71,7 @@ class DatasetViewExporterBase(object):
     def __init__(self, request: ExportRequest, is_temp: bool = False) -> None:
         self.request = request
         self.is_temp = is_temp
+        self.format = self.request.format if not is_temp else 'geojson'
         self.dataset_view = request.dataset_view
         self.total_to_be_exported = 0
         self.total_exported = 0
@@ -140,7 +130,7 @@ class DatasetViewExporterBase(object):
             datetime.datetime.now()
         )
 
-    def write_entities(self, schema, entities, context,
+    def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
                        tmp_metadata_file) -> str:
         raise NotImplementedError
@@ -158,31 +148,21 @@ class DatasetViewExporterBase(object):
         return tmp_output_dir
 
     def update_progress(self, progress=0):
+        if self.is_temp:
+            return
         self.request.progress = progress
-        # if math.isclose(progress, 100, abs_tol=1e-4):
-        #     setattr(
-        #         view_resource,
-        #         f'{self.output}_sync_status',
-        #         DatasetViewResource.SyncStatus.SYNCED
-        #     )
-        #     output_path = self.get_tmp_output_dir(view_resource)
-        #     setattr(
-        #         view_resource,
-        #         f'{self.output}_size',
-        #         get_folder_size(output_path)
-        #     )
         self.request.save(update_fields=['progress'])
 
     def run(self):
         logger.info(
-            f'Exporting {self.request.format} from View {self.dataset_view.name} '
+            f'Exporting {self.format} from View {self.dataset_view.name} '
             f'(0/{self.total_to_be_exported})'
         )
         tmp_output_dir = self.get_tmp_output_dir()
         # export for each admin level
         for level in self.levels:
             logger.info(
-                f'Exporting {self.request.format} of level {level} from '
+                f'Exporting {self.format} of level {level} from '
                 f'{self.dataset_view.name} - {self.privacy_level} '
                 f'({self.total_exported}/{self.total_to_be_exported})'
             )
@@ -192,10 +172,11 @@ class DatasetViewExporterBase(object):
                 (self.total_exported / self.total_to_be_exported) * 100
             )
         # export readme
-        self.export_readme(tmp_output_dir)
-        self.do_export_post_process()
+        if not self.is_temp:
+            self.export_readme(tmp_output_dir)
+            self.do_export_post_process()
         logger.info(
-            f'Exporting {self.request.format} is finished '
+            f'Exporting {self.format} is finished '
             f'from {self.dataset_view.name} '
             f'({self.total_exported}/{self.total_to_be_exported})'
         )
@@ -216,20 +197,19 @@ class DatasetViewExporterBase(object):
             'ids': ids,
             'names': names
         }
-        first_entity = entities.first()
-        schema = self.get_schema(first_entity, context)
         # export metadata file
         tmp_metadata_file = self.export_metadata_level(level, tmp_output_dir)
         exported_file_path = self.write_entities(
-            schema,
             entities,
             context,
             exported_name,
             tmp_output_dir,
             tmp_metadata_file
         )
-        if exported_file_path:
+        if exported_file_path and os.path.exists(exported_file_path):
             self.generated_files.append(exported_file_path)
+        else:
+            logger.error(f'Failed to generate {self.format} at level {level}')
 
     def get_dataset_entity_query(self, entities, level: int):
         # initial fields to select
@@ -322,30 +302,12 @@ class DatasetViewExporterBase(object):
         entities = entities.values(*values)
         return entities, max_level, ids, names_max_idx
 
-    def get_schema(self, entity: GeographicalEntity, context):
-        # NOTE: if the shapefile includes all version,
-        # then need to use entity at lowest level to get complete schema
-        data = self.get_serializer()(
-            entity,
-            many=False,
-            context=context
-        ).data
-        properties = []
-        for property in data['properties']:
-            properties.append((property, get_property_type(property)))
-        geometry = GEOSGeometry(entity['rhr_geom'])
-        schema = {
-            'geometry': geometry.geom_type,
-            'properties': OrderedDict(properties)
-        }
-        return schema
-
     def export_readme(self, tmp_output_dir: str):
         logger.info('Generating readme file')
         dataset = self.dataset_view.dataset
         simplification_zoom_level = (
             str(self.request.simplification_zoom_level) if
-            self.request.is_simplified_entities else '-' 
+            self.request.is_simplified_entities else '-'
         )
         lines = [
             'Readme',
@@ -376,6 +338,7 @@ class DatasetViewExporterBase(object):
             for line in lines:
                 f.write(line)
                 f.write('\n')
+        self.generated_files.append(readme_filepath)
 
     def export_metadata(self, tmp_output_dir: str):
         logger.info('Generating metadata file')
@@ -602,36 +565,28 @@ class DatasetViewExporterBase(object):
         # return template file path
         return metadata_filepath
 
-    def do_export_post_process(self, resource: DatasetViewResource):
+    def do_export_post_process(self):
         if self.is_temp:
             return
         tmp_output_dir = self.get_tmp_output_dir()
-        if settings.USE_AZURE:
-            output_dir = (
-                f'media/export_data/{self.output}/'
-                f'{str(resource.uuid)}'
-            )
-            client = DirectoryClient(settings.AZURE_STORAGE,
-                                     settings.AZURE_STORAGE_CONTAINER)
-            client.rmdir(output_dir)
-            client.upload_dir(tmp_output_dir, output_dir)
-            if self.output != 'geojson':
-                self.do_remove_temp_dir(resource)
-        else:
-            # copy from temp dir to output dir
-            output_dir = os.path.join(
-                self.get_base_output_dir(),
-                str(resource.uuid)
-            )
-            if os.path.exists(output_dir):
-                shutil.rmtree(output_dir)
-            try:
-                shutil.move(
-                    tmp_output_dir,
-                    output_dir
+        # zip all files inside generated_files
+        zip_file_path = os.path.join(
+            tmp_output_dir,
+            f'{self.dataset_view.name}'
+        ) + '.zip'
+        with zipfile.ZipFile(
+                zip_file_path, 'w', zipfile.ZIP_DEFLATED) as archive:
+            for result_file in self.generated_files:
+                archive.write(
+                    result_file,
+                    arcname=os.path.basename(result_file)
                 )
-            except FileNotFoundError as ex:
-                logger.error(ex)
+        with open(zip_file_path, 'rb') as zip_file:
+            self.request.output_file.save(
+                os.path.basename(zip_file_path),
+                zip_file
+            )
+        self.do_remove_temp_dir()
 
     def do_remove_temp_dir(self):
         tmp_output_dir = self.get_tmp_output_dir()

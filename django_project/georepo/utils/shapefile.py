@@ -1,15 +1,18 @@
 import zipfile
 import os
+import logging
 import subprocess
-from django.conf import settings
-from georepo.utils.exporter_base import (
-    DatasetViewExporterBase
+from georepo.utils.geojson import (
+    GeojsonBasedExporter
 )
 from georepo.utils.fiona_utils import (
     list_layers_shapefile,
     delete_tmp_shapefile,
     open_collection_by_file
 )
+
+
+logger = logging.getLogger(__name__)
 
 # buffer the data before writing/flushing to file
 SHAPEFILE_RECORDS_BUFFER_TX = 400
@@ -97,19 +100,17 @@ def validate_shapefile_zip(layer_file_path: any):
     return is_valid, error
 
 
-class ShapefileViewExporter(DatasetViewExporterBase):
-    output = 'shapefile'
+class ShapefileViewExporter(GeojsonBasedExporter):
 
-    def write_entities(self, schema, entities, context,
+    def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
-                       tmp_metadata_file, resource) -> str:
+                       tmp_metadata_file) -> str:
         suffix = '.shp'
         shape_file = os.path.join(
             tmp_output_dir,
             exported_name
         ) + suffix
-        geojson_file = self.get_geojson_reference_file(
-            resource, exported_name)
+        geojson_file = self.get_geojson_reference_file(exported_name)
         # use ogr to convert from geojson to shapefile
         command_list = (
             [

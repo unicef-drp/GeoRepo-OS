@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from uuid import UUID
 from datetime import date, datetime
 from django.conf import settings
@@ -14,6 +15,8 @@ from georepo.utils.fiona_utils import (
     open_collection_by_file
 )
 
+
+logger = logging.getLogger(__name__)
 # buffer the data before writing/flushing to file
 GEOJSON_RECORDS_BUFFER_TX = 250
 GEOJSON_RECORDS_BUFFER = 500
@@ -55,11 +58,10 @@ def json_serial(obj):
 
 
 class GeojsonViewExporter(DatasetViewExporterBase):
-    output = 'geojson'
 
-    def write_entities(self, schema, entities, context,
+    def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
-                       tmp_metadata_file, resource) -> str:
+                       tmp_metadata_file) -> str:
         suffix = '.geojson'
         geojson_file_path = os.path.join(
             tmp_output_dir,
@@ -92,6 +94,38 @@ class GeojsonViewExporter(DatasetViewExporterBase):
             geojson_file.write(']\n')
             geojson_file.write('}\n')
         return geojson_file_path
+
+
+class GeojsonBasedExporter(DatasetViewExporterBase):
+
+    def init_exporter(self):
+        super().init_exporter()
+        # create geojson exporter
+        self.geojson_exporter = GeojsonViewExporter(
+            self.request, True
+        )
+        self.geojson_exporter.init_exporter()
+
+    def get_geojson_reference_file(self, exported_name):
+        file_path = f'{exported_name}.geojson'
+        return os.path.join(
+            self.get_base_output_dir(),
+            f'temp_{str(self.request.uuid)}',
+            file_path
+        )
+
+    def run(self):
+        # extract the geojson first
+        self.geojson_exporter.run()
+        # validate geojson files are extracted successfully
+        if len(self.geojson_exporter.generated_files) != len(self.levels):
+            logger.error(
+                'Failed to generate geojson files '
+                f'for {self.format} exporter!'
+            )
+            return
+        # run exporter for shapefile
+        super().run()
 
 
 def validate_geojson(geojson: dict) -> bool:
