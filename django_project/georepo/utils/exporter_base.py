@@ -46,7 +46,16 @@ from georepo.utils.permission import (
     get_view_permission_privacy_level
 )
 from georepo.utils.entity_query import validate_datetime
-from georepo.models.export_request import ExportRequest
+from georepo.models.base_task_request import (
+    PROCESSING,
+    DONE,
+    ERROR
+)
+from georepo.models.export_request import (
+    ExportRequest,
+    ExportRequestStatusText,
+    GEOJSON_EXPORT_TYPE
+)
 from georepo.utils.tile_configs import (
     get_view_tiling_configs,
     get_admin_level_tiling_config
@@ -82,13 +91,15 @@ def get_dataset_exported_file_name(level: int,
 
 
 class DatasetViewExporterBase(object):
-    def __init__(self, request: ExportRequest, is_temp: bool = False) -> None:
+    def __init__(self, request: ExportRequest,
+                 is_temp: bool = False,
+                 ref = None) -> None:
         self.request = request
         self.is_temp = is_temp
         self.format = self.request.format if not is_temp else 'geojson'
         self.dataset_view = request.dataset_view
-        self.total_to_be_exported = 0
-        self.total_exported = 0
+        self.total_progress = 0
+        self.progress_count = 0
         self.generated_files = []
         self.levels = []
         self.privacy_level = get_view_permission_privacy_level(
@@ -101,6 +112,7 @@ class DatasetViewExporterBase(object):
         ).get()
         self.tiling_configs = []
         self.has_custom_tiling_config = False
+        self.exporter_ref = ref
 
     def get_exported_file_name(self, level: int):
         exported_name = f'adm{level}'
@@ -228,8 +240,8 @@ class DatasetViewExporterBase(object):
         return entities
 
     def init_exporter(self):
-        self.total_to_be_exported = 0
-        self.total_exported = 0
+        self.total_progress = 0
+        self.progress_count = 0
         self.generated_files = []
         self.levels = []
         self.tiling_configs = []
@@ -260,7 +272,21 @@ class DatasetViewExporterBase(object):
                     self.levels.append(admin_level)
             else:
                 self.levels.append(admin_level)
-        self.total_to_be_exported += len(self.levels)
+        self.total_progress = len(self.levels) + 3
+        if self.request.format != GEOJSON_EXPORT_TYPE:
+            self.total_progress += len(self.levels) + 1
+        # update the request status
+        self.request.status = PROCESSING
+        self.request.started_at = timezone.now()
+        self.request.finished_at = None
+        self.request.progress = 0
+        self.request.errors = None
+        self.request.status_text = str(ExportRequestStatusText.RUNNING)
+        self.request.save(update_fields=[
+            'status', 'status_text', 'started_at',
+            'finished_at', 'progress', 'errors'
+        ])
+        self.update_progress()
 
     def get_simplification_condition_qs(self, admin_level):
         _, tolerance = get_admin_level_tiling_config(
@@ -304,16 +330,26 @@ class DatasetViewExporterBase(object):
             os.makedirs(tmp_output_dir)
         return tmp_output_dir
 
-    def update_progress(self, progress=0):
+    def update_progress(self, inc_progress = 1):
+        if self.is_temp:
+            if self.exporter_ref:
+                self.exporter_ref.update_progress()
+            return
+        self.progress_count += inc_progress
+        self.request.progress = (
+            (self.progress_count * 100) / self.total_progress
+        ) if self.total_progress > 0 else 0
+        self.request.save(update_fields=['progress'])
+
+    def update_progress_text(self, status_text):
         if self.is_temp:
             return
-        self.request.progress = progress
-        self.request.save(update_fields=['progress'])
+        self.request.status_text = str(status_text)
+        self.request.save(update_fields=['status_text'])
 
     def run(self):
         logger.info(
             f'Exporting {self.format} from View {self.dataset_view.name} '
-            f'(0/{self.total_to_be_exported})'
         )
         tmp_output_dir = self.get_tmp_output_dir()
         # export for each admin level
@@ -321,13 +357,10 @@ class DatasetViewExporterBase(object):
             logger.info(
                 f'Exporting {self.format} of level {level} from '
                 f'{self.dataset_view.name} - {self.privacy_level} '
-                f'({self.total_exported}/{self.total_to_be_exported})'
+                f'({self.request.progress} %)'
             )
             self.do_export(level, tmp_output_dir)
-            self.total_exported += 1
-            self.update_progress(
-                (self.total_exported / self.total_to_be_exported) * 100
-            )
+            self.update_progress()
         # export readme
         if not self.is_temp:
             self.export_readme(tmp_output_dir)
@@ -335,7 +368,6 @@ class DatasetViewExporterBase(object):
         logger.info(
             f'Exporting {self.format} is finished '
             f'from {self.dataset_view.name} '
-            f'({self.total_exported}/{self.total_to_be_exported})'
         )
         logger.info(self.generated_files)
 
@@ -737,6 +769,9 @@ class DatasetViewExporterBase(object):
     def do_export_post_process(self):
         if self.is_temp:
             return
+        self.update_progress_text(
+            ExportRequestStatusText.CREATING_ZIP_ARCHIVE
+        )
         tmp_output_dir = self.get_tmp_output_dir()
         # zip all files inside generated_files
         zip_file_path = os.path.join(
@@ -756,6 +791,7 @@ class DatasetViewExporterBase(object):
                 zip_file
             )
         self.do_remove_temp_dir()
+        self.update_progress()
         # generate download link and expiry
         expired_on = (
             timezone.now() +
@@ -781,8 +817,25 @@ class DatasetViewExporterBase(object):
             )
         self.request.download_link_expired_on = expired_on
         self.request.download_link = download_link
+        is_success = download_link is not None
+        if is_success:
+            self.request.status = DONE
+            self.request.status_text = str(ExportRequestStatusText.READY)
+            self.request.errors = None
+        else:
+            self.request.status = ERROR
+            self.request.status_text = str(ExportRequestStatusText.ABORTED)
+            self.request.errors = (
+                'Unable to generate download link for the zip archive!'
+            )
+        self.request.finished_at = timezone.now()
+        self.request.progress = 100
         self.request.save(
-            update_fields=['download_link', 'download_link_expired_on'])
+            update_fields=[
+                'download_link', 'download_link_expired_on', 'status',
+                'status_text', 'errors', 'finished_at', 'progress'
+            ]
+        )
 
     def do_remove_temp_dir(self):
         tmp_output_dir = self.get_tmp_output_dir()

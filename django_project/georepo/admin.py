@@ -935,7 +935,8 @@ class EntityEditHistoryAdmin(admin.ModelAdmin):
 class ExportRequestAdmin(admin.ModelAdmin):
     list_display = ('dataset_view', 'format', 'status',
                     'submitted_on', 'submitted_by',
-                    'status_text', 'download_link_expired_on')
+                    'status_text', 'progress',
+                    'download_link_expired_on')
     list_filter = ['submitted_by', 'status', 'format']
     search_fields = ['dataset_view__name', 'submitted_by__first_name',
                      'task_id', 'uuid']

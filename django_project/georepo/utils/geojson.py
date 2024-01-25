@@ -6,7 +6,11 @@ from datetime import date, datetime
 from django.conf import settings
 
 from georepo.models import (
-    Dataset
+    Dataset,
+    ExportRequestStatusText,
+    SHAPEFILE_EXPORT_TYPE,
+    KML_EXPORT_TYPE,
+    TOPOJSON_EXPORT_TYPE
 )
 from georepo.utils.exporter_base import (
     DatasetViewExporterBase
@@ -105,7 +109,7 @@ class GeojsonBasedExporter(DatasetViewExporterBase):
         super().init_exporter()
         # create geojson exporter
         self.geojson_exporter = GeojsonViewExporter(
-            self.request, True
+            self.request, True, self
         )
         self.geojson_exporter.init_exporter()
 
@@ -117,7 +121,19 @@ class GeojsonBasedExporter(DatasetViewExporterBase):
             file_path
         )
 
+    def get_preparing_status_by_format(self):
+        if self.request.format == SHAPEFILE_EXPORT_TYPE:
+            return ExportRequestStatusText.PREPARING_SHP
+        elif self.request.format == KML_EXPORT_TYPE:
+            return ExportRequestStatusText.PREPARING_KML
+        elif self.request.format == TOPOJSON_EXPORT_TYPE:
+            return ExportRequestStatusText.PREPARING_TOPOJSON
+        return ExportRequestStatusText.PREPARING_GEOJSON
+
     def run(self):
+        self.update_progress_text(
+            ExportRequestStatusText.PREPARING_GEOJSON
+        )
         # extract the geojson first
         self.geojson_exporter.run()
         # validate geojson files are extracted successfully
@@ -128,6 +144,9 @@ class GeojsonBasedExporter(DatasetViewExporterBase):
             )
             return
         # run exporter for shapefile
+        self.update_progress_text(
+            self.get_preparing_status_by_format()
+        )
         super().run()
 
 

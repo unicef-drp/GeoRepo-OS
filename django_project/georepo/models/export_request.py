@@ -1,3 +1,4 @@
+from enum import Enum
 from django.db import models
 from georepo.models.base_task_request import BaseTaskRequest
 
@@ -7,6 +8,24 @@ GEOJSON_EXPORT_TYPE = 'GEOJSON'
 SHAPEFILE_EXPORT_TYPE = 'SHAPEFILE'
 KML_EXPORT_TYPE = 'KML'
 TOPOJSON_EXPORT_TYPE = 'TOPOJSON'
+
+
+# Status text
+class ExportRequestStatusText(str, Enum):
+    WAITING = 'waiting'
+    QUEUED = 'queued'
+    RUNNING = 'running'
+    PREPARING_GEOJSON = 'preparing_geojson'
+    PREPARING_SHP = 'preparing_shp'
+    PREPARING_TOPOJSON = 'preparing_topojson'
+    PREPARING_KML = 'preparing_kml'
+    CREATING_ZIP_ARCHIVE = 'creating_zip_archive'
+    READY = 'ready'
+    ABORTED = 'aborted'
+    EXPIRED = 'expired'
+
+    def __str__(self) -> str:
+        return self.value
 
 
 class ExportRequest(BaseTaskRequest):
