@@ -8,6 +8,10 @@ from georepo.models.dataset_view import (
     DatasetView,
     DatasetViewResource
 )
+from georepo.models.export_request import (
+    ExportRequest,
+    ExportRequestStatusText
+)
 
 
 logger = logging.getLogger(__name__)
@@ -38,6 +42,20 @@ def get_task_status(task_id: str):
         logger.error('Error connect : ', errc)
         raise RuntimeError('Unable to connect to Worker Flower API!')
     return status
+
+
+def on_task_queued(task: BackgroundTask):
+    task_param = make_tuple(task.parameters or '()')
+    if task.name == 'dataset_view_exporter':
+        if len(task_param) == 0:
+            return
+        request_id = task_param[0]
+        # update status_text to queued
+        request = ExportRequest.objects.filter(id=request_id).first()
+        if request is None:
+            return
+        request.status_text = str(ExportRequestStatusText.QUEUED)
+        request.save(update_fields=['status_text'])
 
 
 def on_task_queued_or_running(task: BackgroundTask):

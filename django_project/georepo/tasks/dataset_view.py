@@ -1,13 +1,27 @@
 from typing import List
+import traceback
+import logging
 from celery import shared_task
 from django.db import connection
 from django.db.models import Q
 from georepo.models.entity import GeographicalEntity
 
 from georepo.models import (
-    DatasetView, DatasetViewResource
+    DatasetView, DatasetViewResource,
+    ExportRequest, GEOJSON_EXPORT_TYPE,
+    KML_EXPORT_TYPE, TOPOJSON_EXPORT_TYPE,
+    SHAPEFILE_EXPORT_TYPE, ExportRequestStatusText
 )
+from georepo.models.base_task_request import ERROR
 from georepo.utils.celery_helper import cancel_task
+from georepo.utils.exporter_base import DatasetViewExporterBase
+from georepo.utils.geojson import GeojsonViewExporter
+from georepo.utils.shapefile import ShapefileViewExporter
+from georepo.utils.kml import KmlViewExporter
+from georepo.utils.topojson import TopojsonViewExporter
+
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(name="check_affected_views")
@@ -141,3 +155,44 @@ def check_affected_views_from_tiling_config(
             vector_tile=True,
             product=False
         )
+
+
+def try_clear_temp_resource_on_error(exporter: DatasetViewExporterBase):
+    try:
+        exporter.do_remove_temp_dir()
+    except Exception:
+        pass
+
+
+@shared_task(name="dataset_view_exporter")
+def dataset_view_exporter(request_id):
+    request = ExportRequest.objects.get(id=request_id)
+    exporter = None
+    if request.format == GEOJSON_EXPORT_TYPE:
+        exporter = GeojsonViewExporter(request)
+    elif request.format == SHAPEFILE_EXPORT_TYPE:
+        exporter = ShapefileViewExporter(request)
+    elif request.format == KML_EXPORT_TYPE:
+        exporter = KmlViewExporter(request)
+    elif request.format == TOPOJSON_EXPORT_TYPE:
+        exporter = TopojsonViewExporter(request)
+    if exporter is None:
+        request.errors = f'Unknown export format: {request.format}'
+        request.status = ERROR
+        request.status_text = str(ExportRequestStatusText.ABORTED)
+        request.save(update_fields=['errors', 'status', 'status_text'])
+        return
+    try:
+        exporter.init_exporter()
+        exporter.run()
+    except Exception as ex:
+        logger.error('Failed Process DatasetView Exporter!')
+        logger.error(ex)
+        logger.error(traceback.format_exc())
+        request.status = ERROR
+        request.errors = str(ex)
+        request.task_id = None
+        request.status_text = str(ExportRequestStatusText.ABORTED)
+        request.save(update_fields=[
+            'status', 'errors', 'task_id', 'status_text'])
+        try_clear_temp_resource_on_error(exporter)

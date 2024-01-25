@@ -9,6 +9,11 @@ from django.utils import timezone
 
 
 logger = logging.getLogger(__name__)
+EXCLUDED_TASK_LIST = [
+    'remove_old_background_tasks',
+    'check_celery_background_tasks',
+    'celery.backend_cleanup'
+]
 
 
 # set the default Django settings module for the 'celery' program.
@@ -61,6 +66,8 @@ def task_sent_handler(sender=None, headers=None, body=None, **kwargs):
     info = headers if 'task' in headers else body
     task_id = info['id']
     task_args = info['argsrepr'] if 'argsrepr' in info else ''
+    if info['task'] in EXCLUDED_TASK_LIST:
+        return
     bg_task, _ = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
@@ -77,10 +84,13 @@ def task_received_handler(sender, request=None, **kwargs):
     from georepo.models.background_task import BackgroundTask
     task_id = request.id if request else None
     task_args = request.args
+    task_name = request.name if request else ''
+    if task_name in EXCLUDED_TASK_LIST:
+        return
     task, _ = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
-            'name': request.name if request else '',
+            'name': task_name,
             'last_update': timezone.now(),
             'parameters': str(task_args)
         }
@@ -95,10 +105,13 @@ def task_prerun_handler(sender=None, task_id=None, task=None,
                         args=None, **kwargs):
     from georepo.models.background_task import BackgroundTask
     from georepo.utils.celery_helper import on_task_queued_or_running
+    task_name = sender.name if sender else ''
+    if task_name in EXCLUDED_TASK_LIST:
+        return
     task, is_created = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
-            'name': sender.name if sender else '',
+            'name': task_name,
             'parameters': str(args),
             'last_update': timezone.now(),
         }
@@ -114,11 +127,14 @@ def task_prerun_handler(sender=None, task_id=None, task=None,
 def task_success_handler(sender, **kwargs):
     from georepo.models.background_task import BackgroundTask
     from georepo.utils.celery_helper import on_task_success
+    task_name = sender.name if sender else ''
+    if task_name in EXCLUDED_TASK_LIST:
+        return
     task_id = sender.request.id
     task, _ = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
-            'name': sender.name if sender else '',
+            'name': task_name,
             'last_update': timezone.now(),
         }
     )
@@ -133,10 +149,13 @@ def task_success_handler(sender, **kwargs):
 def task_failure_handler(sender, task_id=None, args=None,
                          exception=None, **kwargs):
     from georepo.models.background_task import BackgroundTask
+    task_name = sender.name if sender else ''
+    if task_name in EXCLUDED_TASK_LIST:
+        return
     task, _ = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
-            'name': sender,
+            'name': task_name,
             'parameters': str(args),
             'last_update': timezone.now(),
         }
@@ -153,11 +172,14 @@ def task_failure_handler(sender, task_id=None, args=None,
 @signals.task_revoked.connect
 def task_revoked_handler(sender, request = None, **kwargs):
     from georepo.models.background_task import BackgroundTask
+    task_name = sender.name if sender else ''
+    if task_name in EXCLUDED_TASK_LIST:
+        return
     task_id = request.id if request else None
     task, _ = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
-            'name': sender.name if sender else '',
+            'name': task_name,
             'last_update': timezone.now(),
         }
     )
@@ -170,10 +192,13 @@ def task_revoked_handler(sender, request = None, **kwargs):
 def task_internal_error_handler(sender, task_id=None,
                                 exception=None, **kwargs):
     from georepo.models.background_task import BackgroundTask
+    task_name = sender.name if sender else ''
+    if task_name in EXCLUDED_TASK_LIST:
+        return
     task, _ = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
-            'name': sender.name if sender else '',
+            'name': task_name,
             'last_update': timezone.now(),
         }
     )
@@ -188,12 +213,15 @@ def task_internal_error_handler(sender, task_id=None,
 @signals.task_retry.connect
 def task_retry_handler(sender, reason, **kwargs):
     from georepo.models.background_task import BackgroundTask
+    task_name = sender.name if sender else ''
+    if task_name in EXCLUDED_TASK_LIST:
+        return
     task_id = sender.request.id
     logger.info(f'on task_retry_handler {task_id}')
     task, _ = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
-            'name': sender.name if sender else '',
+            'name': task_name,
             'last_update': timezone.now(),
         }
     )

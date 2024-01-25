@@ -55,7 +55,8 @@ from georepo.models import (
     SearchIdRequest,
     PENDING,
     EntityEditHistory,
-    ExportRequest
+    ExportRequest,
+    ExportRequestStatusText
 )
 from georepo.utils.admin import (
     get_deleted_objects,
@@ -932,6 +933,26 @@ class EntityEditHistoryAdmin(admin.ModelAdmin):
     get_level.admin_order_field = 'geographical_entity__level'
 
 
+@admin.action(description='Trigger Process Exporter')
+def trigger_process_exporter(modeladmin, request, queryset):
+    from georepo.tasks.dataset_view import dataset_view_exporter
+    for req in queryset:
+        req.status = PENDING
+        req.status_text = str(ExportRequestStatusText.WAITING)
+        req.progress = 0
+        req.save(update_fields=['status', 'status_text', 'progress'])
+        celery_task = dataset_view_exporter.apply_async(
+            (req.id,), queue='exporter'
+        )
+        req.task_id = celery_task.id
+        req.save(update_fields=['task_id'])
+    modeladmin.message_user(
+        request,
+        'Exporter will be run in the background!',
+        messages.SUCCESS
+    )
+
+
 class ExportRequestAdmin(admin.ModelAdmin):
     list_display = ('dataset_view', 'format', 'status',
                     'submitted_on', 'submitted_by',
@@ -940,6 +961,7 @@ class ExportRequestAdmin(admin.ModelAdmin):
     list_filter = ['submitted_by', 'status', 'format']
     search_fields = ['dataset_view__name', 'submitted_by__first_name',
                      'task_id', 'uuid']
+    actions = [trigger_process_exporter]
 
 
 admin.site.register(GeographicalEntity, GeographicalEntityAdmin)

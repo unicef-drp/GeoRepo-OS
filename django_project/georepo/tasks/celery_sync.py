@@ -7,7 +7,12 @@ from georepo.models import (
     BackgroundTask,
     DatasetViewResource,
     DatasetView,
-    Dataset
+    Dataset,
+    ExportRequest,
+    ExportRequestStatusText
+)
+from georepo.models.base_task_request import (
+    ERROR
 )
 from georepo.utils.celery_helper import (
     get_task_status,
@@ -153,6 +158,19 @@ def handle_task_failure(task: BackgroundTask):
             upload.save(update_fields=['status', 'logs'])
         except EntityUploadStatus.DoesNotExist as ex:
             logger.error(ex)
+    elif task_name == 'dataset_view_exporter':
+        if len(task_param) == 0:
+            return
+        request_id = task_param[0]
+        # update status_text to ABORTED
+        request = ExportRequest.objects.filter(id=request_id).first()
+        if request is None:
+            return
+        request.status_text = str(ExportRequestStatusText.ABORTED)
+        request.status = ERROR
+        if task.errors:
+            request.errors = task.errors
+        request.save(update_fields=['status_text', 'status', 'errors'])
 
 
 def handle_task_interrupted(task: BackgroundTask):
@@ -369,6 +387,21 @@ def handle_task_interrupted(task: BackgroundTask):
             upload_session.save(update_fields=['task_id'])
         except LayerUploadSession.DoesNotExist as ex:
             logger.error(ex)
+    elif task_name == 'dataset_view_exporter':
+        if len(task_param) == 0:
+            return
+        request_id = task_param[0]
+        # update status_text to ABORTED
+        request = ExportRequest.objects.filter(id=request_id).first()
+        if request is None:
+            return
+        request.status_text = str(ExportRequestStatusText.ABORTED)
+        request.status = ERROR
+        if task.errors:
+            request.errors = task.errors
+        else:
+            request.errors = 'Job is interrupted!'
+        request.save(update_fields=['status_text', 'status', 'errors'])
 
 
 @shared_task(name="remove_old_background_tasks")
