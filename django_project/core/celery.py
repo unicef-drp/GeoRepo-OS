@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 EXCLUDED_TASK_LIST = [
     'remove_old_background_tasks',
     'check_celery_background_tasks',
-    'celery.backend_cleanup'
+    'celery.backend_cleanup',
+    'expire_export_request'
 ]
 
 

@@ -1,9 +1,11 @@
 from typing import List
 import traceback
 import logging
+from django.utils import timezone
 from celery import shared_task
 from django.db import connection
 from django.db.models import Q
+from django.db.models.fields.files import FieldFile
 from georepo.models.entity import GeographicalEntity
 
 from georepo.models import (
@@ -196,3 +198,28 @@ def dataset_view_exporter(request_id):
         request.save(update_fields=[
             'status', 'errors', 'task_id', 'status_text'])
         try_clear_temp_resource_on_error(exporter)
+
+
+def try_delete_uploaded_file(file: FieldFile):
+    try:
+        file.delete(save=False)
+    except Exception:
+        logger.error('Failed to delete file!')
+
+
+@shared_task(name="expire_export_request")
+def expire_export_request():
+    requests = ExportRequest.objects.filter(
+        download_link_expired_on__lte=timezone.now(),
+        status_text=str(ExportRequestStatusText.READY)
+    )
+    logger.info(f'Expire export request with count {requests.count()}')
+    for request in requests:
+        request.status_text = str(ExportRequestStatusText.EXPIRED)
+        request.download_link = None
+        if request.output_file:
+            try_delete_uploaded_file(request.output_file)
+            request.output_file = None
+        request.save(update_fields=[
+            'status_text', 'download_link', 'output_file'
+        ])

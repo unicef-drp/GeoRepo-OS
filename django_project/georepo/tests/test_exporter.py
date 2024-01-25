@@ -1,11 +1,14 @@
 from django.utils import timezone
-
+import datetime
+from django.core.files.uploadedfile import SimpleUploadedFile
+from core.settings.utils import absolute_path
 from georepo.models.export_request import (
     ExportRequest,
     GEOJSON_EXPORT_TYPE,
     SHAPEFILE_EXPORT_TYPE,
     KML_EXPORT_TYPE,
-    TOPOJSON_EXPORT_TYPE
+    TOPOJSON_EXPORT_TYPE,
+    ExportRequestStatusText
 )
 from georepo.models.entity import EntityName, EntitySimplified
 from georepo.utils.exporter_base import DatasetViewExporterBase
@@ -14,6 +17,7 @@ from georepo.utils.shapefile import ShapefileViewExporter
 from georepo.utils.kml import KmlViewExporter
 from georepo.utils.topojson import TopojsonViewExporter
 from georepo.tests.common import BaseDatasetViewTest
+from georepo.tasks.dataset_view import expire_export_request
 
 
 class TestExporter(BaseDatasetViewTest):
@@ -258,3 +262,29 @@ class TestExporter(BaseDatasetViewTest):
         self.assertTrue(request.download_link_expired_on)
         self.assertTrue(request.output_file)
         self.assertTrue(request.download_link)
+
+    def test_expire_request(self):
+        test_file_path = absolute_path(
+            'georepo', 'tests',
+            'geojson_dataset', 'level_0_test_points.geojson')
+        with open(test_file_path, 'rb') as data:
+            file = SimpleUploadedFile(
+                content=data.read(),
+                name=data.name
+            )
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=GEOJSON_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser,
+            status_text=str(ExportRequestStatusText.READY),
+            download_link='abc',
+            download_link_expired_on=datetime.datetime(2000, 8, 14, 8, 8, 8),
+            output_file=file
+        )
+        expire_export_request()
+        request.refresh_from_db()
+        self.assertFalse(request.output_file)
+        self.assertFalse(request.download_link)
+        self.assertEqual(request.status_text,
+                         str(ExportRequestStatusText.EXPIRED))
