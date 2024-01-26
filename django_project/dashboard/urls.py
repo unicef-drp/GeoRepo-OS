@@ -150,6 +150,11 @@ from dashboard.api_views.logs import (
 )
 from dashboard.views.flower_proxy_view import FlowerProxyView
 from dashboard.api_views.task_status import CheckTaskStatus
+from dashboard.api_views.exporter import (
+    ExportHistoryList,
+    ExportRequestDetail,
+    ExportRequestMetadata
+)
 
 
 @api_view(['GET'])
@@ -626,6 +631,15 @@ urlpatterns = [
     re_path(r'api/view-detail/(?P<id>[\da-f-]+)?$',
             ViewDetail.as_view(),
             name='view-detail'),
+    re_path(r'api/exporter/(?P<id>[\da-f-]+)/list/?$',
+            ExportHistoryList.as_view(),
+            name='exporter-history-list'),
+    re_path(r'api/exporter/(?P<id>[\da-f-]+)/detail/?$',
+            ExportRequestDetail.as_view(),
+            name='exporter-request-detail'),
+    re_path(r'api/exporter/(?P<id>[\da-f-]+)/metadata/?$',
+            ExportRequestMetadata.as_view(),
+            name='exporter-request-metadata'),
     re_path(r'api/view-download/(?P<id>[\da-f-]+)/?$',
             DownloadView.as_view(),
             name='view-download'),

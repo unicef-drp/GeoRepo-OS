@@ -159,7 +159,6 @@ def generate_entity_query(
         'gg.approved_date, '
         'gg.source, '
         'gg.admin_level_name, '
-        'layerfile.name as layer_file, '
         'gg.privacy_level, '
         'string_agg(distinct auth_user.first_name || \' \' '
         '|| auth_user.last_name, \', \') as approved_by, '
@@ -176,8 +175,6 @@ def generate_entity_query(
         '    ge_id.geographical_entity_id = gg.id '
         'left join georepo_entityname ge_name on '
         '    ge_name.geographical_entity_id = gg.id '
-        'left join dashboard_layerfile layerfile on '
-        '    layerfile.id = gg.layer_file_id '
         'left join auth_user auth_user on '
         '    auth_user.id = gg.approved_by_id '
     )
@@ -199,7 +196,7 @@ def generate_entity_query(
     sql = (
         sql_select + sql_joins + sql_cond +
         'group by gg.id, parent_0.id, ge.label, '
-        'gg.level, gg.revision_number, layerfile.name'
+        'gg.level, gg.revision_number'
     )
     if sort_by and sort_direction:
         sql = (

@@ -1,0 +1,40 @@
+from rest_framework import serializers
+from georepo.models.export_request import ExportRequest
+
+
+class ExportRequestItemSerializer(serializers.ModelSerializer):
+    job_uuid = serializers.UUIDField(source='uuid')
+    requester = serializers.SerializerMethodField()
+    date_requested = serializers.DateTimeField(source='submitted_on')
+    date_completed = serializers.DateTimeField(source='finished_at')
+    current_status = serializers.CharField(source='status_text')
+    error_message = serializers.CharField(source='errors')
+    simplification = serializers.SerializerMethodField()
+    filter_summary = serializers.SerializerMethodField()
+    download_expiry = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ExportRequest
+        fields = [
+            'id',
+            'job_uuid',
+            'format',
+            'requester',
+            'date_requested',
+            'date_completed',
+            'current_status',
+            'status',
+            'progress',
+            'error_message',
+            'simplification',
+            'filter_summary',
+            'download_link',
+            'download_expiry'
+        ]
+
+
+class ExportRequestDetailSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ExportRequest
+        fields = '__all__'

@@ -48,8 +48,6 @@ export default function ViewDetail() {
     const [previewSession, setPreviewSession] = useState(null)
     const [tempData, setTempData] = useState<TempQueryCreateInterface>(null)
     const [view, setView] = useState<View>(null)
-    const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-    const downloadAsOpen = Boolean(anchorEl)
     const [isDownloading, setIsDownloading] = useState(false)
     const [searchParams, setSearchParams] = useSearchParams()
     const navigate = useNavigate()
@@ -151,7 +149,6 @@ export default function ViewDetail() {
 
     const downloadViewOnClick = (format: string) => {
         setIsDownloading(true)
-        setAnchorEl(null)
         let _queryParams = []
         if (previewSession) {
             _queryParams.push(`session=${previewSession}`)
@@ -242,34 +239,15 @@ export default function ViewDetail() {
                     { view && view.permissions && view.permissions.includes('Manage') && getSyncStatusTab()}
                 </Tabs>
                 { view && <Box flexDirection={'column'} justifyContent={'center'} display={'flex'} sx={{marginRight: '20px'}}>
-                    <Tooltip title='Download view with possible filters: Country, Admin Level'>
+                    <Tooltip title='Download view with filters from the preview'>
                         <Button disabled={isDownloading}
                             id='download-as-button'
-                            className={'ThemeButton MuiButton-secondary DownloadAsButton'}
-                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => setAnchorEl(event.currentTarget)}
-                            aria-controls={downloadAsOpen ? 'download-as-menu' : undefined}
-                            aria-haspopup="true"
-                            aria-expanded={downloadAsOpen ? 'true' : undefined}
-                            disableElevation
-                            endIcon={<KeyboardArrowDownIcon />}
+                            className={'ThemeButton MuiButton-secondary'}
+                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {}}
                         >
-                            Download As
+                            Download
                         </Button>
                     </Tooltip>
-                    <Menu
-                        id="download-as-menu"
-                        anchorEl={anchorEl}
-                        open={downloadAsOpen}
-                        onClose={() => setAnchorEl(null)}
-                        MenuListProps={{
-                            'aria-labelledby': 'download-as-button',
-                        }}
-                    >
-                        <MenuItem onClick={() => downloadViewOnClick('geojson')}>Geojson</MenuItem>
-                        <MenuItem onClick={() => downloadViewOnClick('shapefile')}>Shapefile</MenuItem>
-                        <MenuItem onClick={() => downloadViewOnClick('kml')}>KML</MenuItem>
-                        <MenuItem onClick={() => downloadViewOnClick('topojson')}>Topojson</MenuItem>
-                    </Menu>
                 </Box>
                 }
             </Box>

@@ -22,7 +22,6 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
     privacy_level = serializers.SerializerMethodField(source='privacy_level')
     other_name = serializers.SerializerMethodField(source='other_name')
     other_id = serializers.SerializerMethodField(source='other_id')
-    layer_file = serializers.SerializerMethodField(source='layer_file')
     approved_by = serializers.SerializerMethodField(source='approved_by')
     is_latest = serializers.SerializerMethodField(source='is_latest')
 
@@ -46,9 +45,6 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
 
     def get_other_id(self, obj):
         return obj['other_id']
-
-    def get_layer_file(self, obj):
-        return obj['layer_file']
 
     def get_approved_by(self, obj):
         return obj['approved_by']
@@ -80,7 +76,6 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
             'admin_level_name',
             'approved_by',
             'parent',
-            'layer_file',
             'ancestor',
             'privacy_level',
             'other_name',

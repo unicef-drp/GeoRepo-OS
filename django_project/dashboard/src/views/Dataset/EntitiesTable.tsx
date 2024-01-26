@@ -61,9 +61,9 @@ const ALL_COLUMNS = [
     'admin_level_name',
     'dataset',
     'approved_by',
-    'layer_file',
     'other_name',
-    'other_id'
+    'other_id',
+    'centroid'
 ]
 
 
@@ -75,7 +75,8 @@ const FILTER_ENABLED_COLUMNS = [
     'updated',
     'rev',
     'status',
-    'privacy_level'
+    'privacy_level',
+    'centroid'
 ]
 
 
@@ -280,6 +281,8 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                                     return filterList;
                                 }
                             }
+                            options.options.display = false
+                            options.options.filter = true
                             options.options.filterType = 'custom'
                             options.options.filterOptions = {
                                 logic: (location:any, filters:any, row:any) => {
