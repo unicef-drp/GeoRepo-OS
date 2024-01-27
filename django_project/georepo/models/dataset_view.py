@@ -11,6 +11,7 @@ from guardian.models import UserObjectPermissionBase
 from guardian.models import GroupObjectPermissionBase
 from taggit.managers import TaggableManager
 from georepo.models.tag import TaggedRecord
+from georepo.models.dataset import Dataset
 
 DATASET_VIEW_LATEST_TAG = 'latest'
 DATASET_VIEW_ALL_VERSIONS_TAG = 'all_versions'
@@ -360,6 +361,26 @@ class DatasetView(models.Model):
     @classmethod
     def get_fields(cls):
         return cls._meta.fields
+
+    @property
+    def current_simplification_status(self):
+        return (
+            self.simplification_sync_status if
+            not self.is_tiling_config_match else
+            self.dataset.simplification_sync_status
+        )
+
+    @property
+    def is_simplified_entities_ready(self):
+        if self.is_tiling_config_match:
+            return (
+                self.dataset.simplification_sync_status ==
+                Dataset.SyncStatus.SYNCED
+            )
+        return (
+            self.simplification_sync_status ==
+            DatasetView.SyncStatus.SYNCED
+        )
 
 
 class DatasetViewUserObjectPermission(UserObjectPermissionBase):

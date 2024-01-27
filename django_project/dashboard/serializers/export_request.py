@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from georepo.models.export_request import ExportRequest
+from georepo.models.export_request import (
+    ExportRequest,
+    ExportRequestStatusText
+)
 
 
 class ExportRequestItemSerializer(serializers.ModelSerializer):
@@ -12,6 +15,23 @@ class ExportRequestItemSerializer(serializers.ModelSerializer):
     simplification = serializers.SerializerMethodField()
     filter_summary = serializers.SerializerMethodField()
     download_expiry = serializers.SerializerMethodField()
+
+    def get_requester(self, obj: ExportRequest):
+        return obj.requester_name
+
+    def get_simplification(self, obj: ExportRequest):
+        if obj.is_simplified_entities:
+            return obj.simplification_zoom_level
+        return '-'
+
+    def get_filter_summary(self, obj: ExportRequest):
+        return [key.title() for key in obj.filters if
+                key != 'points' and obj.filters[key]]
+
+    def get_download_expiry(self, obj: ExportRequest):
+        if obj.status_text == ExportRequestStatusText.EXPIRED:
+            return None
+        return obj.download_link_expired_on
 
     class Meta:
         model = ExportRequest

@@ -592,12 +592,7 @@ class BatchEntityEditListItemSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
 
     def get_user(self, obj: BatchEntityEdit):
-        if obj.submitted_by and obj.submitted_by.first_name:
-            name = obj.submitted_by.first_name
-            if obj.submitted_by.last_name:
-                name = f'{name} {obj.submitted_by.last_name}'
-            return name
-        return '-'
+        return obj.requester_name
 
     def get_object_id(self, obj: BatchEntityEdit):
         return obj.id
