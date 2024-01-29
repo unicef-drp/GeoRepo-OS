@@ -239,12 +239,15 @@ export default function ViewDetail() {
                     )}
                     { view && view.permissions && view.permissions.includes('Manage') && getSyncStatusTab()}
                 </Tabs>
-                { view && <Box flexDirection={'column'} justifyContent={'center'} display={'flex'} sx={{marginRight: '20px'}}>
+                { view && tabSelected === 1 && <Box flexDirection={'column'} justifyContent={'center'} display={'flex'} sx={{marginRight: '20px'}}>
                     <Tooltip title='Download view with filters from the preview'>
-                        <Button disabled={isDownloading}
+                        <Button disabled={!previewSession}
                             id='download-as-button'
                             className={'ThemeButton MuiButton-secondary'}
-                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {}}
+                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                                let _navigate_to = `/view_edit?id=${view.id}&tab=2&filterSession=${previewSession}`
+                                navigate(_navigate_to)
+                            }}
                         >
                             Download
                         </Button>

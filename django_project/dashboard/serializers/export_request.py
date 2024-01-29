@@ -11,7 +11,7 @@ class ExportRequestItemSerializer(serializers.ModelSerializer):
     date_requested = serializers.DateTimeField(source='submitted_on')
     date_completed = serializers.DateTimeField(source='finished_at')
     current_status = serializers.CharField(source='status_text')
-    error_message = serializers.CharField(source='errors')
+    error_message = serializers.SerializerMethodField()
     simplification = serializers.SerializerMethodField()
     filter_summary = serializers.SerializerMethodField()
     download_expiry = serializers.SerializerMethodField()
@@ -32,6 +32,9 @@ class ExportRequestItemSerializer(serializers.ModelSerializer):
         if obj.status_text == ExportRequestStatusText.EXPIRED:
             return None
         return obj.download_link_expired_on
+
+    def get_error_message(self, obj: ExportRequest):
+        return obj.errors if obj.errors else '-'
 
     class Meta:
         model = ExportRequest
