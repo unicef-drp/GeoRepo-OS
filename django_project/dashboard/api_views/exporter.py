@@ -128,7 +128,8 @@ class ExportRequestDetail(AzureAuthRequiredMixin,
             status_text=str(ExportRequestStatusText.WAITING),
             is_simplified_entities=is_simplified_entities,
             simplification_zoom_level=simplification_zoom_level,
-            filters=filters
+            filters=filters,
+            source='dashboard'
         )
         celery_task = dataset_view_exporter.apply_async(
             (export_request.id,), queue='exporter'

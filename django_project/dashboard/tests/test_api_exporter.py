@@ -186,6 +186,7 @@ class TestExporterAPI(BaseDatasetViewTest):
         self.assertIn('level', export_request.filters)
         self.assertEqual(export_request.filters['level'],
                          data['filters']['level'])
+        self.assertEqual(export_request.source, 'dashboard')
 
 
     def test_get_export_request_metadata(self):
