@@ -160,15 +160,20 @@ class ExportRequestMetadata(FetchDatasetViewTilingConfig,
     def get(self, *args, **kwargs):
         dataset_view = self.get_dataset_view()
         # EntitiesUserConfig session
-        session = self.request.GET.get('session')
-        user_config = EntitiesUserConfig.objects.filter(
-            uuid=session
-        ).first()
+        session = self.request.GET.get('session', '')
+        user_config = None
+        if session:
+            user_config = EntitiesUserConfig.objects.filter(
+                uuid=session
+            ).first()
+        formats = []
+        formats.extend(AVAILABLE_EXPORT_FORMAT_TYPES)
+        formats.sort()
         return Response(
             status=200,
             data={
                 'filters': user_config.filters if user_config else {},
-                'available_formats': AVAILABLE_EXPORT_FORMAT_TYPES.sort(),
+                'available_formats': formats,
                 'is_simplification_available': (
                     dataset_view.is_simplified_entities_ready
                 ),

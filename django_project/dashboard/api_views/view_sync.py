@@ -143,9 +143,7 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
         # exclude synced and syncing
         querysets = views_querysets.exclude(
             Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCING) |
-            Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED) |
-            Q(product_sync_status=DatasetView.SyncStatus.SYNCING) |
-            Q(product_sync_status=DatasetView.SyncStatus.SYNCED)
+            Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED)
         )
         querysets = querysets.values_list('id', flat=True)
         return querysets
@@ -362,19 +360,12 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
         return status, progress
 
     def get_dataset_status(self, obj: Dataset):
-        vt_sync_status = set(
+        all_status = set(
             obj.datasetview_set.all().values_list(
                 'vector_tile_sync_status',
                 flat=True
             ).distinct()
         )
-        product_sync_status = set(
-            obj.datasetview_set.all().values_list(
-                'product_sync_status',
-                flat=True
-            ).distinct()
-        )
-        all_status = vt_sync_status.union(product_sync_status)
         if all_status == {obj.SyncStatus.SYNCED}:
             return obj.SyncStatus.SYNCED
         elif obj.SyncStatus.SYNCING in all_status:
@@ -387,8 +378,6 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
         all_status = [
             obj.vector_tile_sync_status,
         ]
-        if obj.product_sync_status not in all_status:
-            all_status.append(obj.product_sync_status)
         if all_status == [obj.SyncStatus.SYNCED]:
             return obj.SyncStatus.SYNCED
         elif obj.SyncStatus.SYNCING in all_status:

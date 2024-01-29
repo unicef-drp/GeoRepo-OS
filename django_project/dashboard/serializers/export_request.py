@@ -57,4 +57,20 @@ class ExportRequestDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ExportRequest
-        fields = '__all__'
+        fields = [
+            'id',
+            'uuid',
+            'format',
+            'requester_name',
+            'submitted_on',
+            'finished_at',
+            'status',
+            'status_text',
+            'progress',
+            'errors',
+            'is_simplified_entities',
+            'simplification_zoom_level',
+            'filters',
+            'download_link',
+            'download_link_expired_on'
+        ]

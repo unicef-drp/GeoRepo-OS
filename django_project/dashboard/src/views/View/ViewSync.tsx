@@ -36,29 +36,13 @@ const COLUMNS = [
     'uuid',
     'privacy_level',
     'vector_tile_sync_status',
-    'geojson_sync_status',
-    'shapefile_sync_status',
-    'kml_sync_status',
-    'topojson_sync_status',
     'vector_tiles_progress',
-    'geojson_progress',
-    'shapefile_progress',
-    'kml_progress',
-    'topojson_progress',
-    'vector_tiles_size',
-    'geojson_size',
-    'shapefile_size',
-    'kml_size',
-    'topojson_size'
+    'vector_tiles_size'
 ]
 
 const DEFAULT_SHOWN_COLUMNS = [
     'privacy_level',
-    'vector_tile_sync_status',
-    'geojson_sync_status',
-    'shapefile_sync_status',
-    'kml_sync_status',
-    'topojson_sync_status'
+    'vector_tile_sync_status'
 ]
 
 export default function ViewSync(props: ViewResourceInterface) {
@@ -98,52 +82,52 @@ export default function ViewSync(props: ViewResourceInterface) {
           _options.options.filter = false
           return _options
         })
-        for (let i=3; i < 8; i++) {
-          let col = _columns[i]
-          col.options.customBodyRender = (value: any, tableMeta: any, updateValue: any) => {
-            let rowData = tableMeta.rowData
-            if (rowData[i] === 'out_of_sync') {
-              return (
-                <span className='sync-status-desc-container'>
-                  <SyncProblemIcon color='warning' fontSize='small' />
-                  <span className='sync-status-desc'>{`Out of sync`}</span>
-                </span>
-              )
-            } else if (rowData[i] === 'Running') {
-              return (
-                <span className='running-status'>
-                    <span className='sync-status-desc-container'>
-                      <SyncIcon color='info' fontSize='small' />
-                      <span className='sync-status-desc'>{`Actively being processed`}</span>                      
-                    </span>
-                    <LinearProgress variant="determinate" value={rowData[i+5]} />
-                </span>
-              )
-            } else if (rowData[i] === 'syncing' || rowData[i] === 'Queued') {
-              return (
-                <span className='sync-status-desc-container'>
-                  <HourglassEmptyIcon color='info' fontSize='small' />
-                  <span className='sync-status-desc'>{`Queued but not running yet`}</span>
-                </span>
-              )
-            } else if (rowData[i] === 'Stopped' || rowData[i] === 'error') {
-              return (
-                <span className='sync-status-desc-container'>
-                  <ErrorIcon color='error' fontSize='small' />
-                  <span className='sync-status-desc'>{`Terminated unexpectedly`}</span>
-                </span>
-              )
-            } else {
-              return (
-                <span className='sync-status-desc-container'>
-                  <CheckCircleIcon color='success' fontSize='small' />
-                  <span className='sync-status-desc'>{`Completed successfully (${rowData[i+10]})`}</span>
-                </span>
-              )
-            }
+        let i = 3
+        let col = _columns[i]
+        col.options.customBodyRender = (value: any, tableMeta: any, updateValue: any) => {
+          let rowData = tableMeta.rowData
+          console.log(rowData)
+          if (rowData[i] === 'out_of_sync') {
+            return (
+              <span className='sync-status-desc-container'>
+                <SyncProblemIcon color='warning' fontSize='small' />
+                <span className='sync-status-desc'>{`Out of sync`}</span>
+              </span>
+            )
+          } else if (rowData[i] === 'Running') {
+            return (
+              <span className='running-status'>
+                  <span className='sync-status-desc-container'>
+                    <SyncIcon color='info' fontSize='small' />
+                    <span className='sync-status-desc'>{`Actively being processed`}</span>                      
+                  </span>
+                  <LinearProgress variant="determinate" value={rowData[i+1]} />
+              </span>
+            )
+          } else if (rowData[i] === 'syncing' || rowData[i] === 'Queued') {
+            return (
+              <span className='sync-status-desc-container'>
+                <HourglassEmptyIcon color='info' fontSize='small' />
+                <span className='sync-status-desc'>{`Queued but not running yet`}</span>
+              </span>
+            )
+          } else if (rowData[i] === 'Stopped' || rowData[i] === 'error') {
+            return (
+              <span className='sync-status-desc-container'>
+                <ErrorIcon color='error' fontSize='small' />
+                <span className='sync-status-desc'>{`Terminated unexpectedly`}</span>
+              </span>
+            )
+          } else {
+            return (
+              <span className='sync-status-desc-container'>
+                <CheckCircleIcon color='success' fontSize='small' />
+                <span className='sync-status-desc'>{`Completed successfully (${rowData[i+2]})`}</span>
+              </span>
+            )
           }
-          _columns[i] = col
         }
+        _columns[i] = col
         setColumns(_columns)
     }
 
@@ -154,7 +138,7 @@ export default function ViewSync(props: ViewResourceInterface) {
         setLoading(false)
         setData(response.data)
         let allStatus: string[] = []
-        let products: string[] = ['vector_tile', 'geojson', 'shapefile', 'kml', 'topojson']
+        let products: string[] = ['vector_tile']
         //@ts-ignore
         products.forEach(function(product: string, idx: number){
           response.data.forEach(function (row: any, idxRow: number) {
@@ -235,20 +219,6 @@ export default function ViewSync(props: ViewResourceInterface) {
       )
     }
 
-    const regenerateProductData = () => {
-      syncView(
-        [props.view.id],
-        ['products']
-      )
-    }
-
-    const regenerateAll = () => {
-      syncView(
-        [props.view.id],
-        ['vector_tiles', 'products']
-      )
-    }
-
     const simplifyView = () => {
       syncView(
         [props.view.id],
@@ -289,22 +259,6 @@ export default function ViewSync(props: ViewResourceInterface) {
                           title={'Regenerate Vector Tiles'}
                           disabledTitle='Please trigger simplification before regenerate vector tiles!'
                           disabled={simplificationStatus.status !== SyncStatus.Synced}
-                          icon={null}
-                        />
-                      </Grid>
-                      <Grid item>
-                        <ThemeButton
-                          variant={'secondary'}
-                          onClick={regenerateProductData}
-                          title={'Regenerate Data Products'}
-                          icon={null}
-                        />
-                      </Grid>
-                      <Grid item>
-                        <ThemeButton
-                          variant={'secondary'}
-                          onClick={regenerateAll}
-                          title={'Regenerate All'}
                           icon={null}
                         />
                       </Grid>

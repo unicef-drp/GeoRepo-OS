@@ -9,14 +9,138 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Scrollable from '../../components/Scrollable';
 import List from "../../components/List";
 import Loading from "../../components/Loading";
+import { EntitiesFilterInterface } from '../Dataset/EntitiesFilter';
+import { TilingConfig } from '../../models/tiling';
 
 
 const EXPORTER_URL = '/api/exporter/'
+const ONGOING_STATUS_LIST = ['PENDING', 'PROCESSING']
+interface MetadataInterface {
+    filters: EntitiesFilterInterface;
+    available_formats: string[];
+    is_simplification_available: boolean;
+    tiling_configs: TilingConfig[];
+}
+interface ExportRequestDetailInterface {
+    id: number;
+    uuid: string;
+    format: string;
+    is_simplified_entities: boolean;
+    simplification_zoom_level: number;
+    status_text: string;
+    status: string;
+    filters: EntitiesFilterInterface;
+    download_link: string;
+    download_link_expired_on: Date;
+    source: string;
+    progress: number;
+    requester_name: string;
+    errors: string;
+}
 
+
+function EntityFilters(props: any) {
+
+
+
+    return (
+        <div>This is the filters (read only)</div>
+    )
+}
 
 function ExportViewDetail(props: any) {
+    const {view, requestId, filterSession} = props
+    const [loading, setLoading] = useState(true)
+    const navigate = useNavigate()
+    const [metadata, setMetadata] = useState<MetadataInterface>(null)
+    const [data, setData] = useState<ExportRequestDetailInterface>(null)
+    const [currentInterval, setCurrentInterval] = useState<any>(null)
+
+    const fetchMetadata = () => {
+        let _url = EXPORTER_URL + `${view.id}/metadata/`
+        if (filterSession) {
+            _url = _url + `?session=${filterSession}`
+        }
+        axios.get(_url).then(response => {
+            if (response.data) {
+                setMetadata(response.data as MetadataInterface)
+                if (requestId) {
+                    fetchRequestDetail()
+                } else {
+                    setLoading(false)
+                }                
+            } else {
+                setMetadata(null)
+                setLoading(false)
+            }
+        }).catch(error => {
+            console.log(error)
+            setLoading(false)
+            let _message = 'Unable to fetch export view metadata, Please try again or contact the administrator!'
+            if (error.response) {
+                if ('detail' in error.response.data) {
+                    _message = error.response.data.detail
+                }
+            }
+            alert(_message)
+        })
+    }
+
+    const fetchRequestDetail = (isInterval?: boolean) => {
+        if (!isInterval) {
+            setLoading(true)
+        }
+        axios.get(EXPORTER_URL + `${view.id}/detail/?request_id=${requestId}`).then(response => {
+            if (response.data) {
+                setData(response.data as ExportRequestDetailInterface)
+            } else {
+                setData(null)
+            }
+            if (!isInterval) {
+                setLoading(false)
+            }
+        }).catch(error => {
+            console.log(error)
+            if (!isInterval) {
+                setLoading(false)
+                let _message = 'Unable to fetch export view detail, Please try again or contact the administrator!'
+                if (error.response) {
+                    if ('detail' in error.response.data) {
+                        _message = error.response.data.detail
+                    }
+                }
+                alert(_message)
+            }
+        })
+    }
+
+    useEffect(() => {
+        setLoading(true)
+        fetchMetadata()
+    }, [view, requestId, filterSession])
+
+    useEffect(() => {
+        if (data && ONGOING_STATUS_LIST.includes(data.status)) {
+            if (currentInterval) {
+                clearInterval(currentInterval)
+                setCurrentInterval(null)
+            }
+            const interval = setInterval(() => {
+                fetchRequestDetail(true)
+            }, 5000)
+            setCurrentInterval(interval)
+            return () => clearInterval(interval)
+        }
+    }, [data?.status])
+
+    if (loading) {
+        return <Loading/>
+    }
+
     return (
-        <div>ExportViewDetail</div>
+        <Box>
+
+        </Box>
     )
 }
 
@@ -101,7 +225,7 @@ function ExportViewList(props: any) {
             console.log(error)
             if (!isInterval) {
                 setLoading(false)
-                let _message = 'Unable to fetch export view history!'
+                let _message = 'Unable to fetch export view history, Please try again or contact the administrator!'
                 if (error.response) {
                     if ('detail' in error.response.data) {
                         _message = error.response.data.detail
@@ -162,7 +286,6 @@ interface ViewDownloadInterface {
 
 
 export default function ViewDownload(props: ViewDownloadInterface) {
-    console.log('ViewDownload render')
     const [searchParams, setSearchParams] = useSearchParams()
     const [requestId, setRequestId] = useState(null)
     const [filterSession, setFilterSession] = useState(null)
@@ -177,7 +300,7 @@ export default function ViewDownload(props: ViewDownloadInterface) {
     return (
         <Scrollable>
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
-                {props.view && <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                {props.view?.id && <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 {requestId || filterSession ? <ExportViewDetail view={props.view} requestId={requestId} filterSession={filterSession} />
                 : <ExportViewList view={props.view} />}
                 </Box>}

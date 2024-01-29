@@ -117,7 +117,6 @@ export default function ViewDetail() {
     }
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-        '/view_edit?id=672'
         let viewId = searchParams.get('id') ? parseInt(searchParams.get('id')) : 0
         navigate(`/view_edit?id=${viewId}&tab=${newValue}`)
     }
