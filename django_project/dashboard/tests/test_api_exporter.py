@@ -38,7 +38,7 @@ class TestExporterAPI(BaseDatasetViewTest):
         view = ExportHistoryList.as_view()
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 0)
+        self.assertEqual(len(response.data['results']), 0)
         export_request = ExportRequest.objects.create(
             dataset_view=self.dataset_view,
             format=GEOJSON_EXPORT_TYPE,
@@ -53,8 +53,8 @@ class TestExporterAPI(BaseDatasetViewTest):
         view = ExportHistoryList.as_view()
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['id'], export_request.id)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['id'], export_request.id)
 
     def test_get_export_request_detail(self):
         export_request = ExportRequest.objects.create(

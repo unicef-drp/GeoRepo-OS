@@ -32,6 +32,7 @@ import {updateViewTabStatuses, resetViewTabStatuses} from "../../reducers/viewTa
 import { StatusAndProgress } from '../../models/syncStatus';
 import { fetchSyncStatusAPI } from '../../utils/api/TilingStatus';
 import StatusLoadingDialog from '../../components/StatusLoadingDialog';
+import ViewDownload from './ViewDownload';
 
 const QUERY_CHECK_URL = '/api/query-view-preview/'
 const DOWNLOAD_VIEW_URL = '/api/view-download/'
@@ -199,24 +200,24 @@ export default function ViewDetail() {
 
     const getSyncStatusTab = () => {
         if (objSyncStatus === SyncStatus.Syncing) {
-            return <Tab key={4} label="Sync Status"
+            return <Tab key={5} label="Sync Status"
               icon={<CircularProgress size={18} />}
               iconPosition={'start'}
-              {...a11yProps(4)}
+              {...a11yProps(5)}
               disabled={view === null}
             />
           } else if (objSyncStatus === SyncStatus.Error) {
-            return <Tab key={4} label="Sync Status"
+            return <Tab key={5} label="Sync Status"
               icon={<ErrorIcon color='error' fontSize='small' />}
               iconPosition={'start'}
-              {...a11yProps(4)}
+              {...a11yProps(5)}
               disabled={view === null}
             />
           } else if (objSyncStatus === SyncStatus.OutOfSync) {
-            return <Tab key={4} label="Sync Status"
+            return <Tab key={5} label="Sync Status"
               icon={<SyncProblemIcon color='warning' fontSize='small' />}
               iconPosition={'start'}
-              {...a11yProps(4)}
+              {...a11yProps(5)}
               disabled={view === null}
             />
           }
@@ -230,11 +231,12 @@ export default function ViewDetail() {
                 <Tabs className='DatasetTabs' value={tabSelected} onChange={handleChange} aria-label="Configuration Tab">
                     <Tab label={ "Detail" + (tempData != null ? "*" : "") } {...a11yProps(0)} />
                     <Tab label="Preview" {...a11yProps(1)} disabled={!isQueryValid} />
+                    <Tab label="Download" {...a11yProps(2)} disabled={!isQueryValid} />
                     { view && view.permissions && view.permissions.includes('Manage') && (
-                        <Tab label="Permission" {...a11yProps(2)} disabled={view === null} />
+                        <Tab label="Permission" {...a11yProps(3)} disabled={view === null} />
                     )}
                     { view && view.permissions && view.permissions.includes('Manage') && (
-                        <Tab label="Tiling Config" {...a11yProps(3)} disabled={view === null} />
+                        <Tab label="Tiling Config" {...a11yProps(4)} disabled={view === null} />
                     )}
                     { view && view.permissions && view.permissions.includes('Manage') && getSyncStatusTab()}
                 </Tabs>
@@ -281,18 +283,21 @@ export default function ViewDetail() {
                     ): null
                     }
                 </TabPanel>
+                <TabPanel value={tabSelected} index={2} noPadding>
+                    <ViewDownload view={view} />
+                </TabPanel>
                 { view && view.permissions && view.permissions.includes('Manage') && (
-                    <TabPanel value={tabSelected} index={2} noPadding>
+                    <TabPanel value={tabSelected} index={3} noPadding>
                         <ViewPermission view={view} onViewUpdated={onViewUpdated} />
                     </TabPanel>
                 )}
                 { view && view.permissions && view.permissions.includes('Manage') && (
-                    <TabPanel value={tabSelected} index={3} padding={1}>
+                    <TabPanel value={tabSelected} index={4} padding={1}>
                         <TilingConfiguration view={view} isReadOnly={view.is_read_only} onSyncStatusShouldBeUpdated={fetchTilingStatus} />
                     </TabPanel>
                 )}
                 { view && view.permissions && view.permissions.includes('Manage') && (
-                    <TabPanel value={tabSelected} index={4} noPadding>
+                    <TabPanel value={tabSelected} index={5} noPadding>
                         <ViewSync view={view} onSyncStatusShouldBeUpdated={fetchTilingStatus} />
                     </TabPanel>
                 )}

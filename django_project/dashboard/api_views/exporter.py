@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from azure_auth.backends import AzureAuthRequiredMixin
 from dashboard.api_views.views import DatasetViewReadPermission
 from georepo.models.dataset_view import DatasetView
-from georepo.models.base_task_request import PENDING
+from georepo.models.base_task_request import PENDING, PROCESSING
 from georepo.models.export_request import (
     ExportRequest,
     AVAILABLE_EXPORT_FORMAT_TYPES,
@@ -40,9 +40,18 @@ class ExportHistoryList(AzureAuthRequiredMixin,
                 submitted_by=self.request.user
             )
         export_requests = export_requests.order_by('-submitted_on')
+        is_processing_qs = export_requests.filter(
+            status__in=[PENDING, PROCESSING]
+        )
         return Response(
             status=200,
-            data=ExportRequestItemSerializer(export_requests, many=True).data
+            data={
+                'results': (
+                    ExportRequestItemSerializer(
+                        export_requests, many=True).data
+                ),
+                'is_processing': is_processing_qs.exists()
+            }
         )
 
 
