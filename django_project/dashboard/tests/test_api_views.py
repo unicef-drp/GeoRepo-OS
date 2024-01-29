@@ -2578,11 +2578,6 @@ class TestApiViews(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data['entities']), 1)
 
-    @override_settings(
-        GEOJSON_FOLDER_OUTPUT=(
-            '/home/web/django_project/georepo/tests/dataset_export'
-        )
-    )
     def test_download_view(self):
         dataset = DatasetF.create(
             label='ABC'

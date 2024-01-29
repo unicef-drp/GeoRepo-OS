@@ -591,57 +591,6 @@ def delete_vector_tiles(dataset: Dataset):
         shutil.rmtree(vector_tile_path)
 
 
-def patch_vector_tile_path():
-    """
-    Patch vector tile path to use Dataset uuid
-    """
-    datasets = Dataset.objects.all()
-    for dataset in datasets:
-        new_vector_dir = str(dataset.uuid)
-        if not dataset.vector_tiles_path:
-            continue
-        if new_vector_dir in dataset.vector_tiles_path:
-            continue
-        old_vector_tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            dataset.label
-        )
-        new_vector_tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            new_vector_dir
-        )
-        try:
-            shutil.move(
-                old_vector_tile_path,
-                new_vector_tile_path
-            )
-        except FileNotFoundError as ex:
-            logger.error('Error renaming vector tiles directory ', ex)
-        dataset.vector_tiles_path = (
-            f'/layer_tiles/{new_vector_dir}/'
-            f'{{z}}/{{x}}/{{y}}?t={int(time.time())}'
-        )
-        dataset.tiling_status = Dataset.DatasetTilingStatus.DONE
-        dataset.save(update_fields=['vector_tiles_path', 'tiling_status'])
-        suffix = '.geojson'
-        old_geojson_file_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            dataset.label
-        ) + suffix
-        new_geojson_file_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(dataset.uuid)
-        ) + suffix
-        if os.path.exists(old_geojson_file_path):
-            try:
-                shutil.move(
-                    old_geojson_file_path,
-                    new_geojson_file_path
-                )
-            except FileNotFoundError as ex:
-                logger.error('Error renaming geojson file ', ex)
-
-
 def remove_vector_tiles_dir(
     resource_id: str,
     is_temp=False,

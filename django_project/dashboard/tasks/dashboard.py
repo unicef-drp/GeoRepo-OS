@@ -11,6 +11,7 @@ from georepo.utils.directory_helper import (
     get_folder_size,
     convert_size
 )
+from georepo.utils.azure_blob_storage import DirectoryClient
 
 
 logger = logging.getLogger(__name__)
@@ -88,3 +89,17 @@ def clear_temp_directory():
         os.makedirs(tmp_dir)
     logger.info('Finished cleaning temp directory on azure env.')
     calculate_temp_directory()
+
+
+@shared_task(name="remove_old_exported_data")
+def remove_old_exported_data():
+    if settings.USE_AZURE:
+        client = DirectoryClient(settings.AZURE_STORAGE,
+                                 settings.AZURE_STORAGE_CONTAINER)
+        export_data_dir = 'media/export_data'
+        client.rmdir(export_data_dir)
+    else:
+        if os.path.exists(settings.EXPORT_FOLDER_OUTPUT):
+            shutil.rmtree(settings.EXPORT_FOLDER_OUTPUT)
+        if not os.path.exists(settings.EXPORT_FOLDER_OUTPUT):
+            os.makedirs(settings.EXPORT_FOLDER_OUTPUT)

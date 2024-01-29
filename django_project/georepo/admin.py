@@ -473,28 +473,16 @@ def download_view_size_action(modeladmin, request, queryset):
     )
 
     writer = csv.writer(response)
-    writer.writerow(['View', 'Vector Tiles', 'Shapefile', 'Geojson'])
+    writer.writerow(['View', 'Vector Tiles'])
     for dataset_view in queryset:
         tile_path = os.path.join(
             settings.LAYER_TILES_PATH,
             str(dataset_view.uuid)
         )
         vector_tile_size = convert_size(get_folder_size(tile_path))
-        geojson_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(dataset_view.uuid)
-        )
-        geojson_size = convert_size(get_folder_size(geojson_path))
-        shapefile_path = os.path.join(
-            settings.SHAPEFILE_FOLDER_OUTPUT,
-            str(dataset_view.uuid)
-        )
-        shapefile_size = convert_size(get_folder_size(shapefile_path))
         writer.writerow([
             dataset_view.name,
-            vector_tile_size,
-            geojson_size,
-            shapefile_size
+            vector_tile_size
         ])
     return response
 

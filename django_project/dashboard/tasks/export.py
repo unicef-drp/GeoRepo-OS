@@ -1,15 +1,11 @@
 import time
-import os
 from celery import shared_task
 import logging
-import shutil
-from django.conf import settings
 
 from georepo.utils import (
     generate_view_vector_tiles,
     remove_vector_tiles_dir,
-    generate_view_resource_bbox,
-    DirectoryClient
+    generate_view_resource_bbox
 )
 from georepo.models.dataset_view import DatasetViewResourceLog
 from georepo.models.dataset_view_tile_config import DatasetViewTilingConfig
@@ -25,37 +21,6 @@ def clean_resource_vector_tiles_directory(resource_id):
     # remove vector tiles dir
     remove_vector_tiles_dir(resource_id)
     remove_vector_tiles_dir(resource_id, True)
-
-
-def clean_resource_export_data_directory(resource_id):
-    export_data_dict = {
-        'geojson': settings.GEOJSON_FOLDER_OUTPUT,
-        'shapefile': settings.SHAPEFILE_FOLDER_OUTPUT,
-        'kml': settings.KML_FOLDER_OUTPUT,
-        'topojson': settings.TOPOJSON_FOLDER_OUTPUT
-    }
-    for output, export_dir in export_data_dict.items():
-        if settings.USE_AZURE:
-            output_dir = (
-                f'media/export_data/{output}/'
-                f'{str(resource_id)}'
-            )
-            client = DirectoryClient(settings.AZURE_STORAGE,
-                                     settings.AZURE_STORAGE_CONTAINER)
-            client.rmdir(output_dir)
-        else:
-            export_data = os.path.join(
-                export_dir,
-                resource_id
-            )
-            if os.path.exists(export_data):
-                shutil.rmtree(export_data)
-        temp_export_data = os.path.join(
-            export_dir,
-            f'temp_{resource_id}'
-        )
-        if os.path.exists(temp_export_data):
-            shutil.rmtree(temp_export_data)
 
 
 @shared_task(name="view_simplification_task")
@@ -245,4 +210,3 @@ def generate_view_resource_vector_tiles_task(view_resource_id: str,
 @shared_task(name="remove_view_resource_data")
 def remove_view_resource_data(resource_id: str):
     clean_resource_vector_tiles_directory(resource_id)
-    clean_resource_export_data_directory(resource_id)

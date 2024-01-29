@@ -14,7 +14,6 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from django.utils.decorators import method_decorator
 from django.utils.text import slugify
-from django.conf import settings
 
 from georepo.utils.permission import (
     ModuleAccessPermission,
@@ -165,6 +164,7 @@ class DatasetExportDownload(GenericAPIView):
     Download dataset as given {format} in zip file
 
     Download zip file of requested format from dataset
+    !DEPRECATED!
     """
     permission_classes = [DatasetDetailAccessPermission]
     renderer_classes = [GeojsonRenderer, ShapefileRenderer]
@@ -197,8 +197,6 @@ class DatasetExportDownload(GenericAPIView):
         for level in levels:
             exported_name = get_dataset_exported_file_name(level)
             file_path = os.path.join(
-                settings.GEOJSON_FOLDER_OUTPUT if format == 'geojson' else
-                settings.SHAPEFILE_FOLDER_OUTPUT,
                 str(dataset.uuid),
                 exported_name
             ) + suffix
@@ -270,6 +268,7 @@ class DatasetExportDownloadByLevel(DatasetExportDownload):
     Download dataset as given {format} in zip file
 
     Download zip file of requested format from dataset
+    !DEPRECATED!
     """
 
     uuid_param = openapi.Parameter(
@@ -302,8 +301,6 @@ class DatasetExportDownloadByLevel(DatasetExportDownload):
             admin_level
         )
         file_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT if format == 'geojson' else
-            settings.SHAPEFILE_FOLDER_OUTPUT,
             str(dataset.uuid),
             exported_name
         ) + suffix
@@ -347,6 +344,7 @@ class DatasetExportDownloadByCountry(DatasetExportDownload):
     Download dataset as given {format} in zip file
 
     Download zip file of requested format from dataset
+    !DEPRECATED!
     """
     renderer_classes = [GeojsonRenderer, ShapefileRenderer]
 
@@ -476,8 +474,6 @@ class DatasetExportDownloadByCountry(DatasetExportDownload):
                     adm0
                 )
                 file_path = os.path.join(
-                    settings.GEOJSON_FOLDER_OUTPUT if format == 'geojson' else
-                    settings.SHAPEFILE_FOLDER_OUTPUT,
                     str(dataset.uuid),
                     exported_name
                 ) + suffix
@@ -531,6 +527,7 @@ class DatasetExportDownloadByCountryAndLevel(DatasetExportDownloadByCountry):
     Download dataset as given {format} in zip file
 
     Download zip file of requested format from dataset
+    !DEPRECATED!
     """
     renderer_classes = [GeojsonRenderer, ShapefileRenderer]
 
@@ -589,8 +586,6 @@ class DatasetExportDownloadByCountryAndLevel(DatasetExportDownloadByCountry):
                 adm0
             )
             file_path = os.path.join(
-                settings.GEOJSON_FOLDER_OUTPUT if format == 'geojson' else
-                settings.SHAPEFILE_FOLDER_OUTPUT,
                 str(dataset.uuid),
                 exported_name
             ) + suffix

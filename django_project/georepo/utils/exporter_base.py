@@ -844,7 +844,7 @@ class DatasetViewExporterBase(object):
 
 
 class APIDownloaderBase(GenericAPIView):
-    """Base class for download view."""
+    """!DEPRECATED! Base class for download view."""
     renderer_classes = [
         GeojsonRenderer,
         ShapefileRenderer,
@@ -854,43 +854,6 @@ class APIDownloaderBase(GenericAPIView):
 
     def get_output_format(self):
         output = {}
-        format = self.request.GET.get('format', 'geojson')
-        if format == 'geojson':
-            output = {
-                'suffix': '.geojson',
-                'directory': (
-                    settings.GEOJSON_FOLDER_OUTPUT if
-                    not settings.USE_AZURE else
-                    'media/export_data/geojson/'
-                )
-            }
-        elif format == 'shapefile':
-            output = {
-                'suffix': '.zip',
-                'directory': (
-                    settings.SHAPEFILE_FOLDER_OUTPUT if
-                    not settings.USE_AZURE else
-                    'media/export_data/shapefile/'
-                )
-            }
-        elif format == 'kml':
-            output = {
-                'suffix': '.kml',
-                'directory': (
-                    settings.KML_FOLDER_OUTPUT if
-                    not settings.USE_AZURE else
-                    'media/export_data/kml/'
-                )
-            }
-        elif format == 'topojson':
-            output = {
-                'suffix': '.topojson',
-                'directory': (
-                    settings.TOPOJSON_FOLDER_OUTPUT if
-                    not settings.USE_AZURE else
-                    'media/export_data/topojson/'
-                )
-            }
         return output
 
     def append_readme(self, resource: DatasetViewResource,

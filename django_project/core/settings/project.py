@@ -67,38 +67,6 @@ EXPORT_FOLDER_OUTPUT = os.path.join(
 if not os.path.exists(EXPORT_FOLDER_OUTPUT):
     os.makedirs(EXPORT_FOLDER_OUTPUT)
 
-GEOJSON_FOLDER_OUTPUT = os.path.join(
-    EXPORT_FOLDER_OUTPUT,
-    'geojson'
-)
-
-if not os.path.exists(GEOJSON_FOLDER_OUTPUT):
-    os.makedirs(GEOJSON_FOLDER_OUTPUT)
-
-SHAPEFILE_FOLDER_OUTPUT = os.path.join(
-    EXPORT_FOLDER_OUTPUT,
-    'shapefile'
-)
-
-if not os.path.exists(SHAPEFILE_FOLDER_OUTPUT):
-    os.makedirs(SHAPEFILE_FOLDER_OUTPUT)
-
-KML_FOLDER_OUTPUT = os.path.join(
-    EXPORT_FOLDER_OUTPUT,
-    'kml'
-)
-
-if not os.path.exists(KML_FOLDER_OUTPUT):
-    os.makedirs(KML_FOLDER_OUTPUT)
-
-TOPOJSON_FOLDER_OUTPUT = os.path.join(
-    EXPORT_FOLDER_OUTPUT,
-    'topojson'
-)
-
-if not os.path.exists(TOPOJSON_FOLDER_OUTPUT):
-    os.makedirs(TOPOJSON_FOLDER_OUTPUT)
-
 # use custom filter to hide other sensitive informations
 DEFAULT_EXCEPTION_REPORTER_FILTER = (
     'core.settings.filter.ExtendSafeExceptionReporterFilter'

@@ -3,10 +3,8 @@ import json
 import logging
 from uuid import UUID
 from datetime import date, datetime
-from django.conf import settings
 
 from georepo.models import (
-    Dataset,
     ExportRequestStatusText,
     SHAPEFILE_EXPORT_TYPE,
     KML_EXPORT_TYPE,
@@ -169,16 +167,3 @@ def validate_geojson(geojson: dict) -> bool:
     if (f_type == 'Feature' and 'geometry' not in geojson):
         return False
     return True
-
-
-def delete_geojson_file(dataset: Dataset):
-    """
-    Delete extracted geojson file when dataset is deleted
-    """
-    suffix = '.geojson'
-    geojson_file_path = os.path.join(
-        settings.GEOJSON_FOLDER_OUTPUT,
-        str(dataset.uuid)
-    ) + suffix
-    if os.path.exists(geojson_file_path):
-        os.remove(geojson_file_path)
