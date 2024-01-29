@@ -112,8 +112,7 @@ from dashboard.api_views.entity import (
 from dashboard.api_views.views import (
     CreateNewView, ViewList, DeleteView, ViewDetail,
     UpdateView, QueryViewCheck, SQLColumnsTablesList,
-    QueryViewPreview, GetViewTags,
-    DownloadView, ViewFilterValue
+    QueryViewPreview, GetViewTags, ViewFilterValue
 )
 from dashboard.api_views.tiling_config import (
     FetchDatasetTilingConfig,
@@ -640,9 +639,6 @@ urlpatterns = [
     re_path(r'api/exporter/(?P<id>[\da-f-]+)/metadata/?$',
             ExportRequestMetadata.as_view(),
             name='exporter-request-metadata'),
-    re_path(r'api/view-download/(?P<id>[\da-f-]+)/?$',
-            DownloadView.as_view(),
-            name='view-download'),
     re_path(r'api/delete-view/(?P<id>[\da-f-]+)?$',
             DeleteView.as_view(),
             name='delete-view'),

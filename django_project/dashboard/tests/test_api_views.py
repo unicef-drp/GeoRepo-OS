@@ -48,8 +48,7 @@ from georepo.models import (
     DatasetView, DatasetAdminLevelName, BoundaryType
 )
 from dashboard.api_views.views import (
-    CreateNewView, DeleteView, UpdateView, ViewDetail,
-    DownloadView
+    CreateNewView, DeleteView, UpdateView, ViewDetail
 )
 from dashboard.models import (
     LayerFile,
@@ -94,12 +93,6 @@ from modules.admin_boundaries.review import approve_revision
 from dashboard.api_views.tiling_config import (
     FetchDatasetTilingConfig,
     FetchDatasetViewTilingConfig
-)
-from georepo.utils.dataset_view import (
-    generate_default_view_dataset_latest
-)
-from georepo.utils.dataset_view import (
-    init_view_privacy_level
 )
 from core.models.preferences import SitePreferences
 from dashboard.tasks.upload import (
@@ -2577,58 +2570,3 @@ class TestApiViews(TestCase):
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data['entities']), 1)
-
-    def test_download_view(self):
-        dataset = DatasetF.create(
-            label='ABC'
-        )
-        generate_default_view_dataset_latest(dataset)
-        dataset_view = DatasetView.objects.filter(
-            dataset=dataset,
-            default_type=DatasetView.DefaultViewType.IS_LATEST,
-            default_ancestor_code__isnull=True
-        ).first()
-        init_view_privacy_level(dataset_view)
-        resource = dataset_view.datasetviewresource_set.filter(
-            privacy_level=4
-        ).first()
-        resource.uuid = uuid.UUID('e59f8338-e8a8-4e6d-9e0d-c63108a8048e')
-        resource.entity_count = 2
-        resource.save()
-        parent = GeographicalEntityF.create(
-            dataset=dataset_view.dataset,
-            level=0,
-            is_latest=True,
-            is_approved=True,
-            version=1,
-            unique_code='PAK',
-            unique_code_version=1
-        )
-        GeographicalEntityF.create(
-            dataset=dataset_view.dataset,
-            level=1,
-            parent=parent,
-            ancestor=parent,
-            is_latest=True,
-            is_approved=True,
-            version=1,
-            unique_code='PAK_001',
-            unique_code_version=1
-        )
-        kwargs = {
-            'id': str(dataset_view.id)
-        }
-        request = self.factory.get(
-            reverse(
-                'view-download',
-                kwargs=kwargs
-            )
-        )
-        view = DownloadView.as_view()
-        request.user = self.superuser
-        response = view(request, **kwargs)
-        self.assertEqual(response.status_code, 200)
-        self.assertEquals(
-            response.get('Content-Disposition'),
-            f'attachment; filename="{dataset_view.name}.zip"'
-        )
