@@ -20,6 +20,8 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Slider from '@mui/material/Slider';
+import WarningIcon from '@mui/icons-material/Warning';
+import Tooltip from '@mui/material/Tooltip';
 import {useAppDispatch} from "../../app/hooks";
 import Scrollable from '../../components/Scrollable';
 import List from "../../components/List";
@@ -44,6 +46,7 @@ interface MetadataInterface {
     available_formats: string[];
     is_simplification_available: boolean;
     tiling_configs: TilingConfig[];
+    current_simplification_status?: string;
 }
 interface ExportRequestDetailInterface {
     id: number;
@@ -368,7 +371,7 @@ function ExportViewDetail(props: any) {
                     <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                         <Grid item className='Title' md={3} xl={3} xs={12}>Format</Grid>
                         <Grid item md={9} xl={9} xs={12}>
-                            <FormControl sx={{minWidth: '300px'}} disabled={requestId > 0 || (filterSession && !metadata?.is_simplification_available)}>
+                            <FormControl sx={{minWidth: '300px'}} disabled={requestId > 0}>
                                 <Select
                                     id="format-type-select"
                                     value={data?.format}
@@ -393,9 +396,13 @@ function ExportViewDetail(props: any) {
                     <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                         <Grid item className='Title' md={3} xl={3} xs={12}>Extract simplified geometries</Grid>
                         <Grid item md={9} xl={9} xs={12}>
-                            <FormControlLabel control={<Checkbox value={data?.is_simplified_entities} checked={data?.is_simplified_entities}
+                            <FormControlLabel className='SimplifiedCheckBox' control={<Checkbox value={data?.is_simplified_entities} checked={data?.is_simplified_entities}
                                 onChange={(val) => setData({...data, is_simplified_entities: val.target.checked})} />}
-                                label="" disabled={requestId > 0} />
+                                label={ metadata?.is_simplification_available === false && requestId === 0 ? <span>
+                                    <Tooltip title={metadata.current_simplification_status === 'syncing' ? 'There is ongoing simplification process for this view.' : 'The simplified entities for this view are out of sync.'}>
+                                        <WarningIcon fontSize="medium" color="warning" sx={{ ml: '10px' }} />
+                                    </Tooltip>
+                                </span> : "" } disabled={requestId > 0 || !metadata?.is_simplification_available} />
                         </Grid>
                     </Grid>
                 </Grid>

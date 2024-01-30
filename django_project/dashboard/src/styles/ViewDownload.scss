@@ -8,4 +8,10 @@
             align-items: center;
         }
     }
+
+    .SimplifiedCheckBox {
+        .MuiFormControlLabel-label {
+            line-height: unset;
+        }
+    }
 }
