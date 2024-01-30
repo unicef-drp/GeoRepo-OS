@@ -165,6 +165,12 @@ export default function Notification() {
                 `dataset=${notification.payload.dataset}&step=${notification.payload.step}`
                 navigate(_url2)
                 break;
+            case 'DATASET_VIEW_EXPORTER':
+                let _viewId = notification.payload.view_id
+                let _reqId = notification.payload.request_id
+                let _url3 = `/view_edit?id=${_viewId}&tab=2&requestId=${_reqId}`
+                navigate(_url3)
+                break;
             default:
                 break;
         }

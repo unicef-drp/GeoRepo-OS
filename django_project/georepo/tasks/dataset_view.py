@@ -222,6 +222,7 @@ def dataset_view_exporter(request_id):
                 ' is finished with error! Click here to view!'
             )
             payload = {
+                'view_id': dataset_view.id,
                 'request_id': request.id,
                 'severity': 'success' if is_success else 'error',
             }

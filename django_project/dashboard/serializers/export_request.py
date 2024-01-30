@@ -75,5 +75,6 @@ class ExportRequestDetailSerializer(serializers.ModelSerializer):
             'simplification_zoom_level',
             'filters',
             'download_link',
-            'download_link_expired_on'
+            'download_link_expired_on',
+            'file_output_size'
         ]

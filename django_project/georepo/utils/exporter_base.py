@@ -70,6 +70,9 @@ PROPERTY_BOOL_VALUES = ['is_latest']
 METADATA_TEMPLATE_PATH = absolute_path(
     'georepo', 'utils', 'metadata_template.xml'
 )
+EXCLUDED_FILTER_KEYS = [
+    'updated_at', 'points'
+]
 
 
 def get_property_type(property: str):
@@ -527,7 +530,8 @@ class DatasetViewExporterBase(object):
         if self.request.filters:
             lines.append('Filters:')
             for key, value in self.request.filters.items():
-                lines.append(f'{key}: {str(value)}')
+                if key not in EXCLUDED_FILTER_KEYS and value:
+                    lines.append(f'{key}: {str(value)}')
         else:
             lines.append('Filters: -')
         lines.append('')
@@ -785,6 +789,7 @@ class DatasetViewExporterBase(object):
                     result_file,
                     arcname=os.path.basename(result_file)
                 )
+        file_stats = os.stat(zip_file_path)
         with open(zip_file_path, 'rb') as zip_file:
             self.request.output_file.save(
                 os.path.basename(zip_file_path),
@@ -822,18 +827,21 @@ class DatasetViewExporterBase(object):
             self.request.status = DONE
             self.request.status_text = str(ExportRequestStatusText.READY)
             self.request.errors = None
+            self.request.file_output_size = file_stats.st_size
         else:
             self.request.status = ERROR
             self.request.status_text = str(ExportRequestStatusText.ABORTED)
             self.request.errors = (
                 'Unable to generate download link for the zip archive!'
             )
+            self.request.file_output_size = 0
         self.request.finished_at = timezone.now()
         self.request.progress = 100
         self.request.save(
             update_fields=[
                 'download_link', 'download_link_expired_on', 'status',
-                'status_text', 'errors', 'finished_at', 'progress'
+                'status_text', 'errors', 'finished_at', 'progress',
+                'file_output_size'
             ]
         )
 

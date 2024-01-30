@@ -20,6 +20,7 @@ import { TilingConfig } from '../../models/tiling';
 import '../../styles/ViewDownload.scss';
 import LoadingButton from '@mui/lab/LoadingButton';
 import {postData} from "../../utils/Requests";
+import { capitalize, humanFileSize } from '../../utils/Helpers';
 
 
 const EXPORTER_URL = '/api/exporter/'
@@ -47,6 +48,20 @@ interface ExportRequestDetailInterface {
     errors?: string;
     submitted_on?: Date;
     finished_at?: Date;
+    file_output_size?: number;
+}
+
+const EXCLUDED_FILTER_KEYS = [
+    'updated_at', 'points'
+]
+
+
+const displayFilter = (key: string, filters: any) => {
+    if (key === 'valid_from') {
+        return new Date(filters[key]).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'})
+    }
+
+    return filters[key].join(', ')
 }
 
 
@@ -58,7 +73,23 @@ function EntityFilters(props: any) {
     }
 
     return (
-        <div>Placeholders</div>
+        <pre>
+            <div>
+                { Object.keys(filters).reduce(function (filtered, key) {
+                    if (!EXCLUDED_FILTER_KEYS.includes(key)) {
+                        if (key === 'valid_from' && filters[key]) {
+                            filtered.push(key)
+                        } else if (filters[key] && filters[key].length) {
+                            filtered.push(key)
+                        }
+                    }
+                    return filtered;
+                }, []).map((dictKey: string, index: number) => (
+                    <div key={index}>{dictKey} = {displayFilter(dictKey, filters)}</div>
+                ))
+                }
+            </div>
+      </pre>
     )
 }
 
@@ -183,9 +214,9 @@ function ExportViewDetail(props: any) {
 
     return (
         <Box className='ExportViewDetail'>
-            <Grid container display={'flex'} flexDirection={'column'}>
-                <Grid item>
-                    <Grid container display={'flex'} flexDirection={'row'} spacing={1}>
+            <Grid container display={'flex'} flexDirection={'column'} spacing={1}>
+                <Grid item className='RowItem'>
+                    <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                         <Grid item className='Title' md={3} xl={3} xs={12}>Filters</Grid>
                         <Grid item md={9} xl={9} xs={12}>
                             { requestId > 0 && data && <EntityFilters filters={data.filters} /> }
@@ -193,8 +224,8 @@ function ExportViewDetail(props: any) {
                         </Grid>
                     </Grid>
                 </Grid>
-                <Grid item>
-                    <Grid container display={'flex'} flexDirection={'row'} spacing={1}>
+                <Grid item className='RowItem'>
+                    <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                         <Grid item className='Title' md={3} xl={3} xs={12}>Format</Grid>
                         <Grid item md={9} xl={9} xs={12}>
                             <FormControl sx={{minWidth: '300px'}} disabled={requestId > 0 || (filterSession && !metadata?.is_simplification_available)}>
@@ -218,67 +249,77 @@ function ExportViewDetail(props: any) {
                         </Grid>
                     </Grid>
                 </Grid>
-                <Grid item>
-                    <Grid container display={'flex'} flexDirection={'row'} spacing={1}>
+                <Grid item className='RowItem'>
+                    <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                         <Grid item className='Title' md={3} xl={3} xs={12}>Extract simplified geometries</Grid>
                         <Grid item md={9} xl={9} xs={12}>
                             <FormControlLabel control={<Checkbox value={data?.is_simplified_entities} checked={data?.is_simplified_entities}
-                                onChange={(val) => setData({...data, is_simplified_entities: val.target.checked})}/>}
-                                label="" />
+                                onChange={(val) => setData({...data, is_simplified_entities: val.target.checked})} />}
+                                label="" disabled={requestId > 0} />
                         </Grid>
                     </Grid>
                 </Grid>
                 {/* zoom sliders */}
-                <Grid item></Grid>
+                { data?.is_simplified_entities && (
+                    <Grid item className='RowItem'></Grid>
+                )}
                 {/* submitted on */}
-                {requestId > 0 && data?.id && (
-                    <Grid item>
-                        <Grid container display={'flex'} flexDirection={'row'} spacing={1}>
+                {requestId > 0 && data?.id > 0 && (
+                    <Grid item className='RowItem'>
+                        <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                             <Grid item className='Title' md={3} xl={3} xs={12}>Submitted On</Grid>
                             <Grid item md={9} xl={9} xs={12}>{new Date(data.submitted_on).toDateString()}</Grid>
                         </Grid>
                     </Grid>
                 )}
                 {/* status */}
-                {requestId > 0 && data?.id && (
-                    <Grid item>
-                        <Grid container display={'flex'} flexDirection={'row'} spacing={1}>
+                {requestId > 0 && data?.id > 0 && (
+                    <Grid item className='RowItem'>
+                        <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                             <Grid item className='Title' md={3} xl={3} xs={12}>Status</Grid>
-                            <Grid item md={9} xl={9} xs={12}>{data.status_text}</Grid>
+                            <Grid item md={9} xl={9} xs={12}>{capitalize(data.status_text)}</Grid>
                         </Grid>
                     </Grid>
                 )}
                 {/* errors */}
-                {requestId > 0 && data?.id && data?.errors && (
-                    <Grid item>
-                        <Grid container display={'flex'} flexDirection={'row'} spacing={1}>
+                {requestId > 0 && data?.id > 0 && (
+                    <Grid item className='RowItem'>
+                        <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                             <Grid item className='Title' md={3} xl={3} xs={12}>Error message</Grid>
-                            <Grid item md={9} xl={9} xs={12}>{data.errors}</Grid>
+                            <Grid item md={9} xl={9} xs={12}>{data.errors ? data.errors : '-'}</Grid>
                         </Grid>
                     </Grid>
                 )}
                 {/* completed on */}
-                {requestId > 0 && data?.id && data?.status == 'DONE' && (
-                    <Grid item>
-                        <Grid container display={'flex'} flexDirection={'row'} spacing={1}>
+                {requestId > 0 && data?.id > 0 && data?.status === 'DONE' && (
+                    <Grid item className='RowItem'>
+                        <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                             <Grid item className='Title' md={3} xl={3} xs={12}>Completed On</Grid>
                             <Grid item md={9} xl={9} xs={12}>{new Date(data.finished_at).toDateString()}</Grid>
                         </Grid>
                     </Grid>
                 )}
                 {/* Download link expiry on */}
-                {requestId > 0 && data?.id && data?.status == 'DONE' && (
-                    <Grid item>
-                        <Grid container display={'flex'} flexDirection={'row'} spacing={1}>
+                {requestId > 0 && data?.id > 0 && data?.status === 'DONE' && (
+                    <Grid item className='RowItem' sx={{height: '65px'}}>
+                        <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                             <Grid item className='Title' md={3} xl={3} xs={12}>Download Link Expired On</Grid>
                             <Grid item md={9} xl={9} xs={12}>{new Date(data.download_link_expired_on).toDateString()}</Grid>
                         </Grid>
                     </Grid>
                 )}
+                {requestId > 0 && data?.id > 0 && data?.status === 'DONE' && (
+                    <Grid item className='RowItem' sx={{height: '65px'}}>
+                        <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
+                            <Grid item className='Title' md={3} xl={3} xs={12}>Download File Size</Grid>
+                            <Grid item md={9} xl={9} xs={12}>{humanFileSize(data.file_output_size)}</Grid>
+                        </Grid>
+                    </Grid>
+                )}
                 {/* Download link */}
-                {requestId > 0 && data?.id && data?.status == 'DONE' && (
-                    <Grid item>
-                        <Grid container display={'flex'} flexDirection={'row'} spacing={1}>
+                {requestId > 0 && data?.id > 0 && data?.status === 'DONE' && (
+                    <Grid item className='RowItem'>
+                        <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                             <Grid item className='Title' md={3} xl={3} xs={12}>Download Link</Grid>
                             <Grid item md={9} xl={9} xs={12}>
                                 { data.status_text !== 'expired' ? <span>
@@ -289,8 +330,8 @@ function ExportViewDetail(props: any) {
                     </Grid>
                 )}
                 {/* Buttons */}
-                {requestId > 0 && <Grid item>
-                    <Grid container flexDirection={'row'} justifyContent={'space-between'}>
+                {requestId > 0 && <Grid item className='RowItem'>
+                    <Grid container flexDirection={'row'} justifyContent={'space-between'} className='RowItemContainer'>
                         <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>}
                             onClick={() => {
                                 let _navigate_to = `/view_edit?id=${view.id}&tab=2`
@@ -300,12 +341,23 @@ function ExportViewDetail(props: any) {
                         </LoadingButton>
                     </Grid>
                 </Grid>}
-                {filterSession && <Grid item>
-                    <Grid container flexDirection={'row'} justifyContent={'flex-end'}>
-                        <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>}
-                            onClick={submitExportRequest} variant="contained">
-                            Add to Queue
-                        </LoadingButton>
+                {filterSession && <Grid item className='RowItem'>
+                    <Grid container flexDirection={'row'} justifyContent={'flex-start'} className='RowItemContainer' spacing={1}>
+                        <Grid item>
+                            <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>}
+                                onClick={() => {
+                                    let _navigate_to = `/view_edit?id=${view.id}&tab=1`
+                                    navigate(_navigate_to)
+                                }} variant="outlined">
+                                Back
+                            </LoadingButton>
+                        </Grid>
+                        <Grid item>
+                            <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>}
+                                onClick={submitExportRequest} variant="contained">
+                                Add to Queue
+                            </LoadingButton>
+                        </Grid>
                     </Grid>
                 </Grid>}
             </Grid>
@@ -435,6 +487,7 @@ function ExportViewList(props: any) {
             selectionChanged={null}
             onRowClick={null}
             customOptions={customColumnOptions}
+            isRowSelectable={false}
             options={{
                 'confirmFilters': true,
                 'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
@@ -444,6 +497,7 @@ function ExportViewList(props: any) {
                         </div>
                     );
                 },
+                'rowsPerPage': 100
             }}
         />
     )

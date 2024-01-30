@@ -98,5 +98,11 @@ class ExportRequest(BaseTaskRequest):
         help_text='API or dashboard'
     )
 
+    file_output_size = models.IntegerField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
     def __str__(self):
         return str(self.uuid)
