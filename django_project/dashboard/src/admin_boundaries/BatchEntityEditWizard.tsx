@@ -18,6 +18,7 @@ import { BatchEntityEditInterface } from "../models/upload";
 import Step0 from "./BatchEntityEdit/Step0";
 import Step1 from "./BatchEntityEdit/Step1";
 import Step2 from "./BatchEntityEdit/Step2";
+import {setPollInterval, FETCH_INTERVAL_JOB} from "../reducers/notificationPoll";
 
 
 const LOAD_BATCH_ENTITY_EDIT_URL = '/api/batch-entity-edit/'
@@ -176,6 +177,8 @@ export default function BatchEntityEditWizard(props: any) {
                                     postData(LOAD_BATCH_ENTITY_EDIT_URL, _data).then(
                                         response => {
                                             fetchStatus()
+                                            // trigger to fetch notification frequently
+                                            dispatch(setPollInterval(FETCH_INTERVAL_JOB))
                                         }
                                     ).catch(error => {
                                         alert('Error start to import the batch edit...')

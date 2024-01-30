@@ -6,25 +6,35 @@ import AlertTitle from "@mui/material/AlertTitle";
 import View from "../../models/view";
 import axios from "axios";
 import {useNavigate, useSearchParams} from "react-router-dom";
-import {RootState} from "../../app/store";
-import LinearProgress from '@mui/material/LinearProgress';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
+import Slider from '@mui/material/Slider';
+import {useAppDispatch} from "../../app/hooks";
 import Scrollable from '../../components/Scrollable';
 import List from "../../components/List";
 import Loading from "../../components/Loading";
 import { EntitiesFilterInterface } from '../Dataset/EntitiesFilter';
-import { TilingConfig } from '../../models/tiling';
+import { TilingConfig, MAX_ZOOM } from '../../models/tiling';
 import '../../styles/ViewDownload.scss';
+import '../../styles/TilingConfig.scss';
 import LoadingButton from '@mui/lab/LoadingButton';
 import {postData} from "../../utils/Requests";
+import {setPollInterval, FETCH_INTERVAL_JOB} from "../../reducers/notificationPoll";
 import { capitalize, humanFileSize } from '../../utils/Helpers';
 import LinearProgressWithLabel from "../../components/LinearProgressWithLabel";
 import AlertMessage from "../../components/AlertMessage";
+import { AdminLevelItemView, getZoomTooltip } from '../TilingConfig/TilingConfigRevamp';
 
 
 const EXPORTER_URL = '/api/exporter/'
@@ -59,7 +69,6 @@ const EXCLUDED_FILTER_KEYS = [
     'updated_at', 'points'
 ]
 
-
 const displayFilter = (key: string, filters: any) => {
     if (key === 'valid_from') {
         return new Date(filters[key]).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'})
@@ -68,6 +77,16 @@ const displayFilter = (key: string, filters: any) => {
     return filters[key].join(', ')
 }
 
+const tilingConfigHeaderCells = [
+    '',
+    'Admin Level 0',
+    'Admin Level 1',
+    'Admin Level 2',
+    'Admin Level 3',
+    'Admin Level 4',
+    'Admin Level 5',
+    'Admin Level 6',
+]
 
 function EntityFilters(props: any) {
     const {filters} = props
@@ -103,6 +122,60 @@ function EntityFilters(props: any) {
     )
 }
 
+
+function TilingConfigDisplay(props: {tiling_configs: TilingConfig[], selected_zoom_level: number}) {
+    const {tiling_configs, selected_zoom_level} = props
+    const tilingConfigIdx = tiling_configs.findIndex((value: TilingConfig) => value.zoom_level === selected_zoom_level)
+    const selectedTilingConfig = tilingConfigIdx > -1 ? tiling_configs[tilingConfigIdx] : {
+        zoom_level: selected_zoom_level,
+        admin_level_tiling_configs: []
+    }
+
+    return (
+        <TableContainer component={Paper} className={'tiling-config-matrix'}>
+            <Table>
+                <TableHead>
+                <TableRow>
+                    {
+                        tilingConfigHeaderCells.map((headerCell, index) => (
+                            <TableCell key={index}>{headerCell}</TableCell>
+                        ))
+                    }
+                </TableRow>
+                </TableHead>
+                <TableBody>
+                    <TableRow key={tilingConfigIdx}>
+                        <TableCell title={getZoomTooltip(selected_zoom_level)}>
+                            Zoom {selected_zoom_level}
+                        </TableCell>
+                        <TableCell>
+                            <AdminLevelItemView tiling_config_idx={tilingConfigIdx} tiling_config={selectedTilingConfig} admin_level={0}/>
+                        </TableCell>
+                        <TableCell>
+                            <AdminLevelItemView tiling_config_idx={tilingConfigIdx} tiling_config={selectedTilingConfig} admin_level={1}/>
+                        </TableCell>
+                        <TableCell>
+                            <AdminLevelItemView tiling_config_idx={tilingConfigIdx} tiling_config={selectedTilingConfig} admin_level={2}/>
+                        </TableCell>
+                        <TableCell>
+                            <AdminLevelItemView tiling_config_idx={tilingConfigIdx} tiling_config={selectedTilingConfig} admin_level={3}/>
+                        </TableCell>
+                        <TableCell>
+                            <AdminLevelItemView tiling_config_idx={tilingConfigIdx} tiling_config={selectedTilingConfig} admin_level={4}/>
+                        </TableCell>
+                        <TableCell>
+                            <AdminLevelItemView tiling_config_idx={tilingConfigIdx} tiling_config={selectedTilingConfig} admin_level={5}/>
+                        </TableCell>
+                        <TableCell>
+                            <AdminLevelItemView tiling_config_idx={tilingConfigIdx} tiling_config={selectedTilingConfig} admin_level={6}/>
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+        </TableContainer>
+    )
+}
+
 function ExportViewDetail(props: any) {
     const {view, requestId, filterSession} = props
     const [loading, setLoading] = useState(true)
@@ -114,6 +187,17 @@ function ExportViewDetail(props: any) {
     const [alertMessage, setAlertMessage] = useState('')
     const [alertSeverity, setAlertSeverity] = useState<AlertColor>('success')
     const [toastMessage, setToastMessage] = useState('')
+    const dispatch = useAppDispatch()
+    const marks = [
+        {
+            value: 0,
+            label: 'Zoom 0',
+        },
+        {
+            value: MAX_ZOOM,
+            label: `Zoom ${MAX_ZOOM}`,
+        }
+    ]
 
     const fetchMetadata = () => {
         let _url = EXPORTER_URL + `${view.id}/metadata/`
@@ -231,6 +315,8 @@ function ExportViewDetail(props: any) {
                 let _navigate_to = `/view_edit?id=${view.id}&tab=2&requestId=${_requestId}`
                 navigate(_navigate_to)
                 setToastMessage('Successfully submitting download request. Your request will be processed in the background.')
+                // trigger to fetch notification frequently
+                dispatch(setPollInterval(FETCH_INTERVAL_JOB))
             }
           ).catch(error => {
             let _message = 'Please try again or contact the administrator!'
@@ -248,7 +334,6 @@ function ExportViewDetail(props: any) {
             }
         })
     }
-
 
     if (loading) {
         return <Loading/>
@@ -315,8 +400,35 @@ function ExportViewDetail(props: any) {
                     </Grid>
                 </Grid>
                 {/* zoom sliders */}
-                { data?.is_simplified_entities && (
-                    <Grid item className='RowItem'></Grid>
+                { metadata && data?.is_simplified_entities && (
+                    <Grid item className='RowItem'>
+                        <Grid container flexDirection={'column'}>
+                            <Grid item md={7} xl={7} xs={12} sx={{paddingLeft: '30px', paddingRight: '30px'}}>
+                                <Slider
+                                    aria-label="Simplification Zoom Level"
+                                    defaultValue={0}
+                                    getAriaValueText={(value: number) => `Zoom ${value}`}
+                                    valueLabelDisplay="on"
+                                    step={1}
+                                    marks={marks}
+                                    min={0}
+                                    max={MAX_ZOOM}
+                                    valueLabelFormat={value => `Zoom ${value}`}
+                                    value={data?.simplification_zoom_level}
+                                    onChange={(event: Event, newValue: number | number[]) => {
+                                        setData({
+                                            ...data,
+                                            simplification_zoom_level: newValue as number
+                                        })
+                                    }}
+                                    disabled={requestId > 0}
+                                />
+                            </Grid>
+                            <Grid item md={7} xl={7} xs={12}>
+                                <TilingConfigDisplay tiling_configs={metadata.tiling_configs} selected_zoom_level={data.simplification_zoom_level} />
+                            </Grid>
+                        </Grid>
+                    </Grid>
                 )}
                 {/* submitted on */}
                 {requestId > 0 && data?.id > 0 && (
