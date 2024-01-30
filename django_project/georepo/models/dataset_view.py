@@ -823,7 +823,7 @@ def view_res_post_save(sender, instance: DatasetViewResource,
         tiling_status,
         vt_progresss
     ) = get_view_tiling_status(view_res_qs)
-    
+
     tiling_status_mapping = {
         'out_of_sync': DatasetView.DatasetViewStatus.PENDING,
         'error': DatasetView.DatasetViewStatus.ERROR,
