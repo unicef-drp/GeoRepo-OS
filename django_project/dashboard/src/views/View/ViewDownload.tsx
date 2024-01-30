@@ -1,6 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
 import Grid from '@mui/material/Grid';
 import Box from "@mui/material/Box";
+import Alert, { AlertColor } from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
 import View from "../../models/view";
 import axios from "axios";
 import {useNavigate, useSearchParams} from "react-router-dom";
@@ -21,6 +23,8 @@ import '../../styles/ViewDownload.scss';
 import LoadingButton from '@mui/lab/LoadingButton';
 import {postData} from "../../utils/Requests";
 import { capitalize, humanFileSize } from '../../utils/Helpers';
+import LinearProgressWithLabel from "../../components/LinearProgressWithLabel";
+import AlertMessage from "../../components/AlertMessage";
 
 
 const EXPORTER_URL = '/api/exporter/'
@@ -68,23 +72,29 @@ const displayFilter = (key: string, filters: any) => {
 function EntityFilters(props: any) {
     const {filters} = props
 
-    if (filters === null || Object.keys(filters).length === 0) {
+    if (filters === null) {
+        return <span>-</span>
+    }
+
+    const usedFilterKeys = Object.keys(filters).reduce(function (filtered, key) {
+        if (!EXCLUDED_FILTER_KEYS.includes(key)) {
+            if (key === 'valid_from' && filters[key]) {
+                filtered.push(key)
+            } else if (filters[key] && filters[key].length) {
+                filtered.push(key)
+            }
+        }
+        return filtered;
+    }, [])
+
+    if (usedFilterKeys.length === 0) {
         return <span>-</span>
     }
 
     return (
         <pre>
             <div>
-                { Object.keys(filters).reduce(function (filtered, key) {
-                    if (!EXCLUDED_FILTER_KEYS.includes(key)) {
-                        if (key === 'valid_from' && filters[key]) {
-                            filtered.push(key)
-                        } else if (filters[key] && filters[key].length) {
-                            filtered.push(key)
-                        }
-                    }
-                    return filtered;
-                }, []).map((dictKey: string, index: number) => (
+                { usedFilterKeys.map((dictKey: string, index: number) => (
                     <div key={index}>{dictKey} = {displayFilter(dictKey, filters)}</div>
                 ))
                 }
@@ -100,6 +110,10 @@ function ExportViewDetail(props: any) {
     const [metadata, setMetadata] = useState<MetadataInterface>(null)
     const [data, setData] = useState<ExportRequestDetailInterface>(null)
     const [currentInterval, setCurrentInterval] = useState<any>(null)
+    const [alertTitle, setAlertTitle] = useState('')
+    const [alertMessage, setAlertMessage] = useState('')
+    const [alertSeverity, setAlertSeverity] = useState<AlertColor>('success')
+    const [toastMessage, setToastMessage] = useState('')
 
     const fetchMetadata = () => {
         let _url = EXPORTER_URL + `${view.id}/metadata/`
@@ -146,7 +160,22 @@ function ExportViewDetail(props: any) {
         }
         axios.get(EXPORTER_URL + `${view.id}/detail/?request_id=${requestId}`).then(response => {
             if (response.data) {
-                setData(response.data as ExportRequestDetailInterface)
+                let _data = response.data as ExportRequestDetailInterface
+                setData(_data)
+                if (_data.status === 'PROCESSING') {
+                    setAlertSeverity('info')
+                    setAlertTitle('The job is processing in the background, please stand by...')
+                    setAlertMessage('')
+                } else if (isInterval && _data.status === 'DONE') {
+                    setAlertSeverity('success')
+                    setAlertTitle('Your download is ready!')
+                    setAlertMessage('You may download the file from the link below.')
+                } else if (isInterval && _data.status === 'ERROR') {
+                    setAlertSeverity('error')
+                    setAlertTitle('Your download is finished with errors!')
+                    let _message = _data.errors ? _data.errors : 'Please try again or contact the administrator!'
+                    setAlertMessage(_message)
+                }
             } else {
                 setData(null)
             }
@@ -157,7 +186,7 @@ function ExportViewDetail(props: any) {
             console.log(error)
             if (!isInterval) {
                 setLoading(false)
-                let _message = 'Unable to fetch export view detail, Please try again or contact the administrator!'
+                let _message = 'Unable to fetch request detail, Please try again or contact the administrator!'
                 if (error.response) {
                     if ('detail' in error.response.data) {
                         _message = error.response.data.detail
@@ -201,9 +230,22 @@ function ExportViewDetail(props: any) {
                 let _requestId = response.data['id']
                 let _navigate_to = `/view_edit?id=${view.id}&tab=2&requestId=${_requestId}`
                 navigate(_navigate_to)
+                setToastMessage('Successfully submitting download request. Your request will be processed in the background.')
             }
           ).catch(error => {
-            alert('Error submitting download request...')
+            let _message = 'Please try again or contact the administrator!'
+            if (error.response) {
+                if ('detail' in error.response.data && error.response.data.detail) {
+                    _message = error.response.data.detail
+                }
+            }
+            setAlertTitle('Error submitting download request!')
+            setAlertSeverity('error')
+            setAlertMessage(_message)
+            if (_message.includes('simplification') || _message.includes('simplified')) {
+                // fetch metadata again
+                fetchMetadata()
+            }
         })
     }
 
@@ -214,7 +256,20 @@ function ExportViewDetail(props: any) {
 
     return (
         <Box className='ExportViewDetail'>
+            <AlertMessage message={toastMessage} onClose={() => setToastMessage('')} />
             <Grid container display={'flex'} flexDirection={'column'} spacing={1}>
+                <Grid item>
+                    <Grid container flexDirection={'row'} justifyContent={'center'}>
+                        { alertTitle ?
+                            <Alert className="UploadAlertMessage" severity={alertSeverity}>
+                                <AlertTitle>{alertTitle}</AlertTitle>
+                                <p className="display-linebreak">
+                                    { alertMessage }
+                                </p>
+                                { data?.status === 'PROCESSING' ? <LinearProgressWithLabel value={data.progress} maxBarWidth={'90%'} /> : null }
+                            </Alert> : null }
+                    </Grid>
+                </Grid>
                 <Grid item className='RowItem'>
                     <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                         <Grid item className='Title' md={3} xl={3} xs={12}>Filters</Grid>
@@ -277,7 +332,7 @@ function ExportViewDetail(props: any) {
                     <Grid item className='RowItem'>
                         <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                             <Grid item className='Title' md={3} xl={3} xs={12}>Status</Grid>
-                            <Grid item md={9} xl={9} xs={12}>{capitalize(data.status_text)}</Grid>
+                            <Grid item md={9} xl={9} xs={12}>{capitalize(data.status_text.replaceAll('_', ' '))}</Grid>
                         </Grid>
                     </Grid>
                 )}
@@ -295,7 +350,7 @@ function ExportViewDetail(props: any) {
                     <Grid item className='RowItem'>
                         <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                             <Grid item className='Title' md={3} xl={3} xs={12}>Completed On</Grid>
-                            <Grid item md={9} xl={9} xs={12}>{new Date(data.finished_at).toDateString()}</Grid>
+                            <Grid item md={9} xl={9} xs={12}>{data.finished_at ? new Date(data.finished_at).toDateString() : '-'}</Grid>
                         </Grid>
                     </Grid>
                 )}
@@ -304,7 +359,7 @@ function ExportViewDetail(props: any) {
                     <Grid item className='RowItem' sx={{height: '65px'}}>
                         <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                             <Grid item className='Title' md={3} xl={3} xs={12}>Download Link Expired On</Grid>
-                            <Grid item md={9} xl={9} xs={12}>{new Date(data.download_link_expired_on).toDateString()}</Grid>
+                            <Grid item md={9} xl={9} xs={12}>{data.download_link_expired_on ? new Date(data.download_link_expired_on).toDateString() : '-'}</Grid>
                         </Grid>
                     </Grid>
                 )}
@@ -322,7 +377,7 @@ function ExportViewDetail(props: any) {
                         <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
                             <Grid item className='Title' md={3} xl={3} xs={12}>Download Link</Grid>
                             <Grid item md={9} xl={9} xs={12}>
-                                { data.status_text !== 'expired' ? <span>
+                                { data.status_text !== 'expired' && data.download_link ? <span>
                                     <a href={`${data.download_link}`} target='_blank'>Download</a>
                                 </span> : <span>-</span>}
                             </Grid>
@@ -399,9 +454,12 @@ function ExportViewList(props: any) {
             'filter': false,
             'customBodyRender': (value: any, tableMeta: any, updateValue: any) => {
                 let rowData = tableMeta.rowData
-                return (
-                    <a href={`${rowData[12]}`} target='_blank'>Download</a>
-                )
+                if (rowData[12]) {
+                    return (
+                        <a href={`${rowData[12]}`} target='_blank'>Download</a>
+                    )
+                }
+                return <span>-</span>
             },
         },
         'download_expiry': {
@@ -409,10 +467,20 @@ function ExportViewList(props: any) {
             'label': 'Expired On',
             'customBodyRender': (value: any, tableMeta: any, updateValue: any) => {
                 let rowData = tableMeta.rowData
-                return (
-                    <span>{new Date(rowData[13]).toDateString()}</span>
-                )
+                if (rowData[13]) {
+                    return (
+                        <span>{new Date(rowData[13]).toDateString()}</span>
+                    )    
+                }
+                return <span>-</span>                
             },
+        },
+        'current_status': {
+            'filter': true,
+            'label': 'Current Status',
+            'customBodyRender': (value: any, tableMeta: any, updateValue: any) => {
+                return capitalize(value.replaceAll('_', ' '))
+            }
         },
         'progress': {
             'display': false,
@@ -468,7 +536,7 @@ function ExportViewList(props: any) {
                 setCurrentInterval(null)
             }
             const interval = setInterval(() => {
-                fetchData()
+                fetchData(true)
             }, 5000);
             setCurrentInterval(interval)
             return () => clearInterval(interval);

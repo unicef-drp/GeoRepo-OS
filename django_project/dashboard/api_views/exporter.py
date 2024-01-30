@@ -177,6 +177,9 @@ class ExportRequestMetadata(FetchDatasetViewTilingConfig,
                 'is_simplification_available': (
                     dataset_view.is_simplified_entities_ready
                 ),
+                'current_simplification_status': (
+                    dataset_view.current_simplification_status
+                ),
                 'tiling_configs': self.fetch_view_tiling_configs(dataset_view)
             }
         )
