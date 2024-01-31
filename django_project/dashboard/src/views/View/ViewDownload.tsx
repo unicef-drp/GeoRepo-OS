@@ -75,6 +75,8 @@ const EXCLUDED_FILTER_KEYS = [
 const displayFilter = (key: string, filters: any) => {
     if (key === 'valid_from') {
         return new Date(filters[key]).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'})
+    } else if (key === 'search_text') {
+        return `'${filters[key]}'`
     }
 
     return filters[key].join(', ')
