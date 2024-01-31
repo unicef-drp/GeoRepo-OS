@@ -2,6 +2,7 @@ import os
 import logging
 import shutil
 import json
+import subprocess
 from django.db.models.expressions import RawSQL
 from django.contrib.gis.db.models.functions import AsGeoJSON
 from django.conf import settings
@@ -23,12 +24,35 @@ logger = logging.getLogger(__name__)
 def read_centroid_as_geojson(geom_data):
     # truncate decimal to 4 digits
     if geom_data is None:
-        return '{"type": "Point", "coordinates": [0, 0]}'
+        return '{"type":"Point","coordinates":[0,0]}'
     wkt_w = WKTWriter()
     wkt_w.trim = True
     wkt_w.precision = 4
     geom_wkt = wkt_w.write(GEOSGeometry(geom_data))
-    return GEOSGeometry(geom_wkt).geojson
+    return GEOSGeometry(geom_wkt).geojson.replace(' ', '')
+
+
+def convert_geojson_to_pbf(file_path, output_dir, exported_name):
+    tmp_pbf = os.path.join(output_dir, f'{exported_name}.pbf')
+    command_list = (
+        [
+            'json2geobuf',
+            file_path,
+        ]
+    )
+    with open(tmp_pbf, 'w') as tmp_pbf_file:
+        subprocess.run(command_list, stdout=tmp_pbf_file)
+    command_list = (
+        [
+            'gzip',
+            tmp_pbf
+        ]
+    )
+    subprocess.run(command_list)
+    return os.path.join(
+        output_dir,
+        f'{exported_name}.pbf.gz'
+    )
 
 
 class CentroidExporter(object):
@@ -137,11 +161,9 @@ class CentroidExporter(object):
             exported_name,
             tmp_output_dir
         )
-        # TODO: convert geojson to pbf
-        # exported_file_path = (
-        #     f'{self.get_exported_file_name(level)}.pbf'
-        # )
-        exported_file_path = tmp_file_path
+        # convert geojson to pbf
+        exported_file_path = convert_geojson_to_pbf(
+            tmp_file_path, tmp_output_dir, exported_name)
         if exported_file_path and os.path.exists(exported_file_path):
             self.generated_files.append(exported_file_path)
         else:
@@ -157,9 +179,9 @@ class CentroidExporter(object):
             exported_name
         ) + suffix
         with open(geojson_file_path, "w") as geojson_file:
-            geojson_file.write('{\n')
-            geojson_file.write('"type": "FeatureCollection",\n')
-            geojson_file.write('"features": [\n')
+            geojson_file.write('{')
+            geojson_file.write('"type":"FeatureCollection",')
+            geojson_file.write('"features":[')
             idx = 0
             total_count = entities.count()
             for entity in entities.iterator(chunk_size=1):
@@ -169,19 +191,19 @@ class CentroidExporter(object):
                     context=context
                 ).data
                 data['geometry'] = '{geom_placeholder}'
-                feature_str = json.dumps(data)
+                feature_str = json.dumps(data, separators=(',', ':'))
                 feature_str = feature_str.replace(
                     '"{geom_placeholder}"',
                     read_centroid_as_geojson(entity['centroid'])
                 )
                 geojson_file.write(feature_str)
                 if idx == total_count - 1:
-                    geojson_file.write('\n')
+                    pass
                 else:
-                    geojson_file.write(',\n')
+                    geojson_file.write(',')
                 idx += 1
-            geojson_file.write(']\n')
-            geojson_file.write('}\n')
+            geojson_file.write(']')
+            geojson_file.write('}')
         return geojson_file_path
 
     def do_export_post_process(self):
@@ -196,12 +218,12 @@ class CentroidExporter(object):
             )
             tmp_file_path = os.path.join(
                 tmp_output_dir,
-                exported_name
+                f'{self.get_exported_file_name(level)}.pbf.gz'
             )
             if not os.path.exists(tmp_file_path):
                 continue
             file_stats = os.stat(tmp_file_path)
-            file_path = self.save_output_file(tmp_file_path)
+            file_path = self.save_output_file(tmp_file_path, exported_name)
             if file_path:
                 centroid_files.append({
                     'path': file_path,
@@ -210,7 +232,7 @@ class CentroidExporter(object):
                 })
         self.resource.centroid_files = centroid_files
         self.resource.save(update_fields=['centroid_files'])
-        self.do_remove_temp_dir()
+        # self.do_remove_temp_dir()
 
     def clear_existing_resource_dir(self):
         self.resource.centroid_files = []
@@ -243,7 +265,7 @@ class CentroidExporter(object):
             )
             client = DirectoryClient(settings.AZURE_STORAGE,
                                      settings.AZURE_STORAGE_CONTAINER)
-            client.upload_file(tmp_file_path, file_path)
+            client.upload_gzip_file(tmp_file_path, file_path)
         else:
             dir_path = os.path.join(
                 settings.MEDIA_ROOT,

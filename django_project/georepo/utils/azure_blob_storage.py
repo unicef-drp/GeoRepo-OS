@@ -4,7 +4,8 @@ from azure.storage.blob import (
     BlobServiceClient,
     BlobSasPermissions,
     generate_blob_sas,
-    ContainerClient
+    ContainerClient,
+    ContentSettings
 )
 from django.conf import settings
 from datetime import datetime, timedelta, timezone
@@ -37,6 +38,17 @@ class DirectoryClient:
         """
         with open(source, 'rb') as data:
             self.client.upload_blob(name=dest, data=data)
+
+    def upload_gzip_file(self, source, dest):
+        """
+        Upload a gzipped file
+        """
+        with open(source, 'rb') as data:
+            self.client.upload_blob(
+                name=dest,
+                data=data,
+                content_settings=ContentSettings(content_encoding='gzip')
+            )
 
     def upload_dir(self, source, dest):
         """
