@@ -520,6 +520,37 @@ class ExportGeojsonSerializer(
         ]
 
 
+class ExportCentroidGeojsonSerializer(
+        GeographicalEntitySerializer,
+        GeoFeatureModelSerializer):
+    remove_empty_fields = False
+    output_format = 'geojson'
+    c = serializers.SerializerMethodField()
+    u = serializers.SerializerMethodField()
+    n = serializers.SerializerMethodField()
+
+    def get_geometry(self, obj: GeographicalEntity):
+        return None
+
+    def get_c(self, obj: GeographicalEntity):
+        return str(obj.get('uuid', ''))
+
+    def get_u(self, obj: GeographicalEntity):
+        return self.get_ucode(obj)
+
+    def get_n(self, obj: GeographicalEntity):
+        return self.get_name(obj)
+
+    class Meta:
+        model = GeographicalEntity
+        geo_field = 'geometry'
+        fields = [
+            'c',
+            'n',
+            'u'
+        ]
+
+
 class SearchEntitySerializer(GeographicalEntitySerializer):
     similarity = serializers.SerializerMethodField()
 
