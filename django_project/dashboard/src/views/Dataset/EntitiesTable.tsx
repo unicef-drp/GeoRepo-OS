@@ -6,7 +6,11 @@ import {
     FormGroup,
     TextField,
     FormLabel,
+    Autocomplete,
+    Checkbox
 } from "@mui/material";
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import axios from "axios";
 import {EntitiesFilterInterface, EntitiesFilterUpdateInterface} from "./EntitiesFilter"
 import FilterAlt from '@mui/icons-material/FilterAlt';
@@ -25,6 +29,11 @@ import cloneDeep from "lodash/cloneDeep";
 import IconButton from "@mui/material/IconButton";
 import EditIcon from '@mui/icons-material/Edit';
 import {EntityEditRoute} from "../routes";
+
+
+const checkBoxOutlinedicon = <CheckBoxOutlineBlankIcon fontSize="small" />;
+const checkBoxCheckedIcon = <CheckBoxIcon fontSize="small" />;
+
 
 export interface EntitiesTableInterface {
     dataset_id: string,
@@ -97,8 +106,19 @@ interface EntityTableRowInterface {
 
 const FILTER_VALUES_API_URL = '/api/dashboard-dataset-filter/values/'
 const API_URL = '/api/dashboard-dataset/list/'
+const MAX_COUNTRIES_IN_FILTER_CHIP = 5
 
 const FilterIcon: any = FilterAlt
+
+interface FilterValuesInterface {
+    country?: string[];
+    level?: number[];
+    admin_level_name?: string[];
+    type?: string[];
+    rev?: number[];
+    status?: string[];
+    privacy_level?: number[];
+}
 
 export default function EntitiesTable(props: EntitiesTableInterface) {
     const initialColumns = useAppSelector((state: RootState) => state.entitiesTable.currentColumns)
@@ -107,7 +127,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
     const [data, setData] = useState<EntityTableRowInterface[]>([])
     const [totalCount, setTotalCount] = useState<number>(0)
     const [pagination, setPagination] = useState<PaginationInterface>(getDefaultPagination())
-    const [filterValues, setFilterValues] = useState({})
+    const [filterValues, setFilterValues] = useState<FilterValuesInterface>({})
     const ref = useRef(null)
     const [tableHeight, setTableHeight] = useState(0)
     const axiosSource = useRef(null)
@@ -252,6 +272,70 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                                 }
                             }                        
                         }
+                    } else if (column_name === 'country') {
+                        options.label = 'Countries'
+                        options.options = {
+                            searchable: false,
+                            display: initialColumns.includes(column_name),
+                            filter: true,
+                            filterType: 'custom',
+                            filterList: getExistingFilterValue(column_name),
+                            filterOptions: {
+                                names: filter_values[column_name],
+                                logic(val:any, filters:any) {
+                                    return false;
+                                },
+                                display: (filterList: any, onChange: any, index: any, column: any) => (
+                                    <div>
+                                      <Autocomplete
+                                        multiple
+                                        id={`checkboxes-id-filter-country`}
+                                        options={filter_values['country']}
+                                        disableCloseOnSelect
+                                        value={filterList[index]}
+                                        onChange={(event: any, newValue: any | null) => {
+                                          filterList[index] = newValue
+                                          onChange(filterList[index], index, column)
+                                        }}
+                                        getOptionLabel={(option) => `${option}`}
+                                        renderOption={(props, option, { selected }) => (
+                                          <li {...props}>
+                                            <Checkbox
+                                              icon={checkBoxOutlinedicon}
+                                              checkedIcon={checkBoxCheckedIcon}
+                                              style={{ marginRight: 8 }}
+                                              checked={selected}
+                                            />
+                                            {option}
+                                          </li>
+                                        )}
+                                        renderInput={(params) => (
+                                          <TextField {...params} label={'Country'} variant="standard" />
+                                        )}
+                                      />
+                                    </div>
+                                )
+                            },
+                            customFilterListOptions: {
+                                render: (countries:any) => {
+                                    let result:string[] = []
+                                    if (countries.length === 1) {
+                                        result.push(`Country: ${countries[0]}`)
+                                    } else if (countries.length <= MAX_COUNTRIES_IN_FILTER_CHIP) {
+                                        result.push(`Countries: ${countries.join(', ')}`)
+                                    } else {
+                                        let _countries = countries.slice(0, MAX_COUNTRIES_IN_FILTER_CHIP)
+                                        result.push(`Countries: ${_countries.join(', ')}, and ${countries.length - MAX_COUNTRIES_IN_FILTER_CHIP} more`)
+                                    }                                    
+                                    return result
+                                },
+                                update: (filterList:any, filterPos:any, index:any) => {
+                                    filterList[index] = []
+                                    handleCountriesOnClear()
+                                    return filterList;
+                                }
+                            }                        
+                        }  
                     } else {
                         options.options = {
                             searchable: false,
@@ -422,6 +506,17 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
             criteria: 'points',
             type: 'string_array',
             values: pointFilter,
+            date_from: null,
+            date_to: null
+        })
+    }
+
+    const handleCountriesOnClear = () => {
+        if (!props.onSingleFilterUpdated) return;
+        props.onSingleFilterUpdated({
+            criteria: 'country',
+            type: 'string_array',
+            values: [],
             date_from: null,
             date_to: null
         })
