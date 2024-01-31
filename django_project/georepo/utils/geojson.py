@@ -1,13 +1,14 @@
 import os
 import json
-import time
+import logging
 from uuid import UUID
 from datetime import date, datetime
-from django.conf import settings
 
 from georepo.models import (
-    Dataset, DatasetView,
-    DatasetViewResource
+    ExportRequestStatusText,
+    SHAPEFILE_EXPORT_TYPE,
+    KML_EXPORT_TYPE,
+    TOPOJSON_EXPORT_TYPE
 )
 from georepo.utils.exporter_base import (
     DatasetViewExporterBase
@@ -16,6 +17,8 @@ from georepo.utils.fiona_utils import (
     open_collection_by_file
 )
 
+
+logger = logging.getLogger(__name__)
 # buffer the data before writing/flushing to file
 GEOJSON_RECORDS_BUFFER_TX = 250
 GEOJSON_RECORDS_BUFFER = 500
@@ -57,14 +60,10 @@ def json_serial(obj):
 
 
 class GeojsonViewExporter(DatasetViewExporterBase):
-    output = 'geojson'
 
-    def get_base_output_dir(self) -> str:
-        return settings.GEOJSON_FOLDER_OUTPUT
-
-    def write_entities(self, schema, entities, context,
+    def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
-                       tmp_metadata_file, resource) -> str:
+                       tmp_metadata_file) -> str:
         suffix = '.geojson'
         geojson_file_path = os.path.join(
             tmp_output_dir,
@@ -84,9 +83,12 @@ class GeojsonViewExporter(DatasetViewExporterBase):
                 ).data
                 data['geometry'] = '{geom_placeholder}'
                 feature_str = json.dumps(data)
+                geom_data = entity['rhr_geom']
+                if geom_data is None:
+                    geom_data = '{"type": "Point", "coordinates": [0, 0]}'
                 feature_str = feature_str.replace(
                     '"{geom_placeholder}"',
-                    entity['rhr_geom']
+                    geom_data
                 )
                 geojson_file.write(feature_str)
                 if idx == total_count - 1:
@@ -99,24 +101,51 @@ class GeojsonViewExporter(DatasetViewExporterBase):
         return geojson_file_path
 
 
-def generate_view_geojson(dataset_view: DatasetView,
-                          view_resource: DatasetViewResource = None,
-                          **kwargs):
-    """
-    Extract geojson from dataset_view and then save it to
-    geojson dataset_view folder
-    :param dataset_view: dataset_view object
-    """
-    start = time.time()
-    exporter = GeojsonViewExporter(dataset_view, view_resource=view_resource)
-    exporter.init_exporter()
-    exporter.run()
-    end = time.time()
-    if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log(
-            'generate_view_geojson',
-            end - start)
-    return exporter
+class GeojsonBasedExporter(DatasetViewExporterBase):
+
+    def init_exporter(self):
+        super().init_exporter()
+        # create geojson exporter
+        self.geojson_exporter = GeojsonViewExporter(
+            self.request, True, self
+        )
+        self.geojson_exporter.init_exporter()
+
+    def get_geojson_reference_file(self, exported_name):
+        file_path = f'{exported_name}.geojson'
+        return os.path.join(
+            self.get_base_output_dir(),
+            f'temp_{str(self.request.uuid)}',
+            file_path
+        )
+
+    def get_preparing_status_by_format(self):
+        if self.request.format == SHAPEFILE_EXPORT_TYPE:
+            return ExportRequestStatusText.PREPARING_SHP
+        elif self.request.format == KML_EXPORT_TYPE:
+            return ExportRequestStatusText.PREPARING_KML
+        elif self.request.format == TOPOJSON_EXPORT_TYPE:
+            return ExportRequestStatusText.PREPARING_TOPOJSON
+        return ExportRequestStatusText.PREPARING_GEOJSON
+
+    def run(self):
+        self.update_progress_text(
+            ExportRequestStatusText.PREPARING_GEOJSON
+        )
+        # extract the geojson first
+        self.geojson_exporter.run()
+        # validate geojson files are extracted successfully
+        if len(self.geojson_exporter.generated_files) != len(self.levels):
+            logger.error(
+                'Failed to generate geojson files '
+                f'for {self.format} exporter!'
+            )
+            return
+        # run exporter for shapefile
+        self.update_progress_text(
+            self.get_preparing_status_by_format()
+        )
+        super().run()
 
 
 def validate_geojson(geojson: dict) -> bool:
@@ -138,16 +167,3 @@ def validate_geojson(geojson: dict) -> bool:
     if (f_type == 'Feature' and 'geometry' not in geojson):
         return False
     return True
-
-
-def delete_geojson_file(dataset: Dataset):
-    """
-    Delete extracted geojson file when dataset is deleted
-    """
-    suffix = '.geojson'
-    geojson_file_path = os.path.join(
-        settings.GEOJSON_FOLDER_OUTPUT,
-        str(dataset.uuid)
-    ) + suffix
-    if os.path.exists(geojson_file_path):
-        os.remove(geojson_file_path)

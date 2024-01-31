@@ -54,7 +54,9 @@ from georepo.models import (
     GeocodingRequest,
     SearchIdRequest,
     PENDING,
-    EntityEditHistory
+    EntityEditHistory,
+    ExportRequest,
+    ExportRequestStatusText
 )
 from georepo.utils.admin import (
     get_deleted_objects,
@@ -446,8 +448,7 @@ def generate_view_vector_tiles(modeladmin, request, queryset):
         trigger_generate_vector_tile_for_view
     )
     for dataset_view in queryset:
-        trigger_generate_vector_tile_for_view(dataset_view,
-                                              export_data=False)
+        trigger_generate_vector_tile_for_view(dataset_view)
 
 
 def populate_view_default_tile_config(modeladmin, request, queryset):
@@ -472,28 +473,16 @@ def download_view_size_action(modeladmin, request, queryset):
     )
 
     writer = csv.writer(response)
-    writer.writerow(['View', 'Vector Tiles', 'Shapefile', 'Geojson'])
+    writer.writerow(['View', 'Vector Tiles'])
     for dataset_view in queryset:
         tile_path = os.path.join(
             settings.LAYER_TILES_PATH,
             str(dataset_view.uuid)
         )
         vector_tile_size = convert_size(get_folder_size(tile_path))
-        geojson_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(dataset_view.uuid)
-        )
-        geojson_size = convert_size(get_folder_size(geojson_path))
-        shapefile_path = os.path.join(
-            settings.SHAPEFILE_FOLDER_OUTPUT,
-            str(dataset_view.uuid)
-        )
-        shapefile_size = convert_size(get_folder_size(shapefile_path))
         writer.writerow([
             dataset_view.name,
-            vector_tile_size,
-            geojson_size,
-            shapefile_size
+            vector_tile_size
         ])
     return response
 
@@ -549,7 +538,7 @@ class DatasetViewAdmin(GuardedModelAdmin):
     list_display = (
         'name', 'dataset', 'is_static', 'min_privacy_level',
         'max_privacy_level', 'tiling_status',
-        'vector_tile_sync_status', 'product_sync_status', 'uuid')
+        'vector_tile_sync_status', 'uuid')
     search_fields = ['name', 'dataset__label', 'uuid']
     list_filter = ["dataset"]
     actions = [generate_view_vector_tiles, create_sql_view_action,
@@ -616,16 +605,6 @@ def trigger_resource_vt_generation(view_resource, is_overwrite):
             )
     view_resource.status = DatasetView.DatasetViewStatus.PENDING
     view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
-    view_resource.geojson_progress = 0
-    view_resource.shapefile_progress = 0
-    view_resource.kml_progress = 0
-    view_resource.topojson_progress = 0
-    view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCING
-    view_resource.shapefile_sync_status = (
-        DatasetView.SyncStatus.SYNCING
-    )
-    view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
-    view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
     view_resource.vector_tiles_progress = 0
     # check if it's zero tile, if yes, then can enable live vt
     # when there is existing vector tile, live vt will be enabled
@@ -636,7 +615,7 @@ def trigger_resource_vt_generation(view_resource, is_overwrite):
         view_resource.vector_tiles_size = 1
     view_resource.save()
     task = generate_view_resource_vector_tiles_task.apply_async(
-        (view_resource.id, True, True, is_overwrite),
+        (view_resource.id, is_overwrite),
         queue='tegola'
     )
     view_resource.vector_tiles_task_id = task.id
@@ -932,6 +911,37 @@ class EntityEditHistoryAdmin(admin.ModelAdmin):
     get_level.admin_order_field = 'geographical_entity__level'
 
 
+@admin.action(description='Trigger Process Exporter')
+def trigger_process_exporter(modeladmin, request, queryset):
+    from georepo.tasks.dataset_view import dataset_view_exporter
+    for req in queryset:
+        req.status = PENDING
+        req.status_text = str(ExportRequestStatusText.WAITING)
+        req.progress = 0
+        req.save(update_fields=['status', 'status_text', 'progress'])
+        celery_task = dataset_view_exporter.apply_async(
+            (req.id,), queue='exporter'
+        )
+        req.task_id = celery_task.id
+        req.save(update_fields=['task_id'])
+    modeladmin.message_user(
+        request,
+        'Exporter will be run in the background!',
+        messages.SUCCESS
+    )
+
+
+class ExportRequestAdmin(admin.ModelAdmin):
+    list_display = ('dataset_view', 'format', 'status',
+                    'submitted_on', 'submitted_by',
+                    'status_text', 'progress',
+                    'download_link_expired_on')
+    list_filter = ['submitted_by', 'status', 'format']
+    search_fields = ['dataset_view__name', 'submitted_by__first_name',
+                     'task_id', 'uuid']
+    actions = [trigger_process_exporter]
+
+
 admin.site.register(GeographicalEntity, GeographicalEntityAdmin)
 admin.site.register(Language, LanguageAdmin)
 admin.site.register(EntityType)
@@ -955,6 +965,7 @@ admin.site.register(BackgroundTask, BackgroundTaskAdmin)
 admin.site.register(GeocodingRequest, GeocodingRequestAdmin)
 admin.site.register(SearchIdRequest, SearchIdRequestAdmin)
 admin.site.register(EntityEditHistory, EntityEditHistoryAdmin)
+admin.site.register(ExportRequest, ExportRequestAdmin)
 
 
 # Define inline formset

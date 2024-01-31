@@ -13,8 +13,7 @@ const initialState: TableState = {
   currentColumns: [
     'name',
     'is_tiling_config_match',
-    'vector_tile_sync_status',
-    'product_sync_status'
+    'vector_tile_sync_status'
   ],
   currentFilters: getDefaultFilter(),
   availableFilters: getDefaultFilter()

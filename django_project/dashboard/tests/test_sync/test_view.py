@@ -39,7 +39,7 @@ class TestViewSyncList(TestCase):
             entity_count__gt=0
         )
         for resource in resources:
-            resource.set_synced(vector_tiles=True, product=True)
+            resource.set_synced(vector_tiles=True)
 
     def setUp(self) -> None:
         self.factory = APIRequestFactory()
@@ -114,11 +114,9 @@ class TestViewSyncList(TestCase):
             'name': self.dataset_view_1.name,
             'is_tiling_config_match': True,
             'vector_tile_sync_status': 'synced',
-            'product_sync_status': 'synced',
             'simplification_status': 'out_of_sync',
             'simplification_progress': 0.0,
             'vector_tiles_progress': 0.0,
-            'product_progress': 100.0,
             'permissions': ['Manage', 'Read']
         }
         self.assertEqual(

@@ -7,7 +7,12 @@ from georepo.models import (
     BackgroundTask,
     DatasetViewResource,
     DatasetView,
-    Dataset
+    Dataset,
+    ExportRequest,
+    ExportRequestStatusText
+)
+from georepo.models.base_task_request import (
+    ERROR
 )
 from georepo.utils.celery_helper import (
     get_task_status,
@@ -95,25 +100,11 @@ def handle_task_failure(task: BackgroundTask):
                 id=view_resource_id).first()
             if resource is None:
                 return
-            export_data = (
-                task_param[1] if len(task_param) > 1 else True
-            )
             resource.status = DatasetView.DatasetViewStatus.ERROR
             resource.vector_tile_sync_status = (
                 DatasetViewResource.SyncStatus.OUT_OF_SYNC
             )
-            if export_data:
-                fields = [
-                    'geojson_sync_status',
-                    'shapefile_sync_status',
-                    'kml_sync_status',
-                    'topojson_sync_status'
-                ]
-                for field in fields:
-                    setattr(resource, field,
-                            DatasetViewResource.SyncStatus.OUT_OF_SYNC)
             resource.tiling_current_task = None
-            resource.product_current_task = None
             resource.save()
         except DatasetViewResource.DoesNotExist as ex:
             logger.error(ex)
@@ -167,6 +158,19 @@ def handle_task_failure(task: BackgroundTask):
             upload.save(update_fields=['status', 'logs'])
         except EntityUploadStatus.DoesNotExist as ex:
             logger.error(ex)
+    elif task_name == 'dataset_view_exporter':
+        if len(task_param) == 0:
+            return
+        request_id = task_param[0]
+        # update status_text to ABORTED
+        request = ExportRequest.objects.filter(id=request_id).first()
+        if request is None:
+            return
+        request.status_text = str(ExportRequestStatusText.ABORTED)
+        request.status = ERROR
+        if task.errors:
+            request.errors = task.errors
+        request.save(update_fields=['status_text', 'status', 'errors'])
 
 
 def handle_task_interrupted(task: BackgroundTask):
@@ -205,16 +209,10 @@ def handle_task_interrupted(task: BackgroundTask):
                 id=view_resource_id).first()
             if resource is None:
                 return
-            export_data = (
-                task_param[1] if len(task_param) > 1 else True
-            )
-            export_vector_tile = (
-                task_param[2] if len(task_param) > 2 else True
-            )
             overwrite = False
             log_object_id = (
-                int(task_param[4]) if len(task_param) > 4 and
-                task_param[4] is not None else None
+                int(task_param[2]) if len(task_param) > 2 and
+                task_param[2] is not None else None
             )
             resource.status = (
                 DatasetView.DatasetViewStatus.PENDING
@@ -222,25 +220,12 @@ def handle_task_interrupted(task: BackgroundTask):
             resource.vector_tile_sync_status = (
                 DatasetViewResource.SyncStatus.SYNCING
             )
-            if export_data:
-                fields = [
-                    'geojson_sync_status',
-                    'shapefile_sync_status',
-                    'kml_sync_status',
-                    'topojson_sync_status'
-                ]
-                for field in fields:
-                    setattr(resource, field,
-                            DatasetViewResource.SyncStatus.SYNCING)
             resource.tiling_current_task = None
-            resource.product_current_task = None
             resource.save()
             task_celery = (
                 generate_view_resource_vector_tiles_task.apply_async(
                     (
                         view_resource_id,
-                        export_data,
-                        export_vector_tile,
                         overwrite,
                         log_object_id
                     ),
@@ -257,18 +242,14 @@ def handle_task_interrupted(task: BackgroundTask):
                 'Invalid parameter view_vector_tiles_task')
         try:
             view_id = task_param[0]
-            export_data = task_param[1] if len(task_param) > 1 else True
-            export_vector_tile = (
-                task_param[2] if len(task_param) > 2 else True
-            )
-            overwrite = task_param[3] if len(task_param) > 3 else True
+            overwrite = task_param[1] if len(task_param) > 2 else True
             view = DatasetView.objects.filter(id=view_id).first()
             if view is None:
                 return
             view.simplification_current_task = None
             view.save(update_fields=['simplification_current_task'])
             task_celery = view_vector_tiles_task.delay(
-                view.id, export_data, export_vector_tile, overwrite)
+                view.id, overwrite)
             view.task_id = task_celery.id
             view.save(update_fields=['task_id'])
         except DatasetView.DoesNotExist as ex:
@@ -406,6 +387,21 @@ def handle_task_interrupted(task: BackgroundTask):
             upload_session.save(update_fields=['task_id'])
         except LayerUploadSession.DoesNotExist as ex:
             logger.error(ex)
+    elif task_name == 'dataset_view_exporter':
+        if len(task_param) == 0:
+            return
+        request_id = task_param[0]
+        # update status_text to ABORTED
+        request = ExportRequest.objects.filter(id=request_id).first()
+        if request is None:
+            return
+        request.status_text = str(ExportRequestStatusText.ABORTED)
+        request.status = ERROR
+        if task.errors:
+            request.errors = task.errors
+        else:
+            request.errors = 'Job is interrupted!'
+        request.save(update_fields=['status_text', 'status', 'errors'])
 
 
 @shared_task(name="remove_old_background_tasks")

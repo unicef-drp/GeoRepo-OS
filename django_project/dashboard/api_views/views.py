@@ -2,10 +2,10 @@ import re
 import uuid
 import math
 import logging
-from django.db.models.expressions import RawSQL, Q
+from django.db.models.expressions import Q
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import connection
-from django.http import Http404, HttpResponseForbidden, HttpResponse
+from django.http import Http404, HttpResponseForbidden
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
@@ -19,8 +19,7 @@ from dashboard.serializers.view import (
 from georepo.models import (
     Dataset,
     DatasetView,
-    TagWithDescription,
-    GeographicalEntity
+    TagWithDescription
 )
 from dashboard.models.entities_user_config import EntitiesUserConfig
 from georepo.restricted_sql_commands import RESTRICTED_COMMANDS
@@ -33,7 +32,6 @@ from georepo.models.dataset_view import (
 from georepo.utils.dataset_view import (
     create_sql_view,
     init_view_privacy_level,
-    get_view_resource_from_view,
     calculate_entity_count_in_view
 )
 from georepo.utils.permission import (
@@ -41,7 +39,6 @@ from georepo.utils.permission import (
     get_views_for_user,
     get_view_permission_privacy_level
 )
-from georepo.utils.exporter_base import APIDownloaderBase
 
 
 logger = logging.getLogger(__name__)
@@ -634,150 +631,3 @@ class QueryViewPreview(APIView, QueryStringCheck):
         return Response(data={
             'session': config.uuid
         })
-
-
-class DownloadView(AzureAuthRequiredMixin,
-                   DatasetViewReadPermission,
-                   APIDownloaderBase):
-    """
-    API to download view based on session user config
-    """
-    permission_classes = [IsAuthenticated]
-
-    def download_view(self, dataset_view, filter_levels=[]):
-        output_format = self.get_output_format()
-        # retrieve user privacy level for this dataset
-        user_privacy_level = get_view_permission_privacy_level(
-            self.request.user,
-            dataset_view.dataset,
-            dataset_view=dataset_view
-        )
-        # get resource for the privacy level
-        resource = get_view_resource_from_view(
-            dataset_view,
-            user_privacy_level
-        )
-        if resource is None:
-            raise Http404('The requested file does not exist')
-        result_list = []
-        total_count = 0
-        entities = GeographicalEntity.objects.filter(
-            dataset=dataset_view.dataset,
-            is_approved=True,
-            privacy_level__lte=user_privacy_level
-        )
-        # raw_sql to view to select id
-        raw_sql = (
-            'SELECT id from "{}"'
-        ).format(str(dataset_view.uuid))
-        entities = entities.filter(
-            id__in=RawSQL(raw_sql, [])
-        )
-        levels = entities.order_by('level').values_list(
-            'level',
-            flat=True
-        ).distinct()
-        total_count = 0
-        for level in levels:
-            if filter_levels and level not in filter_levels:
-                continue
-            exported_name = f'adm{level}'
-            file_path = self.get_resource_path(
-                output_format['directory'],
-                resource,
-                exported_name,
-                output_format['suffix']
-            )
-            if not self.check_exists(file_path):
-                raise Http404('The requested file does not exist')
-            result_list.append(file_path)
-            # add metadata (for geojson)
-            metadata_file_path = self.get_resource_path(
-                output_format['directory'],
-                resource,
-                exported_name,
-                '.xml'
-            )
-            if self.check_exists(metadata_file_path):
-                result_list.append(metadata_file_path)
-            total_count += 1
-        self.append_readme(resource, output_format, result_list)
-        if total_count == 0:
-            raise Http404('The requested file does not exist')
-        prefix_name, zip_file_name = self.get_output_names(dataset_view)
-        return self.prepare_response(prefix_name, zip_file_name, result_list)
-
-    def download_filtered_view(self, dataset_view: DatasetView,
-                               config: EntitiesUserConfig):
-        country = (
-            config.filters['country'][0] if
-            len(config.filters['country']) else ''
-        )
-        levels = []
-        if config.filters['level']:
-            levels = [int(level) for level in config.filters['level']]
-        if (
-            dataset_view.default_ancestor_code is None and
-            not dataset_view.is_static and dataset_view.default_type
-        ):
-            # filter by country if it's default view with many countries
-            if country:
-                # find correct view based on the country
-                ancestor = GeographicalEntity.objects.filter(
-                    dataset=dataset_view.dataset,
-                    level=0,
-                    label=country,
-                    is_approved=True
-                ).first()
-                if not ancestor:
-                    raise Http404('The requested file does not exist')
-                country_view = DatasetView.objects.filter(
-                    dataset=dataset_view.dataset,
-                    default_type=dataset_view.default_type,
-                    is_static=False,
-                    default_ancestor_code=ancestor.unique_code
-                ).first()
-                if not country_view:
-                    raise Http404('The requested file does not exist')
-                return self.download_view(country_view, levels)
-            else:
-                return self.download_view(dataset_view, levels)
-        else:
-            # contains single country
-            return self.download_view(dataset_view, levels)
-
-    def check_session_has_filter(self, session_uuid):
-        user_config = EntitiesUserConfig.objects.filter(
-            uuid=session_uuid
-        ).first()
-        if not user_config or not user_config.filters:
-            return None
-        if (
-            'country' not in user_config.filters and
-            'level' not in user_config.filters
-        ):
-            return None
-        if (
-            len(user_config.filters['country']) == 0 and
-            len(user_config.filters['level']) == 0
-        ):
-            return None
-        return user_config
-
-    def get(self, *args, **kwargs):
-        view_id = kwargs.get('id', None)
-        dataset_view = get_object_or_404(
-            DatasetView,
-            id=view_id,
-            dataset__module__is_active=True
-        )
-        session = self.request.GET.get('session', None)
-        sessionObj = self.check_session_has_filter(session)
-        response: HttpResponse
-        if sessionObj is None:
-            # download whole view
-            response = self.download_view(dataset_view)
-        else:
-            # download view with filter
-            response = self.download_filtered_view(dataset_view, sessionObj)
-        return response

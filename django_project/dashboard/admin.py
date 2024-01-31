@@ -238,6 +238,17 @@ class TemporaryTilingConfigAdmin(admin.ModelAdmin):
                     'simplify_tolerance', 'created_at')
 
 
+@admin.action(description='Clear Old Export Data')
+def clear_old_exported_data(modeladmin, request, queryset):
+    from dashboard.tasks import remove_old_exported_data
+    remove_old_exported_data.delay()
+    modeladmin.message_user(
+        request,
+        '/media/export_data/ directory will be cleared in background!',
+        messages.SUCCESS
+    )
+
+
 @admin.action(description='Clear Temp Directory')
 def clear_temp_directory_action(modeladmin, request, queryset):
     from dashboard.tasks import clear_temp_directory
@@ -263,7 +274,8 @@ def calculate_temp_directory_action(modeladmin, request, queryset):
 class TempUsageAdmin(admin.ModelAdmin):
     list_display = ('report_date', 'get_total_size', 'get_report')
     readonly_fields = ['report_file']
-    actions = [clear_temp_directory_action, calculate_temp_directory_action]
+    actions = [clear_temp_directory_action, calculate_temp_directory_action,
+               clear_old_exported_data]
 
     def get_urls(self):
         urls = super(TempUsageAdmin, self).get_urls()

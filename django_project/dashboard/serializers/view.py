@@ -12,8 +12,7 @@ from georepo.utils.permission import (
     get_external_view_permission_privacy_level
 )
 from georepo.utils.dataset_view import (
-    get_view_tiling_status,
-    get_view_product_status
+    get_view_tiling_status
 )
 from georepo.utils.directory_helper import (
     convert_size
@@ -31,37 +30,6 @@ def fetch_vector_tile_sync_status(obj: DatasetViewResource):
         if obj.tiling_current_task and obj.tiling_current_task.status:
             return obj.tiling_current_task.status
     return obj.vector_tile_sync_status
-
-
-def fetch_product_sync_status(obj: DatasetViewResource, default: str):
-    if default == DatasetViewResource.SyncStatus.SYNCING:
-        if obj.product_current_task and obj.product_current_task.status:
-            return obj.product_current_task.status
-    return default
-
-
-def fetch_all_product_status(obj: DatasetViewResource):
-    status_list = []
-    status_list.append(obj.geojson_sync_status)
-    if obj.kml_sync_status not in status_list:
-        status_list.append(obj.kml_sync_status)
-    if obj.topojson_sync_status not in status_list:
-        status_list.append(obj.topojson_sync_status)
-    if obj.shapefile_sync_status not in status_list:
-        status_list.append(obj.shapefile_sync_status)
-    result = ''
-    if 'syncing' in status_list:
-        if obj.product_current_task and obj.product_current_task.status:
-            result = obj.product_current_task.status
-        else:
-            result = 'syncing'
-    elif 'error' in status_list:
-        result = 'error'
-    elif 'out_of_sync' in status_list:
-        result = 'out_of_sync'
-    elif 'synced' in status_list:
-        result = 'synced'
-    return result
 
 
 class DatasetViewSerializer(TaggitSerializer, serializers.ModelSerializer):
@@ -282,13 +250,10 @@ class DatasetViewDetailSerializer(TaggitSerializer,
 class DatasetViewSyncSerializer(serializers.ModelSerializer):
 
     dataset = serializers.SerializerMethodField()
-    # vector_tile_sync_progress = serializers.SerializerMethodField()
-    # product_sync_progress = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
     simplification_status = serializers.SerializerMethodField()
     simplification_progress = serializers.SerializerMethodField()
     vector_tile_sync_status = serializers.SerializerMethodField()
-    product_sync_status = serializers.SerializerMethodField()
 
     def get_dataset(self, obj):
         return obj.dataset_id
@@ -302,16 +267,6 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
         )
         _, tiling_progress = get_view_tiling_status(view_resources)
         return tiling_progress
-
-    def get_product_sync_progress(self, obj):
-        if obj.product_sync_status == obj.SyncStatus.OUT_OF_SYNC:
-            return 0
-        view_resources = DatasetViewResource.objects.filter(
-            dataset_view=obj,
-            entity_count__gt=0
-        )
-        _, product_progress = get_view_product_status(view_resources)
-        return product_progress
 
     def get_permissions(self, obj: DatasetView):
         user = self.context['user']
@@ -342,21 +297,6 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
                 return 'Queued'
         return obj.vector_tile_sync_status
 
-    def get_product_sync_status(self, obj: DatasetView):
-        if obj.product_sync_status == DatasetView.SyncStatus.SYNCING:
-            # check if all statuses are queued
-            res_statuses = []
-            for res in DatasetViewResource.objects.filter(
-                dataset_view=obj,
-                entity_count__gt=0
-            ):
-                status = fetch_all_product_status(res)
-                if status not in res_statuses:
-                    res_statuses.append(status)
-            if len(res_statuses) == 1 and 'Queued' in res_statuses:
-                return 'Queued'
-        return obj.product_sync_status
-
     class Meta:
         model = DatasetView
         fields = [
@@ -366,10 +306,8 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
             'is_tiling_config_match',
             'simplification_status',
             'vector_tile_sync_status',
-            'product_sync_status',
             'simplification_progress',
             'vector_tiles_progress',
-            'product_progress',
             'permissions'
         ]
 
@@ -377,45 +315,13 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
 class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
 
     vector_tiles_size = serializers.SerializerMethodField()
-    geojson_size = serializers.SerializerMethodField()
-    shapefile_size = serializers.SerializerMethodField()
-    kml_size = serializers.SerializerMethodField()
-    topojson_size = serializers.SerializerMethodField()
     vector_tile_sync_status = serializers.SerializerMethodField()
-    geojson_sync_status = serializers.SerializerMethodField()
-    shapefile_sync_status = serializers.SerializerMethodField()
-    kml_sync_status = serializers.SerializerMethodField()
-    topojson_sync_status = serializers.SerializerMethodField()
 
     def get_vector_tiles_size(self, obj):
         return convert_size(obj.vector_tiles_size)
 
-    def get_geojson_size(self, obj):
-        return convert_size(obj.geojson_size)
-
-    def get_shapefile_size(self, obj):
-        return convert_size(obj.shapefile_size)
-
-    def get_kml_size(self, obj):
-        return convert_size(obj.kml_size)
-
-    def get_topojson_size(self, obj):
-        return convert_size(obj.topojson_size)
-
     def get_vector_tile_sync_status(self, obj: DatasetViewResource):
         return fetch_vector_tile_sync_status(obj)
-
-    def get_geojson_sync_status(self, obj: DatasetViewResource):
-        return fetch_product_sync_status(obj, obj.geojson_sync_status)
-
-    def get_shapefile_sync_status(self, obj: DatasetViewResource):
-        return fetch_product_sync_status(obj, obj.shapefile_sync_status)
-
-    def get_kml_sync_status(self, obj: DatasetViewResource):
-        return fetch_product_sync_status(obj, obj.kml_sync_status)
-
-    def get_topojson_sync_status(self, obj: DatasetViewResource):
-        return fetch_product_sync_status(obj, obj.topojson_sync_status)
 
     class Meta:
         model = DatasetViewResource
@@ -424,20 +330,8 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
             'uuid',
             'privacy_level',
             'vector_tile_sync_status',
-            'geojson_sync_status',
-            'shapefile_sync_status',
-            'kml_sync_status',
-            'topojson_sync_status',
             'vector_tiles_progress',
-            'geojson_progress',
-            'shapefile_progress',
-            'kml_progress',
-            'topojson_progress',
-            'vector_tiles_size',
-            'geojson_size',
-            'shapefile_size',
-            'kml_size',
-            'topojson_size'
+            'vector_tiles_size'
         ]
 
 
@@ -454,7 +348,6 @@ class ViewSyncSerializer(serializers.Serializer):
         accepted_options = {
             'tiling_config',
             'vector_tiles',
-            'products',
             'simplify'
         }
         if len(options - accepted_options) != 0:

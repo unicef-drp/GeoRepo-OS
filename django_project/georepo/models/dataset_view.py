@@ -11,6 +11,7 @@ from guardian.models import UserObjectPermissionBase
 from guardian.models import GroupObjectPermissionBase
 from taggit.managers import TaggableManager
 from georepo.models.tag import TaggedRecord
+from georepo.models.dataset import Dataset
 
 DATASET_VIEW_LATEST_TAG = 'latest'
 DATASET_VIEW_ALL_VERSIONS_TAG = 'all_versions'
@@ -272,10 +273,6 @@ class DatasetView(models.Model):
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.OUT_OF_SYNC
             self.vector_tiles_progress = 0
-        # Only dynamic views can have product out of sync
-        if product and not self.is_static:
-            self.product_sync_status = self.SyncStatus.OUT_OF_SYNC
-            self.product_progress = 0
         self.skip_signal = skip_signal
         if save:
             self.save()
@@ -301,9 +298,6 @@ class DatasetView(models.Model):
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.SYNCED
             self.vector_tiles_progress = 100
-        if product:
-            self.product_sync_status = self.SyncStatus.SYNCED
-            self.product_progress = 100
         self.skip_signal = skip_signal
         self.save()
 
@@ -360,6 +354,26 @@ class DatasetView(models.Model):
     @classmethod
     def get_fields(cls):
         return cls._meta.fields
+
+    @property
+    def current_simplification_status(self):
+        return (
+            self.simplification_sync_status if
+            not self.is_tiling_config_match else
+            self.dataset.simplification_sync_status
+        )
+
+    @property
+    def is_simplified_entities_ready(self):
+        if self.is_tiling_config_match:
+            return (
+                self.dataset.simplification_sync_status ==
+                Dataset.SyncStatus.SYNCED
+            )
+        return (
+            self.simplification_sync_status ==
+            DatasetView.SyncStatus.SYNCED
+        )
 
 
 class DatasetViewUserObjectPermission(UserObjectPermissionBase):
@@ -705,23 +719,6 @@ class DatasetViewResource(models.Model):
             )
             setattr(self, 'vector_tile_progress', 0)
 
-        if product:
-            fields = [
-                'geojson_sync_status',
-                'shapefile_sync_status',
-                'kml_sync_status',
-                'topojson_sync_status'
-            ]
-            for field in fields:
-                setattr(self, field, self.SyncStatus.OUT_OF_SYNC)
-            fields = [
-                'geojson',
-                'shapefile',
-                'kml',
-                'topojson'
-            ]
-            for field in fields:
-                setattr(self, f'{field}_progress', 0)
         self.skip_signal = skip_signal
         self.save()
 
@@ -739,23 +736,6 @@ class DatasetViewResource(models.Model):
             )
             setattr(self, 'vector_tile_progress', 100)
 
-        if product:
-            fields = [
-                'geojson_sync_status',
-                'shapefile_sync_status',
-                'kml_sync_status',
-                'topojson_sync_status'
-            ]
-            for field in fields:
-                setattr(self, field, self.SyncStatus.SYNCED)
-            fields = [
-                'geojson',
-                'shapefile',
-                'kml',
-                'topojson'
-            ]
-            for field in fields:
-                setattr(self, f'{field}_progress', 100)
         self.skip_signal = skip_signal
         self.save()
 
@@ -821,8 +801,7 @@ def view_res_post_save(sender, instance: DatasetViewResource,
                        *args, **kwargs):
     from georepo.models import Dataset
     from georepo.utils.dataset_view import (
-        get_view_tiling_status,
-        get_view_product_status
+        get_view_tiling_status
     )
     if getattr(instance, 'skip_signal', False):
         return
@@ -837,32 +816,6 @@ def view_res_post_save(sender, instance: DatasetViewResource,
         tiling_status,
         vt_progresss
     ) = get_view_tiling_status(view_res_qs)
-    (
-        geojson_status,
-        geojson_progress
-    ) = get_view_product_status(view_res_qs, 'geojson')
-    (
-        shapefile_status,
-        shapefile_progress
-    ) = get_view_product_status(view_res_qs, 'shapefile')
-    kml_status, kml_progress = get_view_product_status(view_res_qs, 'kml')
-    (
-        topojson_status,
-        topojson_progress
-    ) = get_view_product_status(view_res_qs, 'topojson')
-    product_status = [
-        geojson_status,
-        shapefile_status,
-        kml_status,
-        topojson_status
-    ]
-
-    product_progress = [
-        geojson_progress,
-        shapefile_progress,
-        kml_progress,
-        topojson_progress
-    ]
 
     tiling_status_mapping = {
         'out_of_sync': DatasetView.DatasetViewStatus.PENDING,
@@ -877,18 +830,5 @@ def view_res_post_save(sender, instance: DatasetViewResource,
         view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
     view.vector_tiles_progress = vt_progresss
 
-    if 'syncing' in product_status:
-        view.product_sync_status = DatasetView.SyncStatus.SYNCING
-        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
-    elif 'error' in product_status:
-        view.product_sync_status = DatasetView.SyncStatus.ERROR
-        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
-    elif 'out_of_sync' in product_status:
-        view.product_sync_status = DatasetView.SyncStatus.OUT_OF_SYNC
-        view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
-    elif 'synced' in product_status:
-        view.product_sync_status = DatasetView.SyncStatus.SYNCED
-    view.product_progress = sum(product_progress) / len(product_progress)
     view.save(update_fields=['status', 'vector_tile_sync_status',
-                             'vector_tiles_progress', 'product_sync_status',
-                             'product_progress'])
+                             'vector_tiles_progress'])

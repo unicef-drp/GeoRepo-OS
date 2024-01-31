@@ -32,6 +32,7 @@ import {updateViewTabStatuses, resetViewTabStatuses} from "../../reducers/viewTa
 import { StatusAndProgress } from '../../models/syncStatus';
 import { fetchSyncStatusAPI } from '../../utils/api/TilingStatus';
 import StatusLoadingDialog from '../../components/StatusLoadingDialog';
+import ViewDownload from './ViewDownload';
 
 const QUERY_CHECK_URL = '/api/query-view-preview/'
 const DOWNLOAD_VIEW_URL = '/api/view-download/'
@@ -48,8 +49,6 @@ export default function ViewDetail() {
     const [previewSession, setPreviewSession] = useState(null)
     const [tempData, setTempData] = useState<TempQueryCreateInterface>(null)
     const [view, setView] = useState<View>(null)
-    const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-    const downloadAsOpen = Boolean(anchorEl)
     const [isDownloading, setIsDownloading] = useState(false)
     const [searchParams, setSearchParams] = useSearchParams()
     const navigate = useNavigate()
@@ -118,7 +117,6 @@ export default function ViewDetail() {
     }
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-        '/view_edit?id=672'
         let viewId = searchParams.get('id') ? parseInt(searchParams.get('id')) : 0
         navigate(`/view_edit?id=${viewId}&tab=${newValue}`)
     }
@@ -151,7 +149,6 @@ export default function ViewDetail() {
 
     const downloadViewOnClick = (format: string) => {
         setIsDownloading(true)
-        setAnchorEl(null)
         let _queryParams = []
         if (previewSession) {
             _queryParams.push(`session=${previewSession}`)
@@ -202,24 +199,24 @@ export default function ViewDetail() {
 
     const getSyncStatusTab = () => {
         if (objSyncStatus === SyncStatus.Syncing) {
-            return <Tab key={4} label="Sync Status"
+            return <Tab key={5} label="Sync Status"
               icon={<CircularProgress size={18} />}
               iconPosition={'start'}
-              {...a11yProps(4)}
+              {...a11yProps(5)}
               disabled={view === null}
             />
           } else if (objSyncStatus === SyncStatus.Error) {
-            return <Tab key={4} label="Sync Status"
+            return <Tab key={5} label="Sync Status"
               icon={<ErrorIcon color='error' fontSize='small' />}
               iconPosition={'start'}
-              {...a11yProps(4)}
+              {...a11yProps(5)}
               disabled={view === null}
             />
           } else if (objSyncStatus === SyncStatus.OutOfSync) {
-            return <Tab key={4} label="Sync Status"
+            return <Tab key={5} label="Sync Status"
               icon={<SyncProblemIcon color='warning' fontSize='small' />}
               iconPosition={'start'}
-              {...a11yProps(4)}
+              {...a11yProps(5)}
               disabled={view === null}
             />
           }
@@ -233,43 +230,28 @@ export default function ViewDetail() {
                 <Tabs className='DatasetTabs' value={tabSelected} onChange={handleChange} aria-label="Configuration Tab">
                     <Tab label={ "Detail" + (tempData != null ? "*" : "") } {...a11yProps(0)} />
                     <Tab label="Preview" {...a11yProps(1)} disabled={!isQueryValid} />
+                    <Tab label="Download" {...a11yProps(2)} disabled={!isQueryValid} />
                     { view && view.permissions && view.permissions.includes('Manage') && (
-                        <Tab label="Permission" {...a11yProps(2)} disabled={view === null} />
+                        <Tab label="Permission" {...a11yProps(3)} disabled={view === null} />
                     )}
                     { view && view.permissions && view.permissions.includes('Manage') && (
-                        <Tab label="Tiling Config" {...a11yProps(3)} disabled={view === null} />
+                        <Tab label="Tiling Config" {...a11yProps(4)} disabled={view === null} />
                     )}
                     { view && view.permissions && view.permissions.includes('Manage') && getSyncStatusTab()}
                 </Tabs>
-                { view && <Box flexDirection={'column'} justifyContent={'center'} display={'flex'} sx={{marginRight: '20px'}}>
-                    <Tooltip title='Download view with possible filters: Country, Admin Level'>
-                        <Button disabled={isDownloading}
+                { view && tabSelected === 1 && <Box flexDirection={'column'} justifyContent={'center'} display={'flex'} sx={{marginRight: '20px'}}>
+                    <Tooltip title='Download view with filters from the preview'>
+                        <Button disabled={!previewSession}
                             id='download-as-button'
-                            className={'ThemeButton MuiButton-secondary DownloadAsButton'}
-                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => setAnchorEl(event.currentTarget)}
-                            aria-controls={downloadAsOpen ? 'download-as-menu' : undefined}
-                            aria-haspopup="true"
-                            aria-expanded={downloadAsOpen ? 'true' : undefined}
-                            disableElevation
-                            endIcon={<KeyboardArrowDownIcon />}
+                            className={'ThemeButton MuiButton-secondary'}
+                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                                let _navigate_to = `/view_edit?id=${view.id}&tab=2&filterSession=${previewSession}`
+                                navigate(_navigate_to)
+                            }}
                         >
-                            Download As
+                            Download
                         </Button>
                     </Tooltip>
-                    <Menu
-                        id="download-as-menu"
-                        anchorEl={anchorEl}
-                        open={downloadAsOpen}
-                        onClose={() => setAnchorEl(null)}
-                        MenuListProps={{
-                            'aria-labelledby': 'download-as-button',
-                        }}
-                    >
-                        <MenuItem onClick={() => downloadViewOnClick('geojson')}>Geojson</MenuItem>
-                        <MenuItem onClick={() => downloadViewOnClick('shapefile')}>Shapefile</MenuItem>
-                        <MenuItem onClick={() => downloadViewOnClick('kml')}>KML</MenuItem>
-                        <MenuItem onClick={() => downloadViewOnClick('topojson')}>Topojson</MenuItem>
-                    </Menu>
                 </Box>
                 }
             </Box>
@@ -303,18 +285,21 @@ export default function ViewDetail() {
                     ): null
                     }
                 </TabPanel>
+                <TabPanel value={tabSelected} index={2} noPadding>
+                    <ViewDownload view={view} />
+                </TabPanel>
                 { view && view.permissions && view.permissions.includes('Manage') && (
-                    <TabPanel value={tabSelected} index={2} noPadding>
+                    <TabPanel value={tabSelected} index={3} noPadding>
                         <ViewPermission view={view} onViewUpdated={onViewUpdated} />
                     </TabPanel>
                 )}
                 { view && view.permissions && view.permissions.includes('Manage') && (
-                    <TabPanel value={tabSelected} index={3} padding={1}>
+                    <TabPanel value={tabSelected} index={4} padding={1}>
                         <TilingConfiguration view={view} isReadOnly={view.is_read_only} onSyncStatusShouldBeUpdated={fetchTilingStatus} />
                     </TabPanel>
                 )}
                 { view && view.permissions && view.permissions.includes('Manage') && (
-                    <TabPanel value={tabSelected} index={4} noPadding>
+                    <TabPanel value={tabSelected} index={5} noPadding>
                         <ViewSync view={view} onSyncStatusShouldBeUpdated={fetchTilingStatus} />
                     </TabPanel>
                 )}

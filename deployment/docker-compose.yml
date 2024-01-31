@@ -50,10 +50,18 @@ x-common-django:
     - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
     - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
     - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-noreply@kartoza.com}
+    # vector tile generation
     - TEGOLA_CONCURRENCY=${TEGOLA_CONCURRENCY:-0}
+    # azure storage
     - AZURE_STORAGE=${AZURE_STORAGE}
     - AZURE_STORAGE_CONTAINER=${AZURE_STORAGE_CONTAINER}
     - AZURE_TEMP_DIRECTORY=${AZURE_TEMP_DIRECTORY:-/home/web/media/tmp}
+    # exporter variables
+    - EXPORT_DATA_EXPIRY_IN_HOURS=${EXPORT_DATA_EXPIRY_IN_HOURS:-48}
+    # worker variables
+    - VECTOR_TILE_QUEUE_CONCURRENCY=${VECTOR_TILE_QUEUE_CONCURRENCY:-1}
+    - VALIDATE_QUEUE_CONCURRENCY=${VALIDATE_QUEUE_CONCURRENCY:-3}
+    - EXPORT_DATA_QUEUE_CONCURRENCY=${EXPORT_DATA_QUEUE_CONCURRENCY:-1}
   volumes:
     - static-data:/home/web/static
     - media-data:/home/web/media

@@ -112,8 +112,7 @@ from dashboard.api_views.entity import (
 from dashboard.api_views.views import (
     CreateNewView, ViewList, DeleteView, ViewDetail,
     UpdateView, QueryViewCheck, SQLColumnsTablesList,
-    QueryViewPreview, GetViewTags,
-    DownloadView, ViewFilterValue
+    QueryViewPreview, GetViewTags, ViewFilterValue
 )
 from dashboard.api_views.tiling_config import (
     FetchDatasetTilingConfig,
@@ -150,6 +149,11 @@ from dashboard.api_views.logs import (
 )
 from dashboard.views.flower_proxy_view import FlowerProxyView
 from dashboard.api_views.task_status import CheckTaskStatus
+from dashboard.api_views.exporter import (
+    ExportHistoryList,
+    ExportRequestDetail,
+    ExportRequestMetadata
+)
 
 
 @api_view(['GET'])
@@ -626,9 +630,15 @@ urlpatterns = [
     re_path(r'api/view-detail/(?P<id>[\da-f-]+)?$',
             ViewDetail.as_view(),
             name='view-detail'),
-    re_path(r'api/view-download/(?P<id>[\da-f-]+)/?$',
-            DownloadView.as_view(),
-            name='view-download'),
+    re_path(r'api/exporter/(?P<id>[\da-f-]+)/list/?$',
+            ExportHistoryList.as_view(),
+            name='exporter-history-list'),
+    re_path(r'api/exporter/(?P<id>[\da-f-]+)/detail/?$',
+            ExportRequestDetail.as_view(),
+            name='exporter-request-detail'),
+    re_path(r'api/exporter/(?P<id>[\da-f-]+)/metadata/?$',
+            ExportRequestMetadata.as_view(),
+            name='exporter-request-metadata'),
     re_path(r'api/delete-view/(?P<id>[\da-f-]+)?$',
             DeleteView.as_view(),
             name='delete-view'),

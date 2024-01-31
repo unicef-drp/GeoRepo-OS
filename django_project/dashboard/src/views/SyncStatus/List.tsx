@@ -111,7 +111,7 @@ export function ViewSyncActionButtons() {
   }
 
   const onBatchSyncClick = () => {
-    setSyncOptions(['vector_tiles', 'products'])
+    setSyncOptions(['vector_tiles'])
     setAlertDialogTitle('Batch Synchronize')
     setAlertDialogDescription(
       `Are you sure you want to synchronize ${selectedViews.length} views?
@@ -184,10 +184,8 @@ interface ViewSyncRowInterface {
   is_tiling_config_match: boolean,
   simplification_status: string,
   vector_tile_sync_status: string,
-  product_sync_status: string,
   simplification_progress: number,
   vector_tiles_progress: number,
-  product_progress: number,
   permissions: string[]
 }
 
@@ -307,19 +305,13 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           }
           return res
       }, [] as string[])
-      const productSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
-          if (!res.includes(row.product_sync_status)) {
-              res.push(row.product_sync_status)
-          }
-          return res
-      }, [] as string[])
       const vectorTileSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
           if (!res.includes(row.vector_tile_sync_status)) {
               res.push(row.vector_tile_sync_status)
           }
           return res
       }, [] as string[])
-      if (!simplificationSyncStatus.includes('syncing') && !productSyncStatus.includes('syncing') && !vectorTileSyncStatus.includes('syncing')) {
+      if (!simplificationSyncStatus.includes('syncing') && !vectorTileSyncStatus.includes('syncing')) {
           setAllFinished(true)
           props.onSyncStatusShouldBeUpdated()
       } else {
@@ -345,7 +337,6 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   fetchViewSyncListFuncRef.current = fetchViewSyncList
 
   const syncView = (viewIds: number[], syncOptions: string[]) => {
-    setLoading(true)
     axios.post(
       TRIGGER_SYNC_API_URL,
       {
@@ -356,7 +347,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
       setLoading(false)
       setConfirmMessage('Successfully submitting data regeneration. Your request will be processed in the background.')
       if (fetchViewSyncListFuncRef.current) {
-        fetchViewSyncListFuncRef.current()
+        fetchViewSyncListFuncRef.current(true)
       }
       props.onSyncStatusShouldBeUpdated()
     }).catch(error => {
@@ -398,7 +389,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           return columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' ')
         }
   
-        let _columns = ['id', 'name', 'permissions', 'simplification_progress', 'vector_tiles_progress', 'product_progress'].map((columnName) => {
+        let _columns = ['id', 'name', 'permissions', 'simplification_progress', 'vector_tiles_progress'].map((columnName) => {
           let _options: any = {
             name: columnName,
             label: getLabel(columnName),
@@ -418,7 +409,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
               return (
-                <span>{rowData[6] ? 'Tiling config matches dataset' : 'View uses custom tiling config'}</span>
+                <span>{rowData[5] ? 'Tiling config matches dataset' : 'View uses custom tiling config'}</span>
               )
             },
             filter: true,
@@ -437,7 +428,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           options: {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
-              let _status = rowData[7]
+              let _status = rowData[6]
               let _progress = rowData[3] as number
 
               if (_status === 'out_of_sync') {
@@ -482,9 +473,9 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           options: {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
-              let _status = rowData[8]
+              let _status = rowData[7]
               let _progress = rowData[4] as number
-              let _simplificationStatus = rowData[7]
+              let _simplificationStatus = rowData[6]
               if (_status === 'out_of_sync') {
                 if (_simplificationStatus !== 'synced') {
                   return (
@@ -532,44 +523,6 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
             }
           }
         })
-  
-        _columns.push({
-          name: 'product_sync_status',
-          label: 'Data Products',
-          options: {
-            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-              let rowData = tableMeta.rowData
-              let _status = rowData[9]
-              let _progress = rowData[5] as number
-              if (_status === 'out_of_sync') {
-                return (
-                  getOutOfSync('Data products need refresh', 'Click to update data products', !rowData[2].includes('Manage'), (e: any) => {
-                    e.stopPropagation()
-                    syncView([rowData[0]], ['products'])
-                  })
-                )
-              } else if (_status === 'synced') {
-                return getSynced('Data products are synced')
-              } else if (_status === 'syncing') {
-                return getSyncing(_progress)
-              } else if (_status === 'Queued') {
-                return getQueued()
-              } else if (_status === 'error') {
-                return (
-                  getError('Click to retrigger data products generation', !rowData[2].includes('Manage'), (e: any) => {
-                    e.stopPropagation()
-                    syncView([rowData[0]], ['products'])
-                  })
-                )
-              }
-              return (
-                <span>{_status}</span>
-              )
-            },
-            filter: false,
-            sort: false
-          }
-        })
 
         _columns.push({
           name: '',
@@ -577,13 +530,15 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           options: {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
-              let _simplificationStatus = rowData[7]
-              let _syncButtonDisabled = (rowData[8] === 'synced' && rowData[9] === 'synced') || (rowData[8] === 'syncing' || rowData[9] === 'syncing')
+              let _simplificationStatus = rowData[6]
+              let _syncButtonDisabled = rowData[7] === 'synced'|| rowData[7] === 'syncing'
+              let _syncInQueued = rowData[7] === 'Queued'
               const getSyncText = () => {
                 if (_syncButtonDisabled) {
                   return 'Vector Tile and Data Products are synchronized'
                 }
                 if (_simplificationStatus !== 'synced') return 'Please trigger simplification before regenerate vector tiles!'
+                if (_syncInQueued) return 'Waiting in the queue'
                 return 'Synchronize'
               }
               return (
@@ -594,7 +549,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                     disabled={!rowData[2].includes('Manage')}
                     onClick={(e) => {
                       e.stopPropagation()
-                      navigate(`/view_edit?id=${rowData[0]}&tab=4`)
+                      navigate(`/view_edit?id=${rowData[0]}&tab=5`)
                     }}
                     variant={'contained'}
                   >
@@ -604,20 +559,19 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                   <Button
                     aria-label={'Synchronize'}
                     title={getSyncText()}
-                    disabled={!rowData[2].includes('Manage') || _syncButtonDisabled || _simplificationStatus !== 'synced' }
+                    disabled={!rowData[2].includes('Manage') || _syncButtonDisabled || _simplificationStatus !== 'synced' || _syncInQueued }
                     onClick={(e) => {
                       e.stopPropagation()
-                      if (_syncButtonDisabled || _simplificationStatus !== 'synced') {
+                      if (_syncButtonDisabled || _simplificationStatus !== 'synced' || _syncInQueued) {
                         return
                       }
                       syncView(
                         [rowData[0]],
-                        ['vector_tiles', 'products']
+                        ['vector_tiles']
                       )
                     }}
                     variant={
-                      rowData[8] === 'out_of_sync' || rowData[9] === 'out_of_sync' ?
-                        'contained' : 'outlined'
+                      rowData[7] === 'out_of_sync' ? 'contained' : 'outlined'
                     }
                   >
                     Synchronize
@@ -730,10 +684,9 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
     if (!isBatchActionAvailable)
       return false
     return !((rowData.is_tiling_config_match &&
-      rowData.product_sync_status === 'synced' &&
       rowData.vector_tile_sync_status === 'synced') ||
       (
-        rowData.product_sync_status === 'syncing' || rowData.vector_tile_sync_status === 'syncing'
+        rowData.vector_tile_sync_status === 'syncing'
       ))
   }
 
@@ -791,7 +744,6 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                   onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
                     if (currentRowsSelected.length > 1) {
                       // select all
-                      console.log('select all here')
                       fetchSelectAllViewList()
                     } else if (currentRowsSelected.length === 1) {
                       // check/uncheck single item

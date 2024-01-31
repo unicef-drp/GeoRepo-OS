@@ -65,30 +65,30 @@ class FetchDatasetViewTilingConfig(AzureAuthRequiredMixin, APIView):
 
     permission_classes = [IsAuthenticated]
 
+    def fetch_view_tiling_configs(self, dataset_view: DatasetView):
+        # find from View tiling configs
+        view_tiling_configs = DatasetViewTilingConfig.objects.filter(
+            dataset_view=dataset_view
+        ).order_by('zoom_level')
+        if view_tiling_configs.exists():
+            return ViewTilingConfigSerializer(
+                view_tiling_configs,
+                many=True
+            ).data
+        tiling_configs = DatasetTilingConfig.objects.filter(
+            dataset=dataset_view.dataset
+        ).order_by('zoom_level')
+        return TilingConfigSerializer(tiling_configs, many=True).data
+
     def get(self, request, *args, **kwargs):
         dataset_view_uuid = kwargs.get('view')
         dataset_view = get_object_or_404(
             DatasetView,
             uuid=dataset_view_uuid
         )
-        # find from View tiling configs
-        view_tiling_configs = DatasetViewTilingConfig.objects.filter(
-            dataset_view=dataset_view
-        ).order_by('zoom_level')
-        if view_tiling_configs.exists():
-            return Response(
-                status=200,
-                data=ViewTilingConfigSerializer(
-                    view_tiling_configs,
-                    many=True
-                ).data
-            )
-        tiling_configs = DatasetTilingConfig.objects.filter(
-            dataset=dataset_view.dataset
-        ).order_by('zoom_level')
         return Response(
             status=200,
-            data=TilingConfigSerializer(tiling_configs, many=True).data
+            data=self.fetch_view_tiling_configs(dataset_view)
         )
 
 

@@ -60,8 +60,7 @@ def trigger_generate_dynamic_views(dataset: Dataset,
         generate_view_bbox(dataset_view)
 
 
-def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
-                                          export_data: bool = True):
+def trigger_generate_vector_tile_for_view(dataset_view: DatasetView):
     """
     Trigger generate vector tiles for a view
     """
@@ -70,9 +69,6 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
     )
     dataset_view.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
     dataset_view.vector_tiles_progress = 0
-    if export_data:
-        dataset_view.product_sync_status = DatasetView.SyncStatus.SYNCING
-        dataset_view.product_progress = 0
     if dataset_view.task_id:
         res = AsyncResult(dataset_view.task_id)
         if not res.ready():
@@ -83,7 +79,7 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
                 signal='SIGKILL'
             )
     dataset_view.save()
-    task = view_vector_tiles_task.delay(dataset_view.id, export_data)
+    task = view_vector_tiles_task.delay(dataset_view.id)
     dataset_view.task_id = task.id
     dataset_view.save(update_fields=['task_id'])
 
@@ -516,40 +512,6 @@ def get_view_tiling_status(view_resource_queryset):
     elif len(vt_statuses) == 1:
         tiling_status = vt_statuses[0]
     return tiling_status, tiling_progress
-
-
-def get_view_product_status(view_resource_queryset, product=None):
-    """Get product status of dataset view."""
-    available_resources = view_resource_queryset.filter(
-        entity_count__gt=0
-    )
-    # check for error
-    error_queryset = available_resources.filter(
-        status=DatasetView.DatasetViewStatus.ERROR
-    )
-    field = f'{product}_progress' if product else 'data_product_progress'
-    pt_field = f'{product}_sync_status' if product else 'product_sync_status'
-    view_resources = available_resources.aggregate(
-        Avg(field)
-    )
-    product_progress = (
-        view_resources[f'{field}__avg'] if
-        view_resources[f'{field}__avg'] else 0
-    )
-    if error_queryset.exists():
-        return 'error', product_progress
-    pt_statuses = available_resources.order_by(pt_field).values_list(
-        pt_field, flat=True).distinct()
-    product_status = 'out_of_sync'
-    resource_count = available_resources.count()
-    if resource_count == 0:
-        # set default status to out_of_sync if no resource yet
-        product_status = 'out_of_sync'
-    elif 'syncing' in pt_statuses:
-        product_status = 'syncing'
-    elif len(pt_statuses) == 1:
-        product_status = pt_statuses[0]
-    return product_status, product_progress
 
 
 def get_entities_count_in_view(

@@ -97,10 +97,6 @@ class TestModelSignal(TestCase):
     def check_precondition(self):
         # Check precondition: status is synced
         self.assertEqual(
-            self.view_latest.product_sync_status,
-            DatasetView.SyncStatus.SYNCED
-        )
-        self.assertEqual(
             self.view_latest.vector_tile_sync_status,
             DatasetView.SyncStatus.SYNCED
         )
@@ -119,8 +115,3 @@ class TestModelSignal(TestCase):
             self.view_latest.vector_tile_sync_status,
             DatasetView.SyncStatus.OUT_OF_SYNC
         )
-        if not is_tile_config:
-            self.assertEqual(
-                self.view_latest.product_sync_status,
-                DatasetView.SyncStatus.OUT_OF_SYNC
-            )

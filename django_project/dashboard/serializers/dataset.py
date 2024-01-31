@@ -66,19 +66,12 @@ class DatasetSerializer(serializers.ModelSerializer):
         return tiling_status
 
     def get_sync_status(self, obj: Dataset):
-        vt_sync_status = set(
+        all_status = set(
             obj.datasetview_set.all().values_list(
                 'vector_tile_sync_status',
                 flat=True
             ).distinct()
         )
-        product_sync_status = set(
-            obj.datasetview_set.all().values_list(
-                'product_sync_status',
-                flat=True
-            ).distinct()
-        )
-        all_status = vt_sync_status.union(product_sync_status)
         if len(all_status) == 0:
             return obj.SyncStatus.SYNCED.label
         elif obj.SyncStatus.SYNCING in all_status:
