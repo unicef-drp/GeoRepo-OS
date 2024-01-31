@@ -52,9 +52,7 @@ def check_affected_dataset_views(
         Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED) |
         Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCING) |
         Q(simplification_sync_status=DatasetView.SyncStatus.SYNCED) |
-        Q(simplification_sync_status=DatasetView.SyncStatus.SYNCING) |
-        Q(product_sync_status=DatasetView.SyncStatus.SYNCED) |
-        Q(product_sync_status=DatasetView.SyncStatus.SYNCING)
+        Q(simplification_sync_status=DatasetView.SyncStatus.SYNCING)
     )
     if unique_codes:
         unique_codes = tuple(
@@ -108,8 +106,6 @@ def check_affected_dataset_views(
                 for view_resource in view_resources:
                     if view_resource.vector_tiles_task_id:
                         cancel_task(view_resource.vector_tiles_task_id)
-                    if view_resource.product_task_id:
-                        cancel_task(view_resource.product_task_id)
                 view.set_out_of_sync(
                     tiling_config=False,
                     vector_tile=True,

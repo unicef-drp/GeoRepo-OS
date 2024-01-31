@@ -538,7 +538,7 @@ class DatasetViewAdmin(GuardedModelAdmin):
     list_display = (
         'name', 'dataset', 'is_static', 'min_privacy_level',
         'max_privacy_level', 'tiling_status',
-        'vector_tile_sync_status', 'product_sync_status', 'uuid')
+        'vector_tile_sync_status', 'uuid')
     search_fields = ['name', 'dataset__label', 'uuid']
     list_filter = ["dataset"]
     actions = [generate_view_vector_tiles, create_sql_view_action,
@@ -605,16 +605,6 @@ def trigger_resource_vt_generation(view_resource, is_overwrite):
             )
     view_resource.status = DatasetView.DatasetViewStatus.PENDING
     view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
-    view_resource.geojson_progress = 0
-    view_resource.shapefile_progress = 0
-    view_resource.kml_progress = 0
-    view_resource.topojson_progress = 0
-    view_resource.geojson_sync_status = DatasetView.SyncStatus.SYNCING
-    view_resource.shapefile_sync_status = (
-        DatasetView.SyncStatus.SYNCING
-    )
-    view_resource.kml_sync_status = DatasetView.SyncStatus.SYNCING
-    view_resource.topojson_sync_status = DatasetView.SyncStatus.SYNCING
     view_resource.vector_tiles_progress = 0
     # check if it's zero tile, if yes, then can enable live vt
     # when there is existing vector tile, live vt will be enabled

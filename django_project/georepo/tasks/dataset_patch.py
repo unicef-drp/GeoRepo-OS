@@ -255,8 +255,4 @@ def patch_dataset_views_sync_status(dataset_id):
             view.vector_tile_sync_status = (
                 DatasetView.SyncStatus.OUT_OF_SYNC
             )
-            view.product_sync_status = (
-                DatasetView.SyncStatus.OUT_OF_SYNC
-            )
-            view.save(update_fields=['vector_tile_sync_status',
-                                     'product_sync_status'])
+            view.save(update_fields=['vector_tile_sync_status'])

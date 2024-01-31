@@ -273,10 +273,6 @@ class DatasetView(models.Model):
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.OUT_OF_SYNC
             self.vector_tiles_progress = 0
-        # Only dynamic views can have product out of sync
-        if product and not self.is_static:
-            self.product_sync_status = self.SyncStatus.OUT_OF_SYNC
-            self.product_progress = 0
         self.skip_signal = skip_signal
         if save:
             self.save()
@@ -302,9 +298,6 @@ class DatasetView(models.Model):
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.SYNCED
             self.vector_tiles_progress = 100
-        if product:
-            self.product_sync_status = self.SyncStatus.SYNCED
-            self.product_progress = 100
         self.skip_signal = skip_signal
         self.save()
 
