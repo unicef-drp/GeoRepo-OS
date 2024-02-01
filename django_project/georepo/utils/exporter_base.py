@@ -2,14 +2,11 @@ import re
 import os
 import shutil
 import datetime
-import zipfly
 import logging
 import zipfile
 from django.db import connection
-from django.http import StreamingHttpResponse
 import xml.etree.ElementTree as ET
 from rest_framework.reverse import reverse
-from rest_framework.generics import GenericAPIView
 from django.contrib.sites.models import Site
 from django.db.models.expressions import RawSQL
 from django.db.models import (
@@ -31,15 +28,8 @@ from georepo.models import (
 from georepo.utils.custom_geo_functions import ForcePolygonCCW
 from core.settings.utils import absolute_path
 from georepo.serializers.entity import ExportGeojsonSerializer
-from georepo.utils.renderers import (
-    GeojsonRenderer,
-    ShapefileRenderer,
-    KmlRenderer,
-    TopojsonRenderer
-)
 from georepo.utils.azure_blob_storage import (
     StorageContainerClient,
-    AzureStorageZipfly,
     DirectoryClient
 )
 from georepo.utils.permission import (
@@ -852,87 +842,3 @@ class DatasetViewExporterBase(object):
         tmp_output_dir = self.get_tmp_output_dir()
         if os.path.exists(tmp_output_dir):
             shutil.rmtree(tmp_output_dir)
-
-
-class APIDownloaderBase(GenericAPIView):
-    """!DEPRECATED! Base class for download view."""
-    renderer_classes = [
-        GeojsonRenderer,
-        ShapefileRenderer,
-        KmlRenderer,
-        TopojsonRenderer
-    ]
-
-    def get_output_format(self):
-        output = {}
-        return output
-
-    def append_readme(self, resource: DatasetViewResource,
-                      output_format, results):
-        # add readme
-        file_path = self.get_resource_path(
-            output_format['directory'],
-            resource,
-            'readme.txt',
-            ''
-        )
-        if self.check_exists(file_path):
-            results.append(file_path)
-
-    def get_output_names(self, dataset_view: DatasetView):
-        prefix_name = dataset_view.name
-        zip_file_name = f'{prefix_name}.zip'
-        return prefix_name, zip_file_name
-
-    def prepare_response(self, prefix_name, zip_file_name, result_list):
-        paths = []
-        for result in result_list:
-            file_name = result.split('/')[-1]
-            if 'readme' in file_name:
-                item_file_name = file_name
-            else:
-                item_file_name = f'{prefix_name} {file_name}'
-            paths.append({
-                'fs': result,
-                'n': item_file_name
-            })
-        zfly = None
-        if settings.USE_AZURE:
-            zfly = AzureStorageZipfly(
-                paths=paths, storage_container_client=StorageContainerClient)
-        else:
-            zfly = zipfly.ZipFly(paths=paths)
-        z = zfly.generator()
-        response = StreamingHttpResponse(
-            z, content_type='application/octet-stream')
-        response['Content-Disposition'] = (
-            'attachment; filename="{}"'.format(
-                zip_file_name
-            )
-        )
-        return response
-
-    def check_exists(self, file_path):
-        if settings.USE_AZURE:
-            if StorageContainerClient:
-                bc = StorageContainerClient.get_blob_client(blob=file_path)
-                return bc.exists()
-            else:
-                raise RuntimeError('Invalid Azure Storage Container')
-        else:
-            return os.path.exists(file_path)
-
-    def get_resource_path(self, base_dir, resource: DatasetViewResource,
-                          exported_name, file_suffix):
-        if settings.USE_AZURE:
-            if not base_dir.endswith('/'):
-                base_dir += '/'
-            return (
-                f'{base_dir}{str(resource.uuid)}/'
-                f'{exported_name}{file_suffix}'
-            )
-        return os.path.join(
-            base_dir,
-            str(resource.uuid),
-            exported_name
-        ) + file_suffix
