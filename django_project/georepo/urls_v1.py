@@ -20,7 +20,8 @@ from georepo.api_views.dataset_view import (
     DatasetViewExportDownload,
     DatasetViewExportDownloadByLevel,
     DatasetViewExportDownloadByCountry,
-    DatasetViewExportDownloadByCountryAndLevel
+    DatasetViewExportDownloadByCountryAndLevel,
+    DatasetViewCentroid
 )
 from georepo.api_views.entity_view import (
     FindViewEntityById,
@@ -159,6 +160,10 @@ view_urls = [
         r'search/view/list/',
         DatasetViewListForUser.as_view(),
         name='view-list'),
+    re_path(
+        r'search/view/(?P<uuid>[\da-f-]+)/centroid/',
+        DatasetViewCentroid.as_view(),
+        name='view-centroid'),
     re_path(
         r'search/view/(?P<uuid>[\da-f-]+)/',
         DatasetViewDetail.as_view(),

@@ -12,7 +12,9 @@ from rest_framework.test import APIRequestFactory
 from rest_framework import versioning
 
 from georepo.utils import absolute_path
-from georepo.models import IdType, DatasetView, DatasetAdminLevelName
+from georepo.models import (
+    IdType, DatasetView, DatasetAdminLevelName, DatasetViewResource
+)
 from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, LanguageF, DatasetViewF,
     DatasetAdminLevelNameF, EntityIdF, IdTypeF, UserF, EntityNameF
@@ -20,7 +22,8 @@ from georepo.tests.model_factories import (
 from georepo.api_views.dataset_view import (
     DatasetViewList,
     DatasetViewListForUser,
-    DatasetViewDetail
+    DatasetViewDetail,
+    DatasetViewCentroid
 )
 from georepo.utils.dataset_view import (
     generate_default_view_dataset_latest,
@@ -477,3 +480,86 @@ class TestApiDatasetView(TestCase):
         self.assertEqual(len(response.data['bbox']), 4)
         # check disabled module
         self.check_disabled_module(dataset, view, request, kwargs=kwargs)
+
+    @mock.patch('django.core.cache.cache.get',
+                mock.Mock(side_effect=mocked_cache_get))
+    def test_dataset_view_centroid(self):
+        dataset = DatasetF.create()
+        dataset_view = DatasetViewF.create(
+            dataset=dataset,
+            last_update=isoparse('2023-01-10T06:16:13Z'),
+            is_static=False,
+            query_string=(
+                'SELECT * FROM georepo_geographicalentity where '
+                f"dataset_id={dataset.id} AND revision_number=1"
+            )
+        )
+        dataset_view.tags.add('abc')
+        create_sql_view(dataset_view)
+        self.assertTrue(check_view_exists(str(dataset_view.uuid)))
+        GeographicalEntityF.create(
+            uuid=str(uuid.uuid4()),
+            type=self.entity_type,
+            level=0,
+            dataset=dataset,
+            internal_code='PAK',
+            label='Pakistan',
+            is_approved=True,
+            is_latest=True,
+            unique_code='PAK',
+            admin_level_name='TestLevel_0',
+            revision_number=1,
+            geometry=self.geometry
+        )
+        # recalculate view metadata
+        init_view_privacy_level(dataset_view)
+        calculate_entity_count_in_view(dataset_view)
+
+        kwargs = {
+            'uuid': str(dataset_view.uuid)
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:view-centroid',
+                kwargs=kwargs
+            ) + '/?cached=false'
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        scheme = versioning.NamespaceVersioning
+        view = DatasetViewCentroid.as_view(versioning_class=scheme)
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(len(response.data) == 0)
+        resource = DatasetViewResource.objects.get(
+            dataset_view=dataset_view,
+            privacy_level=4
+        )
+        resource.centroid_files = [
+            {
+                'level': 0,
+                'path': (
+                    'media/centroid/'
+                    'd7655d2d-8b9c-431b-9383-269dc2d6ea09/adm0.pbf'
+                ),
+                'size': 306
+            }
+        ]
+        resource.save(update_fields=['centroid_files'])
+        request = self.factory.get(
+            reverse(
+                'v1:view-centroid',
+                kwargs=kwargs
+            ) + '/?cached=false'
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        scheme = versioning.NamespaceVersioning
+        view = DatasetViewCentroid.as_view(versioning_class=scheme)
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(len(response.data) == 1)
+        centroid_file = response.data[0]
+        self.assertIn('level', centroid_file)
+        self.assertIn('url', centroid_file)
+        self.assertIn('expired_on', centroid_file)
