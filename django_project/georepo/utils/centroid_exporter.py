@@ -239,8 +239,7 @@ class CentroidExporter(object):
                 })
         self.resource.centroid_files = centroid_files
         self.resource.save(update_fields=['centroid_files'])
-        # !!DEBUG!!
-        # self.do_remove_temp_dir()
+        self.do_remove_temp_dir()
 
     def clear_existing_resource_dir(self):
         self.resource.centroid_files = []
