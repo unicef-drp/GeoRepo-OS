@@ -655,12 +655,13 @@ class DatasetViewDownloader(APIView, DatasetViewFetchResource,
                 # validate valid datetime format
                 if filter_values:
                     dt_result = validate_datetime(filter_values)
-                    if dt_result is None:
+                    if dt_result is not None:
                         output_filters[output_filter_key] = filter_values
                     else:
                         error = (
                             f'Invalid ISO datetime format: {filter_values}'
                         )
+                        break
             elif filter_values and len(filter_values) > 0:
                 output_filters[output_filter_key] = filter_values
         if error:
