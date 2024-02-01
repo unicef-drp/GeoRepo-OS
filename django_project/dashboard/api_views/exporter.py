@@ -1,16 +1,13 @@
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from azure_auth.backends import AzureAuthRequiredMixin
 from dashboard.api_views.views import DatasetViewReadPermission
-from georepo.models.dataset_view import DatasetView
 from georepo.models.base_task_request import PENDING, PROCESSING
 from georepo.models.export_request import (
     ExportRequest,
-    AVAILABLE_EXPORT_FORMAT_TYPES,
-    ExportRequestStatusText
+    AVAILABLE_EXPORT_FORMAT_TYPES
 )
 from dashboard.models.entities_user_config import EntitiesUserConfig
 from dashboard.api_views.tiling_config import FetchDatasetViewTilingConfig
@@ -18,9 +15,7 @@ from dashboard.serializers.export_request import (
     ExportRequestItemSerializer,
     ExportRequestDetailSerializer
 )
-from georepo.models.dataset_tile_config import DatasetTilingConfig
-from georepo.models.dataset_view_tile_config import DatasetViewTilingConfig
-from georepo.tasks.dataset_view import dataset_view_exporter
+from georepo.api_views.dataset_view import DatasetViewExportBase
 
 
 class ExportHistoryList(AzureAuthRequiredMixin,
@@ -56,21 +51,12 @@ class ExportHistoryList(AzureAuthRequiredMixin,
 
 
 class ExportRequestDetail(AzureAuthRequiredMixin,
-                          DatasetViewReadPermission, APIView):
+                          DatasetViewReadPermission,
+                          DatasetViewExportBase,
+                          APIView):
     """
     API to create and fetch export request detail.
     """
-
-    def check_zoom_level(self, dataset_view: DatasetView, zoom_level: int):
-        if dataset_view.is_tiling_config_match:
-            return DatasetTilingConfig.objects.filter(
-                dataset=dataset_view.dataset,
-                zoom_level=zoom_level
-            ).exists()
-        return DatasetViewTilingConfig.objects.filter(
-            dataset_view=dataset_view,
-            zoom_level=zoom_level
-        )
 
     def get(self, *args, **kwargs):
         request_id = self.request.GET.get('request_id')
@@ -91,60 +77,17 @@ class ExportRequestDetail(AzureAuthRequiredMixin,
         format = self.request.data.get(
             'format'
         )
-        # validate format
-        if format not in AVAILABLE_EXPORT_FORMAT_TYPES:
-            return Response(
-                status=400,
-                data={
-                    'detail': f'Invalid format type: {format}'
-                }
-            )
-        # validate zoom level
-        if is_simplified_entities:
-            if not dataset_view.is_simplified_entities_ready:
-                return Response(
-                    status=400,
-                    data={
-                        'detail': (
-                            'There is ongoing simplification process'
-                            ' for the view!' if
-                            dataset_view.current_simplification_status ==
-                            'syncing' else
-                            'The view has out of sync simplified entities!'
-                        )
-                    }
-                )
-            if (
-                not self.check_zoom_level(dataset_view,
-                                          simplification_zoom_level)
-            ):
-                return Response(
-                    status=400,
-                    data={
-                        'detail': (
-                            'Invalid simplification '
-                            f'zoom level {simplification_zoom_level}'
-                        )
-                    }
-                )
-        # validate correct format
-        export_request = ExportRequest.objects.create(
-            dataset_view=dataset_view,
-            format=format,
-            submitted_on=timezone.now(),
-            submitted_by=self.request.user,
-            status=PENDING,
-            status_text=str(ExportRequestStatusText.WAITING),
-            is_simplified_entities=is_simplified_entities,
-            simplification_zoom_level=simplification_zoom_level,
-            filters=filters,
-            source='dashboard'
+        validation_response = self.validate_request(
+            dataset_view, format, is_simplified_entities,
+            simplification_zoom_level
         )
-        celery_task = dataset_view_exporter.apply_async(
-            (export_request.id,), queue='exporter'
+        if validation_response:
+            return validation_response
+        export_request = self.submit_export_request(
+            dataset_view, format, self.request.user,
+            is_simplified_entities, simplification_zoom_level,
+            filters, 'dashboard'
         )
-        export_request.task_id = celery_task.id
-        export_request.save(update_fields=['task_id'])
         return Response(
             status=201,
             data=ExportRequestDetailSerializer(export_request).data

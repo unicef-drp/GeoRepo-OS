@@ -13,7 +13,9 @@ from georepo.api_views.dataset_view import (
     DatasetViewList,
     DatasetViewListForUser,
     DatasetViewDetail,
-    DatasetViewCentroid
+    DatasetViewCentroid,
+    DatasetViewDownloader,
+    DatasetViewDownloaderStatus
 )
 from georepo.api_views.entity_view import (
     FindViewEntityById,
@@ -282,6 +284,14 @@ operation_view_entity_urls = [
 ]
 
 download_urls = [
+    re_path(
+        r'download/view/(?P<uuid>[\da-f-]+)/status/?$',
+        DatasetViewDownloaderStatus.as_view(),
+        name='check-status-download-view-job'),
+    re_path(
+        r'download/view/(?P<uuid>[\da-f-]+)/?$',
+        DatasetViewDownloader.as_view(),
+        name='submit-download-view-job'),
 ]
 
 
