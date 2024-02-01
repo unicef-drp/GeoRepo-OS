@@ -668,6 +668,12 @@ class DatasetViewResource(models.Model):
         related_name='product_current_view'
     )
 
+    centroid_files = models.JSONField(
+        default=list,
+        null=True,
+        blank=True
+    )
+
     @property
     def resource_id(self):
         return str(self.uuid)

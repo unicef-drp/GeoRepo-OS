@@ -817,8 +817,11 @@ class DatasetViewExporterBase(object):
         else:
             current_site = Site.objects.get_current()
             scheme = 'https://'
+            domain = current_site.domain
+            if not domain.endswith('/'):
+                domain = domain + '/'
             download_link = (
-                f'{scheme}{current_site.domain}{self.request.output_file.url}'
+                f'{scheme}{domain}{self.request.output_file.url}'
             )
         self.request.download_link_expired_on = expired_on
         self.request.download_link = download_link

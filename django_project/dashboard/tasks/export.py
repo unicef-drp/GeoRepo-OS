@@ -12,6 +12,7 @@ from georepo.models.dataset_view_tile_config import DatasetViewTilingConfig
 from georepo.utils.dataset_view import (
     get_entities_count_in_view
 )
+from georepo.utils.centroid_exporter import CentroidExporter
 from georepo.utils.celery_helper import cancel_task
 
 logger = logging.getLogger(__name__)
@@ -198,6 +199,16 @@ def generate_view_resource_vector_tiles_task(view_resource_id: str,
             view_resource,
             overwrite=overwrite,
             **{'log_object': view_resource_log})
+        # generate centroid files for the resource
+        logger.info(
+            f'Generating centroid files from '
+            f'view_resource {view_resource.id} '
+            f'- {view_resource.privacy_level} '
+            f'- {view_resource.dataset_view.name}'
+        )
+        exporter = CentroidExporter(view_resource)
+        exporter.init_exporter()
+        exporter.run()
         end = time.time()
         view_resource_log.add_log(
                 'generate_view_resource_vector_tiles_task',

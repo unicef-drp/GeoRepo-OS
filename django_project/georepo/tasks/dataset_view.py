@@ -29,6 +29,7 @@ from dashboard.models.notification import (
     Notification,
     NOTIF_TYPE_DATASET_VIEW_EXPORTER
 )
+from georepo.utils.centroid_exporter import CentroidExporter
 
 
 logger = logging.getLogger(__name__)
@@ -297,3 +298,36 @@ def expire_export_request():
         request.save(update_fields=[
             'status_text', 'download_link', 'output_file'
         ])
+
+
+@shared_task(name="patch_centroid_files_all_resources")
+def do_patch_centroid_files_all_resources():
+    resources = DatasetViewResource.objects.filter(
+        entity_count__gt=0
+    )
+    resources = resources.filter(
+        Q(centroid_files=[]) | Q(centroid_files__isnull=True)
+    )
+    logger.info(f'Patch centroid files to {resources.count()} resources')
+    for resource in resources.iterator(chunk_size=1):
+        exporter = CentroidExporter(resource)
+        exporter.init_exporter()
+        exporter.run()
+    logger.info(
+        f'Finished patching centroid files to {resources.count()} resources')
+
+
+@shared_task(name="patch_centroid_files_for_view")
+def do_patch_centroid_files_for_view(view_id):
+    dataset_view = DatasetView.objects.get(id=view_id)
+    resources = DatasetViewResource.objects.filter(
+        dataset_view=dataset_view,
+        entity_count__gt=0
+    )
+    logger.info(f'Patch centroid files to view {dataset_view.name}')
+    for resource in resources.iterator(chunk_size=1):
+        exporter = CentroidExporter(resource)
+        exporter.init_exporter()
+        exporter.run()
+    logger.info(
+        f'Finished patching centroid files to view {dataset_view.name}')

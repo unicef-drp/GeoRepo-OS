@@ -1,10 +1,12 @@
 import math
+import datetime
 from django.db.models.expressions import RawSQL
 from django.db.models import FilteredRelation, Q, Prefetch
 from django.http import (
     Http404
 )
 from django.shortcuts import get_object_or_404
+from django.conf import settings
 from rest_framework.permissions import IsAuthenticated
 from django.core.paginator import Paginator
 from django.utils.decorators import method_decorator
@@ -12,6 +14,8 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from guardian.core import ObjectPermissionChecker
 from guardian.shortcuts import get_objects_for_user
+from django.contrib.sites.models import Site
+from django.utils import timezone
 
 from georepo.utils.permission import (
     DatasetDetailAccessPermission,
@@ -56,6 +60,10 @@ from georepo.utils.permission import (
 from georepo.utils.exporter_base import APIDownloaderBase
 from georepo.utils.dataset_view import (
     get_view_resource_from_view
+)
+from georepo.utils.azure_blob_storage import (
+    StorageContainerClient,
+    DirectoryClient
 )
 
 
@@ -1041,3 +1049,114 @@ class DatasetViewExportDownloadByCountryAndLevel(
         return super(DatasetViewExportDownloadByCountryAndLevel, self).get(
             request, *args, **kwargs
         )
+
+
+@method_decorator(
+    name='get',
+    decorator=swagger_auto_schema(
+                operation_id='search-view-centroid',
+                tags=[SEARCH_VIEW_TAG],
+                manual_parameters=[],
+                responses={
+                    200: openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        title='View Centroid List',
+                        items=openapi.Items(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'level': openapi.Schema(
+                                    title='Admin Level',
+                                    type=openapi.TYPE_INTEGER
+                                ),
+                                'url': openapi.Schema(
+                                    title=(
+                                        'URL to download centroid in pbf file'
+                                    ),
+                                    type=openapi.TYPE_STRING
+                                ),
+                                'expired_on': openapi.Schema(
+                                    title=(
+                                        'Download URL expired on'
+                                    ),
+                                    type=openapi.TYPE_STRING
+                                ),
+                            }
+                        )
+                    )
+                }
+            )
+)
+class DatasetViewCentroid(ApiCache):
+    """
+    Fetch the URL to download centroid for each admin level.
+
+    Fetch the URLs to the pbf file that contains centroid \
+    of the entities in the view.
+    The pbf file has following attributes:
+    - c: concept_uuid
+    - n: name
+    - u: ucode
+
+    Requires View UUID, can be retrieved from API search-view-list.
+    """
+    permission_classes = [DatasetViewDetailAccessPermission]
+    cache_model = DatasetView
+
+    def get_download_url(self, file_path):
+        download_link = None
+        expired_on = None
+        if settings.USE_AZURE:
+            bc = StorageContainerClient.get_blob_client(blob=file_path)
+            if bc.exists():
+                # generate temporary url with sas token
+                client = DirectoryClient(settings.AZURE_STORAGE,
+                                         settings.AZURE_STORAGE_CONTAINER)
+                download_link = client.generate_url_for_file(
+                    file_path, settings.EXPORT_DATA_EXPIRY_IN_HOURS)
+                expired_on = (
+                    timezone.now() +
+                    datetime.timedelta(
+                        hours=settings.EXPORT_DATA_EXPIRY_IN_HOURS)
+                )
+            else:
+                expired_on = None
+        else:
+            current_site = Site.objects.get_current()
+            scheme = 'https://'
+            domain = current_site.domain
+            if not domain.endswith('/'):
+                domain = domain + '/'
+            download_link = (
+                f'{scheme}{domain}{file_path}'
+            )
+            expired_on = None
+        return download_link, expired_on
+
+    def get_response_data(self, request, *args, **kwargs):
+        uuid = kwargs.get('uuid', None)
+        dataset_view = get_object_or_404(
+            DatasetView,
+            uuid=uuid,
+            dataset__module__is_active=True
+        )
+        self.check_object_permissions(request, dataset_view)
+        # retrieve user privacy level for this dataset
+        user_privacy_level = get_view_permission_privacy_level(
+            request.user,
+            dataset_view.dataset,
+            dataset_view=dataset_view
+        )
+        resource = get_view_resource_from_view(dataset_view,
+                                               user_privacy_level)
+        response_data = []
+        if resource and resource.centroid_files:
+            for centroid_file in resource.centroid_files:
+                download_url, expired_on = self.get_download_url(
+                    centroid_file['path'])
+                if download_url:
+                    response_data.append({
+                        'level': centroid_file['level'],
+                        'url': download_url,
+                        'expired_on': expired_on
+                    })
+        return response_data, None
