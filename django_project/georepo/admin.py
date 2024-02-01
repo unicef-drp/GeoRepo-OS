@@ -534,6 +534,19 @@ def fix_view_entity_count(modeladmin, request, queryset):
         calculate_entity_count_in_view(dataset_view)
 
 
+@admin.action(description='Patch Centroid Files in View')
+def patch_centroid_files_in_view(modeladmin, request, queryset):
+    from georepo.tasks.dataset_view import do_patch_centroid_files_for_view
+    for dataset_view in queryset:
+        do_patch_centroid_files_for_view.delay(dataset_view.id)
+    modeladmin.message_user(
+        request,
+        f'Patching centroid files for {queryset.count()} views '
+        'will be run in background!',
+        messages.SUCCESS
+    )
+
+
 class DatasetViewAdmin(GuardedModelAdmin):
     list_display = (
         'name', 'dataset', 'is_static', 'min_privacy_level',
@@ -546,7 +559,7 @@ class DatasetViewAdmin(GuardedModelAdmin):
                fix_view_entity_count,
                view_generate_simplified_geometry,
                populate_view_default_tile_config,
-               fix_view_bbox]
+               fix_view_bbox, patch_centroid_files_in_view]
 
     def tiling_status(self, obj: DatasetView):
         status, _ = get_view_tiling_status(
@@ -739,6 +752,22 @@ def check_cache_dynamic_live_vector_tile(modeladmin, request, queryset):
         break
 
 
+@admin.action(description='Patch centroid files to all resources')
+def patch_centroid_files_all_resources(modeladmin, request, queryset):
+    """
+    Patch centroid_files to all resources.
+    """
+    from georepo.tasks.dataset_view import (
+        do_patch_centroid_files_all_resources
+    )
+    do_patch_centroid_files_all_resources.delay()
+    modeladmin.message_user(
+        request,
+        'Patch centroid files to all resources will be run in background!',
+        messages.SUCCESS
+    )
+
+
 class DatasetViewResourceAdmin(admin.ModelAdmin):
     search_fields = ['dataset_view__name', 'uuid']
     actions = [
@@ -750,7 +779,8 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
         stop_vector_tile_process,
         stop_dynamic_live_vector_tile,
         start_dynamic_live_vector_tile,
-        check_cache_dynamic_live_vector_tile
+        check_cache_dynamic_live_vector_tile,
+        patch_centroid_files_all_resources
     ]
 
     def get_list_display(self, request):

@@ -32,19 +32,26 @@ def convert_geojson_to_pbf(file_path, output_dir, exported_name):
     tmp_pbf = os.path.join(output_dir, f'{exported_name}.pbf')
     command_list = (
         [
-            'json2geobuf',
-            file_path,
+            'json2geobuf'
         ]
     )
-    with open(tmp_pbf, 'w') as tmp_pbf_file:
-        subprocess.run(command_list, stdout=tmp_pbf_file)
+    logger.info(command_list)
+    with open(file_path, 'r') as geojson_file:
+        with open(tmp_pbf, 'w') as tmp_pbf_file:
+            result = subprocess.run(command_list, stdin=geojson_file,
+                                    stdout=tmp_pbf_file)
+            if result.returncode != 0:
+                return None
     command_list = (
         [
             'gzip',
             tmp_pbf
         ]
     )
-    subprocess.run(command_list)
+    logger.info(command_list)
+    result = subprocess.run(command_list)
+    if result.returncode != 0:
+        return None
     return os.path.join(
         output_dir,
         f'{exported_name}.pbf.gz'
@@ -174,7 +181,7 @@ class CentroidExporter(object):
         else:
             logger.error('Failed to generate centroid '
                          f'from view {self.dataset_view.name} '
-                         f'- {self.privacy_level}'
+                         f'- {self.privacy_level} '
                          f'at level {level}')
 
     def write_entities(self, entities, context,
@@ -232,7 +239,8 @@ class CentroidExporter(object):
                 })
         self.resource.centroid_files = centroid_files
         self.resource.save(update_fields=['centroid_files'])
-        self.do_remove_temp_dir()
+        # !!DEBUG!!
+        # self.do_remove_temp_dir()
 
     def clear_existing_resource_dir(self):
         self.resource.centroid_files = []
