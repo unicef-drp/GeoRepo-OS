@@ -7,20 +7,12 @@ from georepo.api_views.module import (
 from georepo.api_views.dataset import (
     DatasetList,
     DatasetDetail,
-    DatasetEntityListHierarchical,
-    DatasetExportDownload,
-    DatasetExportDownloadByLevel,
-    DatasetExportDownloadByCountry,
-    DatasetExportDownloadByCountryAndLevel
+    DatasetEntityListHierarchical
 )
 from georepo.api_views.dataset_view import (
     DatasetViewList,
     DatasetViewListForUser,
     DatasetViewDetail,
-    DatasetViewExportDownload,
-    DatasetViewExportDownloadByLevel,
-    DatasetViewExportDownloadByCountry,
-    DatasetViewExportDownloadByCountryAndLevel,
     DatasetViewCentroid
 )
 from georepo.api_views.entity_view import (
@@ -290,50 +282,8 @@ operation_view_entity_urls = [
 ]
 
 download_urls = [
-    re_path(
-        r'download/view/(?P<uuid>[\da-f-]+)/?$',
-        DatasetViewExportDownload.as_view(),
-        name='dataset-view-download'),
-    re_path(
-        r'download/view/(?P<uuid>[\da-f-]+)/level/'
-        r'(?P<admin_level>[\d]+)/?$',
-        DatasetViewExportDownloadByLevel.as_view(),
-        name='dataset-view-download-by-level'),
-    path(
-        'download/view/<uuid:uuid>/identifier/'
-        '<id_type>/<path:id>/'
-        'level/<int:admin_level>/',
-        DatasetViewExportDownloadByCountryAndLevel.as_view(),
-        name='dataset-view-download-by-country-and-level'),
-    path(
-        'download/view/<uuid:uuid>/identifier/'
-        '<id_type>/<path:id>/',
-        DatasetViewExportDownloadByCountry.as_view(),
-        name='dataset-view-download-by-country'),
 ]
 
-download_dataset_urls = [
-    re_path(
-        r'download/dataset/(?P<uuid>[\da-f-]+)/?$',
-        DatasetExportDownload.as_view(),
-        name='dataset-download'),
-    re_path(
-        r'download/dataset/(?P<uuid>[\da-f-]+)/level/'
-        r'(?P<admin_level>[\d]+)/?$',
-        DatasetExportDownloadByLevel.as_view(),
-        name='dataset-download-by-level'),
-    path(
-        'download/dataset/<uuid:uuid>/identifier/'
-        '<id_type>/<path:id>/'
-        'level/<int:admin_level>/',
-        DatasetExportDownloadByCountryAndLevel.as_view(),
-        name='dataset-download-by-country-and-level'),
-    path(
-        'download/dataset/<uuid:uuid>/identifier/'
-        '<id_type>/<path:id>/',
-        DatasetExportDownloadByCountry.as_view(),
-        name='dataset-download-by-country'),
-]
 
 controlled_list_urls = [
     re_path(
@@ -358,7 +308,6 @@ if (
 ):
     urlpatterns += entity_urls
     urlpatterns += operation_entity_urls
-    urlpatterns += download_dataset_urls
 urlpatterns += view_entity_urls
 urlpatterns += operation_view_entity_urls
 urlpatterns += download_urls
