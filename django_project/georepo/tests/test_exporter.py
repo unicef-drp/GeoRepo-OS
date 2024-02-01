@@ -185,6 +185,42 @@ class TestExporter(BaseDatasetViewTest):
         qs = exporter.generate_queryset()
         self.assertEqual(qs.count(), 1)
 
+    def test_filter_name(self):
+        self.assertTrue(EntityName.objects.filter(
+            geographical_entity=self.pak0_2,
+            name__icontains='pktn'
+        ).exists())
+        filters = {
+            'name': ['pktn']
+        }
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=GEOJSON_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser,
+            filters=filters
+        )
+        exporter = DatasetViewExporterBase(request)
+        exporter.init_exporter()
+        qs = exporter.generate_queryset()
+        self.assertEqual(qs.count(), 1)
+
+    def test_filter_ucode(self):
+        filters = {
+            'ucode': [self.pak0_2.ucode, self.entities_2[0].ucode]
+        }
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=GEOJSON_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser,
+            filters=filters
+        )
+        exporter = DatasetViewExporterBase(request)
+        exporter.init_exporter()
+        qs = exporter.generate_queryset()
+        self.assertEqual(qs.count(), 2)
+
     def test_geojson_exporter(self):
         request = ExportRequest.objects.create(
             dataset_view=self.dataset_view,

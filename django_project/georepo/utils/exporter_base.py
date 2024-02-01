@@ -9,13 +9,16 @@ import xml.etree.ElementTree as ET
 from rest_framework.reverse import reverse
 from django.contrib.sites.models import Site
 from django.db.models.expressions import RawSQL
+from django.db.models.functions import Concat
 from django.db.models import (
     FilteredRelation,
     Q,
     F,
     Max,
     Exists,
-    OuterRef
+    OuterRef,
+    Value as V,
+    CharField
 )
 from django.contrib.gis.db.models.functions import AsGeoJSON
 from core.models.preferences import SitePreferences
@@ -83,6 +86,10 @@ def get_dataset_exported_file_name(level: int,
     return exported_name
 
 
+def has_array_filter(filters, filter_key):
+    return filter_key in filters and len(filters[filter_key]) > 0
+
+
 class DatasetViewExporterBase(object):
     def __init__(self, request: ExportRequest,
                  is_temp: bool = False,
@@ -124,11 +131,12 @@ class DatasetViewExporterBase(object):
         entities = entities.filter(
             id__in=RawSQL(raw_sql, [])
         )
+        entities = entities.annotate(
+            ucode_filter=Concat('unique_code', V('_V'), 'unique_code_version',
+                                output_field=CharField())
+        )
         # do other filters
-        if (
-            'country' in self.request.filters and
-            len(self.request.filters['country']) > 0
-        ):
+        if has_array_filter(self.request.filters, 'country'):
             entities = entities.filter(
                 Q(ancestor__label__in=self.request.filters['country']) |
                 (
@@ -136,45 +144,27 @@ class DatasetViewExporterBase(object):
                     Q(label__in=self.request.filters['country'])
                 )
             )
-        if (
-            'privacy_level' in self.request.filters and
-            len(self.request.filters['privacy_level']) > 0
-        ):
+        if has_array_filter(self.request.filters, 'privacy_level'):
             entities = entities.filter(
                 privacy_level__in=self.request.filters['privacy_level']
             )
-        if (
-            'level' in self.request.filters and
-            len(self.request.filters['level']) > 0
-        ):
+        if has_array_filter(self.request.filters, 'level'):
             entities = entities.filter(
                 level__in=self.request.filters['level']
             )
-        if (
-            'admin_level_name' in self.request.filters and
-            len(self.request.filters['admin_level_name']) > 0
-        ):
+        if has_array_filter(self.request.filters, 'admin_level_name'):
             entities = entities.filter(
                 admin_level_name__in=self.request.filters['admin_level_name']
             )
-        if (
-            'type' in self.request.filters and
-            len(self.request.filters['type']) > 0
-        ):
+        if has_array_filter(self.request.filters, 'type'):
             entities = entities.filter(
                 type__label__in=self.request.filters['type']
             )
-        if (
-            'revision' in self.request.filters and
-            len(self.request.filters['revision']) > 0
-        ):
+        if has_array_filter(self.request.filters, 'revision'):
             entities = entities.filter(
                 revision_number__in=self.request.filters['revision']
             )
-        if (
-            'source' in self.request.filters and
-            len(self.request.filters['source']) > 0
-        ):
+        if has_array_filter(self.request.filters, 'source'):
             entities = entities.filter(
                 source__in=self.request.filters['source']
             )
@@ -187,6 +177,16 @@ class DatasetViewExporterBase(object):
                 entities = entities.filter(
                     Q(end_date__isnull=True) | Q(end_date__gte=valid_from)
                 )
+        if has_array_filter(self.request.filters, 'name'):
+            entity_name_qs = EntityName.objects.filter(
+                geographical_entity=OuterRef('pk'),
+                name__in=self.request.filters['name']
+            )
+            entities = entities.filter(Exists(entity_name_qs))
+        if has_array_filter(self.request.filters, 'ucode'):
+            entities = entities.filter(
+                ucode_filter__in=self.request.filters['ucode']
+            )
         if (
             'search_text' in self.request.filters and
             len(self.request.filters['search_text']) > 0
