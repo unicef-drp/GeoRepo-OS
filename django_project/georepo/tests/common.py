@@ -13,7 +13,8 @@ from georepo.tests.model_factories import (
 )
 from georepo.utils.dataset_view import (
     generate_default_view_dataset_latest,
-    init_view_privacy_level
+    init_view_privacy_level,
+    calculate_entity_count_in_view
 )
 from georepo.models.entity import GeographicalEntity
 from georepo.utils.permission import get_view_permission_privacy_level
@@ -389,3 +390,4 @@ class BaseDatasetViewTest(TestCase):
             default_ancestor_code__isnull=True
         ).first()
         init_view_privacy_level(self.dataset_view)
+        calculate_entity_count_in_view(self.dataset_view)

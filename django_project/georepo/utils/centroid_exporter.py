@@ -4,17 +4,13 @@ import shutil
 import json
 import subprocess
 from django.db.models.expressions import RawSQL
-from django.contrib.gis.db.models.functions import AsGeoJSON
 from django.conf import settings
 from django.contrib.gis.geos import WKTWriter, GEOSGeometry
 from georepo.models import (
     GeographicalEntity,
-    DatasetView,
     DatasetViewResource
 )
 from georepo.utils.azure_blob_storage import DirectoryClient
-from georepo.utils.custom_geo_functions import ForcePolygonCCW
-from core.settings.utils import absolute_path
 from georepo.serializers.entity import ExportCentroidGeojsonSerializer
 
 
@@ -23,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def read_centroid_as_geojson(geom_data):
     # truncate decimal to 4 digits
-    if geom_data is None:
+    if geom_data is None or geom_data == '':
         return '{"type":"Point","coordinates":[0,0]}'
     wkt_w = WKTWriter()
     wkt_w.trim = True
@@ -56,6 +52,8 @@ def convert_geojson_to_pbf(file_path, output_dir, exported_name):
 
 
 class CentroidExporter(object):
+    output_suffix = '.pbf'
+
     def __init__(self, resource: DatasetViewResource):
         self.resource = resource
         self.dataset_view = resource.dataset_view
@@ -92,6 +90,8 @@ class CentroidExporter(object):
             flat=True
         ).distinct()
         self.total_progress = len(self.levels)
+        # remove tmp_output_dir
+        self.do_remove_temp_dir()
 
     def get_serializer(self):
         return ExportCentroidGeojsonSerializer
@@ -103,7 +103,7 @@ class CentroidExporter(object):
     def get_dataset_entity_query(self, entities, level: int):
         # initial fields to select
         values = [
-            'id', 'label', 
+            'id', 'label',
             'unique_code', 'unique_code_version',
             'uuid', 'level', 'centroid'
         ]
@@ -115,12 +115,12 @@ class CentroidExporter(object):
     def get_base_output_dir(self) -> str:
         return settings.EXPORT_FOLDER_OUTPUT
 
-    def get_tmp_output_dir(self) -> str:
+    def get_tmp_output_dir(self, auto_create=True) -> str:
         tmp_output_dir = os.path.join(
             self.get_base_output_dir(),
             f'temp_centroid_{str(self.resource.uuid)}'
         )
-        if not os.path.exists(tmp_output_dir):
+        if not os.path.exists(tmp_output_dir) and auto_create:
             os.makedirs(tmp_output_dir)
         return tmp_output_dir
 
@@ -165,10 +165,16 @@ class CentroidExporter(object):
         exported_file_path = convert_geojson_to_pbf(
             tmp_file_path, tmp_output_dir, exported_name)
         if exported_file_path and os.path.exists(exported_file_path):
-            self.generated_files.append(exported_file_path)
+            file_stats = os.stat(exported_file_path)
+            self.generated_files.append({
+                    'path': exported_file_path,
+                    'size': file_stats.st_size,
+                    'level': level
+            })
         else:
             logger.error('Failed to generate centroid '
-                         f'from view {self.dataset_view.name} - {self.privacy_level}'
+                         f'from view {self.dataset_view.name} '
+                         f'- {self.privacy_level}'
                          f'at level {level}')
 
     def write_entities(self, entities, context,
@@ -207,32 +213,26 @@ class CentroidExporter(object):
         return geojson_file_path
 
     def do_export_post_process(self):
-        tmp_output_dir = self.get_tmp_output_dir()
         centroid_files = []
         # clear old directory
         self.clear_existing_resource_dir()
         # read generated files and upload it
-        for level in self.levels:
+        for generated_file in self.generated_files:
+            level = generated_file['level']
             exported_name = (
-                f'{self.get_exported_file_name(level)}.pbf'
+                f'{self.get_exported_file_name(level)}{self.output_suffix}'
             )
-            tmp_file_path = os.path.join(
-                tmp_output_dir,
-                f'{self.get_exported_file_name(level)}.pbf.gz'
-            )
-            if not os.path.exists(tmp_file_path):
-                continue
-            file_stats = os.stat(tmp_file_path)
-            file_path = self.save_output_file(tmp_file_path, exported_name)
+            file_path = self.save_output_file(
+                generated_file['path'], exported_name)
             if file_path:
                 centroid_files.append({
                     'path': file_path,
-                    'size': file_stats.st_size,
+                    'size': generated_file['size'],
                     'level': level
                 })
         self.resource.centroid_files = centroid_files
         self.resource.save(update_fields=['centroid_files'])
-        # self.do_remove_temp_dir()
+        self.do_remove_temp_dir()
 
     def clear_existing_resource_dir(self):
         self.resource.centroid_files = []
@@ -252,7 +252,8 @@ class CentroidExporter(object):
                 'centroid',
                 str(self.resource.uuid)
             )
-            shutil.rmtree(dir_path)
+            if os.path.exists(dir_path):
+                shutil.rmtree(dir_path)
 
     def save_output_file(self, tmp_file_path, exported_name):
         # save output file to non-temp directory
@@ -280,4 +281,3 @@ class CentroidExporter(object):
             )
             shutil.copyfile(tmp_file_path, file_path)
         return file_path
-
