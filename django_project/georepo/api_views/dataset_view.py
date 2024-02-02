@@ -611,6 +611,7 @@ class DatasetViewDownloader(APIView, DatasetViewFetchResource,
     - SHAPEFILE
     - TOPOJSON
     - KML
+    - GEOPACKAGE
 
     The entities can be filtered by below attributes:
     - simplification_zoom_level (0-14)
