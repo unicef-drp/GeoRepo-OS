@@ -2,6 +2,7 @@ import zipfile
 import os
 import logging
 import subprocess
+from georepo.serializers.entity import ExportShapefileSerializer
 from georepo.utils.geojson import (
     GeojsonBasedExporter
 )
@@ -101,6 +102,9 @@ def validate_shapefile_zip(layer_file_path: any):
 
 
 class ShapefileViewExporter(GeojsonBasedExporter):
+
+    def get_serializer(self):
+        return ExportShapefileSerializer
 
     def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
