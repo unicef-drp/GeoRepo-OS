@@ -54,9 +54,6 @@ RUN npm install -g topojson-server
 # mapshaper
 RUN npm install -g mapshaper
 
-# geobuf convert geojson to protobuf
-RUN npm install -g geobuf
-
 ADD django_project /home/web/django_project
 
 EXPOSE 8080
