@@ -1,5 +1,6 @@
 import json
 import random
+from collections import OrderedDict
 from django.test import TestCase
 from django.contrib.gis.geos import GEOSGeometry
 from dateutil.parser import isoparse
@@ -28,6 +29,10 @@ class DummyTask:
 
 def mocked_process(*args, **kwargs):
     return DummyTask('1')
+
+
+def mocked_cache_get(self, *args, **kwargs):
+    return OrderedDict()
 
 
 class EntityResponseChecker(object):
@@ -391,3 +396,8 @@ class BaseDatasetViewTest(TestCase):
         ).first()
         init_view_privacy_level(self.dataset_view)
         calculate_entity_count_in_view(self.dataset_view)
+
+
+class FakeResolverMatchV1:
+    """Fake class to mock versioning"""
+    namespace = 'v1'

@@ -247,7 +247,7 @@ class DirectoryClient:
         """
         Generate temporary URL for file download that has expiry in hours.
         """
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(timezone.utc) - timedelta(minutes=15)
         expiry_time = start_time + timedelta(hours=expiry_in_hours)
         sas_token = generate_blob_sas(
             blob_name=path,

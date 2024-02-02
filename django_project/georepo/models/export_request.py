@@ -1,5 +1,7 @@
 from enum import Enum
+from django.utils import timezone
 from django.db import models
+import human_readable
 from georepo.models.base_task_request import BaseTaskRequest
 
 
@@ -106,3 +108,17 @@ class ExportRequest(BaseTaskRequest):
 
     def __str__(self):
         return str(self.uuid)
+
+    @property
+    def download_time_remaining(self):
+        if (
+            self.status_text == ExportRequestStatusText.EXPIRED or
+            self.download_link_expired_on is None
+        ):
+            return None
+        delta = self.download_link_expired_on - timezone.now()
+        if delta.total_seconds() <= 0:
+            return None
+        return human_readable.precise_delta(
+            delta, suppress=["days"], minimum_unit='minutes',
+            formatting='.0f')

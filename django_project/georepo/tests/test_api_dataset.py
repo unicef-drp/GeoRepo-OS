@@ -26,11 +26,7 @@ from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, UserF,
     EntityIdF, EntityNameF, LanguageF, IdTypeF, DatasetAdminLevelNameF
 )
-
-
-class FakeResolverMatchV1:
-    """Fake class to mock versioning"""
-    namespace = 'v1'
+from georepo.tests.common import FakeResolverMatchV1
 
 
 def mocked_set_cache(cache_key, allowed, redis_time_cache):
