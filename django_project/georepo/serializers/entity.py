@@ -520,6 +520,42 @@ class ExportGeojsonSerializer(
         ]
 
 
+class ExportShapefileSerializer(
+        GeographicalEntitySerializer,
+        GeoFeatureModelSerializer):
+    cnpt_uuid = serializers.SerializerMethodField()
+    remove_empty_fields = False
+    output_format = 'geojson'
+
+    def get_geometry(self, obj: GeographicalEntity):
+        return None
+
+    def get_cnpt_uuid(self, obj: GeographicalEntity):
+        return str(obj.get('uuid', ''))
+
+    def get_uuid(self, obj: GeographicalEntity):
+        return str(obj.get('uuid_revision', ''))
+
+    class Meta:
+        model = GeographicalEntity
+        geo_field = 'geometry'
+        fields = [
+            'ucode',
+            'uuid',
+            'cnpt_uuid',
+            'is_latest',
+            'start_date',
+            'end_date',
+            'name',
+            'level',
+            'level_name',
+            'type',
+            'ext_codes',
+            'names',
+            'parents'
+        ]
+
+
 class ExportCentroidGeojsonSerializer(
         GeographicalEntitySerializer,
         GeoFeatureModelSerializer):

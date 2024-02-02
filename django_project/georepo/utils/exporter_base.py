@@ -298,6 +298,10 @@ class DatasetViewExporterBase(object):
         )
 
     def get_serializer(self):
+        if self.exporter_ref:
+            # use custom serializer from the reference exporter
+            # e.g. different attribute for shapefile exporter
+            return self.exporter_ref.get_serializer()
         return ExportGeojsonSerializer
 
     def get_extracted_on(self):
