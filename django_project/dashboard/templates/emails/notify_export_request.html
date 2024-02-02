@@ -115,7 +115,7 @@ table.body .article {
                     <tr>
                       <td style="font-family: sans-serif; font-size: 14px; vertical-align: top;" valign="top">
                         <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; margin-bottom: 15px;">Hi {{request_from}},</p>
-                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; margin-bottom: 15px;">Your download request for {{ view_name }} {% if is_success %} is ready {% else %} has finished with errors{% endif %}.</p>
+                        <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; margin-bottom: 15px;">Your download request for {{ view_name }} {% if is_success %} is ready{% else %} has finished with errors{% endif %}.</p>
 
                         {% if is_success %}
                         <p style="font-family: sans-serif; font-size: 14px; font-weight: normal; margin: 0; margin-bottom: 15px;">You can download the file with the link below. Please note that the link will be expired in {{expiry_download_link}}.</p>

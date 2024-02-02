@@ -1,5 +1,8 @@
-from django.utils import timezone
 import datetime
+import mock
+from django.utils import timezone
+from django.urls import reverse
+from rest_framework import versioning
 from django.core.files.uploadedfile import SimpleUploadedFile
 from core.settings.utils import absolute_path
 from georepo.models.export_request import (
@@ -16,8 +19,16 @@ from georepo.utils.geojson import GeojsonViewExporter
 from georepo.utils.shapefile import ShapefileViewExporter
 from georepo.utils.kml import KmlViewExporter
 from georepo.utils.topojson import TopojsonViewExporter
-from georepo.tests.common import BaseDatasetViewTest
+from georepo.tests.common import (
+    BaseDatasetViewTest,
+    FakeResolverMatchV1,
+    mocked_process
+)
 from georepo.tasks.dataset_view import expire_export_request
+from georepo.api_views.dataset_view import (
+    DatasetViewDownloader,
+    DatasetViewDownloaderStatus
+)
 
 
 class TestExporter(BaseDatasetViewTest):
@@ -174,6 +185,42 @@ class TestExporter(BaseDatasetViewTest):
         qs = exporter.generate_queryset()
         self.assertEqual(qs.count(), 1)
 
+    def test_filter_name(self):
+        self.assertTrue(EntityName.objects.filter(
+            geographical_entity=self.pak0_2,
+            name__icontains='pktn'
+        ).exists())
+        filters = {
+            'name': ['pktn']
+        }
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=GEOJSON_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser,
+            filters=filters
+        )
+        exporter = DatasetViewExporterBase(request)
+        exporter.init_exporter()
+        qs = exporter.generate_queryset()
+        self.assertEqual(qs.count(), 1)
+
+    def test_filter_ucode(self):
+        filters = {
+            'ucode': [self.pak0_2.ucode, self.entities_2[0].ucode]
+        }
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=GEOJSON_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser,
+            filters=filters
+        )
+        exporter = DatasetViewExporterBase(request)
+        exporter.init_exporter()
+        qs = exporter.generate_queryset()
+        self.assertEqual(qs.count(), 2)
+
     def test_geojson_exporter(self):
         request = ExportRequest.objects.create(
             dataset_view=self.dataset_view,
@@ -288,3 +335,90 @@ class TestExporter(BaseDatasetViewTest):
         self.assertFalse(request.download_link)
         self.assertEqual(request.status_text,
                          str(ExportRequestStatusText.EXPIRED))
+
+    def test_fetch_request_status(self):
+        export_request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=GEOJSON_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser
+        )
+        kwargs = {
+            'uuid': str(self.dataset_view.uuid)
+        }
+        request = self.factory.get(
+            reverse('v1:check-status-download-view-job',
+                    kwargs=kwargs) + f'?job_uuid={str(export_request.uuid)}'
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        scheme = versioning.NamespaceVersioning
+        view = DatasetViewDownloaderStatus.as_view(versioning_class=scheme)
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['uuid'], str(export_request.uuid))
+
+    @mock.patch('georepo.tasks.dataset_view.'
+                'dataset_view_exporter.apply_async')
+    def test_submit_request(self, mocked_task):
+        mocked_task.side_effect = mocked_process
+        kwargs = {
+            'uuid': str(self.dataset_view.uuid)
+        }
+        # test invalid valid_on datetime format
+        data = {
+            'simplification_zoom_level': None,
+            'format': 'GEOJSON',
+            'filters': {
+                'valid_on': '2014-1212:30:45.123456-05:30'
+            }
+        }
+        request = self.factory.post(
+            reverse(
+                'v1:submit-download-view-job', kwargs=kwargs
+            ),
+            data,
+            format='json'
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        scheme = versioning.NamespaceVersioning
+        view = DatasetViewDownloader.as_view(versioning_class=scheme)
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('detail', response.data)
+        self.assertIn('Invalid ISO datetime format:', response.data['detail'])
+        mocked_task.assert_not_called()
+        # test valid data
+        data = {
+            'simplification_zoom_level': None,
+            'format': 'GEOJSON',
+            'filters': {
+                'ucodes': [self.pak0_2.ucode],
+                'levels': [self.pak0_2.level]
+            }
+        }
+        request = self.factory.post(
+            reverse(
+                'v1:submit-download-view-job', kwargs=kwargs
+            ),
+            data,
+            format='json'
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        scheme = versioning.NamespaceVersioning
+        view = DatasetViewDownloader.as_view(versioning_class=scheme)
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 201)
+        mocked_task.assert_called_once()
+        self.assertIn('uuid', response.data)
+        export_request = ExportRequest.objects.filter(
+            uuid=response.data['uuid']
+        ).first()
+        self.assertTrue(export_request)
+        self.assertFalse(export_request.is_simplified_entities)
+        filters = export_request.filters
+        self.assertEqual(len(filters), 2)
+        self.assertIn('level', filters)
+        self.assertIn('ucode', filters)

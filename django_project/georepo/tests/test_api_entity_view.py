@@ -48,11 +48,6 @@ from georepo.utils.permission import (
 )
 
 
-class FakeResolverMatchV1:
-    """Fake class to mock versioning"""
-    namespace = 'v1'
-
-
 class EntityViewTestSuite(EntityResponseChecker):
 
     def call_setup(self) -> None:

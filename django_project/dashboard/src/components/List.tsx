@@ -61,7 +61,8 @@ interface ListInterface {
     canRowBeSelected?: (dataIndex: number, rowData: any) => boolean,
     excludedColumns?: string[],
     title?: React.ReactNode,
-    fetchUseCache?: boolean
+    fetchUseCache?: boolean,
+    emptyTableMessage?: React.ReactNode,
 }
 
 /**
@@ -191,7 +192,8 @@ export default function List(
         canRowBeSelected = null,
         excludedColumns = [],
         title = null,
-        fetchUseCache = true
+        fetchUseCache = true,
+        emptyTableMessage = 'No Data'
     } : ListInterface
 ) {
     const [data, setData] = useState(initData);
@@ -474,6 +476,7 @@ export default function List(
                     ExpandableRow={expandableRow}
                     canRowBeSelected={canRowBeSelected}
                     onRowsPerPageChange={onRowsPerPageChange}
+                    emptyTableMessage={emptyTableMessage}
                     options={{
                         ...options,
                         ...(options['tableBodyMaxHeight'] === undefined && {'tableBodyMaxHeight': `${tableHeight}px`}),

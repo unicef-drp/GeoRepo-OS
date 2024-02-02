@@ -1,7 +1,6 @@
 import uuid
 import json
 import mock
-from collections import OrderedDict
 from dateutil.parser import isoparse
 from typing import List
 from django.test import TestCase
@@ -39,24 +38,11 @@ from georepo.utils.permission import (
     grant_datasetview_external_viewer,
     grant_dataset_viewer
 )
-
-
-class DummyTask:
-    def __init__(self, id):
-        self.id = id
-
-
-def mocked_run_generate_vector_tiles(*args, **kwargs):
-    return DummyTask('1')
-
-
-def mocked_cache_get(self, *args, **kwargs):
-    return OrderedDict()
-
-
-class FakeResolverMatchV1:
-    """Fake class to mock versioning"""
-    namespace = 'v1'
+from georepo.tests.common import (
+    mocked_process,
+    mocked_cache_get,
+    FakeResolverMatchV1
+)
 
 
 class TestApiDatasetView(TestCase):
@@ -133,7 +119,7 @@ class TestApiDatasetView(TestCase):
 
     @mock.patch(
         'dashboard.tasks.remove_view_resource_data.delay',
-        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
+        mock.Mock(side_effect=mocked_process)
     )
     def test_dataset_view_list(self):
         dataset = DatasetF.create()

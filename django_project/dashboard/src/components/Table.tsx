@@ -29,7 +29,8 @@ interface AdminTableInterface {
     canRowBeSelected?: (dataIndex: number, rowData: any) => boolean,
     onRowsPerPageChange?: (numberOfRowsPerPage: number) => void,
     options?: any,
-    title?: React.ReactNode
+    title?: React.ReactNode,
+    emptyTableMessage?: React.ReactNode,
 }
 
 export interface ExpandedRowInterface {
@@ -65,7 +66,8 @@ export function AdminTable({
                                canRowBeSelected = null,
                                onRowsPerPageChange = null,
                                options = {},
-                               title = null
+                               title = null,
+                               emptyTableMessage = 'No Data'
                            }: AdminTableInterface) {
 
     if (rows.length > 0 && columns.length > 0) {
@@ -130,6 +132,6 @@ export function AdminTable({
                 />
             </div>)
     } else {
-        return <div className='AdminTable-Loading'>No data</div>
+        return <div className='AdminTable-Loading'>{emptyTableMessage}</div>
     }
 }
