@@ -261,6 +261,18 @@ class SitePreferences(SingletonModel):
         ),
     )
 
+    # -----------------------------------------------
+    # Blob storage domain whitelist
+    # -----------------------------------------------
+    blob_storage_domain_whitelist = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            'Whitelist for domain to be set in CORS rule '
+            'of azure blob storage.'
+        )
+    )
+
     class Meta:  # noqa: D106
         verbose_name_plural = "site preferences"
 

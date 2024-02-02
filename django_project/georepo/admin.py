@@ -20,6 +20,7 @@ from guardian.admin import GuardedModelAdmin
 
 from core.models.token_detail import ApiKey
 from core.settings.utils import absolute_path
+from core.models.preferences import SitePreferences
 from georepo.forms import (
     AzureAdminUserCreationForm,
     AzureAdminUserChangeForm,
@@ -547,6 +548,40 @@ def patch_centroid_files_in_view(modeladmin, request, queryset):
     )
 
 
+@admin.action(description='Patch Blob Storage cors rules')
+def patch_cors_rule_for_blob_storage_resources(modeladmin, request, queryset):
+    """
+    Patch Blob Storage cors rules.
+    """
+    from georepo.utils.azure_blob_storage import (
+        set_azure_cors_rule,
+        StorageServiceClient
+    )
+    if settings.USE_AZURE and StorageServiceClient:
+        domain_list = (
+            SitePreferences.preferences().blob_storage_domain_whitelist
+        )
+        if domain_list:
+            set_azure_cors_rule(StorageServiceClient, domain_list)
+            modeladmin.message_user(
+                request,
+                'Successfully set the cors rule!',
+                messages.SUCCESS
+            )
+        else:
+            modeladmin.message_user(
+                request,
+                'Empty blob_storage_domain_whitelist in SitePreferences!',
+                messages.ERROR
+            )
+    else:
+        modeladmin.message_user(
+            request,
+            'Server is not using azure or wrong configuration!',
+            messages.ERROR
+        )
+
+
 class DatasetViewAdmin(GuardedModelAdmin):
     list_display = (
         'name', 'dataset', 'is_static', 'min_privacy_level',
@@ -559,7 +594,8 @@ class DatasetViewAdmin(GuardedModelAdmin):
                fix_view_entity_count,
                view_generate_simplified_geometry,
                populate_view_default_tile_config,
-               fix_view_bbox, patch_centroid_files_in_view]
+               fix_view_bbox, patch_centroid_files_in_view,
+               patch_cors_rule_for_blob_storage_resources]
 
     def tiling_status(self, obj: DatasetView):
         status, _ = get_view_tiling_status(

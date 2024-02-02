@@ -89,6 +89,11 @@ class SitePreferencesAdmin(admin.ModelAdmin):
             'fields': (
                 'swagger_api_documentation_link',
             )
+        }),
+        ('Azure Blob Storage', {
+            'fields': (
+                'blob_storage_domain_whitelist',
+            )
         })
     )
     inlines = (SitePreferencesImageInline,)

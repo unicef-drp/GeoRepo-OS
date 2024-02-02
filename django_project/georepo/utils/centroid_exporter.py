@@ -29,23 +29,10 @@ def read_centroid_as_geojson(geom_data):
 
 
 def convert_geojson_to_pbf(file_path, output_dir, exported_name):
-    tmp_pbf = os.path.join(output_dir, f'{exported_name}.pbf')
-    command_list = (
-        [
-            'json2geobuf'
-        ]
-    )
-    logger.info(command_list)
-    with open(file_path, 'r') as geojson_file:
-        with open(tmp_pbf, 'w') as tmp_pbf_file:
-            result = subprocess.run(command_list, stdin=geojson_file,
-                                    stdout=tmp_pbf_file)
-            if result.returncode != 0:
-                return None
     command_list = (
         [
             'gzip',
-            tmp_pbf
+            file_path
         ]
     )
     logger.info(command_list)
@@ -54,12 +41,12 @@ def convert_geojson_to_pbf(file_path, output_dir, exported_name):
         return None
     return os.path.join(
         output_dir,
-        f'{exported_name}.pbf.gz'
+        f'{exported_name}.geojson.gz'
     )
 
 
 class CentroidExporter(object):
-    output_suffix = '.pbf'
+    output_suffix = '.geojson'
 
     def __init__(self, resource: DatasetViewResource):
         self.resource = resource
