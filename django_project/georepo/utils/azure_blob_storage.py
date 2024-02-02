@@ -5,7 +5,8 @@ from azure.storage.blob import (
     BlobSasPermissions,
     generate_blob_sas,
     ContainerClient,
-    ContentSettings
+    ContentSettings,
+    CorsRule
 )
 from django.conf import settings
 from datetime import datetime, timedelta, timezone
@@ -374,6 +375,16 @@ class AzureStorageZipfly(ZipFly):
         self._buffer_size = stream.size()
         # Flush and close this stream.
         stream.close()
+
+
+def set_azure_cors_rule(service_client, allowed_origins,
+                        allowed_methods=['GET']):
+    # Create CORS rules
+    cors_rule = CorsRule(
+        allowed_origins, allowed_methods, max_age_in_seconds=200,
+        allowed_headers=['*'], exposed_headers=['*'])
+    cors = [cors_rule]
+    service_client.set_service_properties(cors=cors)
 
 
 StorageServiceClient = None
