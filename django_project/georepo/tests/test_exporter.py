@@ -11,7 +11,8 @@ from georepo.models.export_request import (
     SHAPEFILE_EXPORT_TYPE,
     KML_EXPORT_TYPE,
     TOPOJSON_EXPORT_TYPE,
-    ExportRequestStatusText
+    ExportRequestStatusText,
+    GEOPACKAGE_EXPORT_TYPE
 )
 from georepo.models.entity import EntityName, EntitySimplified
 from georepo.utils.exporter_base import DatasetViewExporterBase
@@ -19,6 +20,7 @@ from georepo.utils.geojson import GeojsonViewExporter
 from georepo.utils.shapefile import ShapefileViewExporter
 from georepo.utils.kml import KmlViewExporter
 from georepo.utils.topojson import TopojsonViewExporter
+from georepo.utils.gpkg_file import GPKGViewExporter
 from georepo.tests.common import (
     BaseDatasetViewTest,
     FakeResolverMatchV1,
@@ -274,6 +276,21 @@ class TestExporter(BaseDatasetViewTest):
             submitted_by=self.superuser
         )
         exporter = TopojsonViewExporter(request)
+        exporter.init_exporter()
+        exporter.run()
+        request.refresh_from_db()
+        self.assertTrue(request.download_link_expired_on)
+        self.assertTrue(request.output_file)
+        self.assertTrue(request.download_link)
+
+    def test_gpkg_exporter(self):
+        request = ExportRequest.objects.create(
+            dataset_view=self.dataset_view,
+            format=GEOPACKAGE_EXPORT_TYPE,
+            submitted_on=timezone.now(),
+            submitted_by=self.superuser
+        )
+        exporter = GPKGViewExporter(request)
         exporter.init_exporter()
         exporter.run()
         request.refresh_from_db()

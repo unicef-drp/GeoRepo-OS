@@ -16,7 +16,8 @@ from georepo.models import (
     DatasetView, DatasetViewResource,
     ExportRequest, GEOJSON_EXPORT_TYPE,
     KML_EXPORT_TYPE, TOPOJSON_EXPORT_TYPE,
-    SHAPEFILE_EXPORT_TYPE, ExportRequestStatusText
+    SHAPEFILE_EXPORT_TYPE, ExportRequestStatusText,
+    GEOPACKAGE_EXPORT_TYPE
 )
 from georepo.models.base_task_request import ERROR, DONE
 from georepo.utils.celery_helper import cancel_task
@@ -25,6 +26,7 @@ from georepo.utils.geojson import GeojsonViewExporter
 from georepo.utils.shapefile import ShapefileViewExporter
 from georepo.utils.kml import KmlViewExporter
 from georepo.utils.topojson import TopojsonViewExporter
+from georepo.utils.gpkg_file import GPKGViewExporter
 from dashboard.models.notification import (
     Notification,
     NOTIF_TYPE_DATASET_VIEW_EXPORTER
@@ -183,6 +185,8 @@ def dataset_view_exporter(request_id):
         exporter = KmlViewExporter(request)
     elif request.format == TOPOJSON_EXPORT_TYPE:
         exporter = TopojsonViewExporter(request)
+    elif request.format == GEOPACKAGE_EXPORT_TYPE:
+        exporter = GPKGViewExporter(request)
     if exporter is None:
         request.errors = f'Unknown export format: {request.format}'
         request.status = ERROR

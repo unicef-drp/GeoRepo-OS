@@ -8,7 +8,8 @@ from georepo.models import (
     ExportRequestStatusText,
     SHAPEFILE_EXPORT_TYPE,
     KML_EXPORT_TYPE,
-    TOPOJSON_EXPORT_TYPE
+    TOPOJSON_EXPORT_TYPE,
+    GEOPACKAGE_EXPORT_TYPE
 )
 from georepo.utils.exporter_base import (
     DatasetViewExporterBase
@@ -126,6 +127,8 @@ class GeojsonBasedExporter(DatasetViewExporterBase):
             return ExportRequestStatusText.PREPARING_KML
         elif self.request.format == TOPOJSON_EXPORT_TYPE:
             return ExportRequestStatusText.PREPARING_TOPOJSON
+        elif self.request.format == GEOPACKAGE_EXPORT_TYPE:
+            return ExportRequestStatusText.PREPARING_GPKG
         return ExportRequestStatusText.PREPARING_GEOJSON
 
     def run(self):
