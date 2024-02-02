@@ -66,6 +66,7 @@ interface ExportRequestDetailInterface {
     submitted_on?: Date;
     finished_at?: Date;
     file_output_size?: number;
+    download_time_remaining?: string;
 }
 
 const EXCLUDED_FILTER_KEYS = [
@@ -479,8 +480,8 @@ function ExportViewDetail(props: any) {
                 {requestId > 0 && data?.id > 0 && data?.status === 'DONE' && (
                     <Grid item className='RowItem' sx={{height: '65px'}}>
                         <Grid container display={'flex'} flexDirection={'row'} spacing={1} className='RowItemContainer'>
-                            <Grid item className='Title' md={3} xl={3} xs={12}>Download Link Expired On</Grid>
-                            <Grid item md={9} xl={9} xs={12}>{data.download_link_expired_on ? new Date(data.download_link_expired_on).toDateString() : '-'}</Grid>
+                            <Grid item className='Title' md={3} xl={3} xs={12}>Download Time Remaining</Grid>
+                            <Grid item md={9} xl={9} xs={12}>{data.download_time_remaining ? data.download_time_remaining : '-'}</Grid>
                         </Grid>
                     </Grid>
                 )}
@@ -585,22 +586,13 @@ function ExportViewList(props: any) {
         },
         'download_expiry': {
             'filter': false,
-            'label': 'Expired On',
-            'customBodyRender': (value: any, tableMeta: any, updateValue: any) => {
-                let rowData = tableMeta.rowData
-                if (rowData[13]) {
-                    return (
-                        <span>{new Date(rowData[13]).toDateString()}</span>
-                    )    
-                }
-                return <span>-</span>                
-            },
+            'label': 'Download Remaining Time'
         },
         'current_status': {
             'filter': true,
             'label': 'Current Status',
             'customBodyRender': (value: any, tableMeta: any, updateValue: any) => {
-                return capitalize(value.replaceAll('_', ' '))
+                return value ? capitalize(value.replaceAll('_', ' ')) : '-'
             }
         },
         'progress': {
@@ -677,6 +669,7 @@ function ExportViewList(props: any) {
             onRowClick={null}
             customOptions={customColumnOptions}
             isRowSelectable={false}
+            emptyTableMessage={'Sorry, there is no matching data to display. Use the Download button in the Preview tab to submit download request for this view.'}
             options={{
                 'confirmFilters': true,
                 'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {

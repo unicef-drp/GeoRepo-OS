@@ -1,6 +1,5 @@
 from drf_yasg import openapi
 import ast
-import datetime
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 from django.db.models.expressions import RawSQL
@@ -10,7 +9,6 @@ from taggit.serializers import (
     TagListSerializerField,
     TaggitSerializer
 )
-import human_readable
 from georepo.serializers.common import APIResponseModelSerializer
 from georepo.models.entity import GeographicalEntity, EntityId
 from georepo.models.dataset_view import DatasetView, DatasetViewResource
@@ -598,7 +596,6 @@ class ExportRequestStatusSerializer(APIResponseModelSerializer):
     error_message = serializers.SerializerMethodField()
     simplification_level = serializers.SerializerMethodField()
     download_url = serializers.SerializerMethodField()
-    download_time_remaining = serializers.SerializerMethodField()
 
     def get_view(self, obj: ExportRequest):
         return obj.dataset_view.name
@@ -616,18 +613,6 @@ class ExportRequestStatusSerializer(APIResponseModelSerializer):
         if obj.status_text == ExportRequestStatusText.EXPIRED:
             return None
         return obj.download_link
-
-    def get_download_time_remaining(self, obj: ExportRequest):
-        if (
-            obj.status_text == ExportRequestStatusText.EXPIRED or
-            obj.download_link_expired_on is None
-        ):
-            return None
-        delta = datetime.datetime.now() - obj.download_link_expired_on
-        if delta.total_seconds() <= 0:
-            return None
-        return human_readable.precise_delta(
-            delta, minimum_unit='seconds', formatting='.0f')
 
     class Meta:
         filters_schema_fields = {

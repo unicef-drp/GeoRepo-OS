@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from georepo.models.export_request import (
-    ExportRequest,
-    ExportRequestStatusText
+    ExportRequest
 )
 
 
@@ -29,9 +28,8 @@ class ExportRequestItemSerializer(serializers.ModelSerializer):
                 key != 'points' and obj.filters[key]]
 
     def get_download_expiry(self, obj: ExportRequest):
-        if obj.status_text == ExportRequestStatusText.EXPIRED:
-            return None
-        return obj.download_link_expired_on
+        time_remaining = obj.download_time_remaining
+        return time_remaining if time_remaining else '-'
 
     def get_error_message(self, obj: ExportRequest):
         return obj.errors if obj.errors else '-'
@@ -76,5 +74,6 @@ class ExportRequestDetailSerializer(serializers.ModelSerializer):
             'filters',
             'download_link',
             'download_link_expired_on',
-            'file_output_size'
+            'file_output_size',
+            'download_time_remaining'
         ]
