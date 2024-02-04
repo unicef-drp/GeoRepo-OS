@@ -24,7 +24,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import Tooltip from '@mui/material/Tooltip';
 import {useAppDispatch} from "../../app/hooks";
 import Scrollable from '../../components/Scrollable';
-import List from "../../components/List";
+import List, {applyFilterDialogFooter} from "../../components/List";
 import Loading from "../../components/Loading";
 import { EntitiesFilterInterface } from '../Dataset/EntitiesFilter';
 import { TilingConfig, MAX_ZOOM } from '../../models/tiling';
@@ -672,13 +672,7 @@ function ExportViewList(props: any) {
             emptyTableMessage={'Sorry, there is no matching data to display. Use the Download button in the Preview tab to submit download request for this view.'}
             options={{
                 'confirmFilters': true,
-                'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
-                    return (
-                        <div style={{marginTop: '40px'}}>
-                            <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
-                        </div>
-                    );
-                },
+                'customFilterDialogFooter': applyFilterDialogFooter,
                 'rowsPerPage': 100
             }}
         />

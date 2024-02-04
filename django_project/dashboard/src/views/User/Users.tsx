@@ -1,21 +1,28 @@
 import React from 'react';
 import {useNavigate} from "react-router-dom";
-import Button from '@mui/material/Button';
-import List from "../../components/List";
+import List, {applyFilterDialogFooter} from "../../components/List";
 import {UserDetailRoute} from '../routes';
 
 
 export default function Users () {
   const navigate = useNavigate()
-  const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-    navigate(`${UserDetailRoute.path}?id=${rowData[0]}`)
-  }
   const customColumnOptions = {
     'email': {
       filter: false,
     },
     'name': {
       filter: false,
+      customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+          let rowData = tableMeta.rowData
+          const _name = rowData[1] ? rowData[1].trim() : ''
+          const handleClick = (e: any) => {
+              e.preventDefault()
+              navigate(`${UserDetailRoute.path}?id=${rowData[0]}`)
+          };
+          return (
+              <a href='#' onClick={handleClick}>{`${_name ? _name : rowData[2]}`}</a>
+          )
+      },
     },
     'username': {
       filter: false,
@@ -33,19 +40,13 @@ export default function Users () {
         listUrl={"/api/user-list/"}
         initData={[]}
         selectionChanged={null}
-        onRowClick={handleRowClick}
+        onRowClick={null}
         actionData={[]}
         fetchUseCache={false}
         customOptions={customColumnOptions}
         options={{
           'confirmFilters': true,
-          'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
-            return (
-              <div style={{marginTop: '40px'}}>
-                <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
-              </div>
-            );
-          },
+          'customFilterDialogFooter': applyFilterDialogFooter,
         }}
       />
     </div>

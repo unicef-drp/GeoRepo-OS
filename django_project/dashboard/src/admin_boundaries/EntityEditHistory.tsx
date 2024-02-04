@@ -3,7 +3,7 @@ import {useNavigate} from "react-router-dom";
 import { Box, Button } from "@mui/material";
 import axios from "axios";
 import Scrollable from '../components/Scrollable';
-import List from "../components/List";
+import List, { applyFilterDialogFooter } from "../components/List";
 import Loading from "../components/Loading";
 import { EntityEditHistoryItemInterface } from "../models/entity";
 
@@ -127,13 +127,8 @@ export default function EntityEditHistory(props: any) {
                             customOptions={customColumnOptions}
                             options={{
                                 'confirmFilters': true,
-                                'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
-                                    return (
-                                        <div style={{marginTop: '40px'}}>
-                                        <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
-                                        </div>
-                                    );
-                                },
+                                'customFilterDialogFooter': applyFilterDialogFooter,
+                                'rowsPerPage': 100
                             }}
                         /> : <Loading/>}
                 </Box>
