@@ -55,10 +55,11 @@ class GPKGViewExporter(GeojsonBasedExporter):
                 '-overwrite',
                 '-gt',
                 '200',
-                '-skipfailures',
                 gpkg_file,
                 geojson_file
             ]
         )
-        subprocess.run(command_list)
+        logger.info(command_list)
+        result = subprocess.run(command_list)
+        logger.info(f'GPKG conversion result_code: {result.returncode}')
         return gpkg_file
