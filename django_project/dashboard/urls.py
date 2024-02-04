@@ -154,6 +154,10 @@ from dashboard.api_views.exporter import (
     ExportRequestDetail,
     ExportRequestMetadata
 )
+from dashboard.api_views.map import (
+    DatasetBbox,
+    ViewBbox
+)
 
 
 @api_view(['GET'])
@@ -754,6 +758,16 @@ urlpatterns = [
     re_path(r'api/logs/(?P<log_type>\w+)/(?P<obj_id>\d+)?$',
             ExportLogs.as_view(),
             name='export-log-csv'),
+    re_path(
+        r'api/map/dataset/(?P<id>[\da-f-]+)/bbox/?$',
+        DatasetBbox.as_view(),
+        name='dataset-bbox'
+    ),
+    re_path(
+        r'api/map/view/(?P<id>[\da-f-]+)/bbox/?$',
+        ViewBbox.as_view(),
+        name='dataset-view-bbox'
+    ),
     re_path(r'sign-up/$',
             SignUpView.as_view(),
             name='signup-view'),

@@ -6,8 +6,20 @@ import {GroupDetailRoute} from '../routes';
 
 export default function Groups() {
   const navigate = useNavigate()
-  const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-    navigate(`${GroupDetailRoute.path}?id=${rowData[0]}`)
+  const customColumnOptions = {
+    'name': {
+      filter: false,
+      customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+          let rowData = tableMeta.rowData
+          const handleClick = (e: any) => {
+              e.preventDefault()
+              navigate(`${GroupDetailRoute.path}?id=${rowData[0]}`)
+          };
+          return (
+              <a href='#' onClick={handleClick}>{`${rowData[1]}`}</a>
+          )
+      },
+    },
   }
 
   return (
@@ -17,8 +29,9 @@ export default function Groups() {
         listUrl={"/api/group-list/"}
         initData={[]}
         selectionChanged={null}
-        onRowClick={handleRowClick}
+        onRowClick={null}
         actionData={[]}
+        customOptions={customColumnOptions}
         options={{
           'filter': false
         }}

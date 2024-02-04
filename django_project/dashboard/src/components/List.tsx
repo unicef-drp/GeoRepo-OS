@@ -26,6 +26,14 @@ axios.defaults.headers.common = {
     'X-CSRFToken' : (window as any).csrfToken
 }
 
+export const applyFilterDialogFooter = (currentFilterList: any, applyNewFilters: any) => {
+    return (
+        <div style={{marginTop: '40px'}}>
+        <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
+        </div>
+    );
+}
+
 export interface ActionDataInterface {
     field: string,
     name: string,
@@ -280,6 +288,11 @@ export default function List(
                 name: '',
                 options: {
                     filter: false,
+                    viewColumns: false,
+                    print: false,
+                    searchable: false,
+                    empty: true,
+                    sort: false,
                     customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
                         const rowData: any = data.find(({id}) => id === tableMeta.rowData[0])
                         if (!rowData) return null
@@ -398,6 +411,11 @@ export default function List(
                 name: '',
                 options: {
                     filter: false,
+                    viewColumns: false,
+                    print: false,
+                    searchable: false,
+                    empty: true,
+                    sort: false,
                     customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
                         const rowData = tableMeta.rowData
                         return COLUMNS_ACTION(

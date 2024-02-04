@@ -4,14 +4,13 @@ import {useNavigate} from "react-router-dom";
 import axios from "axios";
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
-import Button from '@mui/material/Button';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {useAppDispatch} from "../../app/hooks";
 import {updateMenu} from "../../reducers/breadcrumbMenu";
 import TabPanel, {a11yProps} from '../../components/TabPanel';
 import Loading from "../../components/Loading";
-import List from "../../components/List";
+import List, {applyFilterDialogFooter} from "../../components/List";
 import { AccessRequestDetailRoute, AccessRequestListRoute } from '../routes';
 import AccessRequestInterface from '../../models/access';
 
@@ -65,7 +64,18 @@ export default function AccessRequestList() {
           id: `access_request_list`,
           name: `${_page_title}`
         }))
-        setCustomOptions(getDefaultFilter())
+        let _customColumns:any = getDefaultFilter()
+        _customColumns['name']['customBodyRender'] = (value: any, tableMeta: any, updateValue: any) => {
+            let rowData = tableMeta.rowData
+            const handleClick = (e: any) => {
+                e.preventDefault()
+                navigate(`${AccessRequestDetailRoute.path}?id=${rowData[0]}`)
+            };
+            return (
+                <a href='#' onClick={handleClick}>{`${value}`}</a>
+            )
+        }
+        setCustomOptions(_customColumns)
     }
 
     const fetchRequestList = () => {
@@ -102,10 +112,6 @@ export default function AccessRequestList() {
         navigate(`${AccessRequestListRoute.path}?tab=${newValue}`)
     }
 
-    const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-        navigate(`${AccessRequestDetailRoute.path}?id=${rowData[0]}`)
-    }
-
     return (
         <div className="AdminContentMain main-data-list">
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -123,19 +129,13 @@ export default function AccessRequestList() {
                             listUrl={''}
                             initData={dataTab0}
                             selectionChanged={null}
-                            onRowClick={handleRowClick}
+                            onRowClick={null}
                             actionData={[]}
                             excludedColumns={['type']}
                             customOptions={customOptions}
                             options={{
                                 'confirmFilters': true,
-                                'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
-                                  return (
-                                    <div style={{marginTop: '40px'}}>
-                                      <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
-                                    </div>
-                                  );
-                                },
+                                'customFilterDialogFooter': applyFilterDialogFooter,
                               }}
                         />
                     }
@@ -148,19 +148,13 @@ export default function AccessRequestList() {
                             listUrl={''}
                             initData={dataTab1}
                             selectionChanged={null}
-                            onRowClick={handleRowClick}
+                            onRowClick={null}
                             actionData={[]}
                             excludedColumns={['type']}
                             customOptions={customOptions}
                             options={{
                                 'confirmFilters': true,
-                                'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
-                                  return (
-                                    <div style={{marginTop: '40px'}}>
-                                      <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
-                                    </div>
-                                  );
-                                },
+                                'customFilterDialogFooter': applyFilterDialogFooter,
                               }}
                         />
                     }

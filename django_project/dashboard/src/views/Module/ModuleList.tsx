@@ -13,6 +13,21 @@ export default function ModuleList() {
   const [modules, setModules] = useState<any[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const navigate = useNavigate()
+  const customColumnOptions = {
+    'name': {
+      filter: false,
+      customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+          let rowData = tableMeta.rowData
+          const handleClick = (e: any) => {
+              e.preventDefault()
+              navigate(`/module?uuid=${rowData[3]}`)
+          };
+          return (
+              <a href='#' onClick={handleClick}>{`${rowData[1]}`}</a>
+          )
+      },
+    },
+  }
 
   const fetchModules = () => {
       setLoading(true)
@@ -49,9 +64,10 @@ export default function ModuleList() {
             listUrl={''}
             initData={modules}
             selectionChanged={null}
-            onRowClick={handleRowClick}
+            onRowClick={null}
             excludedColumns={['uuid', 'is_active']}
             actionData={[]}
+            customOptions={customColumnOptions}
             options={{
               'filter': false
             }}

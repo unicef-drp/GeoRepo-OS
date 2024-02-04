@@ -136,6 +136,8 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
         return axiosSource.current.token;
       }, [])
     const navigate = useNavigate()
+    // index of selected rows
+    const [rowsSelected, setRowsSelected] = useState<any[]>([])
 
     const fetchFilterValues = async () => {
         if (Object.keys(filterValues).length != 0) return filterValues
@@ -167,6 +169,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
 
     const fetchEntities = (cancelFetchToken:any) => {
         setData([])
+        setRowsSelected([])
         setLoading(true)
         if (props.onLoadStarted) {
             props.onLoadStarted()
@@ -450,6 +453,20 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
             triggerFetchEntitiesAPI()
     }, [pagination])
 
+    useEffect(() => {
+        if (!props.onEntitySelected) return;
+        // handle when row is selected
+        if (rowsSelected && rowsSelected.length) {
+            let _idx = rowsSelected[0]
+            if (data && _idx < data.length) {
+                let _rowData = data[_idx]
+                if (_rowData.id) {
+                    props.onEntitySelected(_rowData.id)
+                }                
+            }
+        }
+    }, [rowsSelected])
+
     const handleFilterSubmit = (applyFilters: any) => {
         let filterList = applyFilters()
         let filters:EntitiesFilterUpdateInterface[] = []
@@ -624,10 +641,16 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                 <MUIDataTable columns={columns} data={data}
                         title=''
                         options={{
-                            selectableRows: 'none',
-                            onRowClick: (rowData: string[]) => {
-                                if (!props.onEntitySelected) return;
-                                props.onEntitySelected(parseInt(rowData[0]))
+                            selectableRows: 'single',
+                            selectableRowsHeader: false,
+                            selectToolbarPlacement: 'none',
+                            selectableRowsHideCheckboxes: true,
+                            selectableRowsOnClick: true,
+                            rowsSelected: rowsSelected,
+                            onRowSelectionChange: (currentRowsSelected: any, allRowsSelected: any, rowsSelected: any) => {
+                                if (rowsSelected && rowsSelected.length) {
+                                    setRowsSelected([...rowsSelected])
+                                }
                             },
                             serverSide: true,
                             page: pagination.page,
@@ -666,12 +689,13 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                             },
                             searchText: props.filter.search_text,
                             searchOpen: (props.filter.search_text != null && props.filter.search_text.length > 0),
-                            setRowProps:(row, dataIndex, rowIndex) => {
-                                return {
-                                  onMouseEnter: (e:any) => onRowMouseEnter(row),
-                                  onMouseLeave: (e:any) => onRowMouseLeave()
-                                }
-                            },
+                            // TODO: check why the hover events are not working
+                            // setRowProps:(row, dataIndex, rowIndex) => {
+                            //     return {
+                            //       onMouseEnter: (e:any) => onRowMouseEnter(row),
+                            //       onMouseLeave: (e:any) => onRowMouseLeave()
+                            //     }
+                            // },
                             textLabels: {
                                 body: {
                                     noMatch: loading ?
