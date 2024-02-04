@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {GridSortingInitialState} from "@mui/x-data-grid";
-import MUIDataTable, {MUIDataTableColumnDef} from "mui-datatables";
+import MUIDataTable, {MUIDataTableColumnDef, SelectableRows} from "mui-datatables";
 import FilterAlt from '@mui/icons-material/FilterAlt';
 import { rowsPerPageOptions } from '../models/pagination';
 
@@ -101,7 +101,7 @@ export function AdminTable({
                         }
                         return selectableRowsMode !== 'none'
                       },
-                      selectableRows: selectableRowsMode,
+                      selectableRows: selectableRowsMode as SelectableRows,
                       rowsPerPage: rowsPerPage,
                       rowsPerPageOptions: rowsPerPageOptions,
                       isRowExpandable: (dataIndex, expandedRows) => {
@@ -109,7 +109,7 @@ export function AdminTable({
                       },
                       expandableRows: !!ExpandableRow,
                       expandableRowsHeader: false,
-                      expandableRowsOnClick: true,
+                      expandableRowsOnClick: !!ExpandableRow,
                       onTableChange: (action:string, tableState:any) => {
                         switch (action) {
                           case 'changeRowsPerPage':
