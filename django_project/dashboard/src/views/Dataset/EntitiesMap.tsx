@@ -1,5 +1,6 @@
 import React, {useEffect, useRef, useState, useCallback} from 'react';
 import ReactDOM from "react-dom/client";
+import axios from "axios";
 import maplibregl, {AttributionControl, IControl, Marker} from 'maplibre-gl';
 import {
     Skeleton,
@@ -316,6 +317,28 @@ export default function EntitiesMap(props: EntitiesMapInterface) {
         }
     }, [props.filter_changed])
 
+    useEffect(() => {
+        if (!map.current) return;
+        if (!mapLoaded) return;
+        if (!props.datasetUuid && !props.datasetViewUuid) return;
+        let _url = ''
+        if (props.datasetUuid) {
+            _url = `/api/map/dataset/${props.datasetUuid}/bbox/`
+        } else if (props.datasetViewUuid) {
+            _url = `/api/map/view/${props.datasetViewUuid}/bbox/`
+        }
+        if (!_url) return;
+        axios.get(_url).then(
+            response => {
+                if (response.data && response.data.length === 4) {
+                    map.current.fitBounds(response.data, {
+                        padding: 30
+                    })
+                }
+            }
+        )
+    }, [mapLoaded, props.datasetUuid, props.datasetViewUuid])
+    
     const drawMarker = (label: any, lngLat: any):LMarker => {
         let container = document.createElement('div')
         const divRoot = ReactDOM.createRoot(container)
