@@ -166,7 +166,7 @@ class TestProcessGeocodingRequest(BaseDatasetViewTest):
             reverse(
                 'v1:batch-geocoding',
                 kwargs=kwargs
-            ) + f'?find_nearest=true',
+            ) + '?find_nearest=true',
             data={
                 'file': file
             }
