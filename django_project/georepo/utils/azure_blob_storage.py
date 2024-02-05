@@ -381,7 +381,7 @@ def set_azure_cors_rule(service_client, allowed_origins,
                         allowed_methods=['GET']):
     # Create CORS rules
     cors_rule = CorsRule(
-        allowed_origins, allowed_methods, max_age_in_seconds=200,
+        allowed_origins, allowed_methods, max_age_in_seconds=3600,
         allowed_headers=['*'], exposed_headers=['*'])
     cors = [cors_rule]
     service_client.set_service_properties(cors=cors)
