@@ -125,18 +125,6 @@ class DatasetView(models.Model):
         default=0
     )
 
-    product_sync_status = models.CharField(
-        max_length=15,
-        choices=SyncStatus.choices,
-        default=SyncStatus.OUT_OF_SYNC
-    )
-
-    product_progress = models.FloatField(
-        null=True,
-        blank=True,
-        default=0
-    )
-
     bbox = models.CharField(
         max_length=100,
         default='',
@@ -145,12 +133,6 @@ class DatasetView(models.Model):
     )
 
     task_id = models.CharField(
-        blank=True,
-        default='',
-        max_length=256
-    )
-
-    product_task_id = models.CharField(
         blank=True,
         default='',
         max_length=256
@@ -510,36 +492,6 @@ class DatasetViewResource(models.Model):
         help_text='UUID'
     )
 
-    product_sync_status = models.CharField(
-        max_length=15,
-        choices=SyncStatus.choices,
-        default=SyncStatus.OUT_OF_SYNC
-    )
-
-    geojson_sync_status = models.CharField(
-        max_length=15,
-        choices=SyncStatus.choices,
-        default=SyncStatus.OUT_OF_SYNC
-    )
-
-    shapefile_sync_status = models.CharField(
-        max_length=15,
-        choices=SyncStatus.choices,
-        default=SyncStatus.OUT_OF_SYNC
-    )
-
-    kml_sync_status = models.CharField(
-        max_length=15,
-        choices=SyncStatus.choices,
-        default=SyncStatus.OUT_OF_SYNC
-    )
-
-    topojson_sync_status = models.CharField(
-        max_length=15,
-        choices=SyncStatus.choices,
-        default=SyncStatus.OUT_OF_SYNC
-    )
-
     vector_tile_sync_status = models.CharField(
         max_length=15,
         choices=SyncStatus.choices,
@@ -558,50 +510,9 @@ class DatasetViewResource(models.Model):
         max_length=256
     )
 
-    product_task_id = models.CharField(
-        blank=True,
-        default='',
-        max_length=256
-    )
-
     vector_tiles_updated_at = models.DateTimeField(
         auto_now_add=True,
         editable=True
-    )
-
-    product_updated_at = models.DateTimeField(
-        auto_now_add=True,
-        editable=True
-    )
-
-    geojson_progress = models.FloatField(
-        null=True,
-        blank=True,
-        default=0
-    )
-
-    shapefile_progress = models.FloatField(
-        null=True,
-        blank=True,
-        default=0
-    )
-
-    kml_progress = models.FloatField(
-        null=True,
-        blank=True,
-        default=0
-    )
-
-    topojson_progress = models.FloatField(
-        null=True,
-        blank=True,
-        default=0
-    )
-
-    data_product_progress = models.FloatField(
-        null=True,
-        blank=True,
-        default=0
     )
 
     vector_tiles_progress = models.FloatField(
@@ -626,22 +537,6 @@ class DatasetViewResource(models.Model):
         default=0
     )
 
-    geojson_size = models.FloatField(
-        default=0
-    )
-
-    shapefile_size = models.FloatField(
-        default=0
-    )
-
-    kml_size = models.FloatField(
-        default=0
-    )
-
-    topojson_size = models.FloatField(
-        default=0
-    )
-
     entity_count = models.IntegerField(
         default=0
     )
@@ -658,14 +553,6 @@ class DatasetViewResource(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name='tiling_current_view'
-    )
-
-    product_current_task = models.ForeignKey(
-        'georepo.BackgroundTask',
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='product_current_view'
     )
 
     centroid_files = models.JSONField(
