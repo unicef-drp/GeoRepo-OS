@@ -14,7 +14,7 @@ def forwards_func(apps, schema_editor):
     ds_views = DatasetView.objects.using(db_alias).all()
 
     for ds_view in ds_views:
-        ds_view.product_sync_status = 'synced'
+        # ds_view.product_sync_status = 'synced'
         ds_view.vector_tile_sync_status = 'synced'
         ds_view.save()
 
@@ -27,10 +27,10 @@ def forwards_func(apps, schema_editor):
         for dsv_resource in ds_view_resources:
             fields = [
                 'vector_tile_sync_status',
-                'geojson_sync_status',
-                'shapefile_sync_status',
-                'kml_sync_status',
-                'topojson_sync_status'
+                # 'geojson_sync_status',
+                # 'shapefile_sync_status',
+                # 'kml_sync_status',
+                # 'topojson_sync_status'
             ]
             for field in fields:
                 setattr(dsv_resource, field, 'synced')
@@ -38,10 +38,10 @@ def forwards_func(apps, schema_editor):
             if dsv_resource.entity_count > 0:
                 fields = [
                     'vector_tiles',
-                    'geojson',
-                    'shapefile',
-                    'kml',
-                    'topojson'
+                    # 'geojson',
+                    # 'shapefile',
+                    # 'kml',
+                    # 'topojson'
                 ]
                 for field in fields:
                     setattr(dsv_resource, f'{field}_progress', 100)
@@ -183,6 +183,7 @@ class Migration(migrations.Migration):
             name='sync_status',
             field=models.CharField(choices=[('out_of_sync', 'Out of Sync'), ('syncing', 'Syncing'), ('synced', 'Synced')], default='out_of_sync', max_length=15),
         ),
-        migrations.RunPython(forwards_func, reverse_func,
-                             hints={'model_name': 'TestVariable'})
+        # products have been removed
+        # migrations.RunPython(forwards_func, reverse_func,
+        #                      hints={'model_name': 'TestVariable'})
     ]
