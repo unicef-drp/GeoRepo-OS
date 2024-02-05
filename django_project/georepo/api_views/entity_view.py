@@ -2462,6 +2462,15 @@ class ViewEntityBatchGeocoding(ViewEntityContainmentCheck,
         ),
         type=openapi.TYPE_STRING
     )
+    find_nearest_param = openapi.Parameter(
+        'find_nearest', openapi.IN_QUERY,
+        description=(
+            'Return the nearest entity when the input geometry '
+            'does not fall into any of the boundaries. Default to False'
+        ),
+        default=False,
+        type=openapi.TYPE_BOOLEAN
+    )
     post_body = openapi.Parameter(
         'file', openapi.IN_FORM,
         description=(
@@ -2510,6 +2519,7 @@ class ViewEntityBatchGeocoding(ViewEntityContainmentCheck,
             squeryd_param,
             admin_level_param,
             id_type_param,
+            find_nearest_param,
             post_body
         ],
         # request_body=post_body,
@@ -2604,6 +2614,8 @@ class ViewEntityBatchGeocoding(ViewEntityContainmentCheck,
                 }).data
             )
         try:
+            find_nearest = self.request.GET.get('find_nearest', 'false')
+            find_nearest = find_nearest.lower() == 'true'
             geocoding_request = GeocodingRequest.objects.create(
                 status=PENDING,
                 submitted_on=timezone.now(),
@@ -2611,7 +2623,8 @@ class ViewEntityBatchGeocoding(ViewEntityContainmentCheck,
                 file_type=layer_type,
                 parameters=(
                     f'({str(dataset_view.id)},\'{spatial_query}\','
-                    f'{dwithin_distance},\'{return_type_str}\',{admin_level})'
+                    f'{dwithin_distance},\'{return_type_str}\',{admin_level},'
+                    f'{str(find_nearest)})'
                 )
             )
             geocoding_request.file = file_obj
