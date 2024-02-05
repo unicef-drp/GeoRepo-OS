@@ -347,6 +347,13 @@ main {
   }
 }
 
+// Link inside MUI Table
+.MuiTableCell-root {
+  a {
+    color: var(--primary-color);
+  }
+}
+
 .api-key-input {
   input:disabled {
     color: black;
