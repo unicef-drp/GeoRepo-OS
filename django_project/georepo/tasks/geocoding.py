@@ -129,7 +129,8 @@ def get_containment_check_query(view: DatasetView,
                                 dwithin_distance: int,
                                 max_privacy_level,
                                 return_type: IdType | str,
-                                admin_level: int):
+                                admin_level: int,
+                                find_nearest: bool = False):
     other_joins = []
     sql_conds = [
         'gg.dataset_id = %s'
@@ -154,10 +155,19 @@ def get_containment_check_query(view: DatasetView,
     )
 
     where_sql = ' AND '.join(sql_conds)
-    sql = (
+    select_values = [
+        's.id', 's.feature_idx', 's.properties',
+        'tmp_entity.entity_id', 'st_asgeojson(s.geometry)'
+    ]
+    if find_nearest:
+        select_values.append('nearest.entity_id')
+        select_values.append('nearest.dist')
+        query_values.append(view.dataset.id)
+        query_values.append(admin_level)
+        query_values.append(max_privacy_level)
+    format_sql = (
         """
-        select s.id, s.feature_idx, s.properties, tmp_entity.entity_id,
-        st_asgeojson(s.geometry)
+        select {table_select}
         from {table_name} s
         left join (
             select {column_id} as entity_id, gg.geometry
@@ -165,15 +175,30 @@ def get_containment_check_query(view: DatasetView,
             {other_joins}
             {where_sql}
         ) tmp_entity on {spatial_join}
-        ORDER BY s.feature_idx
         """
-    ).format(
+    )
+    if find_nearest:
+        format_sql = format_sql + " " + (
+            """
+            cross join lateral (
+                select {column_id} as entity_id,
+                gg.geometry <-> s.geometry AS dist
+                from georepo_geographicalentity gg
+                {other_joins}
+                {where_sql}
+                ORDER BY dist LIMIT 1
+            ) nearest
+            """
+        )
+    sql = format_sql.format(
+        table_select=','.join(select_values),
         table_name=table_name,
         column_id=get_column_id(return_type),
         spatial_join=get_spatial_join(spatial_query, dwithin_distance),
         other_joins=' '.join(other_joins),
         where_sql=f'where {where_sql}'
     )
+    sql = sql + ' ORDER BY s.feature_idx'
     return sql, query_values
 
 
@@ -184,10 +209,11 @@ def do_containment_check(geocoding_request: GeocodingRequest,
                          dwithin_distance: int,
                          max_privacy_level,
                          return_type: IdType | str,
-                         admin_level: int):
+                         admin_level: int,
+                         find_nearest: bool = False):
     sql, query_values = get_containment_check_query(
         view, table_name, spatial_query, dwithin_distance,
-        max_privacy_level, return_type, admin_level
+        max_privacy_level, return_type, admin_level, find_nearest
     )
     suffix = '.geojson'
     geojson_file_path = os.path.join(
@@ -208,6 +234,7 @@ def do_containment_check(geocoding_request: GeocodingRequest,
             geojson_file.write('"features": [\n')
             feature_idx = -1
             id_results = []
+            nearest_id_results = []
             for row_idx, row in enumerate(rows):
                 if feature_idx == -1:
                     feature_idx = row[1]
@@ -219,6 +246,12 @@ def do_containment_check(geocoding_request: GeocodingRequest,
                     properties[get_return_type_key(return_type)] = (
                         id_results
                     )
+                    # when find_nearest is enabled and no matching id_results
+                    # then use nearest entity
+                    if find_nearest and len(id_results) == 0:
+                        properties[get_return_type_key(return_type)] = (
+                            nearest_id_results
+                        )
                     feature_data = {
                         "type": "Feature",
                         "properties": properties,
@@ -229,8 +262,14 @@ def do_containment_check(geocoding_request: GeocodingRequest,
                     idx += 1
                     feature_idx = row[1]
                     id_results.clear()
+                    nearest_id_results.clear()
                 if row[3] and row[3] not in id_results:
                     id_results.append(row[3])
+                if (
+                    find_nearest and row[5] and
+                    row[5] not in nearest_id_results
+                ):
+                    nearest_id_results.append(row[5])
             # write last row
             if len(rows):
                 write_row_idx = len(rows) - 1
@@ -239,6 +278,10 @@ def do_containment_check(geocoding_request: GeocodingRequest,
                 properties[get_return_type_key(return_type)] = (
                     id_results
                 )
+                if find_nearest and len(id_results) == 0:
+                    properties[get_return_type_key(return_type)] = (
+                        nearest_id_results
+                    )
                 feature_data = {
                     "type": "Feature",
                     "properties": properties,
@@ -329,6 +372,7 @@ def process_geocoding_request(request_id):
     dwithin_distance = int(params[2])
     return_type_str = params[3]
     admin_level = int(params[4])
+    find_nearest = params[5] if len(params) == 6 else False
     return_type = validate_return_type(return_type_str)
     if return_type is None:
         logger.error(
@@ -374,7 +418,7 @@ def process_geocoding_request(request_id):
         output_file = do_containment_check(
             geocoding_request, view, geocoding_request.table_name(TEMP_SCHEMA),
             spatial_query, dwithin_distance, max_privacy_level,
-            return_type, admin_level
+            return_type, admin_level, find_nearest
         )
         is_success = True
     except Exception as ex:
