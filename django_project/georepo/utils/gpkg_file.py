@@ -1,6 +1,5 @@
 import os
 import logging
-import subprocess
 from georepo.utils.geojson import (
     GeojsonBasedExporter
 )
@@ -59,7 +58,5 @@ class GPKGViewExporter(GeojsonBasedExporter):
                 geojson_file
             ]
         )
-        logger.info(command_list)
-        result = subprocess.run(command_list)
-        logger.info(f'GPKG conversion result_code: {result.returncode}')
+        self.do_conversion(command_list)
         return gpkg_file
