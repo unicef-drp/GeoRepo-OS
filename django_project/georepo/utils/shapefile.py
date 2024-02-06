@@ -124,6 +124,8 @@ class ShapefileViewExporter(GeojsonBasedExporter):
                 '-gt',
                 '200',
                 '-skipfailures',
+                '-lco',
+                'ENCODING=UTF-8',
                 shape_file,
                 geojson_file
             ]
