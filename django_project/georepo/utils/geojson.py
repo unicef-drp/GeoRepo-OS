@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import subprocess
 from uuid import UUID
 from datetime import date, datetime
 
@@ -149,6 +150,15 @@ class GeojsonBasedExporter(DatasetViewExporterBase):
             self.get_preparing_status_by_format()
         )
         super().run()
+
+    def do_conversion(self, command_list):
+        logger.info(command_list)
+        result = subprocess.run(command_list, capture_output=True)
+        logger.info(f'{self.request.format} conversion '
+                    f'result_code: {result.returncode}')
+        if result.returncode != 0:
+            logger.error(result.stderr.decode())
+            raise RuntimeError(result.stderr.decode())
 
 
 def validate_geojson(geojson: dict) -> bool:

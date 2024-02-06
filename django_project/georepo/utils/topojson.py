@@ -1,6 +1,5 @@
 import logging
 import os
-import subprocess
 from georepo.utils.geojson import GeojsonBasedExporter
 
 
@@ -27,5 +26,5 @@ class TopojsonViewExporter(GeojsonBasedExporter):
                 geojson_file
             ]
         )
-        subprocess.run(command_list)
+        self.do_conversion(command_list)
         return topojson_file

@@ -1,7 +1,6 @@
 import zipfile
 import os
 import logging
-import subprocess
 from georepo.serializers.entity import ExportShapefileSerializer
 from georepo.utils.geojson import (
     GeojsonBasedExporter
@@ -125,11 +124,13 @@ class ShapefileViewExporter(GeojsonBasedExporter):
                 '-gt',
                 '200',
                 '-skipfailures',
+                '-lco',
+                'ENCODING=UTF-8',
                 shape_file,
                 geojson_file
             ]
         )
-        subprocess.run(command_list)
+        self.do_conversion(command_list)
         # zip all the files
         zip_file_path = os.path.join(
             tmp_output_dir,
