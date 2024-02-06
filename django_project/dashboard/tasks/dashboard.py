@@ -51,6 +51,15 @@ def calculate_temp_directory():
             total_size += fp_size
             rows.append([dir, convert_size(fp_size)])
         break
+    tmp_directory_path = '/tmp'
+    if os.path.exists(tmp_directory_path):
+        for path, dirs, files in os.walk(tmp_directory_path):
+            for dir in dirs:
+                fp = os.path.join(path, dir)
+                fp_size = get_folder_size(fp)
+                total_size += fp_size
+                rows.append([dir, convert_size(fp_size)])
+            break
     row = ["Name", "Size"]
     csv_buffer = StringIO()
     csv_writer = csv.writer(csv_buffer)

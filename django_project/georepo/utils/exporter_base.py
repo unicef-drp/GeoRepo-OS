@@ -316,6 +316,8 @@ class DatasetViewExporterBase(object):
         raise NotImplementedError
 
     def get_base_output_dir(self) -> str:
+        if self.exporter_ref:
+            return self.exporter_ref.get_base_output_dir()
         return settings.EXPORT_FOLDER_OUTPUT
 
     def get_tmp_output_dir(self) -> str:

@@ -1,5 +1,6 @@
 import os
 import logging
+from django.conf import settings
 from georepo.utils.geojson import (
     GeojsonBasedExporter
 )
@@ -35,6 +36,11 @@ def get_gpkg_feature_count(layer_file):
 
 
 class GPKGViewExporter(GeojsonBasedExporter):
+
+    def get_base_output_dir(self) -> str:
+        if settings.USE_AZURE:
+            return '/tmp'
+        return super().get_base_output_dir()
 
     def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
