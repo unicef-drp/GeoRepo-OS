@@ -564,6 +564,9 @@ class ExportCentroidGeojsonSerializer(
     c = serializers.SerializerMethodField()
     u = serializers.SerializerMethodField()
     n = serializers.SerializerMethodField()
+    b = serializers.SerializerMethodField()
+    pc = serializers.SerializerMethodField()
+    pu = serializers.SerializerMethodField()
 
     def get_geometry(self, obj: GeographicalEntity):
         return None
@@ -577,13 +580,53 @@ class ExportCentroidGeojsonSerializer(
     def get_n(self, obj: GeographicalEntity):
         return self.get_name(obj)
 
+    def get_b(self, obj: GeographicalEntity):
+        if obj['bbox']:
+            bbox = ast.literal_eval(obj['bbox'])
+            return [round(b, 5) for b in bbox]
+        return None
+
+    def get_pc(self, obj: GeographicalEntity):
+        pc = []
+        level = obj['level']
+        related = ''
+        for i in range(level):
+            related = related + (
+                '__parent' if i > 0 else 'parent'
+            )
+            parent_uuid = obj.get(f'{related}__uuid', '')
+            if parent_uuid:
+                pc.insert(0, str(parent_uuid))
+        return pc
+
+    def get_pu(self, obj: GeographicalEntity):
+        pu = []
+        level = obj['level']
+        related = ''
+        for i in range(level):
+            related = related + (
+                '__parent' if i > 0 else 'parent'
+            )
+            unique_code = obj.get(f'{related}__unique_code', '')
+            unique_code_version = obj.get(
+                f'{related}__unique_code_version',
+                1
+            )
+            if unique_code:
+                ucode = get_unique_code(unique_code, unique_code_version)
+                pu.insert(0, ucode)
+        return pu
+
     class Meta:
         model = GeographicalEntity
         geo_field = 'geometry'
         fields = [
             'c',
             'n',
-            'u'
+            'u',
+            'b',
+            'pc',
+            'pu'
         ]
 
 
