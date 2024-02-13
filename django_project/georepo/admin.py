@@ -804,6 +804,22 @@ def patch_centroid_files_all_resources(modeladmin, request, queryset):
     )
 
 
+@admin.action(description='Clear centroid files from all resources')
+def clear_centroid_files_all_resources(modeladmin, request, queryset):
+    """
+    Clear centroid_files from all resources.
+    """
+    from georepo.tasks.dataset_view import (
+        do_clean_centroid_files_all_resources
+    )
+    do_clean_centroid_files_all_resources.delay()
+    modeladmin.message_user(
+        request,
+        'Clean centroid files from all resources will be run in background!',
+        messages.SUCCESS
+    )
+
+
 class DatasetViewResourceAdmin(admin.ModelAdmin):
     search_fields = ['dataset_view__name', 'uuid']
     actions = [
@@ -816,7 +832,8 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
         stop_dynamic_live_vector_tile,
         start_dynamic_live_vector_tile,
         check_cache_dynamic_live_vector_tile,
-        patch_centroid_files_all_resources
+        patch_centroid_files_all_resources,
+        clear_centroid_files_all_resources
     ]
 
     def get_list_display(self, request):

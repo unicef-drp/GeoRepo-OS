@@ -335,3 +335,16 @@ def do_patch_centroid_files_for_view(view_id):
         exporter.run()
     logger.info(
         f'Finished patching centroid files to view {dataset_view.name}')
+
+
+@shared_task(name="clean_centroid_files_all_resources")
+def do_clean_centroid_files_all_resources():
+    resources = DatasetViewResource.objects.exclude(
+        Q(centroid_files=[]) | Q(centroid_files__isnull=True)
+    )
+    logger.info(f'Cleaning centroid files from {resources.count()} resources')
+    for resource in resources.iterator(chunk_size=1):
+        exporter = CentroidExporter(resource)
+        exporter.clear_existing_resource_dir()
+    logger.info(
+        f'Finished cleaning centroid files to {resources.count()} resources')
