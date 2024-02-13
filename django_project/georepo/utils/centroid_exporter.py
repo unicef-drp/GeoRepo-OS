@@ -99,11 +99,22 @@ class CentroidExporter(object):
         values = [
             'id', 'label',
             'unique_code', 'unique_code_version',
-            'uuid', 'level', 'centroid'
+            'uuid', 'level', 'centroid', 'bbox'
         ]
         entities = entities.filter(
             level=level
         )
+        # add parents to the query
+        related = ''
+        for i in range(level):
+            related = related + (
+                '__parent' if i > 0 else 'parent'
+            )
+            # fetch parent's default code
+            values.append(f'{related}__uuid')
+            values.append(f'{related}__unique_code')
+            values.append(f'{related}__unique_code_version')
+        entities = entities.order_by('label')
         return entities.values(*values)
 
     def get_base_output_dir(self) -> str:
