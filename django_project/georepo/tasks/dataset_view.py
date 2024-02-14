@@ -55,7 +55,9 @@ def check_affected_dataset_views(
         Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED) |
         Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCING) |
         Q(simplification_sync_status=DatasetView.SyncStatus.SYNCED) |
-        Q(simplification_sync_status=DatasetView.SyncStatus.SYNCING)
+        Q(simplification_sync_status=DatasetView.SyncStatus.SYNCING) |
+        Q(centroid_sync_status=DatasetView.SyncStatus.SYNCED) |
+        Q(centroid_sync_status=DatasetView.SyncStatus.SYNCING)
     )
     if unique_codes:
         unique_codes = tuple(
@@ -112,7 +114,7 @@ def check_affected_dataset_views(
                 view.set_out_of_sync(
                     tiling_config=False,
                     vector_tile=True,
-                    product=True,
+                    centroid=True,
                     skip_signal=False
                 )
                 if (
@@ -162,7 +164,7 @@ def check_affected_views_from_tiling_config(
         view.set_out_of_sync(
             tiling_config=True,
             vector_tile=True,
-            product=False
+            centroid=False
         )
 
 

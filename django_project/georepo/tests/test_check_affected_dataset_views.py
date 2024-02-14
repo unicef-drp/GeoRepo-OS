@@ -84,7 +84,7 @@ class TestCheckAffectedViews(TestCase):
                 entity_count__gt=0
             )
             for resource in resources:
-                resource.set_synced(vector_tiles=True, product=True)
+                resource.set_synced(vector_tiles=True, centroid=True)
         grant_dataset_manager(self.dataset_view_1.dataset, self.creator)
         self.dataset_view_1.refresh_from_db()
 

@@ -13,6 +13,9 @@ from dashboard.serializers.view import (
     DatasetViewResourceSyncSerializer,
     ViewSyncSerializer
 )
+from georepo.tasks.dataset_view import (
+    do_patch_centroid_files_for_view
+)
 from dashboard.tasks import (
     view_simplification_task
 )
@@ -308,18 +311,24 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
         if 'tiling_config' in sync_options:
             for view in views:
                 view.match_tiling_config()
-        if len({'vector_tiles'}.difference(
+        if len({'vector_tiles', 'centroid'}.difference(
             set(sync_options))
         ) == 0:
             for view in views:
                 trigger_generate_vector_tile_for_view(
                     view
                 )
+                do_patch_centroid_files_for_view.delay(view.id)
         # if sync only vector tiles
         elif 'vector_tiles' in sync_options:
             for view in views:
                 trigger_generate_vector_tile_for_view(
                     view
+                )
+        elif 'centroid' in sync_options:
+            for view in views:
+                do_patch_centroid_files_for_view.delay(
+                    view.id
                 )
         elif 'simplify' in sync_options:
             for view in views:

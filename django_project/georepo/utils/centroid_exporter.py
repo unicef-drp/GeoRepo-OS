@@ -45,6 +45,35 @@ def convert_geojson_to_pbf(file_path, output_dir, exported_name):
     )
 
 
+def clean_resource_centroid_cache_dir(resource_uuid):
+    if settings.USE_AZURE:
+        dir_path = os.path.join(
+            'media',
+            'centroid',
+            str(resource_uuid)
+        )
+        client = DirectoryClient(settings.AZURE_STORAGE,
+                                 settings.AZURE_STORAGE_CONTAINER)
+        client.rmdir(dir_path)
+    else:
+        dir_path = os.path.join(
+            settings.MEDIA_ROOT,
+            'centroid',
+            str(resource_uuid)
+        )
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
+
+
+def clean_exporter_temp_output_dir(resource_uuid):
+    tmp_output_dir = os.path.join(
+        CentroidExporter.get_base_output_dir(),
+        f'temp_centroid_{str(resource_uuid)}'
+    )
+    if os.path.exists(tmp_output_dir):
+        shutil.rmtree(tmp_output_dir)
+
+
 class CentroidExporter(object):
     output_suffix = '.geojson'
 
@@ -117,6 +146,7 @@ class CentroidExporter(object):
         entities = entities.order_by('label')
         return entities.values(*values)
 
+    @staticmethod
     def get_base_output_dir(self) -> str:
         return settings.EXPORT_FOLDER_OUTPUT
 
@@ -140,6 +170,7 @@ class CentroidExporter(object):
         )
         tmp_output_dir = self.get_tmp_output_dir()
         # export for each admin level
+        # TODO: update progress
         for level in self.levels:
             logger.info(
                 f'Exporting centroid of level {level} from '
@@ -242,23 +273,7 @@ class CentroidExporter(object):
     def clear_existing_resource_dir(self):
         self.resource.centroid_files = []
         self.resource.save(update_fields=['centroid_files'])
-        if settings.USE_AZURE:
-            dir_path = os.path.join(
-                'media',
-                'centroid',
-                str(self.resource.uuid)
-            )
-            client = DirectoryClient(settings.AZURE_STORAGE,
-                                     settings.AZURE_STORAGE_CONTAINER)
-            client.rmdir(dir_path)
-        else:
-            dir_path = os.path.join(
-                settings.MEDIA_ROOT,
-                'centroid',
-                str(self.resource.uuid)
-            )
-            if os.path.exists(dir_path):
-                shutil.rmtree(dir_path)
+        clean_resource_centroid_cache_dir(self.resource.uuid)
 
     def save_output_file(self, tmp_file_path, exported_name):
         # save output file to non-temp directory
