@@ -3,6 +3,7 @@ import logging
 import shutil
 import json
 import subprocess
+import traceback
 from django.db.models.expressions import RawSQL
 from django.conf import settings
 from django.contrib.gis.geos import WKTWriter, GEOSGeometry
@@ -112,9 +113,15 @@ class CentroidExporter(object):
             'level',
             flat=True
         ).distinct()
-        self.total_progress = len(self.levels)
+        self.total_progress = len(self.levels) + 1
         # remove tmp_output_dir
         self.do_remove_temp_dir()
+        self.resource.centroid_sync_progress = 0
+        self.resource.centroid_sync_status = (
+            DatasetViewResource.SyncStatus.SYNCING
+        )
+        self.resource.save(update_fields=['centroid_sync_progress',
+                                          'centroid_sync_status'])
 
     def get_serializer(self):
         return ExportCentroidGeojsonSerializer
@@ -147,7 +154,7 @@ class CentroidExporter(object):
         return entities.values(*values)
 
     @staticmethod
-    def get_base_output_dir(self) -> str:
+    def get_base_output_dir() -> str:
         return settings.EXPORT_FOLDER_OUTPUT
 
     def get_tmp_output_dir(self, auto_create=True) -> str:
@@ -164,25 +171,42 @@ class CentroidExporter(object):
         if os.path.exists(tmp_output_dir):
             shutil.rmtree(tmp_output_dir)
 
+    def update_progress(self, inc_progress = 1):
+        self.progress_count += inc_progress
+        self.resource.centroid_sync_progress = (
+            (self.progress_count * 100) / self.total_progress
+        ) if self.total_progress > 0 else 0
+        self.resource.save(update_fields=['centroid_sync_progress'])
+
     def run(self):
         logger.info(
             f'Exporting centroid from View {self.dataset_view.name} '
         )
-        tmp_output_dir = self.get_tmp_output_dir()
-        # export for each admin level
-        # TODO: update progress
-        for level in self.levels:
+        try:
+            tmp_output_dir = self.get_tmp_output_dir()
+            # export for each admin level
+            for level in self.levels:
+                logger.info(
+                    f'Exporting centroid of level {level} from '
+                    f'View {self.dataset_view.name} - {self.privacy_level}'
+                )
+                self.do_export(level, tmp_output_dir)
+                self.update_progress()
+            self.do_export_post_process()
             logger.info(
-                f'Exporting centroid of level {level} from '
-                f'View {self.dataset_view.name} - {self.privacy_level}'
+                f'Exporting centroid is finished '
+                f'from View {self.dataset_view.name} - {self.privacy_level}'
             )
-            self.do_export(level, tmp_output_dir)
-        self.do_export_post_process()
-        logger.info(
-            f'Exporting centroid is finished '
-            f'from View {self.dataset_view.name} - {self.privacy_level}'
-        )
-        logger.info(self.generated_files)
+            logger.info(self.generated_files)
+        except Exception as ex:
+            logger.error('Failed Process Centroid Exporter!')
+            logger.error(ex)
+            logger.error(traceback.format_exc())
+            self.resource.centroid_sync_status = (
+                DatasetViewResource.SyncStatus.ERROR
+            )
+            self.resource.save(update_fields=['centroid_sync_status'])
+            self.do_remove_temp_dir()
 
     def do_export(self, level: int,
                   tmp_output_dir: str):
@@ -267,7 +291,13 @@ class CentroidExporter(object):
                     'level': level
                 })
         self.resource.centroid_files = centroid_files
-        self.resource.save(update_fields=['centroid_files'])
+        self.resource.centroid_sync_status = (
+            DatasetViewResource.SyncStatus.SYNCED
+        )
+        self.resource.centroid_sync_progress = 100
+        self.resource.save(update_fields=['centroid_files',
+                                          'centroid_sync_status',
+                                          'centroid_sync_progress'])
         self.do_remove_temp_dir()
 
     def clear_existing_resource_dir(self):

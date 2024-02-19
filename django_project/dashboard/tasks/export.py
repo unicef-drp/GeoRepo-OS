@@ -1,7 +1,6 @@
 import time
 from celery import shared_task
 import logging
-import traceback
 
 from georepo.utils import (
     generate_view_vector_tiles,
@@ -14,7 +13,6 @@ from georepo.utils.dataset_view import (
     get_entities_count_in_view
 )
 from georepo.utils.centroid_exporter import (
-    CentroidExporter,
     clean_resource_centroid_cache_dir,
     clean_exporter_temp_output_dir
 )

@@ -21,7 +21,8 @@ from dashboard.tasks import (
 )
 from georepo.models import (
     Dataset,
-    DatasetView, DatasetViewTilingConfig
+    DatasetView, DatasetViewTilingConfig,
+    DatasetViewResource
 )
 from georepo.utils.dataset_view import (
     trigger_generate_vector_tile_for_view
@@ -49,6 +50,17 @@ def convert_sync_status_filter_value(status_list):
     return mapped_status
 
 
+def trigger_sync_centroid_file(view: DatasetView):
+    resources = DatasetViewResource.objects.filter(
+        dataset_view=view,
+        entity_count__gt=0
+    ).order_by('id')
+    for resource in resources:
+        resource.centroid_sync_status = DatasetViewResource.SyncStatus.SYNCING
+        resource.save(update_fields=['centroid_sync_status'])
+    do_patch_centroid_files_for_view.delay(view.id)
+
+
 class ViewSyncList(AzureAuthRequiredMixin, APIView):
     """
     API view to list views sync
@@ -59,11 +71,17 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
         sync_status = request.data.get('vector_tile_sync_status', [])
         tiling_config_status = request.data.get('is_tiling_config_match', [])
         simplification_status = request.data.get('simplification_status', [])
+        centroid_sync_status = request.data.get('centroid_sync_status', [])
         filters = Q()
         if sync_status:
             filters |= Q(
                 vector_tile_sync_status__in=convert_sync_status_filter_value(
                     sync_status)
+            )
+        if centroid_sync_status:
+            filters |= Q(
+                centroid_sync_status__in=convert_sync_status_filter_value(
+                    centroid_sync_status)
             )
         if tiling_config_status:
             tiling_filter = (
@@ -318,7 +336,7 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
                 trigger_generate_vector_tile_for_view(
                     view
                 )
-                do_patch_centroid_files_for_view.delay(view.id)
+                trigger_sync_centroid_file(view)
         # if sync only vector tiles
         elif 'vector_tiles' in sync_options:
             for view in views:
@@ -327,9 +345,7 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
                 )
         elif 'centroid' in sync_options:
             for view in views:
-                do_patch_centroid_files_for_view.delay(
-                    view.id
-                )
+                trigger_sync_centroid_file(view)
         elif 'simplify' in sync_options:
             for view in views:
                 # check if view has custom tiling config

@@ -111,7 +111,7 @@ export function ViewSyncActionButtons() {
   }
 
   const onBatchSyncClick = () => {
-    setSyncOptions(['vector_tiles'])
+    setSyncOptions(['vector_tiles', 'centroid'])
     setAlertDialogTitle('Batch Synchronize')
     setAlertDialogDescription(
       `Are you sure you want to synchronize ${selectedViews.length} views?
@@ -184,8 +184,10 @@ interface ViewSyncRowInterface {
   is_tiling_config_match: boolean,
   simplification_status: string,
   vector_tile_sync_status: string,
+  centroid_sync_status: string,
   simplification_progress: number,
   vector_tiles_progress: number,
+  centroid_progress: number,
   permissions: string[]
 }
 
@@ -311,7 +313,13 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           }
           return res
       }, [] as string[])
-      if (!simplificationSyncStatus.includes('syncing') && !vectorTileSyncStatus.includes('syncing')) {
+      const centroidSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
+          if (!res.includes(row.centroid_sync_status)) {
+              res.push(row.centroid_sync_status)
+          }
+          return res
+      }, [] as string[])
+      if (!simplificationSyncStatus.includes('syncing') && !vectorTileSyncStatus.includes('syncing') && !centroidSyncStatus.includes('syncing')) {
           setAllFinished(true)
           props.onSyncStatusShouldBeUpdated()
       } else {
@@ -376,6 +384,9 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
       case 'vector_tile_sync_status':
         values = currentFilters.vector_tile_sync_status
         break;
+      case 'centroid_sync_status':
+        values = currentFilters.centroid_sync_status
+        break;
       default:
         break;
     }
@@ -389,7 +400,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           return columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' ')
         }
   
-        let _columns = ['id', 'name', 'permissions', 'simplification_progress', 'vector_tiles_progress'].map((columnName) => {
+        let _columns = ['id', 'name', 'permissions', 'simplification_progress', 'vector_tiles_progress', 'centroid_progress'].map((columnName) => {
           let _options: any = {
             name: columnName,
             label: getLabel(columnName),
@@ -409,7 +420,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
               return (
-                <span>{rowData[5] ? 'Tiling config matches dataset' : 'View uses custom tiling config'}</span>
+                <span>{rowData[6] ? 'Tiling config matches dataset' : 'View uses custom tiling config'}</span>
               )
             },
             filter: true,
@@ -428,7 +439,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           options: {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
-              let _status = rowData[6]
+              let _status = rowData[7]
               let _progress = rowData[3] as number
 
               if (_status === 'out_of_sync') {
@@ -473,9 +484,9 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           options: {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
-              let _status = rowData[7]
+              let _status = rowData[8]
               let _progress = rowData[4] as number
-              let _simplificationStatus = rowData[6]
+              let _simplificationStatus = rowData[7]
               if (_status === 'out_of_sync') {
                 if (_simplificationStatus !== 'synced') {
                   return (
@@ -525,14 +536,60 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
         })
 
         _columns.push({
+          name: 'centroid_sync_status',
+          label: 'Centroid',
+          options: {
+            customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              let _status = rowData[9]
+              let _progress = rowData[5] as number
+              if (_status === 'out_of_sync') {
+                return (
+                  getOutOfSync('Centroid need refresh', 'Click to update centroid', !rowData[2].includes('Manage'), (e: any) => {
+                    e.stopPropagation()
+                    syncView([rowData[0]], ['centroid'])
+                  })
+                )
+              } else if (_status === 'synced') {
+                return getSynced('Centroid are synced')
+              } else if (_status === 'syncing') {
+                return getSyncing(_progress)
+              } else if (_status === 'Queued') {
+                return getQueued()
+              } else if (_status === 'error') {
+                return (
+                  getError('Click to retrigger centroid cache generation', !rowData[2].includes('Manage'), (e: any) => {
+                    e.stopPropagation()
+                    syncView([rowData[0]], ['centroid'])
+                  })
+                )
+              }
+              return (
+                <span>{_status}</span>
+              )
+            },
+            filter: true,
+            filterOptions: {
+              fullWidth: true,
+              names: VECTOR_TILE_SYNC_STATUS_FILTER
+            },
+            filterList: getExistingFilterValue('centroid_sync_status'),
+            sort: false,
+            customFilterListOptions: {
+              render: (v: any) => `Centroid Sync Status: ${v}`
+            }
+          }
+        })
+
+        _columns.push({
           name: '',
           label: 'Action',
           options: {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
-              let _simplificationStatus = rowData[6]
-              let _syncButtonDisabled = rowData[7] === 'synced'|| rowData[7] === 'syncing'
-              let _syncInQueued = rowData[7] === 'Queued'
+              let _simplificationStatus = rowData[7]
+              let _syncButtonDisabled = rowData[8] === 'synced'|| rowData[8] === 'syncing'
+              let _syncInQueued = rowData[8] === 'Queued'
               const getSyncText = () => {
                 if (_syncButtonDisabled) {
                   return 'Vector Tile and Data Products are synchronized'
@@ -567,11 +624,11 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                       }
                       syncView(
                         [rowData[0]],
-                        ['vector_tiles']
+                        ['vector_tiles', 'centroid']
                       )
                     }}
                     variant={
-                      rowData[7] === 'out_of_sync' ? 'contained' : 'outlined'
+                      rowData[8] === 'out_of_sync' ? 'contained' : 'outlined'
                     }
                   >
                     Synchronize
