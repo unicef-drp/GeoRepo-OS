@@ -109,6 +109,8 @@ class TestViewSyncList(TestCase):
         self.assertEqual(response.data['page'], 1)
         self.assertEqual(response.data['total_page'], 1)
         expected_result = {
+            'centroid_sync_progress': 100.0,
+            'centroid_sync_status': 'synced',
             'id': self.dataset_view_1.id,
             'dataset': self.dataset_view_1.dataset_id,
             'name': self.dataset_view_1.name,

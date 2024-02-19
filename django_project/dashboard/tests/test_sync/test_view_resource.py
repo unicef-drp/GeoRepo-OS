@@ -52,6 +52,9 @@ class TestViewResourceSyncList(TestCase):
         list_view = ViewResourcesSyncList.as_view()
         response = list_view(request, self.dataset_view_1.id)
         expected_result = {
+            'centroid_size': '0B',
+            'centroid_sync_progress': 0.0,
+            'centroid_sync_status': 'out_of_sync',
             'id': self.dsv_resources_1.id,
             'uuid': str(self.dsv_resources_1.uuid),
             'privacy_level': 4,
