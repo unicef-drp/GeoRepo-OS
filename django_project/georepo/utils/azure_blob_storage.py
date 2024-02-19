@@ -40,7 +40,7 @@ class DirectoryClient:
         with open(source, 'rb') as data:
             self.client.upload_blob(name=dest, data=data)
 
-    def upload_gzip_file(self, source, dest):
+    def upload_gzip_file(self, source, dest, cache_control=None):
         """
         Upload a gzipped file
         """
@@ -48,7 +48,10 @@ class DirectoryClient:
             self.client.upload_blob(
                 name=dest,
                 data=data,
-                content_settings=ContentSettings(content_encoding='gzip')
+                content_settings=ContentSettings(
+                    content_encoding='gzip',
+                    cache_control=cache_control
+                )
             )
 
     def upload_dir(self, source, dest):
