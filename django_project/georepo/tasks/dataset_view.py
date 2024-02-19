@@ -55,7 +55,9 @@ def check_affected_dataset_views(
         Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED) |
         Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCING) |
         Q(simplification_sync_status=DatasetView.SyncStatus.SYNCED) |
-        Q(simplification_sync_status=DatasetView.SyncStatus.SYNCING)
+        Q(simplification_sync_status=DatasetView.SyncStatus.SYNCING) |
+        Q(centroid_sync_status=DatasetView.SyncStatus.SYNCED) |
+        Q(centroid_sync_status=DatasetView.SyncStatus.SYNCING)
     )
     if unique_codes:
         unique_codes = tuple(
@@ -112,7 +114,7 @@ def check_affected_dataset_views(
                 view.set_out_of_sync(
                     tiling_config=False,
                     vector_tile=True,
-                    product=True,
+                    centroid=True,
                     skip_signal=False
                 )
                 if (
@@ -162,7 +164,7 @@ def check_affected_views_from_tiling_config(
         view.set_out_of_sync(
             tiling_config=True,
             vector_tile=True,
-            product=False
+            centroid=False
         )
 
 
@@ -335,3 +337,22 @@ def do_patch_centroid_files_for_view(view_id):
         exporter.run()
     logger.info(
         f'Finished patching centroid files to view {dataset_view.name}')
+
+
+@shared_task(name="clean_centroid_files_all_resources")
+def do_clean_centroid_files_all_resources():
+    resources = DatasetViewResource.objects.exclude(
+        Q(centroid_files=[]) | Q(centroid_files__isnull=True)
+    )
+    logger.info(f'Cleaning centroid files from {resources.count()} resources')
+    for resource in resources.iterator(chunk_size=1):
+        resource.centroid_files = []
+        resource.centroid_sync_status = (
+            DatasetViewResource.SyncStatus.OUT_OF_SYNC
+        )
+        resource.centroid_sync_progress = 0
+        resource.save()
+        exporter = CentroidExporter(resource)
+        exporter.clear_existing_resource_dir()
+    logger.info(
+        f'Finished cleaning centroid files to {resources.count()} resources')

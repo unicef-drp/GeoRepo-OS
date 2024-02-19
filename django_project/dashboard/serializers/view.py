@@ -306,8 +306,10 @@ class DatasetViewSyncSerializer(serializers.ModelSerializer):
             'is_tiling_config_match',
             'simplification_status',
             'vector_tile_sync_status',
+            'centroid_sync_status',
             'simplification_progress',
             'vector_tiles_progress',
+            'centroid_sync_progress',
             'permissions'
         ]
 
@@ -316,12 +318,25 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
 
     vector_tiles_size = serializers.SerializerMethodField()
     vector_tile_sync_status = serializers.SerializerMethodField()
+    centroid_size = serializers.SerializerMethodField()
+    centroid_sync_status = serializers.SerializerMethodField()
 
-    def get_vector_tiles_size(self, obj):
+    def get_vector_tiles_size(self, obj: DatasetViewResource):
         return convert_size(obj.vector_tiles_size)
 
     def get_vector_tile_sync_status(self, obj: DatasetViewResource):
         return fetch_vector_tile_sync_status(obj)
+
+    def get_centroid_sync_status(self, obj: DatasetViewResource):
+        return obj.centroid_sync_status
+
+    def get_centroid_size(self, obj: DatasetViewResource):
+        total_size = 0
+        for centroid_file in obj.centroid_files:
+            total_size += (
+                centroid_file['size'] if 'size' in centroid_file else 0
+            )
+        return convert_size(total_size)
 
     class Meta:
         model = DatasetViewResource
@@ -331,7 +346,10 @@ class DatasetViewResourceSyncSerializer(serializers.ModelSerializer):
             'privacy_level',
             'vector_tile_sync_status',
             'vector_tiles_progress',
-            'vector_tiles_size'
+            'vector_tiles_size',
+            'centroid_sync_status',
+            'centroid_sync_progress',
+            'centroid_size'
         ]
 
 
@@ -348,7 +366,8 @@ class ViewSyncSerializer(serializers.Serializer):
         accepted_options = {
             'tiling_config',
             'vector_tiles',
-            'simplify'
+            'simplify',
+            'centroid'
         }
         if len(options - accepted_options) != 0:
             raise serializers.ValidationError(

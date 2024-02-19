@@ -70,3 +70,4 @@ class TestTrigegrSync(TestCase):
             self.dataset_view_1.vector_tiles_progress,
             0
         )
+    # TODO: add test sync centroid

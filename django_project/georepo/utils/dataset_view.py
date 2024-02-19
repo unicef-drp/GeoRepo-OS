@@ -514,6 +514,39 @@ def get_view_tiling_status(view_resource_queryset):
     return tiling_status, tiling_progress
 
 
+def get_view_centroid_cache_status(view_resource_queryset):
+    """Get centroid cache sync status of dataset view."""
+    available_resources = view_resource_queryset.filter(
+        entity_count__gt=0
+    )
+    # check for error
+    error_queryset = available_resources.filter(
+        status=DatasetView.DatasetViewStatus.ERROR
+    )
+    view_resources = available_resources.aggregate(
+        Avg('centroid_sync_progress')
+    )
+    tiling_progress = (
+        view_resources['centroid_sync_progress__avg'] if
+        view_resources['centroid_sync_progress__avg'] else 0
+    )
+    if error_queryset.exists():
+        return 'error', tiling_progress
+    vt_statuses = available_resources.order_by(
+        'centroid_sync_status').values_list(
+            'centroid_sync_status', flat=True).distinct()
+    tiling_status = 'out_of_sync'
+    resource_count = available_resources.count()
+    if resource_count == 0:
+        # set default status to out_of_sync if no resource yet
+        tiling_status = 'out_of_sync'
+    elif 'syncing' in vt_statuses:
+        tiling_status = 'syncing'
+    elif len(vt_statuses) == 1:
+        tiling_status = vt_statuses[0]
+    return tiling_status, tiling_progress
+
+
 def get_entities_count_in_view(
     view: DatasetView,
     privacy_level: int,

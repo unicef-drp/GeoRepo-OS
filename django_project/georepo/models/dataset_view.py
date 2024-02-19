@@ -199,6 +199,18 @@ class DatasetView(models.Model):
         default=SyncStatus.OUT_OF_SYNC
     )
 
+    centroid_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    centroid_sync_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
     def get_resource_level_for_user(self, user_privacy_level):
         """
         Return allowed resource based on user level
@@ -219,7 +231,7 @@ class DatasetView(models.Model):
         self,
         tiling_config=True,
         vector_tile=True,
-        product=True,
+        centroid=True,
         skip_signal=True,
         save=True
     ):
@@ -249,12 +261,15 @@ class DatasetView(models.Model):
         for dsv_resource in dsv_resources:
             dsv_resource.set_out_of_sync(
                 vector_tiles=vector_tile,
-                product=product,
+                centroid=centroid,
                 skip_signal=True
             )
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.OUT_OF_SYNC
             self.vector_tiles_progress = 0
+        if centroid:
+            self.centroid_sync_status = self.SyncStatus.OUT_OF_SYNC
+            self.centroid_sync_progress = 0
         self.skip_signal = skip_signal
         if save:
             self.save()
@@ -264,7 +279,7 @@ class DatasetView(models.Model):
         self,
         tiling_config=False,
         vector_tile=False,
-        product=False,
+        centroid=False,
         skip_signal=False
     ):
         dsv_resources = self.datasetviewresource_set.all()
@@ -274,12 +289,15 @@ class DatasetView(models.Model):
         for dsv_resource in dsv_resources:
             dsv_resource.set_synced(
                 vector_tiles=vector_tile,
-                product=product,
+                centroid=centroid,
                 skip_signal=True
             )
         if vector_tile:
             self.vector_tile_sync_status = self.SyncStatus.SYNCED
             self.vector_tiles_progress = 100
+        if centroid:
+            self.centroid_sync_status = self.SyncStatus.SYNCED
+            self.centroid_sync_progress = 100
         self.skip_signal = skip_signal
         self.save()
 
@@ -327,7 +345,8 @@ class DatasetView(models.Model):
         ).delete()
         self.is_tiling_config_match = True
         if deleted_count > 0:
-            self.set_out_of_sync(tiling_config=True, vector_tile=True)
+            self.set_out_of_sync(tiling_config=True, vector_tile=True,
+                                 centroid=False)
         self.save()
 
     def __str__(self):
@@ -561,6 +580,24 @@ class DatasetViewResource(models.Model):
         blank=True
     )
 
+    centroid_sync_status = models.CharField(
+        max_length=15,
+        choices=SyncStatus.choices,
+        default=SyncStatus.OUT_OF_SYNC
+    )
+
+    centroid_sync_progress = models.FloatField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    centroid_task_id = models.CharField(
+        blank=True,
+        default='',
+        max_length=256
+    )
+
     @property
     def resource_id(self):
         return str(self.uuid)
@@ -601,7 +638,7 @@ class DatasetViewResource(models.Model):
     def set_out_of_sync(
         self,
         vector_tiles=True,
-        product=True,
+        centroid=True,
         skip_signal=True
     ):
         if vector_tiles:
@@ -611,6 +648,13 @@ class DatasetViewResource(models.Model):
                 self.SyncStatus.OUT_OF_SYNC
             )
             setattr(self, 'vector_tile_progress', 0)
+        if centroid:
+            setattr(
+                self,
+                'centroid_sync_status',
+                self.SyncStatus.OUT_OF_SYNC
+            )
+            setattr(self, 'centroid_sync_progress', 0)
 
         self.skip_signal = skip_signal
         self.save()
@@ -618,7 +662,7 @@ class DatasetViewResource(models.Model):
     def set_synced(
         self,
         vector_tiles=True,
-        product=True,
+        centroid=True,
         skip_signal=False
     ):
         if vector_tiles:
@@ -628,7 +672,13 @@ class DatasetViewResource(models.Model):
                 self.SyncStatus.SYNCED
             )
             setattr(self, 'vector_tile_progress', 100)
-
+        if centroid:
+            setattr(
+                self,
+                'centroid_sync_status',
+                self.SyncStatus.SYNCED
+            )
+            setattr(self, 'centroid_sync_progress', 100)
         self.skip_signal = skip_signal
         self.save()
 
@@ -694,7 +744,8 @@ def view_res_post_save(sender, instance: DatasetViewResource,
                        *args, **kwargs):
     from georepo.models import Dataset
     from georepo.utils.dataset_view import (
-        get_view_tiling_status
+        get_view_tiling_status,
+        get_view_centroid_cache_status
     )
     if getattr(instance, 'skip_signal', False):
         return
@@ -709,6 +760,10 @@ def view_res_post_save(sender, instance: DatasetViewResource,
         tiling_status,
         vt_progresss
     ) = get_view_tiling_status(view_res_qs)
+    (
+        centroid_status,
+        centroid_progresss
+    ) = get_view_centroid_cache_status(view_res_qs)
 
     tiling_status_mapping = {
         'out_of_sync': DatasetView.DatasetViewStatus.PENDING,
@@ -722,6 +777,10 @@ def view_res_post_save(sender, instance: DatasetViewResource,
     if view.vector_tile_sync_status not in ['error', 'synced']:
         view.dataset.sync_status = Dataset.SyncStatus.OUT_OF_SYNC
     view.vector_tiles_progress = vt_progresss
+    view.centroid_sync_progress = centroid_progresss
+    view.centroid_sync_status = centroid_status
 
     view.save(update_fields=['status', 'vector_tile_sync_status',
-                             'vector_tiles_progress'])
+                             'vector_tiles_progress',
+                             'centroid_sync_progress',
+                             'centroid_sync_status'])

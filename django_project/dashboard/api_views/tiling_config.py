@@ -297,7 +297,7 @@ class ApplyTilingConfigAPIView(AzureAuthRequiredMixin, APIView):
         dataset_view.set_out_of_sync(
             tiling_config=True,
             vector_tile=True,
-            product=False
+            centroid=False
         )
 
     def post(self, request, *args, **kwargs):

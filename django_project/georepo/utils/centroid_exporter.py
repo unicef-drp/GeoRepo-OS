@@ -3,6 +3,7 @@ import logging
 import shutil
 import json
 import subprocess
+import traceback
 from django.db.models.expressions import RawSQL
 from django.conf import settings
 from django.contrib.gis.geos import WKTWriter, GEOSGeometry
@@ -45,6 +46,35 @@ def convert_geojson_to_pbf(file_path, output_dir, exported_name):
     )
 
 
+def clean_resource_centroid_cache_dir(resource_uuid):
+    if settings.USE_AZURE:
+        dir_path = os.path.join(
+            'media',
+            'centroid',
+            str(resource_uuid)
+        )
+        client = DirectoryClient(settings.AZURE_STORAGE,
+                                 settings.AZURE_STORAGE_CONTAINER)
+        client.rmdir(dir_path)
+    else:
+        dir_path = os.path.join(
+            settings.MEDIA_ROOT,
+            'centroid',
+            str(resource_uuid)
+        )
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
+
+
+def clean_exporter_temp_output_dir(resource_uuid):
+    tmp_output_dir = os.path.join(
+        CentroidExporter.get_base_output_dir(),
+        f'temp_centroid_{str(resource_uuid)}'
+    )
+    if os.path.exists(tmp_output_dir):
+        shutil.rmtree(tmp_output_dir)
+
+
 class CentroidExporter(object):
     output_suffix = '.geojson'
 
@@ -83,9 +113,15 @@ class CentroidExporter(object):
             'level',
             flat=True
         ).distinct()
-        self.total_progress = len(self.levels)
+        self.total_progress = len(self.levels) + 1
         # remove tmp_output_dir
         self.do_remove_temp_dir()
+        self.resource.centroid_sync_progress = 0
+        self.resource.centroid_sync_status = (
+            DatasetViewResource.SyncStatus.SYNCING
+        )
+        self.resource.save(update_fields=['centroid_sync_progress',
+                                          'centroid_sync_status'])
 
     def get_serializer(self):
         return ExportCentroidGeojsonSerializer
@@ -117,7 +153,8 @@ class CentroidExporter(object):
         entities = entities.order_by('label')
         return entities.values(*values)
 
-    def get_base_output_dir(self) -> str:
+    @staticmethod
+    def get_base_output_dir() -> str:
         return settings.EXPORT_FOLDER_OUTPUT
 
     def get_tmp_output_dir(self, auto_create=True) -> str:
@@ -134,24 +171,42 @@ class CentroidExporter(object):
         if os.path.exists(tmp_output_dir):
             shutil.rmtree(tmp_output_dir)
 
+    def update_progress(self, inc_progress = 1):
+        self.progress_count += inc_progress
+        self.resource.centroid_sync_progress = (
+            (self.progress_count * 100) / self.total_progress
+        ) if self.total_progress > 0 else 0
+        self.resource.save(update_fields=['centroid_sync_progress'])
+
     def run(self):
         logger.info(
             f'Exporting centroid from View {self.dataset_view.name} '
         )
-        tmp_output_dir = self.get_tmp_output_dir()
-        # export for each admin level
-        for level in self.levels:
+        try:
+            tmp_output_dir = self.get_tmp_output_dir()
+            # export for each admin level
+            for level in self.levels:
+                logger.info(
+                    f'Exporting centroid of level {level} from '
+                    f'View {self.dataset_view.name} - {self.privacy_level}'
+                )
+                self.do_export(level, tmp_output_dir)
+                self.update_progress()
+            self.do_export_post_process()
             logger.info(
-                f'Exporting centroid of level {level} from '
-                f'View {self.dataset_view.name} - {self.privacy_level}'
+                f'Exporting centroid is finished '
+                f'from View {self.dataset_view.name} - {self.privacy_level}'
             )
-            self.do_export(level, tmp_output_dir)
-        self.do_export_post_process()
-        logger.info(
-            f'Exporting centroid is finished '
-            f'from View {self.dataset_view.name} - {self.privacy_level}'
-        )
-        logger.info(self.generated_files)
+            logger.info(self.generated_files)
+        except Exception as ex:
+            logger.error('Failed Process Centroid Exporter!')
+            logger.error(ex)
+            logger.error(traceback.format_exc())
+            self.resource.centroid_sync_status = (
+                DatasetViewResource.SyncStatus.ERROR
+            )
+            self.resource.save(update_fields=['centroid_sync_status'])
+            self.do_remove_temp_dir()
 
     def do_export(self, level: int,
                   tmp_output_dir: str):
@@ -236,29 +291,19 @@ class CentroidExporter(object):
                     'level': level
                 })
         self.resource.centroid_files = centroid_files
-        self.resource.save(update_fields=['centroid_files'])
+        self.resource.centroid_sync_status = (
+            DatasetViewResource.SyncStatus.SYNCED
+        )
+        self.resource.centroid_sync_progress = 100
+        self.resource.save(update_fields=['centroid_files',
+                                          'centroid_sync_status',
+                                          'centroid_sync_progress'])
         self.do_remove_temp_dir()
 
     def clear_existing_resource_dir(self):
         self.resource.centroid_files = []
         self.resource.save(update_fields=['centroid_files'])
-        if settings.USE_AZURE:
-            dir_path = os.path.join(
-                'media',
-                'centroid',
-                str(self.resource.uuid)
-            )
-            client = DirectoryClient(settings.AZURE_STORAGE,
-                                     settings.AZURE_STORAGE_CONTAINER)
-            client.rmdir(dir_path)
-        else:
-            dir_path = os.path.join(
-                settings.MEDIA_ROOT,
-                'centroid',
-                str(self.resource.uuid)
-            )
-            if os.path.exists(dir_path):
-                shutil.rmtree(dir_path)
+        clean_resource_centroid_cache_dir(self.resource.uuid)
 
     def save_output_file(self, tmp_file_path, exported_name):
         # save output file to non-temp directory

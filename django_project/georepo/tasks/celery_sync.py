@@ -108,6 +108,23 @@ def handle_task_failure(task: BackgroundTask):
             resource.save()
         except DatasetViewResource.DoesNotExist as ex:
             logger.error(ex)
+    elif task_name == 'patch_centroid_files_for_view':
+        # set status of view resource to failed
+        if len(task_param) == 0:
+            raise ValueError(
+                'Invalid parameter patch_centroid_files_for_view'
+            )
+        try:
+            view_id = task_param[0]
+            dataset_view = DatasetView.objects.filter(
+                id=view_id).first()
+            if dataset_view is None:
+                return
+            dataset_view.set_out_of_sync(tiling_config=False,
+                                         vector_tile=False,
+                                         centroid=True)
+        except DatasetViewResource.DoesNotExist as ex:
+            logger.error(ex)
     elif task_name == 'view_vector_tiles_task':
         if len(task_param) == 0:
             raise ValueError(
@@ -174,6 +191,9 @@ def handle_task_failure(task: BackgroundTask):
 
 
 def handle_task_interrupted(task: BackgroundTask):
+    from georepo.tasks.dataset_view import (
+        do_patch_centroid_files_for_view
+    )
     from dashboard.models import (
         EntityUploadStatus, STARTED, REVIEWING,
         LayerUploadSession, PROCESSING_APPROVAL,
@@ -234,6 +254,27 @@ def handle_task_interrupted(task: BackgroundTask):
             )
             resource.vector_tiles_task_id = task_celery.id
             resource.save(update_fields=['vector_tiles_task_id'])
+        except DatasetViewResource.DoesNotExist as ex:
+            logger.error(ex)
+    elif task_name == 'patch_centroid_files_for_view':
+        # when centroid exporter is interrupted, we can safely resume the task
+        if len(task_param) == 0:
+            raise ValueError(
+                'Invalid parameter patch_centroid_files_for_view'
+            )
+        try:
+            view_id = task_param[0]
+            dataset_view = DatasetView.objects.filter(
+                id=view_id).first()
+            if dataset_view is None:
+                return
+            task_celery = (
+                do_patch_centroid_files_for_view.delay(
+                    (
+                        view_id
+                    )
+                )
+            )
         except DatasetViewResource.DoesNotExist as ex:
             logger.error(ex)
     elif task_name == 'view_vector_tiles_task':

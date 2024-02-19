@@ -20,6 +20,7 @@ export interface ViewSyncFilterInterface {
     is_tiling_config_match: string[],
     simplification_status: string[],
     vector_tile_sync_status: string[],
+    centroid_sync_status: string[],
     search_text: string
 }
 
@@ -28,6 +29,7 @@ export function getDefaultFilter():ViewSyncFilterInterface {
         is_tiling_config_match: [],
         simplification_status: [],
         vector_tile_sync_status: [],
+        centroid_sync_status: [],
         search_text: ''
     }
 }

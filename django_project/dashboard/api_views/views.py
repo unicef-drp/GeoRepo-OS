@@ -482,7 +482,7 @@ class UpdateView(AzureAuthRequiredMixin,
             dataset_view = dataset_view.set_out_of_sync(
                 tiling_config=False,
                 vector_tile=True,
-                product=True,
+                centroid=True,
                 save=False
             )
         dataset_view.save()
@@ -530,7 +530,7 @@ class CreateNewView(AzureAuthRequiredMixin,
         dataset_view = dataset_view.set_out_of_sync(
             tiling_config=False,
             vector_tile=True,
-            product=True,
+            centroid=True,
             save=False
         )
 
