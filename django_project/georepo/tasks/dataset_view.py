@@ -346,6 +346,12 @@ def do_clean_centroid_files_all_resources():
     )
     logger.info(f'Cleaning centroid files from {resources.count()} resources')
     for resource in resources.iterator(chunk_size=1):
+        resource.centroid_files = []
+        resource.centroid_sync_status = (
+            DatasetViewResource.SyncStatus.OUT_OF_SYNC
+        )
+        resource.centroid_sync_progress = 0
+        resource.save()
         exporter = CentroidExporter(resource)
         exporter.clear_existing_resource_dir()
     logger.info(
