@@ -316,7 +316,12 @@ class CentroidExporter(object):
             )
             client = DirectoryClient(settings.AZURE_STORAGE,
                                      settings.AZURE_STORAGE_CONTAINER)
-            client.upload_gzip_file(tmp_file_path, file_path)
+            max_age = settings.EXPORT_DATA_EXPIRY_IN_HOURS * 3600
+            client.upload_gzip_file(
+                tmp_file_path,
+                file_path,
+                cache_control=f'private, max-age={max_age}'
+            )
         else:
             dir_path = os.path.join(
                 settings.MEDIA_ROOT,
