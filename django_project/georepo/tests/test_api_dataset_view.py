@@ -1,6 +1,7 @@
 import uuid
 import json
 import mock
+import datetime
 from dateutil.parser import isoparse
 from typing import List
 from django.test import TestCase
@@ -467,8 +468,6 @@ class TestApiDatasetView(TestCase):
         # check disabled module
         self.check_disabled_module(dataset, view, request, kwargs=kwargs)
 
-    @mock.patch('django.core.cache.cache.get',
-                mock.Mock(side_effect=mocked_cache_get))
     def test_dataset_view_centroid(self):
         dataset = DatasetF.create()
         dataset_view = DatasetViewF.create(
@@ -548,4 +547,28 @@ class TestApiDatasetView(TestCase):
         centroid_file = response.data[0]
         self.assertIn('level', centroid_file)
         self.assertIn('url', centroid_file)
-        self.assertIn('expired_on', centroid_file)
+
+
+    @mock.patch('django.utils.timezone.now')
+    def test_get_url_cache_expires_in(self, mocked_time):
+        current_dt = datetime.datetime(2023, 8, 14, 8, 0, 0)
+        mocked_time.return_value = current_dt
+        url_expires_on = current_dt + datetime.timedelta(minutes=35)
+        expires_in = DatasetViewCentroid.get_url_cache_expires_in(
+            url_expires_on)
+        mocked_time.assert_called_once()
+        self.assertEqual(expires_in, 300)
+        mocked_time.reset_mock()
+        mocked_time.return_value = current_dt
+        url_expires_on = current_dt + datetime.timedelta(minutes=20)
+        expires_in = DatasetViewCentroid.get_url_cache_expires_in(
+            url_expires_on)
+        mocked_time.assert_called_once()
+        self.assertEqual(expires_in, 1200)
+        mocked_time.reset_mock()
+        mocked_time.return_value = current_dt
+        url_expires_on = current_dt - datetime.timedelta(minutes=20)
+        expires_in = DatasetViewCentroid.get_url_cache_expires_in(
+            url_expires_on)
+        mocked_time.assert_called_once()
+        self.assertEqual(expires_in, 0)

@@ -1,7 +1,7 @@
 import os
 import mock
 from django.conf import settings
-from georepo.tests.common import BaseDatasetViewTest
+from georepo.tests.common import BaseDatasetViewTest, mocked_cache_delete
 from georepo.models.dataset_view import DatasetViewResource
 from georepo.utils.centroid_exporter import CentroidExporter
 from georepo.utils.azure_blob_storage import StorageContainerClient
@@ -27,9 +27,11 @@ class TestCentroidExporter(BaseDatasetViewTest):
         super().setUp()
 
     @mock.patch('georepo.utils.centroid_exporter.'
-                'convert_geojson_to_pbf')
-    def test_resource_centroid(self, mocked_func):
+                'convert_geojson_to_gz')
+    @mock.patch('django.core.cache.cache.delete')
+    def test_resource_centroid(self, cache_delete_func, mocked_func):
         mocked_func.side_effect = mocked_convert_geojson
+        cache_delete_func.side_effect = mocked_cache_delete
         resource = DatasetViewResource.objects.filter(
             dataset_view=self.dataset_view,
             privacy_level=4
@@ -43,3 +45,5 @@ class TestCentroidExporter(BaseDatasetViewTest):
         self.assertFalse(os.path.exists(exporter.get_tmp_output_dir(False)))
         for exporter_file in resource.centroid_files:
             self.assertTrue(check_file_exists(exporter_file['path']))
+        cache_delete_func.assert_called_once()
+        self.assertEqual(mocked_func.call_count, len(resource.centroid_files))

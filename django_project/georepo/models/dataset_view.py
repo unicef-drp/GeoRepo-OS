@@ -606,6 +606,10 @@ class DatasetViewResource(models.Model):
     def vector_tiles_exist(self):
         return self.vector_tiles_size > 0
 
+    @property
+    def centroid_cache_key(self):
+        return f'centroid-cache-{str(self.uuid)}'
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -634,6 +638,9 @@ class DatasetViewResource(models.Model):
                     )
         except AttributeError:
             pass
+
+    def clear_centroid_cache(self):
+        cache.delete(self.centroid_cache_key)
 
     def set_out_of_sync(
         self,
