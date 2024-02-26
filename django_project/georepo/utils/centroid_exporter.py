@@ -304,6 +304,7 @@ class CentroidExporter(object):
         self.resource.centroid_files = []
         self.resource.save(update_fields=['centroid_files'])
         clean_resource_centroid_cache_dir(self.resource.uuid)
+        self.resource.clear_centroid_cache()
 
     def save_output_file(self, tmp_file_path, exported_name):
         # save output file to non-temp directory

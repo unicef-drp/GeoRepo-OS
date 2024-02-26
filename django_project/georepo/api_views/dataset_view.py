@@ -1,6 +1,7 @@
 import math
 import datetime
 from rest_framework.views import APIView
+from django.core.cache import cache
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from django.conf import settings
@@ -447,12 +448,6 @@ class DatasetViewDetail(ApiCache, DatasetViewFetchResource):
                                     ),
                                     type=openapi.TYPE_STRING
                                 ),
-                                'expired_on': openapi.Schema(
-                                    title=(
-                                        'Download URL expired on'
-                                    ),
-                                    type=openapi.TYPE_STRING
-                                ),
                             }
                         )
                     )
@@ -469,11 +464,19 @@ class DatasetViewCentroid(ApiCache, DatasetViewFetchResource):
     - c: concept_uuid
     - n: name
     - u: ucode
+    - b: bbox
+    - pc: parent concept uuid
+    - pu: parent ucode
 
+    Parent concept uuid and ucode will be a list, with item at index 0 will be
+    the parent at level 0, item at index 1 will be parent at level 1,
+    and so on.
     Requires View UUID, can be retrieved from API search-view-list.
     """
     permission_classes = [DatasetViewDetailAccessPermission]
     cache_model = DatasetView
+    # window between url expiration and cache expiration
+    URL_CACHE_EXPIRATION_WINDOW_IN_SECONDS = 30 * 60
 
     def get_download_url(self, file_path):
         download_link = None
@@ -505,19 +508,61 @@ class DatasetViewCentroid(ApiCache, DatasetViewFetchResource):
             expired_on = None
         return download_link, expired_on
 
+    def get_url_from_cache(self, resource: DatasetViewResource):
+        cache_key = resource.centroid_cache_key
+        _cached_data = cache.get(cache_key)
+        if _cached_data:
+            return _cached_data
+        return None
+
+    @staticmethod
+    def get_url_cache_expires_in(url_expires_on):
+        current_dt = timezone.now()
+        expires_in = 0
+        if (
+            url_expires_on + datetime.timedelta(minutes=30) >
+            current_dt
+        ):
+            last_expired_on = (
+                url_expires_on - datetime.timedelta(minutes=30)
+            )
+            expires_in = (
+                last_expired_on - current_dt).total_seconds()
+        elif url_expires_on > current_dt:
+            expires_in = (
+                last_expired_on - current_dt).total_seconds()
+        return expires_in
+
     def get_response_data(self, request, *args, **kwargs):
         resource = self.get_view_resource_obj()
         response_data = []
-        if resource and resource.centroid_files:
+        if resource is None:
+            return response_data, None
+        if not resource.centroid_files:
+            return response_data, None
+        cached_data = self.get_url_from_cache(resource)
+        if cached_data:
+            response_data = cached_data
+        else:
+            last_expired_on = None
             for centroid_file in resource.centroid_files:
                 download_url, expired_on = self.get_download_url(
                     centroid_file['path'])
                 if download_url:
+                    last_expired_on = expired_on
                     response_data.append({
                         'level': centroid_file['level'],
-                        'url': download_url,
-                        'expired_on': expired_on
+                        'url': download_url
                     })
+            if len(response_data) > 0 and last_expired_on:
+                # store in the cache
+                expires_in = self.get_url_cache_expires_in(
+                    last_expired_on
+                )
+                if expires_in > 0:
+                    cache.set(resource.centroid_cache_key,
+                              response_data,
+                              expires_in)
         return response_data, None
 
 
