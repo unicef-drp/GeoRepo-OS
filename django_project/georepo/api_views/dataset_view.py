@@ -509,8 +509,7 @@ class DatasetViewCentroid(ApiCache, DatasetViewFetchResource):
         return download_link, expired_on
 
     def get_url_from_cache(self, resource: DatasetViewResource):
-        cache_key = resource.centroid_cache_key
-        _cached_data = cache.get(cache_key)
+        _cached_data = cache.get(resource.centroid_cache_key)
         if _cached_data:
             return _cached_data
         return None
@@ -520,8 +519,8 @@ class DatasetViewCentroid(ApiCache, DatasetViewFetchResource):
         current_dt = timezone.now()
         expires_in = 0
         if (
-            url_expires_on + datetime.timedelta(minutes=30) >
-            current_dt
+            url_expires_on >
+            current_dt + datetime.timedelta(minutes=30)
         ):
             last_expired_on = (
                 url_expires_on - datetime.timedelta(minutes=30)
@@ -530,7 +529,7 @@ class DatasetViewCentroid(ApiCache, DatasetViewFetchResource):
                 last_expired_on - current_dt).total_seconds()
         elif url_expires_on > current_dt:
             expires_in = (
-                last_expired_on - current_dt).total_seconds()
+                url_expires_on - current_dt).total_seconds()
         return expires_in
 
     def get_response_data(self, request, *args, **kwargs):

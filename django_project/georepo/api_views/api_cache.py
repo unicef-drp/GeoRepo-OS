@@ -34,10 +34,11 @@ class ApiCache(APIView, LimitOffsetPagination):
         response_data, response_headers = self.get_response_data(
             request, *args, **kwargs
         )
-        self.set_cache({
-            'data': response_data,
-            'response_headers': response_headers
-        })
+        # disabled cache temporary
+        # self.set_cache({
+        #     'data': response_data,
+        #     'response_headers': response_headers
+        # })
         return Response(
             response_data,
             headers=response_headers

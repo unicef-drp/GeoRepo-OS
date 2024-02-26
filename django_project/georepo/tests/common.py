@@ -35,6 +35,14 @@ def mocked_cache_get(self, *args, **kwargs):
     return OrderedDict()
 
 
+def mocked_cache_delete(self, *args, **kwargs):
+    return True
+
+
+def mocked_cache_set(self, *args, **kwargs):
+    pass
+
+
 class EntityResponseChecker(object):
 
     def check_response(self, item: dict, geo: GeographicalEntity,

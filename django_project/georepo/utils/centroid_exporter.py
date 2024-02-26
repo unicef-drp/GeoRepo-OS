@@ -29,7 +29,7 @@ def read_centroid_as_geojson(geom_data):
     return GEOSGeometry(geom_wkt).geojson.replace(' ', '')
 
 
-def convert_geojson_to_pbf(file_path, output_dir, exported_name):
+def convert_geojson_to_gz(file_path, output_dir, exported_name):
     command_list = (
         [
             'gzip',
@@ -222,7 +222,7 @@ class CentroidExporter(object):
             tmp_output_dir
         )
         # convert geojson to pbf
-        exported_file_path = convert_geojson_to_pbf(
+        exported_file_path = convert_geojson_to_gz(
             tmp_file_path, tmp_output_dir, exported_name)
         if exported_file_path and os.path.exists(exported_file_path):
             file_stats = os.stat(exported_file_path)
