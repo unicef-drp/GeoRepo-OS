@@ -1,6 +1,5 @@
 import time
 from typing import Tuple
-from core.celery import app
 from dashboard.models.layer_upload_session import (
     LayerUploadSession, PRE_PROCESSING, PENDING, CANCELED
 )
@@ -20,6 +19,7 @@ from dashboard.tools.admin_level_names import (
     fetch_dataset_admin_level_names_prev_revision
 )
 from georepo.utils.layers import read_layer_files_entity_temp
+from georepo.utils.celery_helper import cancel_task
 
 
 def is_valid_upload_session(
@@ -145,16 +145,15 @@ def reset_preprocessing(
     start = time.time()
     if upload_session.task_id:
         # if there is task_id then stop it first
-        app.control.revoke(
-            upload_session.task_id,
-            terminate=True,
-            signal='SIGKILL'
-        )
+        cancel_task(upload_session.task_id, force=True)
     uploads = upload_session.entityuploadstatus_set.all()
     for upload in uploads:
         # delete revised entity level 0
-        if upload.revised_geographical_entity:
-            upload.revised_geographical_entity.delete()
+        revised_geographical_entity = upload.revised_geographical_entity
+        upload.revised_geographical_entity = None
+        upload.save(update_fields=['revised_geographical_entity'])
+        if revised_geographical_entity:
+            revised_geographical_entity.delete_by_ancestor()
     uploads.delete()
     # delete temp entities
     existing_entities = EntityTemp.objects.filter(

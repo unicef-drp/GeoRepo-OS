@@ -6,7 +6,8 @@ from georepo.models.entity import (
     GeographicalEntity,
     EntityId,
     EntityName,
-    EntitySimplified
+    EntitySimplified,
+    EntityEditHistory
 )
 from dashboard.models.boundary_comparison import (
     BoundaryComparison
@@ -61,6 +62,11 @@ def remove_dataset_resources(dataset: Dataset):
         Q(comparison_boundary__dataset=dataset)
     )
     reviews._raw_delete(reviews.db)
+    # delete entity edit history
+    history = EntityEditHistory.objects.filter(
+        geographical_entity__dataset=dataset
+    )
+    history._raw_delete(history.db)
     entities = GeographicalEntity.objects.filter(
         dataset=dataset
     )

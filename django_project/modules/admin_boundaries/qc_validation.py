@@ -6,8 +6,6 @@ import logging
 import traceback
 import time
 
-from core.celery import app
-
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from django.core.files.base import ContentFile
 from django.db import IntegrityError
@@ -46,6 +44,7 @@ from modules.admin_boundaries.geometry_checker import (
     self_intersects_check_with_flag
 )
 from georepo.utils.mapshaper import simplify_for_dataset
+from georepo.utils.celery_helper import cancel_task
 
 logger = logging.getLogger(__name__)
 
@@ -367,6 +366,49 @@ def get_temp_entity_count(upload_session: LayerUploadSession, level: int,
     ).count()
 
 
+def check_mandatory_fields_in_entity_temp(entity_temp: EntityTemp,
+                                          layer_error,
+                                          level_error_report,
+                                          validation_summaries):
+    error_found = False
+    default_feature_label = f'feature-{entity_temp.feature_index}'
+    # validate entity_name
+    if not entity_temp.entity_name:
+        error_found = True
+        layer_error[ErrorType.NAME_FIELDS_ERROR.value] = (
+            ERROR_CHECK
+        )
+        level_error_report[
+            ErrorType.NAME_FIELDS_ERROR.value] += 1
+    # validate entity_id
+    if not entity_temp.entity_id:
+        error_found = True
+        layer_error[ErrorType.ID_FIELDS_ERROR.value] = (
+            ERROR_CHECK
+        )
+        level_error_report[
+            ErrorType.ID_FIELDS_ERROR.value] += 1
+    # validate entity_id for level > 1
+    # level = 1 will have parent from parent matching
+    if entity_temp.level > 1 and not entity_temp.parent_entity_id:
+        layer_error[
+            ErrorType.PARENT_ID_FIELD_ERROR.value] = (
+                ERROR_CHECK
+        )
+        level_error_report[
+            ErrorType.PARENT_ID_FIELD_ERROR.value] += 1
+    if error_found:
+        label = entity_temp.entity_name
+        layer_error[ENTITY_NAME] = (
+            label if label else default_feature_label
+        )
+        internal_code = entity_temp.entity_id
+        layer_error[ENTITY_CODE] = (
+            internal_code if internal_code else default_feature_label
+        )
+        validation_summaries.append(layer_error)
+
+
 def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
     """
     Validate all layer_files from upload session against
@@ -588,6 +630,13 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                     # by current logic, because reading the feature
                     # is using parent code hierarchy
                     is_feature_included = parent is not None
+                    # when feature_parent_code is empty, then run validation
+                    # for mandatory fields only
+                    if not feature_parent_code:
+                        check_mandatory_fields_in_entity_temp(
+                            temp_entity, layer_error, level_error_report,
+                            validation_summaries
+                        )
                 if not is_feature_included:
                     continue
 
@@ -622,7 +671,7 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                     # if default name, then validate the value
                     label = name_field_value
                     layer_error[ENTITY_NAME] = (
-                        label
+                        label if label else f'feature-{feature_idx}'
                     )
                     is_valid_default_name = check_value_as_string_valid(
                         name_field_value)
@@ -660,7 +709,10 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
                 if id_field['default']:
                     # if default code, then validate the value
                     internal_code = id_field_value
-                    layer_error[ENTITY_CODE] = internal_code
+                    layer_error[ENTITY_CODE] = (
+                        internal_code if internal_code else
+                        f'feature-{feature_idx}'
+                    )
                     is_valid_default_code = check_value_as_string_valid(
                         id_field_value
                     )
@@ -1175,14 +1227,9 @@ def reset_qc_validation(upload_session: LayerUploadSession, **kwargs):
     )
     for upload in uploads:
         if upload.task_id:
-            app.control.revoke(
-                upload.task_id,
-                terminate=True,
-                signal='SIGKILL'
-            )
+            cancel_task(upload.task_id, force=True)
         # delete revised entity level 0
-        if upload.revised_geographical_entity:
-            upload.revised_geographical_entity.delete()
+        revised_geographical_entity = upload.revised_geographical_entity
         upload.status = ''
         upload.logs = ''
         upload.summaries = None
@@ -1190,6 +1237,8 @@ def reset_qc_validation(upload_session: LayerUploadSession, **kwargs):
         upload.task_id = ''
         upload.revised_geographical_entity = None
         upload.save()
+        if revised_geographical_entity:
+            revised_geographical_entity.delete_by_ancestor()
 
     upload_session.current_process = None
     upload_session.current_process_uuid = None

@@ -7,7 +7,10 @@ from django.test import TestCase, override_settings, TransactionTestCase
 from django.db import transaction, IntegrityError
 
 from django.utils import timezone
-from georepo.models import GeographicalEntity, IdType, EntityType
+from georepo.models import (
+    GeographicalEntity, IdType, EntityType,
+    EntityName, EntityId
+)
 from georepo.tests.model_factories import (
     DatasetF, LanguageF, GeographicalEntityF,
     UserF, ModuleF, EntityTypeF
@@ -242,8 +245,7 @@ class TestValidation(TestCase):
             layer_file=layer_file
         ).exists())
 
-    @override_settings(MEDIA_ROOT='/home/web/django_project/georepo')
-    def test_validate_layer_level_0(self):
+    def do_validate_layer_from_level_0(self):
         dataset = DatasetF.create(
             module=self.module
         )
@@ -318,7 +320,17 @@ class TestValidation(TestCase):
         )
         read_layer_files_entity_temp(upload_session)
         status = validate_layer_file(entity_upload)
+        layer_files = [layer_file, layer_file_1]
+        return status, layer_files, upload_session, entity_upload
+
+    @override_settings(MEDIA_ROOT='/home/web/django_project/georepo')
+    def test_validate_layer_level_0(self):
+        status, layer_files, _, _ = (
+            self.do_validate_layer_from_level_0()
+        )
         self.assertTrue(status)
+        layer_file = layer_files[0]
+        layer_file_1 = layer_files[1]
         self.assertTrue(
             GeographicalEntity.objects.filter(
                 internal_code='PAK',
@@ -334,6 +346,12 @@ class TestValidation(TestCase):
                 layer_file_id=layer_file_1.id,
                 admin_level_name='ProvinceF'
             ).exists()
+        )
+        self.assertEqual(
+            EntityName.objects.count(), 2
+        )
+        self.assertEqual(
+            EntityId.objects.count(), 2
         )
 
     def test_multiple_entity_types_unique_constraint(self):
@@ -903,6 +921,42 @@ class TestValidation(TestCase):
             entity_upload=entity_upload
         )
         self.assertTrue(status)
+
+    @override_settings(MEDIA_ROOT='/home/web/django_project/georepo')
+    def test_clear_pending_entities(self):
+        status, layer_files, _, entity_upload = (
+            self.do_validate_layer_from_level_0()
+        )
+        self.assertTrue(status)
+        self.assertTrue(entity_upload.revised_geographical_entity)
+        revised_entity = entity_upload.revised_geographical_entity
+        entity_upload.revised_geographical_entity = None
+        entity_upload.save(update_fields=['revised_geographical_entity'])
+        revised_entity.delete_by_ancestor()
+        layer_file = layer_files[0]
+        layer_file_1 = layer_files[1]
+        self.assertFalse(
+            GeographicalEntity.objects.filter(
+                internal_code='PAK',
+                is_approved=None,
+                layer_file_id=layer_file.id,
+                admin_level_name='CountryF'
+            ).exists()
+        )
+        self.assertFalse(
+            GeographicalEntity.objects.filter(
+                parent__internal_code='PAK',
+                is_approved=None,
+                layer_file_id=layer_file_1.id,
+                admin_level_name='ProvinceF'
+            ).exists()
+        )
+        self.assertEqual(
+            EntityName.objects.count(), 0
+        )
+        self.assertEqual(
+            EntityId.objects.count(), 0
+        )
 
 
 class FindEntityUploadTestCase(TransactionTestCase):
