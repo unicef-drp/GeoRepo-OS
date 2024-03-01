@@ -437,6 +437,11 @@ def reset_upload_session(session_id, preprocessing, qc_validation, cancel):
         f'qc_validation {qc_validation} cancel {cancel}'
     )
     upload_session = LayerUploadSession.objects.get(id=session_id)
+    # cancel all running task in entity upload status
+    uploads = upload_session.entityuploadstatus_set.all()
+    for upload in uploads:
+        if upload.task_id:
+            cancel_task(upload.task_id, force=True)
     if qc_validation:
         reset_func = module_function(
             upload_session.dataset.module.code_name,
@@ -451,12 +456,6 @@ def reset_upload_session(session_id, preprocessing, qc_validation, cancel):
             'reset_preprocessing'
         )
         reset_func(upload_session)
-    if cancel:
-        # cancel all running task in entity upload status
-        uploads = upload_session.entityuploadstatus_set.all()
-        for upload in uploads:
-            if upload.task_id:
-                cancel_task(upload.task_id, force=True)
     if cancel and not preprocessing:
         reset_func = module_function(
             upload_session.dataset.module.code_name,
