@@ -96,10 +96,10 @@ def on_task_success(task: BackgroundTask):
         view.save(update_fields=['simplification_current_task'])
 
 
-def cancel_task(task_id: str):
+def cancel_task(task_id: str, force = False):
     try:
         res = AsyncResult(task_id)
-        if not res.ready():
+        if not res.ready() or force:
             # find if there is running task and stop it
             app.control.revoke(
                 task_id,

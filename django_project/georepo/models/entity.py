@@ -2,6 +2,7 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.gis.db import models
+from django.db.models import Q
 from django.db import IntegrityError, transaction
 
 # revision uuid
@@ -278,7 +279,6 @@ class GeographicalEntity(models.Model):
         )
 
     def all_children(self):
-        from django.db.models import Q
         max_level: int = 0
         max_level_entity = GeographicalEntity.objects.all().order_by(
             'level').last()
@@ -292,6 +292,42 @@ class GeographicalEntity(models.Model):
         return GeographicalEntity.objects.filter(
             ancestor_filters,
         )
+
+    def delete_by_ancestor(self):
+        children = GeographicalEntity.objects.filter(
+            ancestor=self,
+            dataset=self.dataset
+        )
+        self._remove_referenced_entities(children)
+        children._raw_delete(children.db)
+        # delete the ancestor
+        current_ancestor = GeographicalEntity.objects.filter(
+            id=self.id
+        )
+        self._remove_referenced_entities(current_ancestor)
+        current_ancestor._raw_delete(current_ancestor.db)
+
+    def _remove_referenced_entities(self, qs):
+        simplified_entities = EntitySimplified.objects.filter(
+            geographical_entity__dataset=self.dataset,
+            geographical_entity__in=qs
+        )
+        simplified_entities._raw_delete(simplified_entities.db)
+        ids = EntityId.objects.filter(
+            geographical_entity__dataset=self.dataset,
+            geographical_entity__in=qs
+        )
+        ids._raw_delete(ids.db)
+        names = EntityName.objects.filter(
+            geographical_entity__dataset=self.dataset,
+            geographical_entity__in=qs
+        )
+        names._raw_delete(names.db)
+        history = EntityEditHistory.objects.filter(
+            geographical_entity__dataset=self.dataset,
+            geographical_entity__in=qs
+        )
+        history._raw_delete(history.db)
 
 
 class EntityName(models.Model):

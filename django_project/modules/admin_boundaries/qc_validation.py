@@ -6,8 +6,6 @@ import logging
 import traceback
 import time
 
-from core.celery import app
-
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from django.core.files.base import ContentFile
 from django.db import IntegrityError
@@ -46,6 +44,7 @@ from modules.admin_boundaries.geometry_checker import (
     self_intersects_check_with_flag
 )
 from georepo.utils.mapshaper import simplify_for_dataset
+from georepo.utils.celery_helper import cancel_task
 
 logger = logging.getLogger(__name__)
 
@@ -1228,14 +1227,9 @@ def reset_qc_validation(upload_session: LayerUploadSession, **kwargs):
     )
     for upload in uploads:
         if upload.task_id:
-            app.control.revoke(
-                upload.task_id,
-                terminate=True,
-                signal='SIGKILL'
-            )
+            cancel_task(upload.task_id, force=True)
         # delete revised entity level 0
-        if upload.revised_geographical_entity:
-            upload.revised_geographical_entity.delete()
+        revised_geographical_entity = upload.revised_geographical_entity
         upload.status = ''
         upload.logs = ''
         upload.summaries = None
@@ -1243,6 +1237,8 @@ def reset_qc_validation(upload_session: LayerUploadSession, **kwargs):
         upload.task_id = ''
         upload.revised_geographical_entity = None
         upload.save()
+        if revised_geographical_entity:
+            revised_geographical_entity.delete_by_ancestor()
 
     upload_session.current_process = None
     upload_session.current_process_uuid = None
