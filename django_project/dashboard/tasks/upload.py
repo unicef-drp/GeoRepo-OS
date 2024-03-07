@@ -1,6 +1,8 @@
 from celery import shared_task
 import logging
 import time
+import uuid
+import traceback
 from core.celery import app
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -20,6 +22,34 @@ from georepo.utils.celery_helper import cancel_task
 
 UserModel = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+def create_log_object_for_session(upload_session):
+    result = None
+    try:
+        result, _ = EntityUploadStatusLog.objects.get_or_create(
+            layer_upload_session=upload_session,
+            entity_upload_status__isnull=True
+        )
+    except Exception as ex:
+        logger.error(ex)
+        logger.error(traceback.format_exc())
+    return result
+
+
+def create_log_object_for_upload(upload, parent_log):
+    result = None
+    if parent_log is None:
+        return result
+    try:
+        result, _ = EntityUploadStatusLog.objects.get_or_create(
+            entity_upload_status=upload,
+            parent_log=parent_log
+        )
+    except Exception as ex:
+        logger.error(ex)
+        logger.error(traceback.format_exc())
+    return result
 
 
 def validate_selected_country(upload_session, entities, **kwargs):
@@ -96,6 +126,44 @@ def validate_selected_country_for_review(dataset: Dataset, user, uploads):
     return True, ''
 
 
+def get_entities_data(entities):
+    results = []
+    for entity in entities:
+        is_default = False
+        if 'default' in entity:
+            is_default = entity['default']
+        if is_default and 'upload_id' not in entity:
+            continue
+        if is_default:
+            upload_id = entity['upload_id']
+            upload = EntityUploadStatus.objects.filter(
+                id=upload_id
+            ).first()
+            if not upload:
+                continue
+            ori_entity = upload.original_geographical_entity
+            layer0_id = (
+                ori_entity.internal_code if ori_entity
+                else upload.revised_entity_id
+            )
+            country = (
+                ori_entity.label if ori_entity else upload.revised_entity_name
+            )
+            results.append({
+                'id': str(ori_entity.id) if ori_entity else str(uuid.uuid4()),
+                'country': country,
+                'layer0_id': layer0_id,
+                'country_entity_id': ori_entity.id if ori_entity else None,
+                'max_level': upload.max_level_in_layer,
+                'upload_id': upload_id,
+                'admin_level_names': upload.admin_level_names,
+                'default': True
+            })
+        else:
+            results.append(entity)
+    return results
+
+
 @shared_task(name="process_country_selection")
 def process_country_selection(session_action_id):
     """Run process country selection."""
@@ -105,11 +173,8 @@ def process_country_selection(session_action_id):
     action_data.on_started()
     start = time.time()
     upload_session = action_data.session
-    entities = action_data.data['entities']
-    upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
-        layer_upload_session=upload_session,
-        entity_upload_status__isnull=True
-    )
+    entities = get_entities_data(action_data.data['entities'])
+    upload_log = create_log_object_for_session(upload_session)
     is_selected_valid, error = validate_selected_country(
         upload_session,
         entities,
@@ -117,7 +182,8 @@ def process_country_selection(session_action_id):
     )
     if not is_selected_valid:
         end = time.time()
-        upload_log.add_log('process_country_selection', end - start)
+        if upload_log:
+            upload_log.add_log('process_country_selection', end - start)
         action_data.on_finished(True, {
             'is_valid': False,
             'error': error
@@ -175,15 +241,13 @@ def process_country_selection(session_action_id):
                 terminate=True,
                 signal='SIGKILL'
             )
-        upload_log_entity, _ = EntityUploadStatusLog.objects.get_or_create(
-            entity_upload_status=entity_upload_status,
-            parent_log=upload_log
-        )
+        upload_log_entity = create_log_object_for_upload(
+            entity_upload_status, upload_log)
         # trigger validation task
         task = validate_ready_uploads.apply_async(
             (
                 entity_upload_status.id,
-                upload_log_entity.id
+                upload_log_entity.id if upload_log_entity else None
             ),
             queue='validation'
         )
@@ -218,7 +282,8 @@ def process_country_selection(session_action_id):
             revised.delete()
 
     end = time.time()
-    upload_log.add_log('process_country_selection', end - start)
+    if upload_log:
+        upload_log.add_log('process_country_selection', end - start)
     action_data.on_finished(True, {
         'is_valid': True,
         'error': None
@@ -240,10 +305,7 @@ def process_country_selection_for_review(session_action_id, user_id):
     start = time.time()
     upload_session = action_data.session
     upload_entities = action_data.data['upload_entities']
-    upload_log, _ = EntityUploadStatusLog.objects.get_or_create(
-        layer_upload_session=upload_session,
-        entity_upload_status__isnull=True
-    )
+    upload_log = create_log_object_for_session(upload_session)
     upload_entity_ids = upload_entities.split(',')
     uploads = EntityUploadStatus.objects.filter(
         id__in=upload_entity_ids
@@ -258,8 +320,9 @@ def process_country_selection_for_review(session_action_id, user_id):
         dataset, user, uploads)
     if not is_selected_valid:
         end = time.time()
-        upload_log.add_log('process_country_selection_for_review',
-                           end - start)
+        if upload_log:
+            upload_log.add_log('process_country_selection_for_review',
+                            end - start)
         action_data.on_finished(True, {
             'is_valid': False,
             'error': error
@@ -293,7 +356,9 @@ def process_country_selection_for_review(session_action_id, user_id):
             if revised:
                 revised.delete()
     end = time.time()
-    upload_log.add_log('process_country_selection_for_review', end - start)
+    if upload_log:
+        upload_log.add_log(
+            'process_country_selection_for_review', end - start)
     action_data.on_finished(True, {
         'is_valid': True,
         'error': None
