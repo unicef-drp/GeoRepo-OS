@@ -1188,8 +1188,6 @@ def is_validation_result_importable(
      is_importable: whether the validation result can still be imported
      is_warning: whether the errors are considered as non-blocking error
     """
-    start = time.time()
-
     is_warning = entity_upload.status == WARNING
     is_importable = entity_upload.status in IMPORTABLE_UPLOAD_STATUS_LIST
     if not is_importable and entity_upload.summaries:
@@ -1207,12 +1205,6 @@ def is_validation_result_importable(
                 superadmin_blocking_errors == 0
             ):
                 is_importable = True
-
-    end = time.time()
-    if kwargs.get('log_object'):
-        kwargs['log_object'].add_log(
-            'admin_boundaries.qc_validation.is_validation_result_importable',
-            end - start)
     return is_importable, is_warning
 
 

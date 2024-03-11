@@ -1,6 +1,7 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useState, useRef, useCallback} from "react";
 import clsx from 'clsx';
-import List from "../../components/List";
+import {TABLE_OFFSET_HEIGHT} from "../../components/List";
+import Loading from "../../components/Loading";
 import '../../styles/Step3.scss';
 import axios from "axios";
 import {useNavigate, useSearchParams} from "react-router-dom";
@@ -9,6 +10,9 @@ import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
+import Autocomplete from '@mui/material/Autocomplete';
+import Checkbox from '@mui/material/Checkbox';
+import TextField from '@mui/material/TextField';
 import CloseIcon from '@mui/icons-material/Close';
 import LoadingButton from "@mui/lab/LoadingButton";
 import { DataGrid, GridColDef, GridColumnGroupingModel, GridColumnHeaderParams, GridCellParams, allGridColumnsSelector } from '@mui/x-data-grid';
@@ -29,9 +33,21 @@ import SyncIcon from '@mui/icons-material/Sync';
 import ErrorIcon from '@mui/icons-material/Error';
 import HtmlTooltip from "../../components/HtmlTooltip";
 import StatusLoadingDialog from "../../components/StatusLoadingDialog";
+import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
+import FilterAlt from "@mui/icons-material/FilterAlt";
+import ResizeTableEvent from "../../components/ResizeTableEvent";
+import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+
 
 const URL = '/api/entity-upload-status-list/'
+const METADATA_URL = '/api/entity-upload-status-metadata/'
 const READY_TO_REVIEW_URL = '/api/ready-to-review/'
+const FilterIcon: any = FilterAlt
+const checkBoxOutlinedicon = <CheckBoxOutlineBlankIcon fontSize="small" />;
+const checkBoxCheckedIcon = <CheckBoxIcon fontSize="small" />;
+const MAX_COUNTRIES_IN_FILTER_CHIP = 5
 
 
 const columnRenderHeader = (field: string) => {
@@ -172,6 +188,41 @@ interface StatusSummaryDict {
   [Key: string]: number;
 }
 
+interface Step4FilterInterface {
+  status: string[],
+  search_text: string,
+  countries: string[]
+}
+
+
+const getDefaultFilter = (): Step4FilterInterface => {
+  return {
+    status: [],
+    search_text: '',
+    countries: []
+  }
+}
+
+const USER_COLUMNS = [
+  'id',
+  'started_at',
+  'error_summaries',
+  'error_report',
+  'is_importable',
+  'is_warning',
+  'progress',
+  'country',
+  'status',
+  'error_logs'
+]
+
+const VISIBLE_COLUMNS = [
+  'country',
+  'started at',
+  'status'
+]
+
+
 export default function Step4(props: WizardStepInterface) {
   const [uploadData, setUploadData] = useState<any[]>([])
   const [errorSummaries, setErrorSummaries] = useState<any[]>([])
@@ -195,7 +246,8 @@ export default function Step4(props: WizardStepInterface) {
       display: false,
     },
     'started at': {
-      filter: false
+      filter: false,
+      sort: false
     },
     'error_summaries': {
       filter: false,
@@ -219,7 +271,7 @@ export default function Step4(props: WizardStepInterface) {
     },
     'Country': {
       filter: true,
-      sort: true,
+      sort: false,
       display: true,
       filterOptions: {
         fullWidth: true,
@@ -227,7 +279,7 @@ export default function Step4(props: WizardStepInterface) {
     },
     'status': {
         filter: true,
-        sort: true,
+        sort: false,
         display: true,
         filterOptions: {
           fullWidth: true,
@@ -301,6 +353,18 @@ export default function Step4(props: WizardStepInterface) {
   const [jobSummaryText, setJobSummaryText] = useState('-')
   const [jobSummaryProgress, setJobSummaryProgress] = useState(0)
   const [retriggerLoadingOpen, setRetriggerLoadingOpen] = useState<boolean>(false)
+  const [tableColumns, setTableColumns] = useState<any>([])
+  const [totalCount, setTotalCount] = useState<number>(0)
+  const [pagination, setPagination] = useState<PaginationInterface>(getDefaultPagination())
+  const [currentFilters, setCurrentFilters] = useState<Step4FilterInterface>(getDefaultFilter())
+  const [allIds, setAllIds] = useState<number[]>([])
+  const axiosSource = useRef(null)
+  const newCancelToken = useCallback(() => {
+    axiosSource.current = axios.CancelToken.source();
+    return axiosSource.current.token;
+  }, [])
+  const ref = useRef(null)
+  const [tableHeight, setTableHeight] = useState(0)
 
   const retriggerValidation = (id:number, title: string) => {
     setRetriggerLoadingOpen(true)
@@ -320,9 +384,164 @@ export default function Step4(props: WizardStepInterface) {
     })
   }
 
-  const getStatus = () => {
-    axios.get(url).then(
+  const getExistingFilterValue = (col_name: string):string[] =>  {
+    let values:string[] = []
+    switch (col_name) {
+        case 'country':
+            values = currentFilters.countries
+            break;
+        case 'status':
+          values = currentFilters.status
+          break;
+        default:
+          break;
+    }
+    return values
+  }
+
+  const fetchMetadata = () => {
+    axios.get(`${METADATA_URL}?id=${props.uploadSession}`).then(
+      response =>{
+        let _countries = response.data['countries']
+        let _allIds = response.data['ids'] as number[]
+        let _isAllFinished = response.data['is_all_finished']
+        let _level_name_0 = response.data['level_name_0']
+        setAllIds(_allIds)
+        setAllFinished(_isAllFinished)
+        let _init_columns = USER_COLUMNS
+        let _columns = _init_columns.map((columnName) => {
+          let _options: any = {
+            name: columnName,
+            label: columnName === 'country' ? _level_name_0 : columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' '),
+            options: {
+              display: VISIBLE_COLUMNS.includes(columnName),
+              sort: false,
+              filter: false,
+              searchable: false
+            }
+          }
+          if (columnName === 'country') {
+            _options.options = {
+              display: true,
+              sort: false,
+              searchable: false,
+              filter: false
+            }
+          } else if (columnName === 'status') {
+            _options.options = {
+              display: true,
+              sort: false,
+              searchable: false,
+              filter: true,
+              filterList: _isAllFinished ? [] : ['Not Completed'],
+              filterOptions: {
+                fullWidth: true,
+                names: STATUS_LIST,
+                logic(val:any, filters:any) {
+                  if (filters[0]) {
+                    if (filters[0] === 'Not Completed') {
+                      return !INCOMPLETE_STATUS_LIST.includes(val)
+                    }
+                    return val !== filters[0]
+                  }
+                  return false
+                }
+              },
+              customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+                let id = tableMeta['rowData'][0]
+                let name = tableMeta['rowData'][1]
+                let isImportable = tableMeta['rowData'][6]
+                let isWarning = tableMeta['rowData'][7]
+                let progress = tableMeta['rowData'][8] ? tableMeta['rowData'][8] : ''
+                let summaries = tableMeta['rowData'][4]
+                let error_report = tableMeta['rowData'][5]
+                let error_logs = tableMeta['rowData'][9]
+                if (IN_PROGRES_STATUS_LIST.includes(value)) {
+                  return <span style={{display:'flex'}}>
+                          <CircularProgress size={18} />
+                          <span style={{marginLeft: '5px' }}>{value}{value === 'Processing' && progress ? ` ${progress}`:''}</span>
+                        </span>
+                } else if (value === 'Error' || value === 'Warning') {
+                  if (props.isReadOnly) {
+                    return <span>
+                            <span>{isWarning?'Warning':value}</span>
+                            <Button id={`error-btn-${id}`} variant={'contained'} color={isWarning?"warning":"error"} onClick={
+                              () => showError(id, summaries, error_report, isImportable)} style={{marginLeft:'10px'}}
+                            >{isWarning?'Show Warning':'Show Error'}</Button>
+                          </span>
+                  } else {
+                    return <Button id={`error-btn-${id}`} variant={'contained'} color={isWarning?"warning":"error"} onClick={
+                              () => showError(id, summaries, error_report, isImportable)}
+                            >{isWarning?'Show Warning':'Show Error'}</Button>
+                  }
+                } else if (value === 'Stopped with Error') {
+                  return (
+                    <span className="error-status-container">
+                      <span className="error-status-label">{value}</span>
+                      {error_logs && (
+                        <HtmlTooltip tooltipTitle='Error Detail' icon={<ErrorIcon fontSize="small" color="error" />}
+                          tooltipDescription={<p>{error_logs}</p>}
+                      />
+                      )}
+                      <IconButton aria-label={'Retrigger validation'} title={'Retrigger validation'}
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                          e.currentTarget.disabled = true
+                          retriggerValidation(id as number, name)
+                        }}>
+                        <SyncIcon color='info' fontSize='small' />
+                    </IconButton>
+                    </span>
+                  )
+                }
+                return value
+              }
+            }
+          }
+          return _options
+        })
+        setTableColumns(_columns)
+        if (!_isAllFinished) {
+          setCurrentFilters({
+            ...currentFilters,
+            status: ['Not Completed']
+          })
+          props.setEditable(false)
+        } else {
+          props.setEditable(true)
+          if (props.onCheckProgress) {
+            props.onCheckProgress()
+          }
+        }
+      }
+    ).catch((error) => {
+      console.log('Failed to fetch metadata ', error)
+      setAlertMessage(`There is unexpected error when loading the metadata! Please try again later or contact administrator!`)
+    })
+  }
+
+  const getStatus = (isFromInterval: boolean = false) => {
+    if (axiosSource.current) axiosSource.current.cancel()
+    let cancelFetchToken = newCancelToken()
+    if (!isFromInterval) {
+      setUploadData([])
+      setLoading(true)
+    }
+    axios.post(
+        url + `&page=${pagination.page + 1}&page_size=${pagination.rowsPerPage}`,
+        {
+          'countries': currentFilters.countries,
+          'search_text': currentFilters.search_text,
+          'status': currentFilters.status
+        },
+        {
+          cancelToken: cancelFetchToken
+        }
+      ).then(
       response => {
+        if (!isFromInterval) {
+          setLoading(false)
+        }
+        setTotalCount(response.data['count'])
         if (response.data && response.data['is_read_only']){
           let _results = response.data['results']
           setAllFinished(true)
@@ -336,53 +555,46 @@ export default function Step4(props: WizardStepInterface) {
           }))
         } else if (response.data && response.data['results']) {
           let _results = response.data['results']
-          const unfinished = _results.filter((responseData: any) => {
-            return INCOMPLETE_STATUS_LIST.includes(responseData['status']);
-          })
-          if (unfinished.length == 0) {
+          if (response.data['is_all_finished']) {
             setAllFinished(true)
-            props.setEditable(true)
-            if (props.onCheckProgress) {
-              props.onCheckProgress()
-            }
-          } else {
-            props.setEditable(false)
           }
-          let _statusSummary:StatusSummaryDict = {}
           setUploadData(_results.map((responseData: any) => {
             const uploadRow: any = {}
             for (let key of Object.keys(responseData)) {
                 uploadRow[key] = responseData[key]
             }
-            if (responseData['status'] in _statusSummary) {
-              _statusSummary[responseData['status']] += 1
-            } else {
-              _statusSummary[responseData['status']] = 1
-            }
             uploadRow['started at'] = utcToLocalDateTimeString(new Date(uploadRow['started at']))
             return uploadRow
           }))
-          setStatusSummary(_statusSummary)
+          setStatusSummary(response.data['summary'])
         }
       }
-    )
+    ).catch(error => {
+      if (!axios.isCancel(error)) {
+        console.log(error)
+      }
+    })
   }
 
   useEffect(() => {
+    fetchMetadata()
+  }, [])
+
+  useEffect(() => {
     if (uploadData.length > 0 && !allFinished) {
-      // set filter by 'Not Completed'
-      let _statusFilter = {...customColumnOptions['status']} as any
-      if (!addNotCompletedFilter) {
-        _statusFilter['filterList'] = ['Not Completed']
-        setCustomColumnOptions({
-          ...customColumnOptions,
-          'status': _statusFilter
-        })
-        setAddNotCompletedFilter(true)
-      }
+      // TODO: set filter by 'Not Completed'
+      // let _statusFilter = {...customColumnOptions['status']} as any
+      // if (!addNotCompletedFilter) {
+      //   _statusFilter['filterList'] = ['Not Completed']
+      //   setCustomColumnOptions({
+      //     ...customColumnOptions,
+      //     'status': _statusFilter
+      //   })
+      //   setAddNotCompletedFilter(true)
+      // }
 
       const interval = setInterval(() => {
-        getStatus()
+        getStatus(true)
       }, 5000);
       return () => clearInterval(interval);
     }
@@ -392,14 +604,16 @@ export default function Step4(props: WizardStepInterface) {
     getStatus()
     const statusFilter = searchParams.get('filter_status')
     if (statusFilter === 'All') {
-      let _statusFilter = {...customColumnOptions['status']} as any
-      if ('filterList' in _statusFilter) {
-        _statusFilter['filterList'] = []
-        setCustomColumnOptions({
-          ...customColumnOptions,
-          'status': {..._statusFilter}
-        })
-      }
+      setCurrentFilters({...currentFilters, 'status': []})
+      // TODO: set status filter
+      // let _statusFilter = {...customColumnOptions['status']} as any
+      // if ('filterList' in _statusFilter) {
+      //   _statusFilter['filterList'] = []
+      //   setCustomColumnOptions({
+      //     ...customColumnOptions,
+      //     'status': {..._statusFilter}
+      //   })
+      // }
     }
   }, [searchParams])
 
@@ -515,22 +729,94 @@ export default function Step4(props: WizardStepInterface) {
     }
   }
 
-  const handleFilterChange = (applyFilters: any) => {
-    const idxStatusFilter = 3
-    let filterList = applyFilters()
-    let _statusFilter = {...customColumnOptions['status']} as any
-    if ('filterList' in _statusFilter) {
-      _statusFilter['filterList'] = filterList[idxStatusFilter]
-      setCustomColumnOptions({
-        ...customColumnOptions,
-        'status': {..._statusFilter}
-      })
+  useEffect(() => {
+    getStatus()
+    if (currentFilters.status) {
+      let _tableColumns = [...tableColumns]
+      let idx = _tableColumns.findIndex((t) => t.name === 'status')
+      if (idx > -1) {
+        _tableColumns[idx]['options']['filterList'] = getExistingFilterValue('status')
+        setTableColumns([..._tableColumns])
+      }
     }
+  }, [pagination, currentFilters])
+
+  const onTableChangeState = (action: string, tableState: any) => {
+    switch (action) {
+      case 'changePage':
+        setPagination({
+          ...pagination,
+          page: tableState.page
+        })
+        break;
+      case 'sort':
+        setPagination({
+          ...pagination,
+          page: 0,
+          sortOrder: tableState.sortOrder
+        })
+        break;
+      case 'changeRowsPerPage':
+        setPagination({
+          ...pagination,
+          page: 0,
+          rowsPerPage: tableState.rowsPerPage
+        })
+        break;
+      default:
+    }
+  }
+
+  const handleSearchOnChange = (search_text: string) => {
+    setPagination({
+      ...pagination,
+      page: 0,
+      sortOrder: {}
+    })
+    setCurrentFilters({...currentFilters, 'search_text': search_text})
+  }
+
+  const handleFilterChange = (applyFilters: any) => {
+    let filterList = applyFilters()
+    let filter = getDefaultFilter()
+    type Column = {
+      name: string,
+      label: string,
+      options: any
+    }
+    for (let idx in filterList) {
+      let col: Column = tableColumns[idx]
+      if (!col.options.filter)
+        continue
+      if (filterList[idx] && filterList[idx].length) {
+        const key = col.name as string
+        filter[key as keyof Step4FilterInterface] = filterList[idx]
+      }
+    }
+    setCurrentFilters({...filter, 'search_text': currentFilters['search_text']})
+
+    // const idxStatusFilter = 3
+    // let _statusFilter = {...customColumnOptions['status']} as any
+    // if ('filterList' in _statusFilter) {
+    //   _statusFilter['filterList'] = filterList[idxStatusFilter]
+    //   setCustomColumnOptions({
+    //     ...customColumnOptions,
+    //     'status': {..._statusFilter}
+    //   })
+    // }
+  }
+
+  const handleCountriesOnClear = () => {
+    let _currentFilters = {...currentFilters}
+    setCurrentFilters({
+      ..._currentFilters,
+      countries: []
+    })
   }
 
   return (
     <Scrollable>
-    <div className="Step3Container Step4Container">
+    <div className="Step3Container Step4Container" ref={ref}>
       <Modal open={openErrorModal} onClose={() => {
             setOpenErrorModal(false)
             setViewOverlapError(false)
@@ -605,7 +891,64 @@ export default function Step4(props: WizardStepInterface) {
       <AlertMessage message={alertMessage} onClose={() => setAlertMessage('')} />
       <StatusLoadingDialog open={retriggerLoadingOpen}
             title={'Retrigger Validation'} description={'Please wait while we are submitting your request!'} />
-      <List
+      
+      <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
+                                onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
+      <div className="AdminTable" style={{width: '100%'}}>
+        <MUIDataTable
+            title=''
+            data={uploadData}
+            columns={tableColumns}
+            options={{
+              serverSide: true,
+              page: pagination.page,
+              count: totalCount,
+              rowsPerPage: pagination.rowsPerPage,
+              rowsPerPageOptions: rowsPerPageOptions,
+              sortOrder: pagination.sortOrder as MUISortOptions,
+              jumpToPage: true,
+              onRowClick: null,
+              onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
+              customSearchRender: debounceSearchRender(500),
+              selectableRows: 'none',
+              tableBodyHeight: `${tableHeight}px`,
+              tableBodyMaxHeight: `${tableHeight}px`,
+              textLabels: {
+                body: {
+                  noMatch: loading ?
+                    <Loading/> :
+                    'Sorry, there is no matching data to display',
+                },
+              },
+              onSearchChange: (searchText: string) => {
+                handleSearchOnChange(searchText)
+              },
+              customFilterDialogFooter: (currentFilterList, applyNewFilters) => {
+                return (
+                  <div style={{marginTop: '40px'}}>
+                    <Button variant="contained" onClick={() => handleFilterChange(applyNewFilters)}>Apply Filters</Button>
+                  </div>
+                );
+              },
+              onFilterChange: (column, filterList, type) => {
+                var newFilters = () => (filterList)
+                handleFilterChange(newFilters)
+              },
+              searchText: currentFilters.search_text,
+              searchOpen: (currentFilters.search_text != null && currentFilters.search_text.length > 0),
+              filter: true,
+              filterType: 'multiselect',
+              confirmFilters: true
+            }}
+            components={{
+              icons: {
+                FilterIcon
+              }
+            }}
+          />
+        </div>
+      
+      {/* <List
         pageName={'Country'}
         listUrl={''}
         initData={uploadData}
@@ -614,7 +957,7 @@ export default function Step4(props: WizardStepInterface) {
         canRowBeSelected={canRowBeSelected}
         editUrl={''}
         excludedColumns={['is_importable', 'progress', 'error_summaries', 'error_report', 'is_warning']}
-        customOptions={customColumnOptions}
+        // customOptions={customColumnOptions}
         options={{
           'selectableRowsHeader': !props.isReadOnly,
           'onFilterChange': (column: any, filterList: any, type: any) => {
@@ -630,7 +973,7 @@ export default function Step4(props: WizardStepInterface) {
             );
           },
         }}
-      />
+      /> */}
         <div className="button-container" style={{marginLeft:0, width: '100%'}}>
           <Grid container direction='row' justifyContent='space-between'>
             <Grid item>
