@@ -82,7 +82,8 @@ class TestEntityUploadStatusApiViews(TestCase):
         entity_upload.save()
         user = UserF.create()
         request = self.factory.get(
-            reverse('entity-upload-status-metadata') + f'/?id={upload_session.id}'
+            reverse('entity-upload-status-metadata') +
+            f'/?id={upload_session.id}'
         )
         request.user = user
         view = EntityUploadStatusMetadata.as_view()

@@ -734,8 +734,14 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 })
             elif entity_upload.revised_entity_id:
                 layer0_file = None
-                if level_0_data and entity_upload.revised_entity_id in level_0_data:
-                    layer0_file = level_0_data[entity_upload.revised_entity_id]['layer0_file']
+                if (
+                    level_0_data and
+                    entity_upload.revised_entity_id in level_0_data
+                ):
+                    layer0_file = (
+                        level_0_data[
+                            entity_upload.revised_entity_id]['layer0_file']
+                    )
                 # new data level 0 but not selected by user
                 results.append({
                     'id': str(uuid.uuid4()),
@@ -766,7 +772,8 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 })
         return results, total_uploads
 
-    def get_entity_uploads(self, level_0_data, default_max_level, start_idx, end_idx):
+    def get_entity_uploads(self, level_0_data,
+                           default_max_level, start_idx, end_idx):
         results = []
         entity_uploads = (
             EntityUploadStatus.objects.select_related(
@@ -979,7 +986,8 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 results, total_uploads = self.get_entity_uploads_readonly(
                     level_0_data_dict, start_idx, end_idx)
             elif self.upload_session.status != PRE_PROCESSING:
-                # upload start from admin_level 1, then check for parent matching
+                # upload start from admin_level 1,
+                # then check for parent matching
                 results, total_uploads = self.get_entity_uploads(
                     level_0_data_dict, default_max_level, start_idx, end_idx)
 

@@ -322,7 +322,7 @@ def process_country_selection_for_review(session_action_id, user_id):
         end = time.time()
         if upload_log:
             upload_log.add_log('process_country_selection_for_review',
-                            end - start)
+                               end - start)
         action_data.on_finished(True, {
             'is_valid': False,
             'error': error

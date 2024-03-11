@@ -135,9 +135,10 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
         return status
 
     def _filter_status(self, request):
-        status = request.data.get('status', '')
+        status = request.data.get('status', [])
         if not status:
             return {}
+        status = status[0]
         filter = []
         if status == 'Not Completed':
             filter.append(STARTED)

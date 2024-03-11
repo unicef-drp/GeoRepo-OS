@@ -36,9 +36,10 @@ import StatusLoadingDialog from "../../components/StatusLoadingDialog";
 import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
 import FilterAlt from "@mui/icons-material/FilterAlt";
 import ResizeTableEvent from "../../components/ResizeTableEvent";
-import MUIDataTable, {debounceSearchRender, MUISortOptions} from "mui-datatables";
+import MUIDataTable, {debounceSearchRender, MUISortOptions, SelectableRows} from "mui-datatables";
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import FormControlLabel from "@mui/material/FormControlLabel";
 
 
 const URL = '/api/entity-upload-status-list/'
@@ -233,6 +234,7 @@ export default function Step4(props: WizardStepInterface) {
   const [loading, setLoading] = useState<boolean>(false)
   const [openErrorModal, setOpenErrorModal] = useState<boolean>(false)
   const [selectedEntities, setSelectedEntities] = useState<number[]>([])
+  const [selectedEntitiesInPage, setSelectedEntitiesInPage] = useState<number[]>([])
   const url = URL + `?id=${props.uploadSession}`
   const [searchParams, setSearchParams] = useSearchParams()
   const [actionUuid, setActionUuid] = useState('')
@@ -365,6 +367,8 @@ export default function Step4(props: WizardStepInterface) {
   }, [])
   const ref = useRef(null)
   const [tableHeight, setTableHeight] = useState(0)
+  const [selectableRowsMode, setSelectableRowsMode] = useState<SelectableRows>('none')
+  const [isCheckAll, setIsCheckAll] = useState(false)
 
   const retriggerValidation = (id:number, title: string) => {
     setRetriggerLoadingOpen(true)
@@ -448,13 +452,23 @@ export default function Step4(props: WizardStepInterface) {
                 }
               },
               customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+                // 'id' 0,
+                // 'started_at' 1,
+                // 'error_summaries' 2,
+                // 'error_report' 3,
+                // 'is_importable' 4,
+                // 'is_warning' 5,
+                // 'progress' 6,
+                // 'country' 7,
+                // 'status' 8,
+                // 'error_logs' 9
                 let id = tableMeta['rowData'][0]
-                let name = tableMeta['rowData'][1]
-                let isImportable = tableMeta['rowData'][6]
-                let isWarning = tableMeta['rowData'][7]
-                let progress = tableMeta['rowData'][8] ? tableMeta['rowData'][8] : ''
-                let summaries = tableMeta['rowData'][4]
-                let error_report = tableMeta['rowData'][5]
+                let name = tableMeta['rowData'][7]
+                let isImportable = tableMeta['rowData'][4]
+                let isWarning = tableMeta['rowData'][5]
+                let progress = tableMeta['rowData'][6] ? tableMeta['rowData'][6] : ''
+                let summaries = tableMeta['rowData'][2]
+                let error_report = tableMeta['rowData'][3]
                 let error_logs = tableMeta['rowData'][9]
                 if (IN_PROGRES_STATUS_LIST.includes(value)) {
                   return <span style={{display:'flex'}}>
@@ -566,6 +580,13 @@ export default function Step4(props: WizardStepInterface) {
             uploadRow['started at'] = utcToLocalDateTimeString(new Date(uploadRow['started at']))
             return uploadRow
           }))
+          let _inPage = []
+          for (let i=0; i<_results.length; i++) {
+            if (selectedEntities.includes(_results[i].id)) {
+              _inPage.push(i)
+            }
+          }
+          setSelectedEntitiesInPage(_inPage)
           setStatusSummary(response.data['summary'])
         }
       }
@@ -581,27 +602,22 @@ export default function Step4(props: WizardStepInterface) {
   }, [])
 
   useEffect(() => {
-    if (uploadData.length > 0 && !allFinished) {
-      // TODO: set filter by 'Not Completed'
-      // let _statusFilter = {...customColumnOptions['status']} as any
-      // if (!addNotCompletedFilter) {
-      //   _statusFilter['filterList'] = ['Not Completed']
-      //   setCustomColumnOptions({
-      //     ...customColumnOptions,
-      //     'status': _statusFilter
-      //   })
-      //   setAddNotCompletedFilter(true)
-      // }
-
+    if (allFinished) {
+      setSelectableRowsMode('multiple')
+      // remove filter status
+      setCurrentFilters({...currentFilters, 'status': []})
+    } else {
+      setSelectableRowsMode('none')
+    }
+    if (!allFinished) {
       const interval = setInterval(() => {
         getStatus(true)
       }, 5000);
       return () => clearInterval(interval);
     }
-  }, [uploadData, allFinished])
+  }, [allFinished, currentFilters])
 
   useEffect(() => {
-    getStatus()
     const statusFilter = searchParams.get('filter_status')
     if (statusFilter === 'All') {
       setCurrentFilters({...currentFilters, 'status': []})
@@ -655,10 +671,6 @@ export default function Step4(props: WizardStepInterface) {
     setHasErrorOverlaps(_hasErrorOverlaps && is_importable)
     setViewOverlapId(_view_overlaps)
     setOpenErrorModal(true)
-  }
-
-  const selectionChanged = (data: any) => {
-    setSelectedEntities(data)
   }
 
   const downloadReport = (reportPathId: number) => {
@@ -741,6 +753,17 @@ export default function Step4(props: WizardStepInterface) {
     }
   }, [pagination, currentFilters])
 
+  useEffect(() => {
+    if (isCheckAll) {
+      setSelectedEntities([...allIds])
+      let _inPage = uploadData.map((a, index) => index)
+      setSelectedEntitiesInPage(_inPage)
+    } else {
+      setSelectedEntities([])
+      setSelectedEntitiesInPage([])
+    }
+  }, [isCheckAll])
+
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
       case 'changePage':
@@ -774,6 +797,9 @@ export default function Step4(props: WizardStepInterface) {
       sortOrder: {}
     })
     setCurrentFilters({...currentFilters, 'search_text': search_text})
+    setSelectedEntities([])
+    setSelectedEntitiesInPage([])
+    setIsCheckAll(false)
   }
 
   const handleFilterChange = (applyFilters: any) => {
@@ -794,16 +820,9 @@ export default function Step4(props: WizardStepInterface) {
       }
     }
     setCurrentFilters({...filter, 'search_text': currentFilters['search_text']})
-
-    // const idxStatusFilter = 3
-    // let _statusFilter = {...customColumnOptions['status']} as any
-    // if ('filterList' in _statusFilter) {
-    //   _statusFilter['filterList'] = filterList[idxStatusFilter]
-    //   setCustomColumnOptions({
-    //     ...customColumnOptions,
-    //     'status': {..._statusFilter}
-    //   })
-    // }
+    setSelectedEntities([])
+    setSelectedEntitiesInPage([])
+    setIsCheckAll(false)
   }
 
   const handleCountriesOnClear = () => {
@@ -896,7 +915,23 @@ export default function Step4(props: WizardStepInterface) {
                                 onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
       <div className="AdminTable" style={{width: '100%'}}>
         <MUIDataTable
-            title=''
+            title={
+              <Grid container flexDirection={'row'}>
+                <Grid item>
+                  <FormControlLabel control={
+                    <Checkbox
+                      edge="start"
+                      checked={isCheckAll}
+                      disableRipple
+                      onChange={(event: any) =>  setIsCheckAll(event.target.checked)}
+                      disabled={props.isReadOnly || loading}
+                      indeterminate={selectedEntities.length !== allIds.length && selectedEntities.length !== 0}
+                    />
+                  }
+                  label={`Select All (${selectedEntities.length}/${allIds.length})`} sx={{color:'#000'}} />
+                </Grid>
+              </Grid>
+            }
             data={uploadData}
             columns={tableColumns}
             options={{
@@ -910,7 +945,7 @@ export default function Step4(props: WizardStepInterface) {
               onRowClick: null,
               onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
               customSearchRender: debounceSearchRender(500),
-              selectableRows: 'none',
+              selectableRows: selectableRowsMode,
               tableBodyHeight: `${tableHeight}px`,
               tableBodyMaxHeight: `${tableHeight}px`,
               textLabels: {
@@ -938,7 +973,43 @@ export default function Step4(props: WizardStepInterface) {
               searchOpen: (currentFilters.search_text != null && currentFilters.search_text.length > 0),
               filter: true,
               filterType: 'multiselect',
-              confirmFilters: true
+              confirmFilters: true,
+              rowsSelected: selectedEntitiesInPage,
+              selectToolbarPlacement: 'none',
+              selectableRowsHeader: false,
+              onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
+                if (currentRowsSelected.length > 1) {
+                  // select all
+                  setSelectedEntities([...allIds])
+                  let _inPage = uploadData.map((a, index) => index)
+                  setSelectedEntitiesInPage(_inPage)
+                } else if (currentRowsSelected.length === 1) {
+                  let _item = uploadData[currentRowsSelected[0]['index']]
+                  // check/uncheck single
+                  if (rowsSelected.indexOf(currentRowsSelected[0]['index']) > -1) {
+                    // selected
+                    setSelectedEntities(
+                      [...selectedEntities, _item['id']]
+                    )
+                    setSelectedEntitiesInPage(
+                      [...selectedEntitiesInPage, currentRowsSelected[0]['index']]
+                    )
+                  } else {
+                    // deselected
+                    let _entities = [...selectedEntities]
+                    _entities = _entities.filter(a => a !== _item['id'])
+                    setSelectedEntities(_entities)
+                    let _entitiesIndex = selectedEntitiesInPage.filter(a => a !== currentRowsSelected[0]['index'])
+                    setSelectedEntitiesInPage(_entitiesIndex)
+                  }
+                } else if (currentRowsSelected.length === 0) {
+                  setSelectedEntities([])
+                  setSelectedEntitiesInPage([])
+                }
+              },
+              isRowSelectable: (dataIndex: number, selectedRows: any) => {
+                return canRowBeSelected(dataIndex, uploadData[dataIndex])
+              }
             }}
             components={{
               icons: {
@@ -947,33 +1018,6 @@ export default function Step4(props: WizardStepInterface) {
             }}
           />
         </div>
-      
-      {/* <List
-        pageName={'Country'}
-        listUrl={''}
-        initData={uploadData}
-        isRowSelectable={allFinished}
-        selectionChanged={selectionChanged}
-        canRowBeSelected={canRowBeSelected}
-        editUrl={''}
-        excludedColumns={['is_importable', 'progress', 'error_summaries', 'error_report', 'is_warning']}
-        // customOptions={customColumnOptions}
-        options={{
-          'selectableRowsHeader': !props.isReadOnly,
-          'onFilterChange': (column: any, filterList: any, type: any) => {
-            var newFilters = () => (filterList)
-            handleFilterChange(newFilters)
-          },
-          'confirmFilters': true,
-          'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
-            return (
-              <div style={{marginTop: '40px'}}>
-                <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
-              </div>
-            );
-          },
-        }}
-      /> */}
         <div className="button-container" style={{marginLeft:0, width: '100%'}}>
           <Grid container direction='row' justifyContent='space-between'>
             <Grid item>
