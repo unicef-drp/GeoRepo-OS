@@ -260,6 +260,7 @@ export default function Step4(props: WizardStepInterface) {
   const [tableHeight, setTableHeight] = useState(0)
   const [selectableRowsMode, setSelectableRowsMode] = useState<SelectableRows>('none')
   const [isCheckAll, setIsCheckAll] = useState(false)
+  const [currentInterval, setCurrentInterval] = useState(null)
 
   const retriggerValidation = (id:number, title: string) => {
     setRetriggerLoadingOpen(true)
@@ -295,6 +296,7 @@ export default function Step4(props: WizardStepInterface) {
   }
 
   const fetchMetadata = () => {
+    setLoading(true)
     axios.get(`${METADATA_URL}?id=${props.uploadSession}`).then(
       response =>{
         let _countries = response.data['countries']
@@ -430,13 +432,8 @@ export default function Step4(props: WizardStepInterface) {
   }
 
   const getStatus = (isFromInterval: boolean = false) => {
-    console.log('getStatus isFromInterval ', isFromInterval)
     if (axiosSource.current) axiosSource.current.cancel()
     let cancelFetchToken = newCancelToken()
-    if (!isFromInterval) {
-      setUploadData([])
-      setLoading(true)
-    }
     axios.post(
         url + `&page=${pagination.page + 1}&page_size=${pagination.rowsPerPage}`,
         {
@@ -449,9 +446,7 @@ export default function Step4(props: WizardStepInterface) {
         }
       ).then(
       response => {
-        if (!isFromInterval) {
-          setLoading(false)
-        }
+        setLoading(false)
         setTotalCount(response.data['count'])
         if (response.data && response.data['is_read_only']){
           let _results = response.data['results']
@@ -468,6 +463,12 @@ export default function Step4(props: WizardStepInterface) {
           let _results = response.data['results']
           if (response.data['is_all_finished']) {
             setAllFinished(true)
+            if (isFromInterval) {
+              // remove filter status
+              if (currentFilters.status.includes('Not Completed')) {
+                setCurrentFilters({...currentFilters, 'status': []})
+              }
+            }
           }
           setUploadData(_results.map((responseData: any) => {
             const uploadRow: any = {}
@@ -498,13 +499,24 @@ export default function Step4(props: WizardStepInterface) {
     fetchMetadata()
   }, [])
 
+  const updateTableColumnFilter = () => {
+    if (currentFilters.status) {
+      let _tableColumns = [...tableColumns]
+      let idx = _tableColumns.findIndex((t) => t.name === 'status')
+      if (idx > -1) {
+        _tableColumns[idx]['options']['filterList'] = getExistingFilterValue('status')
+        setTableColumns([..._tableColumns])
+      }
+    }
+  }
+
+  useEffect(() => {
+    updateTableColumnFilter()
+  }, [currentFilters])
+
   useEffect(() => {
     if (allFinished) {
       setSelectableRowsMode('multiple')
-      // remove filter status
-      if (currentFilters.status.includes('Not Completed')) {
-        setCurrentFilters({...currentFilters, 'status': []})
-      }
     } else {
       setSelectableRowsMode('none')
     }
@@ -512,9 +524,15 @@ export default function Step4(props: WizardStepInterface) {
       const interval = setInterval(() => {
         getStatus(true)
       }, 5000);
-      return () => clearInterval(interval);
+      setCurrentInterval(interval)
+      return () => {
+        clearInterval(interval);
+        setCurrentInterval(null);
+      };
+    } else {
+      getStatus()
     }
-  }, [allFinished, currentFilters])
+  }, [allFinished, currentFilters, pagination])
 
   useEffect(() => {
     const statusFilter = searchParams.get('filter_status')
@@ -640,17 +658,18 @@ export default function Step4(props: WizardStepInterface) {
     }
   }
 
-  useEffect(() => {
-    getStatus()
-    if (currentFilters.status) {
-      let _tableColumns = [...tableColumns]
-      let idx = _tableColumns.findIndex((t) => t.name === 'status')
-      if (idx > -1) {
-        _tableColumns[idx]['options']['filterList'] = getExistingFilterValue('status')
-        setTableColumns([..._tableColumns])
-      }
+  const onTableInteraction = () => {
+    setLoading(true)
+    setUploadData([])
+    // cancel any ongoing request and iterval
+    if (currentInterval) {
+      clearInterval(currentInterval)
+      setCurrentInterval(null)
     }
-  }, [pagination, currentFilters])
+    if (axiosSource.current) {
+      axiosSource.current.cancel()
+    }
+  }
 
   useEffect(() => {
     if (isCheckAll) {
@@ -666,12 +685,14 @@ export default function Step4(props: WizardStepInterface) {
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
       case 'changePage':
+        onTableInteraction()
         setPagination({
           ...pagination,
           page: tableState.page
         })
         break;
       case 'sort':
+        onTableInteraction()
         setPagination({
           ...pagination,
           page: 0,
@@ -679,6 +700,7 @@ export default function Step4(props: WizardStepInterface) {
         })
         break;
       case 'changeRowsPerPage':
+        onTableInteraction()
         setPagination({
           ...pagination,
           page: 0,
@@ -690,6 +712,7 @@ export default function Step4(props: WizardStepInterface) {
   }
 
   const handleSearchOnChange = (search_text: string) => {
+    onTableInteraction()
     setPagination({
       ...pagination,
       page: 0,
@@ -702,6 +725,12 @@ export default function Step4(props: WizardStepInterface) {
   }
 
   const handleFilterChange = (applyFilters: any) => {
+    onTableInteraction()
+    setPagination({
+      ...pagination,
+      page: 0,
+      sortOrder: {}
+    })
     let filterList = applyFilters()
     let filter = getDefaultFilter()
     type Column = {
@@ -823,7 +852,7 @@ export default function Step4(props: WizardStepInterface) {
                       checked={isCheckAll}
                       disableRipple
                       onChange={(event: any) =>  setIsCheckAll(event.target.checked)}
-                      disabled={props.isReadOnly || loading}
+                      disabled={props.isReadOnly || loading || !allFinished}
                       indeterminate={selectedEntities.length !== allIds.length && selectedEntities.length !== 0}
                     />
                   }

@@ -136,18 +136,18 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
         return status
 
     def _filter_status(self, request):
-        status = request.data.get('status', [])
-        if not status:
+        status_list = request.data.get('status', [])
+        if not status_list:
             return {}
-        status = status[0]
         filter = []
-        if status == 'Not Completed':
-            filter.append(STARTED)
-            filter.append(PROCESSING)
-        elif status == 'Queued':
-            filter.append(STARTED)
-        else:
-            filter.append(status)
+        for status in status_list:
+            if status == 'Not Completed':
+                filter.append(STARTED)
+                filter.append(PROCESSING)
+            elif status == 'Queued':
+                filter.append(STARTED)
+            else:
+                filter.append(status)
         return {
             'status__in': filter
         }
