@@ -418,7 +418,7 @@ export default function Step4(props: WizardStepInterface) {
             })
             props.setEditable(false)
           } else {
-            setAllIds(allIds)
+            setAllIds(_allIds)
             props.setEditable(true)
             if (props.onCheckProgress) {
               props.onCheckProgress()
@@ -689,7 +689,7 @@ export default function Step4(props: WizardStepInterface) {
   useEffect(() => {
     if (isCheckAll) {
       setSelectedEntities([...allIds])
-      let _inPage = uploadData.map((a, index) => index)
+      let _inPage = uploadData.filter((a) => allIds.includes(a.id)).map((a, index) => index)
       setSelectedEntitiesInPage(_inPage)
     } else {
       setSelectedEntities([])

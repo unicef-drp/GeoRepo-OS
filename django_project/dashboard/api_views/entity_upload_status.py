@@ -98,7 +98,10 @@ class EntityUploadStatusMetadata(AzureAuthRequiredMixin, APIView):
             dataset=upload_session.dataset,
             level=0
         ).first()
-        if select_all or is_all_finished or upload_session.is_read_only():
+        return_ids = (
+            select_all or is_all_finished or upload_session.is_read_only()
+        )
+        if return_ids:
             # filter ids that are importable
             case_list = [
                 When(
@@ -130,7 +133,7 @@ class EntityUploadStatusMetadata(AzureAuthRequiredMixin, APIView):
             data={
                 'ids': (
                     entity_uploads.values_list('id', flat=True) if
-                    select_all else []
+                    return_ids else []
                 ),
                 'countries': [],
                 'is_all_finished': is_all_finished,
