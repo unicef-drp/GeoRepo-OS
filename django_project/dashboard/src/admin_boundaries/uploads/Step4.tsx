@@ -408,6 +408,7 @@ export default function Step4(props: WizardStepInterface) {
         setTableColumns(_columns)
         if (_isReadOnly) {
           setAllFinished(true)
+          setAllIds(allIds)
         } else {
           setAllFinished(_isAllFinished)
           if (!_isAllFinished) {
@@ -417,6 +418,7 @@ export default function Step4(props: WizardStepInterface) {
             })
             props.setEditable(false)
           } else {
+            setAllIds(allIds)
             props.setEditable(true)
             if (props.onCheckProgress) {
               props.onCheckProgress()

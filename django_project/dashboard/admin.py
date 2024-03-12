@@ -91,8 +91,16 @@ def run_comparison_boundary_action(modeladmin, request, queryset):
         )
 
 
+@admin.action(description='Patch upload summaries stats')
+def run_patch_upload_summaries_stats(modeladmin, request, queryset):
+    from dashboard.tasks import patch_summaries_stat_by_upload_session
+    for upload_session in queryset:
+        patch_summaries_stat_by_upload_session.delay(upload_session.id)
+
+
 class LayerUploadSessionAdmin(admin.ModelAdmin):
     list_display = ('id', 'source', 'status', 'started_at', 'modified_at')
+    actions = [run_patch_upload_summaries_stats]
 
 
 class EntityUploadAdmin(admin.ModelAdmin):

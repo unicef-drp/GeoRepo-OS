@@ -533,3 +533,30 @@ def reset_upload_session(session_id, preprocessing, qc_validation, cancel):
         f'for session {session_id}: preprocessing {preprocessing} '
         f'qc_validation {qc_validation} cancel {cancel}'
     )
+
+
+@shared_task(name='patch_summaries_stat_by_upload_session')
+def patch_summaries_stat_by_upload_session(session_id):
+    upload_session = LayerUploadSession.objects.get(id=session_id)
+    dataset = upload_session.dataset
+    count_error_categories_func = module_function(
+        dataset.module.code_name,
+        'qc_validation',
+        'count_error_categories')
+    all_uploads = upload_session.entityuploadstatus_set.all()
+    upload: EntityUploadStatus
+    for upload in all_uploads:
+        if upload.summaries:
+            (
+                allowable_errors, blocking_errors,
+                superadmin_bypass_errors,
+                superadmin_blocking_errors
+            ) = count_error_categories_func(upload.summaries)
+            upload.allowable_errors = allowable_errors
+            upload.blocking_errors = blocking_errors
+            upload.superadmin_bypass_errors = superadmin_bypass_errors
+            upload.superadmin_blocking_errors = superadmin_blocking_errors
+            upload.save(update_fields=[
+                'allowable_errors', 'blocking_errors',
+                'superadmin_bypass_errors', 'superadmin_blocking_errors'
+            ])
