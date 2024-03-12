@@ -47,7 +47,8 @@ from dashboard.api_views.entity_upload_status import (
     EntityUploadLevel1List,
     OverlapsEntityUploadList,
     OverlapsEntityUploadDetail,
-    RetriggerSingleValidation
+    RetriggerSingleValidation,
+    EntityUploadStatusMetadata
 )
 from dashboard.api_views.validate import ValidateUploadSession, \
     LayerUploadPreprocess
@@ -350,6 +351,11 @@ urlpatterns = [
         r'api/entity-upload-status-list/?$',
         EntityUploadStatusList.as_view(),
         name='entity-upload-status-list'
+    ),
+    re_path(
+        r'api/entity-upload-status-metadata/?$',
+        EntityUploadStatusMetadata.as_view(),
+        name='entity-upload-status-metadata'
     ),
     re_path(
         r'api/entity-upload-level1-list/?$',

@@ -1102,13 +1102,18 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
     if len(validation_summaries) > 0:
         # check whether the errors are blocking/non-blocking
         (
-            allowable_errors, blocking_errors, _, _
+            allowable_errors, blocking_errors, superadmin_bypass_errors,
+            superadmin_blocking_errors
         ) = count_error_categories(error_summaries)
         if allowable_errors > 0 and blocking_errors == 0:
             entity_upload.status = WARNING
         else:
             entity_upload.status = ERROR
         entity_upload.summaries = error_summaries
+        entity_upload.allowable_errors = allowable_errors
+        entity_upload.blocking_errors = blocking_errors
+        entity_upload.superadmin_bypass_errors = superadmin_bypass_errors
+        entity_upload.superadmin_blocking_errors = superadmin_blocking_errors
         # Save error report to csv
         try:
             keys = validation_summaries[0].keys()
@@ -1188,31 +1193,26 @@ def is_validation_result_importable(
      is_importable: whether the validation result can still be imported
      is_warning: whether the errors are considered as non-blocking error
     """
-    start = time.time()
-
     is_warning = entity_upload.status == WARNING
     is_importable = entity_upload.status in IMPORTABLE_UPLOAD_STATUS_LIST
     if not is_importable and entity_upload.summaries:
         # check whether the errors are blocking/non-blocking
-        (
-            allowable_errors, blocking_errors, superadmin_bypass_errors,
-            superadmin_blocking_errors
-        ) = count_error_categories(entity_upload.summaries)
-        if allowable_errors > 0 and blocking_errors == 0:
+        # (
+        #     allowable_errors, blocking_errors, superadmin_bypass_errors,
+        #     superadmin_blocking_errors
+        # ) = count_error_categories(entity_upload.summaries)
+        if (
+            entity_upload.allowable_errors > 0 and
+            entity_upload.blocking_errors == 0
+        ):
             is_importable = True
         # check if superadmin user:
         if user and user.is_superuser:
             if (
-                superadmin_bypass_errors > 0 and
-                superadmin_blocking_errors == 0
+                entity_upload.superadmin_bypass_errors > 0 and
+                entity_upload.superadmin_blocking_errors == 0
             ):
                 is_importable = True
-
-    end = time.time()
-    if kwargs.get('log_object'):
-        kwargs['log_object'].add_log(
-            'admin_boundaries.qc_validation.is_validation_result_importable',
-            end - start)
     return is_importable, is_warning
 
 

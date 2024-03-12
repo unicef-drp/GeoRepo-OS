@@ -7,7 +7,8 @@ from dashboard.tests.model_factories import (
     EntityUploadF
 )
 from modules.admin_boundaries.qc_validation import (
-    is_validation_result_importable
+    is_validation_result_importable,
+    count_error_categories
 )
 from dashboard.models.entity_upload import (
     ERROR, WARNING
@@ -70,6 +71,17 @@ class IsUploadImportableTestCase(TestCase):
                 }
             ]
         )
+        (
+            allowable_errors, blocking_errors, superadmin_bypass_errors,
+            superadmin_blocking_errors
+        ) = count_error_categories(entity_upload_1.summaries)
+        entity_upload_1.allowable_errors = allowable_errors
+        entity_upload_1.blocking_errors = blocking_errors
+        entity_upload_1.superadmin_bypass_errors = superadmin_bypass_errors
+        entity_upload_1.superadmin_blocking_errors = (
+            superadmin_blocking_errors
+        )
+        entity_upload_1.save()
         # check with user_a
         is_importable, is_warning = is_validation_result_importable(
             entity_upload_1, self.user_a
@@ -117,6 +129,17 @@ class IsUploadImportableTestCase(TestCase):
                 }
             ]
         )
+        (
+            allowable_errors, blocking_errors, superadmin_bypass_errors,
+            superadmin_blocking_errors
+        ) = count_error_categories(entity_upload_2.summaries)
+        entity_upload_2.allowable_errors = allowable_errors
+        entity_upload_2.blocking_errors = blocking_errors
+        entity_upload_2.superadmin_bypass_errors = superadmin_bypass_errors
+        entity_upload_2.superadmin_blocking_errors = (
+            superadmin_blocking_errors
+        )
+        entity_upload_2.save()
         # check with user_a
         entity_upload_2.status = WARNING
         entity_upload_2.save(update_fields=['status'])

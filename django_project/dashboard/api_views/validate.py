@@ -28,7 +28,8 @@ class ValidateUploadSession(AzureAuthRequiredMixin, APIView):
             'max_level': <selected max level to be imported>,
             'country': <geographicalEntity.label|name_field>,
             'upload_id': <entity upload id (if exists)>,
-            'admin_level_names': [dict of level+admin level name]
+            'admin_level_names': [dict of level+admin level name],
+            'default': <boolean true if no change for the config>
         }]
     }
     """

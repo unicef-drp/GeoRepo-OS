@@ -40,6 +40,7 @@ import ResizeTableEvent from "../../components/ResizeTableEvent";
 import UploadActionStatus from "../../components/UploadActionStatus";
 import HtmlTooltip from '../../components/HtmlTooltip';
 import { LoadingButton } from "@mui/lab";
+import InfiniteLoader from "react-window-infinite-loader";
 
 interface AdminLevelName {
   [key: string]: string
@@ -62,14 +63,31 @@ interface CountryItem {
   is_available?: boolean,
   total_rematched_count?: number,
   total_level1_children?: number,
-  admin_level_names?: AdminLevelName
+  admin_level_names?: AdminLevelName,
+  loaded?: boolean,
+  index?: number
 }
+
+
+const getEmptyCountryItem = (index: number) => {
+  return {
+    id: '0',
+    country: '',
+    layer0_id: '',
+    max_level: '',
+    loaded: false,
+    index: index
+  } as CountryItem
+}
+
 
 export default function Step3(props: WizardStepInterface) {
   const [datasetData, setDatasetData] = useState<CountryItem[]>([])
   const [isFetchingData, setIsFetchingData] = useState<boolean>(true)
   const [isLevel0Upload, setIsLevel0Upload] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
+  const [allUploadIds, setAllUploadIds] = useState<string[]>([])
+  const [totalUploads, setTotalUploads] = useState<number>(0)
   const [selectedEntities, setSelectedEntities] = useState<string[]>([])
   const [availableLevels, setAvailableLevels] = useState<number[]>([])
   const [alertMessage, setAlertMessage] = useState('')
@@ -89,26 +107,59 @@ export default function Step3(props: WizardStepInterface) {
   const rowHeights = useRef({} as any);
   const [actionUuid, setActionUuid] = useState('')
 
-  const fetchEntityList = () => {
-    axios.get((window as any).datasetEntityList + `?session=${props.uploadSession}`).then(
+  const isItemLoaded = (index: number) => {
+    return index < datasetData.length ? datasetData[index].loaded : false
+  }
+
+  const loadUploadItems = (startIndex: number, stopIndex: number) => {
+    axios.get((window as any).datasetEntityList + `?session=${props.uploadSession}&start=${startIndex}&end=${stopIndex}`).then(
+      response => {
+        let _data = response.data['results'] as CountryItem[]
+        let _idx = startIndex
+        _data = _data.map((value: CountryItem) => {
+          value.loaded = true
+          value.index = _idx
+          _idx++
+          return value
+        })
+        if (_data && _data.length > 0) {
+          let _originalData = [...datasetData]
+          _originalData.splice(startIndex, _data.length, ..._data)
+          setDatasetData([..._originalData])
+        }
+      },
+      error => {
+        setLoading(false)
+        console.error(error)
+      }
+    )
+  }
+
+  const fetchUploadIds = () => {
+    axios.get((window as any).datasetEntityList + `?session=${props.uploadSession}&id_only=true`).then(
       response => {
         setLoading(false)
-        
         if (response.data['auto_matched_parent_ready']) {
           setIsFetchingData(false)
           setIsLevel0Upload(response.data['is_level_0_upload'])
-          setDatasetData(response.data['results'] as CountryItem[])
           setAvailableLevels(response.data['available_levels'])
-          let _selected_entities = []
-          for (let data of response.data['results']) {
-            if (data['is_selected'] && data['is_available'])
-              _selected_entities.push(data['id'])
-          }
-          if (_selected_entities.length === response.data['results'].length) {
-            setCheckAll(true)
+          setTotalUploads(response.data['total'])
+          let _uploadIds = response.data['results'].map((e:number) => `${e}`)
+          setAllUploadIds([..._uploadIds])
+          let _selectedIds = response.data['selected_ids'].map((e:number) => `${e}`)
+          if (_selectedIds && _selectedIds.length > 0) {
+            setSelectedEntities([..._selectedIds])
+            setCheckAll(_selectedIds.length === _uploadIds.length)
           } else {
-            setSelectedEntities(_selected_entities)
+            setSelectedEntities([..._uploadIds])
+            // default is checked all at beginning
+            setCheckAll(true)
           }
+          let _data = []
+          for (let i=0; i < response.data['total']; ++i) {
+            _data.push(getEmptyCountryItem(i))
+          }
+          setDatasetData(_data)
           setFetchTrigger(null)
           setProgress('')
           let _actionUuid = response.data['action_uuid']
@@ -143,7 +194,7 @@ export default function Step3(props: WizardStepInterface) {
   useEffect(() => {
     if (fetchTrigger !== null) {
       const interval = setTimeout(() => {
-        fetchEntityList()
+        fetchUploadIds()
       }, 2000);
       return () => clearTimeout(interval);
     }
@@ -151,7 +202,8 @@ export default function Step3(props: WizardStepInterface) {
 
   useEffect(() => {
     if (isCheckAll) {
-      setSelectedEntities(datasetData.map((item) => item.id))
+      // get from all ids
+      setSelectedEntities([...allUploadIds])
     } else {
       setSelectedEntities([])
     }
@@ -175,7 +227,7 @@ export default function Step3(props: WizardStepInterface) {
     setLoading(true)
     setAlertMessage('')
     let entities = selectedEntities.reduce((acc:any, current: string) => {
-      let _entity = datasetData.find((entity: any) => entity.id == current)
+      let _entity = datasetData.find((entity: any) => entity.upload_id == current)
       if (_entity) {
         acc.push({
           'id': _entity.id,
@@ -184,7 +236,19 @@ export default function Step3(props: WizardStepInterface) {
           'country_entity_id': _entity.country_entity_id,
           'max_level': _entity.max_level,
           'upload_id': _entity.upload_id,
-          'admin_level_names': _entity.admin_level_names
+          'admin_level_names': _entity.admin_level_names,
+          'default': false
+        })
+      } else {
+        acc.push({
+          'id': 0,
+          'country': null,
+          'layer0_id': null,
+          'country_entity_id': 0,
+          'max_level': null,
+          'upload_id': current,
+          'admin_level_names': {},
+          'default': true
         })
       }
       return acc
@@ -359,6 +423,35 @@ export default function Step3(props: WizardStepInterface) {
     )
   }
 
+  const getItemDescriptionLoading = () => {
+    return (
+      <React.Fragment>
+        <Grid container flexDirection='column' className="ListItemSecondary">
+          <Grid item>
+            <Typography
+              sx={{ display: 'inline' }}
+              component="span"
+              variant="body2"
+              color="text.primary"
+            >
+              {`Default code: ...` }
+            </Typography>
+          </Grid>
+          <Grid item>
+            <Typography
+                sx={{ display: 'inline' }}
+                component="span"
+                variant="body2"
+                color="text.primary"
+              >
+                {`Total admin level 1: ... entities `}
+            </Typography>
+          </Grid>
+        </Grid>
+      </React.Fragment>
+    )
+  }
+
   const adminLevelNamesOnKeyPress = (e: any, idx: number, value: CountryItem, level: string) => {
     if(e.keyCode == 13){
         e.preventDefault()
@@ -446,11 +539,11 @@ export default function Step3(props: WizardStepInterface) {
             <ListItemIcon>
               <Checkbox
                 edge="start"
-                checked={selectedEntities.indexOf(value.id) !== -1}
+                checked={selectedEntities.indexOf(`${value.upload_id}`) !== -1}
                 tabIndex={-1}
                 disableRipple
                 inputProps={{ "aria-labelledby": labelId }}
-                onChange={(event: any) =>  selectionChanged(value.id, event.target.checked)}
+                onChange={(event: any) =>  selectionChanged(`${value.upload_id}`, event.target.checked)}
                 disabled={true}
               />
             </ListItemIcon>
@@ -474,8 +567,8 @@ export default function Step3(props: WizardStepInterface) {
 
   const renderRow = (props_list: ListChildComponentProps) => {
     const { index, style } = props_list;
-    const value = datasetData[index];
-    const labelId = `checkbox-list-label-${value.layer0_id}`;
+    const value = index < datasetData.length && datasetData[index].loaded ? datasetData[index] : null;
+    const labelId = value ? `checkbox-list-label-${value.layer0_id}` : `checkbox-list-label-loading-idx-${index}`;
     const rowRef = useRef({} as any);
 
     useEffect(() => {
@@ -486,6 +579,35 @@ export default function Step3(props: WizardStepInterface) {
       }
       // eslint-disable-next-line
     }, [rowRef]);
+  
+    if (value === null) {
+      return (
+        <ListItem style={style} key={`loading-row-idx-${index}`} component="div" disablePadding>
+          <Grid ref={rowRef} container flexDirection={'row'} alignItems={'center'} flexWrap={'nowrap'}>
+            <Grid item>
+              <ListItemIcon>
+                <Checkbox
+                  edge="start"
+                  checked={false}
+                  tabIndex={-1}
+                  disableRipple
+                  inputProps={{ "aria-labelledby": labelId }}
+                  disabled={true}
+                />
+              </ListItemIcon>
+            </Grid>
+            <Grid item flexDirection={'row'} flex={2}>
+              <ListItemText id={labelId} primary={'Loading...'}
+                secondary={getItemDescriptionLoading()} disableTypography sx={{ flexGrow: 0, paddingRight: '20px' }} />
+            </Grid>
+            <Grid item>
+            </Grid>
+            <Grid item flexDirection={'row'} flex={3} sx={{paddingLeft: '30px', overflowX: 'auto'}}>
+            </Grid>
+          </Grid>
+        </ListItem>
+      )
+    }
 
     return (
       <ListItem style={style} key={value.id} component="div" disablePadding>
@@ -494,11 +616,11 @@ export default function Step3(props: WizardStepInterface) {
             <ListItemIcon>
               <Checkbox
                 edge="start"
-                checked={selectedEntities.indexOf(value.id) !== -1}
+                checked={selectedEntities.indexOf(`${value.upload_id}`) !== -1}
                 tabIndex={-1}
                 disableRipple
                 inputProps={{ "aria-labelledby": labelId }}
-                onChange={(event: any) =>  selectionChanged(value.id, event.target.checked)}
+                onChange={(event: any) =>  selectionChanged(`${value.upload_id}`, event.target.checked)}
                 disabled={props.isReadOnly || !value.is_available || loading}
               />
             </ListItemIcon>
@@ -579,24 +701,35 @@ export default function Step3(props: WizardStepInterface) {
                             disableRipple
                             onChange={(event: any) =>  setCheckAll(event.target.checked)}
                             disabled={props.isReadOnly || loading}
-                            indeterminate={selectedEntities.length !== datasetData.length && selectedEntities.length !== 0}
+                            indeterminate={selectedEntities.length !== totalUploads && selectedEntities.length !== 0}
                           />
                         }
-                        label={`Select All (${selectedEntities.length}/${datasetData.length})`} sx={{color:'#000'}} />
+                        label={`Select All (${selectedEntities.length}/${totalUploads})`} sx={{color:'#000'}} />
                       </Grid>
                     </Grid>
                   </ListSubheader>
                   <div style={{ padding: '0 20px'}}>
-                    <List
-                      height={listViewHeight}
-                      width={'100%'}
-                      itemSize={getRowHeight}
-                      itemCount={datasetData.length}
-                      overscanCount={5}
-                      ref={listRef}
-                    >
-                      {renderRow}
-                    </List>
+                  <InfiniteLoader
+                    isItemLoaded={isItemLoaded}
+                    itemCount={totalUploads}
+                    loadMoreItems={loadUploadItems}
+                    minimumBatchSize={100}
+                    threshold={25}
+                  >
+                    {({ onItemsRendered, ref }) => (
+                      <List
+                        height={listViewHeight}
+                        width={'100%'}
+                        itemSize={getRowHeight}
+                        itemCount={totalUploads}
+                        overscanCount={5}
+                        onItemsRendered={onItemsRendered}
+                        ref={listRef}
+                      >
+                        {renderRow}
+                      </List>
+                    )}
+                  </InfiniteLoader>
                   </div>
                 </div> : null
             }
