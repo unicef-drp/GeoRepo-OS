@@ -4,7 +4,7 @@ from pytz import timezone
 from collections import OrderedDict
 from django.conf import settings
 from django.db import connection
-from django.db.models import Case, When, Value, Q, Count, F
+from django.db.models import Case, When, Value, Q, Count
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
 from django.utils import timezone as django_tz
@@ -17,7 +17,7 @@ from georepo.models.entity import GeographicalEntity
 from georepo.models.dataset import DatasetAdminLevelName
 from dashboard.models import LayerUploadSession, EntityUploadStatus, \
     EntityUploadChildLv1, STARTED, PROCESSING, PROCESSING_ERROR, \
-    EntityUploadStatusLog
+    EntityUploadStatusLog, IMPORTABLE_UPLOAD_STATUS_LIST
 from dashboard.serializers.upload_session import DetailUploadSessionSerializer
 from georepo.utils.module_import import module_function
 from dashboard.api_views.common import EntityUploadStatusReadPermission
@@ -63,8 +63,8 @@ class EntityUploadStatusDetail(AzureAuthRequiredMixin,
 class EntityUploadStatusMetadata(AzureAuthRequiredMixin, APIView):
     """API to fetch all upload IDs and country names"""
 
-
     def get(self, request, *args, **kwargs):
+        select_all = request.GET.get('select_all', 'false') == 'true'
         upload_session_id = request.GET.get('id', None)
         upload_session = LayerUploadSession.objects.get(
             id=upload_session_id
@@ -80,16 +80,16 @@ class EntityUploadStatusMetadata(AzureAuthRequiredMixin, APIView):
         entity_uploads = entity_uploads.exclude(
             status=''
         )
-        entity_label = Case(
-            When(revised_geographical_entity__isnull=False,
-                 then=F('revised_geographical_entity__label')),
-            When(original_geographical_entity__isnull=False,
-                 then=F('original_geographical_entity__label')),
-            default=F('revised_entity_name')
-        )
-        country_qs = entity_uploads.annotate(
-            label=entity_label
-        ).order_by('label')
+        # entity_label = Case(
+        #     When(revised_geographical_entity__isnull=False,
+        #          then=F('revised_geographical_entity__label')),
+        #     When(original_geographical_entity__isnull=False,
+        #          then=F('original_geographical_entity__label')),
+        #     default=F('revised_entity_name')
+        # )
+        # country_qs = entity_uploads.annotate(
+        #     label=entity_label
+        # ).order_by('label')
         # is_all_finished should check to all uploads without pagination
         is_all_finished = not entity_uploads.filter(
             status__in=[STARTED, PROCESSING]
@@ -98,11 +98,41 @@ class EntityUploadStatusMetadata(AzureAuthRequiredMixin, APIView):
             dataset=upload_session.dataset,
             level=0
         ).first()
+        if select_all:
+            # filter ids that are importable
+            case_list = [
+                When(
+                    status__in=IMPORTABLE_UPLOAD_STATUS_LIST,
+                    then=Value(True)
+                ),
+                When(
+                    Q(allowable_errors__gt=0) & Q(blocking_errors=0),
+                    then=Value(True)
+                )
+            ]
+            if request.user.is_superuser:
+                case_list.append(
+                    When(
+                        Q(superadmin_bypass_errors__gt=0) &
+                        Q(superadmin_blocking_errors=0),
+                        then=Value(True)
+                    )
+                )
+            is_importable = Case(
+                *case_list,
+                default=Value(False)
+            )
+            entity_uploads = entity_uploads.annotate(
+                is_importable=is_importable
+            ).filter(is_importable=True)
         return Response(
             status=200,
             data={
-                'ids': entity_uploads.values_list('id', flat=True),
-                'countries': country_qs.values_list('label', flat=True),
+                'ids': (
+                    entity_uploads.values_list('id', flat=True) if
+                    select_all else []
+                ),
+                'countries': [],
                 'is_all_finished': is_all_finished,
                 'level_name_0': (
                     level_name_0.label if level_name_0 else 'Country'

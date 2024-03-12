@@ -159,6 +159,30 @@ class EntityUploadStatus(models.Model):
         blank=True
     )
 
+    allowable_errors = models.IntegerField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    blocking_errors = models.IntegerField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    superadmin_bypass_errors = models.IntegerField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
+    superadmin_blocking_errors = models.IntegerField(
+        null=True,
+        blank=True,
+        default=0
+    )
+
     @property
     def comparison_running(self):
         return self.comparison_data_ready is not None

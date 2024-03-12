@@ -304,7 +304,6 @@ export default function Step4(props: WizardStepInterface) {
         let _isAllFinished = response.data['is_all_finished']
         let _level_name_0 = response.data['level_name_0']
         let _isReadOnly = response.data['is_read_only']
-        setAllIds(_allIds)
         let _init_columns = USER_COLUMNS
         let _columns = _init_columns.map((columnName) => {
           let _options: any = {
@@ -468,6 +467,8 @@ export default function Step4(props: WizardStepInterface) {
               if (currentFilters.status.includes('Not Completed')) {
                 setCurrentFilters({...currentFilters, 'status': []})
               }
+              // fetch all ids that are importable for select all
+              fetchMetadataForSelectAll()
             }
           }
           setUploadData(_results.map((responseData: any) => {
@@ -492,6 +493,18 @@ export default function Step4(props: WizardStepInterface) {
       if (!axios.isCancel(error)) {
         console.log(error)
       }
+    })
+  }
+
+  const fetchMetadataForSelectAll = () => {
+    axios.get(`${METADATA_URL}?id=${props.uploadSession}&select_all=true`).then(
+      response => {
+        let _allIds = response.data['ids'] as number[]
+        setAllIds(_allIds)
+      }
+    ).catch((error) => {
+      console.log('Failed to fetch metadata ', error)
+      setAlertMessage(`There is unexpected error when loading the metadata! Please try again later or contact administrator!`)
     })
   }
 
@@ -846,17 +859,19 @@ export default function Step4(props: WizardStepInterface) {
             title={
               <Grid container flexDirection={'row'}>
                 <Grid item>
-                  <FormControlLabel control={
-                    <Checkbox
-                      edge="start"
-                      checked={isCheckAll}
-                      disableRipple
-                      onChange={(event: any) =>  setIsCheckAll(event.target.checked)}
-                      disabled={props.isReadOnly || loading || !allFinished}
-                      indeterminate={selectedEntities.length !== allIds.length && selectedEntities.length !== 0}
-                    />
-                  }
-                  label={`Select All (${selectedEntities.length}/${allIds.length})`} sx={{color:'#000'}} />
+                  { allFinished && (
+                    <FormControlLabel control={
+                      <Checkbox
+                        edge="start"
+                        checked={isCheckAll}
+                        disableRipple
+                        onChange={(event: any) =>  setIsCheckAll(event.target.checked)}
+                        disabled={props.isReadOnly || loading || !allFinished}
+                        indeterminate={selectedEntities.length !== allIds.length && selectedEntities.length !== 0}
+                      />
+                    }
+                    label={`Select All (${selectedEntities.length}/${allIds.length})`} sx={{color:'#000'}} />
+                  )}
                 </Grid>
               </Grid>
             }

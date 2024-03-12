@@ -76,7 +76,8 @@ class TestEntityUploadStatusApiViews(TestCase):
         upload_session.started_at = datetime.datetime(2023, 8, 14, 8, 8, 8)
         upload_session.save()
         entity_upload = EntityUploadF.create(
-            upload_session=upload_session
+            upload_session=upload_session,
+            status='Valid'
         )
         entity_upload.started_at = datetime.datetime(2023, 8, 14, 10, 10, 10)
         entity_upload.save()
@@ -90,10 +91,18 @@ class TestEntityUploadStatusApiViews(TestCase):
         response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertIn('ids', response.data)
-        self.assertIn(entity_upload.id, response.data['ids'])
         self.assertIn('countries', response.data)
-        self.assertIn(entity_upload.original_geographical_entity.label,
-                      response.data['countries'])
+        user = UserF.create(is_superuser=True)
+        request = self.factory.get(
+            reverse('entity-upload-status-metadata') +
+            f'/?id={upload_session.id}&select_all=true'
+        )
+        request.user = user
+        view = EntityUploadStatusMetadata.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('ids', response.data)
+        self.assertIn(entity_upload.id, response.data['ids'])
 
     def test_entity_upload_status_list(self):
         upload_session = LayerUploadSessionF.create(
