@@ -80,16 +80,6 @@ class EntityUploadStatusMetadata(AzureAuthRequiredMixin, APIView):
         entity_uploads = entity_uploads.exclude(
             status=''
         )
-        # entity_label = Case(
-        #     When(revised_geographical_entity__isnull=False,
-        #          then=F('revised_geographical_entity__label')),
-        #     When(original_geographical_entity__isnull=False,
-        #          then=F('original_geographical_entity__label')),
-        #     default=F('revised_entity_name')
-        # )
-        # country_qs = entity_uploads.annotate(
-        #     label=entity_label
-        # ).order_by('label')
         # is_all_finished should check to all uploads without pagination
         is_all_finished = not entity_uploads.filter(
             status__in=[STARTED, PROCESSING]

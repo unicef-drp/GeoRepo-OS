@@ -1,8 +1,9 @@
 import csv
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
+from django.db.models.expressions import RawSQL
 from django.utils import timezone
-from django.db.models import Value, CharField, F
+from django.db.models import Value, CharField, F, Case, When
 from django.db.models.functions import Extract
 from guardian.core import ObjectPermissionChecker
 from rest_framework import serializers
@@ -12,7 +13,8 @@ from rest_framework.views import APIView
 from guardian.shortcuts import get_objects_for_user
 from dashboard.models import (
     EntityUploadStatus,
-    BatchEntityEdit
+    BatchEntityEdit,
+    LayerUploadSession
 )
 from georepo.models import (
     GeographicalEntity,
@@ -457,6 +459,93 @@ class DatasetEntityEditHistory(APIView):
             status=200
         )
 
+
+class CountrySearchAPI(APIView):
+    """API to search country based on domain to search."""
+    permission_classes = [IsAuthenticated]
+
+    def _search_in_dataset(self, request):
+        dataset_id = request.GET.get('dataset_id', 0)
+        search_text = request.GET.get('search_text', '')
+        return GeographicalEntity.objects.filter(
+            is_approved=True,
+            dataset_id=dataset_id,
+            level=0,
+            label__icontains=search_text
+        ).order_by('label')
+
+    def _search_in_view(self, request):
+        view_id = request.GET.get('view_id', 0)
+        view = get_object_or_404(DatasetView, id=view_id)
+        search_text = request.GET.get('search_text', '')
+        entities = GeographicalEntity.objects.filter(
+            is_approved=True,
+            dataset=view.dataset,
+            level=0,
+            label__icontains=search_text
+        ).order_by('label')
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(view.uuid))
+        return entities.filter(
+            id__in=RawSQL(raw_sql, [])
+        )
+
+    def _search_in_upload_session(self, request):
+        session_id = request.GET.get('session_id', 0)
+        search_text = request.GET.get('search_text', '')
+        upload_session = get_object_or_404(LayerUploadSession, id=session_id)
+        entity_uploads = (
+            EntityUploadStatus.objects.select_related(
+                'revised_geographical_entity',
+                'original_geographical_entity'
+            ).filter(
+                upload_session=upload_session
+            )
+        )
+        entity_uploads = entity_uploads.exclude(
+            status=''
+        )
+        entity_label = Case(
+            When(revised_geographical_entity__isnull=False,
+                 then=F('revised_geographical_entity__label')),
+            When(original_geographical_entity__isnull=False,
+                 then=F('original_geographical_entity__label')),
+            default=F('revised_entity_name')
+        )
+        country_qs = entity_uploads.annotate(
+            label=entity_label
+        ).order_by('label')
+        return country_qs.filter(
+            label__icontains=search_text
+        )
+
+    def get(self, *args, **kwargs):
+        object_type = kwargs.get('object_type', None)
+        if (
+            not object_type or
+            object_type not in ['dataset', 'view', 'upload_session']
+        ):
+            return Response(
+                status=400,
+                data={
+                    'detail': f'Invalid object_type {object_type}!'
+                }
+            )
+        if object_type == 'dataset':
+            query_set = self._search_in_dataset(self.request)
+        elif object_type == 'view':
+            query_set = self._search_in_view(self.request)
+        elif object_type == 'upload_session':
+            query_set = self._search_in_upload_session(self.request)
+        # limit to max 20 results
+        query_set = query_set[0:20]
+        return Response(
+            status=200,
+            data={
+                'countries': query_set.values_list('label', flat=True)
+            }
+        )
 
 # class DatasetEntitySingleEditHistory(APIView):
 #     """API to fetch the detail of single edit history of entity."""

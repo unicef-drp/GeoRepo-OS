@@ -107,7 +107,8 @@ from dashboard.api_views.entity import (
     BatchEntityEditAPI,
     BatchEntityEditFile,
     BatchEntityEditResultAPI,
-    DatasetEntityEditHistory
+    DatasetEntityEditHistory,
+    CountrySearchAPI
 )
 
 from dashboard.api_views.views import (
@@ -216,6 +217,11 @@ urlpatterns = [
         r'api/entity-edit-history/?$',
         DatasetEntityEditHistory.as_view(),
         name='entity-edit-history'
+    ),
+    re_path(
+        r'api/entity/country/(?P<object_type>[\w]+)/search/?$',
+        CountrySearchAPI.as_view(),
+        name='country-search'
     ),
     re_path(
         r'api/language/list/?$',
