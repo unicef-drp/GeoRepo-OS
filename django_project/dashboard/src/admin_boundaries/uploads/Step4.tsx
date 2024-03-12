@@ -242,115 +242,6 @@ export default function Step4(props: WizardStepInterface) {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const [viewOverlapError, setViewOverlapError] = useState(false)
-  const [customColumnOptions, setCustomColumnOptions] = useState({
-    'id': {
-      filter: false,
-      display: false,
-    },
-    'started at': {
-      filter: false,
-      sort: false
-    },
-    'error_summaries': {
-      filter: false,
-      display: false,
-    },
-    'error_report': {
-      filter: false,
-      display: false,
-    },
-    'is_importable': {
-      filter: false,
-      display: false,
-    },
-    'is_warning': {
-      filter: false,
-      display: false,
-    },
-    'progress': {
-      filter: false,
-      display: false,
-    },
-    'Country': {
-      filter: true,
-      sort: false,
-      display: true,
-      filterOptions: {
-        fullWidth: true,
-      }
-    },
-    'status': {
-        filter: true,
-        sort: false,
-        display: true,
-        filterOptions: {
-          fullWidth: true,
-          names: STATUS_LIST,
-          logic(val:any, filters:any) {
-            if (filters[0]) {
-              if (filters[0] === 'Not Completed') {
-                return !INCOMPLETE_STATUS_LIST.includes(val)
-              }
-              return val !== filters[0]
-            }
-            return false
-          }
-        },
-        customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-          let id = tableMeta['rowData'][0]
-          let name = tableMeta['rowData'][1]
-          let isImportable = tableMeta['rowData'][6]
-          let isWarning = tableMeta['rowData'][7]
-          let progress = tableMeta['rowData'][8] ? tableMeta['rowData'][8] : ''
-          let summaries = tableMeta['rowData'][4]
-          let error_report = tableMeta['rowData'][5]
-          let error_logs = tableMeta['rowData'][9]
-          if (IN_PROGRES_STATUS_LIST.includes(value)) {
-            return <span style={{display:'flex'}}>
-                    <CircularProgress size={18} />
-                    <span style={{marginLeft: '5px' }}>{value}{value === 'Processing' && progress ? ` ${progress}`:''}</span>
-                  </span>
-          } else if (value === 'Error' || value === 'Warning') {
-            if (props.isReadOnly) {
-              return <span>
-                      <span>{isWarning?'Warning':value}</span>
-                      <Button id={`error-btn-${id}`} variant={'contained'} color={isWarning?"warning":"error"} onClick={
-                        () => showError(id, summaries, error_report, isImportable)} style={{marginLeft:'10px'}}
-                      >{isWarning?'Show Warning':'Show Error'}</Button>
-                    </span>
-            } else {
-              return <Button id={`error-btn-${id}`} variant={'contained'} color={isWarning?"warning":"error"} onClick={
-                        () => showError(id, summaries, error_report, isImportable)}
-                      >{isWarning?'Show Warning':'Show Error'}</Button>
-            }
-          } else if (value === 'Stopped with Error') {
-            return (
-              <span className="error-status-container">
-                <span className="error-status-label">{value}</span>
-                {error_logs && (
-                  <HtmlTooltip tooltipTitle='Error Detail' icon={<ErrorIcon fontSize="small" color="error" />}
-                    tooltipDescription={<p>{error_logs}</p>}
-                />
-                )}
-                <IconButton aria-label={'Retrigger validation'} title={'Retrigger validation'}
-                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                    e.currentTarget.disabled = true
-                    retriggerValidation(id as number, name)
-                  }}>
-                  <SyncIcon color='info' fontSize='small' />
-              </IconButton>
-              </span>
-            )
-          }
-          return value
-        }
-    },
-    'error_logs': {
-      filter: false,
-      display: false,
-    },
-  })
-  const [addNotCompletedFilter, setAddNotCompletedFilter] = useState(false)
   const [statusSummary, setStatusSummary] = useState<StatusSummaryDict>({})
   const [jobSummaryText, setJobSummaryText] = useState('-')
   const [jobSummaryProgress, setJobSummaryProgress] = useState(0)
@@ -410,8 +301,8 @@ export default function Step4(props: WizardStepInterface) {
         let _allIds = response.data['ids'] as number[]
         let _isAllFinished = response.data['is_all_finished']
         let _level_name_0 = response.data['level_name_0']
+        let _isReadOnly = response.data['is_read_only']
         setAllIds(_allIds)
-        setAllFinished(_isAllFinished)
         let _init_columns = USER_COLUMNS
         let _columns = _init_columns.map((columnName) => {
           let _options: any = {
@@ -514,16 +405,21 @@ export default function Step4(props: WizardStepInterface) {
           return _options
         })
         setTableColumns(_columns)
-        if (!_isAllFinished) {
-          setCurrentFilters({
-            ...currentFilters,
-            status: ['Not Completed']
-          })
-          props.setEditable(false)
+        if (_isReadOnly) {
+          setAllFinished(true)
         } else {
-          props.setEditable(true)
-          if (props.onCheckProgress) {
-            props.onCheckProgress()
+          setAllFinished(_isAllFinished)
+          if (!_isAllFinished) {
+            setCurrentFilters({
+              ...currentFilters,
+              status: ['Not Completed']
+            })
+            props.setEditable(false)
+          } else {
+            props.setEditable(true)
+            if (props.onCheckProgress) {
+              props.onCheckProgress()
+            }
           }
         }
       }
@@ -534,6 +430,7 @@ export default function Step4(props: WizardStepInterface) {
   }
 
   const getStatus = (isFromInterval: boolean = false) => {
+    console.log('getStatus isFromInterval ', isFromInterval)
     if (axiosSource.current) axiosSource.current.cancel()
     let cancelFetchToken = newCancelToken()
     if (!isFromInterval) {
@@ -605,7 +502,9 @@ export default function Step4(props: WizardStepInterface) {
     if (allFinished) {
       setSelectableRowsMode('multiple')
       // remove filter status
-      setCurrentFilters({...currentFilters, 'status': []})
+      if (currentFilters.status.includes('Not Completed')) {
+        setCurrentFilters({...currentFilters, 'status': []})
+      }
     } else {
       setSelectableRowsMode('none')
     }

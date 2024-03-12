@@ -106,7 +106,8 @@ class EntityUploadStatusMetadata(AzureAuthRequiredMixin, APIView):
                 'is_all_finished': is_all_finished,
                 'level_name_0': (
                     level_name_0.label if level_name_0 else 'Country'
-                )
+                ),
+                'is_read_only': upload_session.is_read_only(),
             }
         )
 
