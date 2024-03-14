@@ -468,7 +468,6 @@ class CountrySearchAPI(APIView):
         dataset_id = request.GET.get('dataset_id', 0)
         search_text = request.GET.get('search_text', '')
         return GeographicalEntity.objects.filter(
-            is_approved=True,
             dataset_id=dataset_id,
             level=0,
             label__icontains=search_text
@@ -476,7 +475,11 @@ class CountrySearchAPI(APIView):
 
     def _search_in_view(self, request):
         view_id = request.GET.get('view_id', 0)
-        view = get_object_or_404(DatasetView, id=view_id)
+        view_uuid = request.GET.get('view_uuid', '')
+        if view_id:
+            view = get_object_or_404(DatasetView, id=view_id)
+        else:
+            view = get_object_or_404(DatasetView, uuid=view_uuid)
         search_text = request.GET.get('search_text', '')
         entities = GeographicalEntity.objects.filter(
             is_approved=True,

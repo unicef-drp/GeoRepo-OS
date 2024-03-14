@@ -40,6 +40,7 @@ import MUIDataTable, {debounceSearchRender, MUISortOptions, SelectableRows} from
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import FormControlLabel from "@mui/material/FormControlLabel";
+import CountrySearch from '../../components/CountrySearch';
 
 
 const URL = '/api/entity-upload-status-list/'
@@ -192,7 +193,7 @@ interface StatusSummaryDict {
 interface Step4FilterInterface {
   status: string[],
   search_text: string,
-  countries: string[]
+  country: string[]
 }
 
 
@@ -200,7 +201,7 @@ const getDefaultFilter = (): Step4FilterInterface => {
   return {
     status: [],
     search_text: '',
-    countries: []
+    country: []
   }
 }
 
@@ -284,7 +285,7 @@ export default function Step4(props: WizardStepInterface) {
     let values:string[] = []
     switch (col_name) {
         case 'country':
-            values = currentFilters.countries
+            values = currentFilters.country
             break;
         case 'status':
           values = currentFilters.status
@@ -299,7 +300,6 @@ export default function Step4(props: WizardStepInterface) {
     setLoading(true)
     axios.get(`${METADATA_URL}?id=${props.uploadSession}`).then(
       response =>{
-        let _countries = response.data['countries']
         let _allIds = response.data['ids'] as number[]
         let _isAllFinished = response.data['is_all_finished']
         let _level_name_0 = response.data['level_name_0']
@@ -321,7 +321,40 @@ export default function Step4(props: WizardStepInterface) {
               display: true,
               sort: false,
               searchable: false,
-              filter: false
+              filter: true,
+              filterType: 'custom',
+              filterList: getExistingFilterValue(columnName),
+              filterOptions: {
+                names: [],
+                fullWidth: true,
+                logic(val:any, filters:any) {
+                    return false;
+                },
+                display: (filterList: any, onChange: any, index: any, column: any) => (
+                    <CountrySearch objectType={'upload_session'} objectId={props.uploadSession}
+                        filterList={filterList} onChange={onChange}
+                        index={index} column={column} />
+                )
+              },
+              customFilterListOptions: {
+                  render: (countries:any) => {
+                      let result:string[] = []
+                      if (countries.length === 1) {
+                          result.push(`Country: ${countries[0]}`)
+                      } else if (countries.length <= MAX_COUNTRIES_IN_FILTER_CHIP) {
+                          result.push(`Countries: ${countries.join(', ')}`)
+                      } else {
+                          let _countries = countries.slice(0, MAX_COUNTRIES_IN_FILTER_CHIP)
+                          result.push(`Countries: ${_countries.join(', ')}, and ${countries.length - MAX_COUNTRIES_IN_FILTER_CHIP} more`)
+                      }                                    
+                      return result
+                  },
+                  update: (filterList:any, filterPos:any, index:any) => {
+                      filterList[index] = []
+                      handleCountriesOnClear()
+                      return filterList;
+                  }
+              }
             }
           } else if (columnName === 'status') {
             _options.options = {
@@ -438,7 +471,7 @@ export default function Step4(props: WizardStepInterface) {
     axios.post(
         url + `&page=${pagination.page + 1}&page_size=${pagination.rowsPerPage}`,
         {
-          'countries': currentFilters.countries,
+          'countries': currentFilters.country,
           'search_text': currentFilters.search_text,
           'status': currentFilters.status
         },
@@ -515,13 +548,25 @@ export default function Step4(props: WizardStepInterface) {
   }, [])
 
   const updateTableColumnFilter = () => {
+    let _tableColumns = [...tableColumns]
+    let _isUpdated = false
     if (currentFilters.status) {
-      let _tableColumns = [...tableColumns]
       let idx = _tableColumns.findIndex((t) => t.name === 'status')
       if (idx > -1) {
         _tableColumns[idx]['options']['filterList'] = getExistingFilterValue('status')
-        setTableColumns([..._tableColumns])
+        _isUpdated = true
       }
+    }
+    if (currentFilters.country) {
+      let idx = _tableColumns.findIndex((t) => t.name === 'country')
+      if (idx > -1) {
+        _tableColumns[idx]['options']['filterList'] = getExistingFilterValue('country')
+        _isUpdated = true
+      }
+    }
+
+    if (_isUpdated) {
+      setTableColumns([..._tableColumns])
     }
   }
 
@@ -772,7 +817,7 @@ export default function Step4(props: WizardStepInterface) {
     let _currentFilters = {...currentFilters}
     setCurrentFilters({
       ..._currentFilters,
-      countries: []
+      country: []
     })
   }
 
@@ -855,7 +900,7 @@ export default function Step4(props: WizardStepInterface) {
             title={'Retrigger Validation'} description={'Please wait while we are submitting your request!'} />
       
       <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
-                                onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
+                                onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT - 40)}/>
       <div className="AdminTable" style={{width: '100%'}}>
         <MUIDataTable
             title={

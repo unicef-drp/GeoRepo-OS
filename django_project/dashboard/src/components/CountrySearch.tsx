@@ -1,4 +1,4 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useEffect} from 'react';
 import axios from 'axios';
 import Autocomplete from '@mui/material/Autocomplete';
 import Checkbox from '@mui/material/Checkbox';
@@ -10,10 +10,11 @@ import { debounce } from '@mui/material/utils';
 const checkBoxOutlinedicon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkBoxCheckedIcon = <CheckBoxIcon fontSize="small" />;
 const SEARCH_API_URL = '/api/entity/country/'
+const reg = new RegExp('^\d+$')
 
 interface CountrySearchInterface {
     objectType: string;
-    objectId: number;
+    objectId: string;
     filterList: any;
     onChange: any;
     index: any;
@@ -24,7 +25,6 @@ export default function CountrySearch(props: CountrySearchInterface) {
     const [value, setValue] = useState<String | null>(null)
     const [inputValue, setInputValue] = useState('')
     const [options, setOptions] = useState<String[]>([])
-    const loaded = React.useRef(false)
 
     const doSearchCountry = useMemo(
         () =>
@@ -37,7 +37,11 @@ export default function CountrySearch(props: CountrySearchInterface) {
                     if (props.objectType === 'dataset') {
                         _url = _url + `&dataset_id=${props.objectId}`
                     } else if (props.objectType === 'view') {
-                        _url = _url + `&view_id=${props.objectId}`
+                        if (reg.test(props.objectId)) {
+                            _url = _url + `&view_id=${props.objectId}`
+                        } else {
+                            _url = _url + `&view_uuid=${props.objectId}`
+                        }                        
                     } else if (props.objectType === 'upload_session') {
                         _url = _url + `&session_id=${props.objectId}`
                     }
@@ -56,6 +60,29 @@ export default function CountrySearch(props: CountrySearchInterface) {
         [],
     )
 
+    useEffect(() => {
+        let active = true
+        if (inputValue === '') {
+            setOptions(value ? [value] : [])
+            return undefined
+        }
+        doSearchCountry({input: inputValue}, (results?: String[]) => {
+            if (active) {
+                let newOptions: String[] = []
+                if (value) {
+                    newOptions = [value]
+                }
+                if (results) {
+                    newOptions = [...newOptions, ...results]
+                }
+                setOptions(newOptions)
+            }
+        })
+        return () => {
+            active = false
+        }
+    }, [value, inputValue, doSearchCountry])
+
     return (
         <div>
             <Autocomplete
@@ -64,12 +91,16 @@ export default function CountrySearch(props: CountrySearchInterface) {
                 options={options}
                 disableCloseOnSelect
                 value={props.filterList[props.index]}
+                noOptionsText="No countries"
                 filterOptions={(x) => x}
                 onChange={(event: any, newValue: any | null) => {
                     props.filterList[props.index] = newValue
                     props.onChange(props.filterList[props.index], props.index, props.column)
                 }}
                 getOptionLabel={(option: string) => `${option}`}
+                onInputChange={(event, newInputValue) => {
+                    setInputValue(newInputValue);
+                }}
                 renderOption={(props, option, { selected }) => (
                     <li {...props}>
                     <Checkbox
@@ -82,7 +113,7 @@ export default function CountrySearch(props: CountrySearchInterface) {
                     </li>
                 )}
                 renderInput={(params) => (
-                    <TextField {...params} label={'Country'} variant="standard" />
+                    <TextField {...params} label={'Country'} variant="standard" fullWidth />
                 )}
             />
         </div>
