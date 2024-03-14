@@ -29,6 +29,7 @@ import cloneDeep from "lodash/cloneDeep";
 import IconButton from "@mui/material/IconButton";
 import EditIcon from '@mui/icons-material/Edit';
 import {EntityEditRoute} from "../routes";
+import CountrySearch from '../../components/CountrySearch';
 
 
 const checkBoxOutlinedicon = <CheckBoxOutlineBlankIcon fontSize="small" />;
@@ -138,6 +139,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
     const navigate = useNavigate()
     // index of selected rows
     const [rowsSelected, setRowsSelected] = useState<any[]>([])
+    console.log('****props ', props)
 
     const fetchFilterValues = async () => {
         if (Object.keys(filterValues).length != 0) return filterValues
@@ -289,34 +291,37 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                                     return false;
                                 },
                                 display: (filterList: any, onChange: any, index: any, column: any) => (
-                                    <div>
-                                      <Autocomplete
-                                        multiple
-                                        id={`checkboxes-id-filter-country`}
-                                        options={filter_values['country']}
-                                        disableCloseOnSelect
-                                        value={filterList[index]}
-                                        onChange={(event: any, newValue: any | null) => {
-                                          filterList[index] = newValue
-                                          onChange(filterList[index], index, column)
-                                        }}
-                                        getOptionLabel={(option) => `${option}`}
-                                        renderOption={(props, option, { selected }) => (
-                                          <li {...props}>
-                                            <Checkbox
-                                              icon={checkBoxOutlinedicon}
-                                              checkedIcon={checkBoxCheckedIcon}
-                                              style={{ marginRight: 8 }}
-                                              checked={selected}
-                                            />
-                                            {option}
-                                          </li>
-                                        )}
-                                        renderInput={(params) => (
-                                          <TextField {...params} label={'Country'} variant="standard" />
-                                        )}
-                                      />
-                                    </div>
+                                    <CountrySearch objectType='dataset' objectId={1}
+                                        filterList={filterList} onChange={onChange}
+                                        index={index} column={column} />
+                                    // <div>
+                                    //   <Autocomplete
+                                    //     multiple
+                                    //     id={`checkboxes-id-filter-country`}
+                                    //     options={filter_values['country']}
+                                    //     disableCloseOnSelect
+                                    //     value={filterList[index]}
+                                    //     onChange={(event: any, newValue: any | null) => {
+                                    //       filterList[index] = newValue
+                                    //       onChange(filterList[index], index, column)
+                                    //     }}
+                                    //     getOptionLabel={(option) => `${option}`}
+                                    //     renderOption={(props, option, { selected }) => (
+                                    //       <li {...props}>
+                                    //         <Checkbox
+                                    //           icon={checkBoxOutlinedicon}
+                                    //           checkedIcon={checkBoxCheckedIcon}
+                                    //           style={{ marginRight: 8 }}
+                                    //           checked={selected}
+                                    //         />
+                                    //         {option}
+                                    //       </li>
+                                    //     )}
+                                    //     renderInput={(params) => (
+                                    //       <TextField {...params} label={'Country'} variant="standard" />
+                                    //     )}
+                                    //   />
+                                    // </div>
                                 )
                             },
                             customFilterListOptions: {
