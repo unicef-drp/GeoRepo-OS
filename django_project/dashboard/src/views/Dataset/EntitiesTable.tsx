@@ -6,11 +6,7 @@ import {
     FormGroup,
     TextField,
     FormLabel,
-    Autocomplete,
-    Checkbox
 } from "@mui/material";
-import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
-import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import axios from "axios";
 import {EntitiesFilterInterface, EntitiesFilterUpdateInterface} from "./EntitiesFilter"
 import FilterAlt from '@mui/icons-material/FilterAlt';
@@ -29,10 +25,7 @@ import cloneDeep from "lodash/cloneDeep";
 import IconButton from "@mui/material/IconButton";
 import EditIcon from '@mui/icons-material/Edit';
 import {EntityEditRoute} from "../routes";
-
-
-const checkBoxOutlinedicon = <CheckBoxOutlineBlankIcon fontSize="small" />;
-const checkBoxCheckedIcon = <CheckBoxIcon fontSize="small" />;
+import CountrySearch from '../../components/CountrySearch';
 
 
 export interface EntitiesTableInterface {
@@ -75,7 +68,6 @@ const ALL_COLUMNS = [
     'centroid'
 ]
 
-
 const FILTER_ENABLED_COLUMNS = [
     'country',
     'level',
@@ -87,7 +79,6 @@ const FILTER_ENABLED_COLUMNS = [
     'privacy_level',
     'centroid'
 ]
-
 
 interface EntityTableRowInterface {
     id: number,
@@ -276,6 +267,12 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                             }                        
                         }
                     } else if (column_name === 'country') {
+                        let _objectType = 'dataset'
+                        let _objectId = props.dataset_id
+                        if (props.viewUuid) {
+                            _objectType = 'view'
+                            _objectId = props.viewUuid
+                        }
                         options.label = 'Countries'
                         options.options = {
                             searchable: false,
@@ -289,34 +286,9 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                                     return false;
                                 },
                                 display: (filterList: any, onChange: any, index: any, column: any) => (
-                                    <div>
-                                      <Autocomplete
-                                        multiple
-                                        id={`checkboxes-id-filter-country`}
-                                        options={filter_values['country']}
-                                        disableCloseOnSelect
-                                        value={filterList[index]}
-                                        onChange={(event: any, newValue: any | null) => {
-                                          filterList[index] = newValue
-                                          onChange(filterList[index], index, column)
-                                        }}
-                                        getOptionLabel={(option) => `${option}`}
-                                        renderOption={(props, option, { selected }) => (
-                                          <li {...props}>
-                                            <Checkbox
-                                              icon={checkBoxOutlinedicon}
-                                              checkedIcon={checkBoxCheckedIcon}
-                                              style={{ marginRight: 8 }}
-                                              checked={selected}
-                                            />
-                                            {option}
-                                          </li>
-                                        )}
-                                        renderInput={(params) => (
-                                          <TextField {...params} label={'Country'} variant="standard" />
-                                        )}
-                                      />
-                                    </div>
+                                    <CountrySearch objectType={_objectType} objectId={_objectId}
+                                        filterList={filterList} onChange={onChange}
+                                        index={index} column={column} />
                                 )
                             },
                             customFilterListOptions: {
