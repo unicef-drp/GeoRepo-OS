@@ -588,7 +588,7 @@ def patch_names_for_all_views(modeladmin, request, queryset):
     do_patch_dataset_views_name.delay()
     modeladmin.message_user(
         request,
-        f'Patching dataset views name will be run in the background!',
+        'Patching dataset views name will be run in the background!',
         messages.SUCCESS
     )
 
