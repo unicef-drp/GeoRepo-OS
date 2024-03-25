@@ -18,6 +18,19 @@ import {LanguageOption, fetchLanguages} from "../../utils/Requests";
 import HtmlTooltip from "../../components/HtmlTooltip";
 
 const LOAD_ID_TYPE_LIST_URL = '/api/id-type/list/'
+const DEFAULT_NAME_FIELD: NameField = {
+    id: '1',
+    selectedLanguage: '',
+    field: '',
+    default: false,
+    label: ''
+}
+const DEFAULT_ID_FIELD: IdField = {
+    id: '1',
+    field: '',
+    idType: null,
+    default: false
+}
 
 
 interface Step1Interface {
@@ -45,6 +58,9 @@ export default function Step1(props: Step1Interface) {
     useEffect(() => {
         // validate if all required fields have value
         let _error = validateFieldConfig()
+        if (_error) {
+            console.log('_error ', _error)
+        }
         setEnableSaveLevelButton(_error === '')
       },
       [
@@ -80,19 +96,12 @@ export default function Step1(props: Step1Interface) {
     
           if (nameFields.length === 0) {
               setNameFields([{
-                  id: '1',
-                  selectedLanguage: '',
-                  field: '',
-                  default: false,
-                  label: ''
+                ...DEFAULT_NAME_FIELD
               }])
           }
           if (idFields.length === 0) {
             setIdFields([{
-                id: '1',
-                field: '',
-                idType: null,
-                default: false
+                ...DEFAULT_ID_FIELD
             }])
         }
     }, [])
@@ -209,12 +218,28 @@ export default function Step1(props: Step1Interface) {
         if (ucodeField.trim() === '')
             return 'ucode field'
         // check if all name fields are valid
-        if (nameFields.length > 0) {
+        let hasNameFields = nameFields.length > 0
+        if (nameFields.length === 1) {
+            // check if only contains the default one
+            let nameField = nameFields[0]
+            if (nameField.field === DEFAULT_NAME_FIELD.field && nameField.id === DEFAULT_NAME_FIELD.id && nameField.label === DEFAULT_NAME_FIELD.label && nameField.selectedLanguage === DEFAULT_NAME_FIELD.selectedLanguage) {
+                hasNameFields = false
+            }
+        }
+        if (hasNameFields) {
             let invalidNameFields = nameFields.filter(item => !(item.field && item.selectedLanguage))
             if (invalidNameFields.length > 0)
                 return 'Invalid Name Field'
         }
-        if (idFields.length > 0) {
+        let hasIdFields = idFields.length > 0
+        if (idFields.length === 1) {
+            // check if only contains the default one
+            let idField = idFields[0]
+            if (idField.field === DEFAULT_ID_FIELD.field && idField.id === DEFAULT_ID_FIELD.id && idField.idType === DEFAULT_ID_FIELD.idType) {
+                hasIdFields = false
+            }
+        }
+        if (hasIdFields) {
             let invalidIdFields = idFields.filter(item => !(item.field && item.idType))
             if (invalidIdFields.length > 0)
                 return 'Invalid Id Field'

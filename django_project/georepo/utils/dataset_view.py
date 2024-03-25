@@ -192,7 +192,7 @@ def generate_default_view_adm0_latest(dataset: Dataset) -> List[DatasetView]:
             ).first()
             adm0_name = entity.label if entity else adm0
             # create new DatasetView
-            view_name = f'{dataset.label} - {adm0_name} (Latest)'
+            view_name = f'{adm0_name} (Latest) - {dataset.label}'
             view_desc = f'{VIEW_LATEST_DESC} for {adm0_name}'
             if dataset.description:
                 view_desc = (
@@ -268,7 +268,7 @@ def generate_default_view_adm0_all_versions(
             ).first()
             adm0_name = entity.label if entity else adm0
             # create new DatasetView
-            view_name = f'{dataset.label} - {adm0_name} (All Versions)'
+            view_name = f'{adm0_name} (All Versions) - {dataset.label}'
             view_desc = f'{VIEW_ALL_VERSIONS_DESC} for {adm0_name}'
             if dataset.description:
                 view_desc = (
@@ -604,3 +604,24 @@ def calculate_entity_count_in_view(view: DatasetView):
             )
         )
         view_resource.save(update_fields=['entity_count'])
+
+
+def rename_dataset_view_from_old_pattern(view: DatasetView):
+    if not view.default_ancestor_code:
+        return
+    dataset = view.dataset
+    entity = GeographicalEntity.objects.filter(
+        dataset=dataset,
+        level=0,
+        is_latest=True,
+        is_approved=True,
+        unique_code=view.default_ancestor_code
+    ).first()
+    adm0_name = entity.label if entity else view.default_ancestor_code
+    view_type = (
+        '(Latest)' if
+        view.default_type == DatasetView.DefaultViewType.IS_LATEST else
+        '(All Versions)'
+    )
+    view.name = f'{adm0_name} {view_type} - {dataset.label}'
+    view.save(update_fields=['name'])
