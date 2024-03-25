@@ -39,7 +39,8 @@ RUN pip3 install -r /requirements.txt
 
 RUN curl -sL https://deb.nodesource.com/setup_16.x -o nodesource_setup.sh
 RUN bash nodesource_setup.sh
-RUN apt-get install nodejs npm -y
+RUN apt-get install nodejs -y
+RUN apt-get install npm -y
 
 # Tegola
 RUN wget https://github.com/go-spatial/tegola/releases/download/v0.15.2/tegola_linux_amd64.zip -P /home/web/
