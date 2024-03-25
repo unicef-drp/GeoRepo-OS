@@ -37,10 +37,19 @@ RUN pip3 install --upgrade pip && pip install --upgrade pip
 ARG CPUCOUNT=1
 RUN pip3 install -r /requirements.txt
 
-RUN curl -sL https://deb.nodesource.com/setup_16.x -o nodesource_setup.sh
-RUN bash nodesource_setup.sh
-RUN apt-get install nodejs -y
-RUN apt-get install npm -y
+# Install nodejs and npm using nvm
+RUN mkdir /usr/local/nvm
+ENV NVM_DIR /usr/local/nvm
+ENV NODE_VERSION 16.20.2
+
+RUN curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash \
+    && . $NVM_DIR/nvm.sh \
+    && nvm install $NODE_VERSION \
+    && nvm alias default $NODE_VERSION \
+    && nvm use default
+
+ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
+ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
 # Tegola
 RUN wget https://github.com/go-spatial/tegola/releases/download/v0.15.2/tegola_linux_amd64.zip -P /home/web/
