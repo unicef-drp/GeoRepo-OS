@@ -131,7 +131,7 @@ class TestToolsDatasetView(TestCase):
         )
         self.assertEqual(views.count(), 1)
         view = views.first()
-        self.assertEqual(view.name, 'World - Pakistan (Latest)')
+        self.assertEqual(view.name, 'Pakistan (Latest) - World')
         self.assertEqual(
             view.description,
             'Test. This dataset contains only the latest entities '
@@ -174,7 +174,7 @@ class TestToolsDatasetView(TestCase):
         )
         self.assertEqual(views.count(), 1)
         view = views.first()
-        self.assertEqual(view.name, 'World - Syria (Latest)')
+        self.assertEqual(view.name, 'Syria (Latest) - World')
         self.assertEqual(
             view.description,
             'Test. This dataset contains only the latest entities '
@@ -224,7 +224,7 @@ class TestToolsDatasetView(TestCase):
         )
         self.assertEqual(views.count(), 1)
         view = views.first()
-        self.assertEqual(view.name, 'World - Pakistan (All Versions)')
+        self.assertEqual(view.name, 'Pakistan (All Versions) - World')
         self.assertEqual(
             view.description,
             'Test. This dataset contains all the entities '
@@ -267,7 +267,7 @@ class TestToolsDatasetView(TestCase):
         )
         self.assertEqual(views.count(), 1)
         view = views.first()
-        self.assertEqual(view.name, 'World - Syria (All Versions)')
+        self.assertEqual(view.name, 'Syria (All Versions) - World')
         self.assertEqual(
             view.description,
             'Test. This dataset contains all the entities '
