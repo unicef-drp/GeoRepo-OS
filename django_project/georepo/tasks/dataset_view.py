@@ -32,6 +32,7 @@ from dashboard.models.notification import (
     NOTIF_TYPE_DATASET_VIEW_EXPORTER
 )
 from georepo.utils.centroid_exporter import CentroidExporter
+from georepo.utils.dataset_view import rename_dataset_view_from_old_pattern
 
 
 logger = logging.getLogger(__name__)
@@ -356,3 +357,19 @@ def do_clean_centroid_files_all_resources():
         exporter.clear_existing_resource_dir()
     logger.info(
         f'Finished cleaning centroid files to {resources.count()} resources')
+
+
+@shared_task(name="patch_dataset_views_name")
+def do_patch_dataset_views_name():
+    views = DatasetView.objects.select_related('dataset').filter(
+        is_static=False
+    ).exclude(
+        default_type__isnull=True
+    ).exclude(
+        default_ancestor_code__isnull=True
+    )
+    logger.info(f'Patch names for {views.count()} views')
+    for view in views.iterator(chunk_size=1):
+        rename_dataset_view_from_old_pattern(view)
+    logger.info(
+        f'Finished patching name for {views.count()} views')

@@ -604,3 +604,24 @@ def calculate_entity_count_in_view(view: DatasetView):
             )
         )
         view_resource.save(update_fields=['entity_count'])
+
+
+def rename_dataset_view_from_old_pattern(view: DatasetView):
+    if not view.default_ancestor_code:
+        return
+    dataset = view.dataset
+    entity = GeographicalEntity.objects.filter(
+        dataset=dataset,
+        level=0,
+        is_latest=True,
+        is_approved=True,
+        unique_code=view.default_ancestor_code
+    ).first()
+    adm0_name = entity.label if entity else view.default_ancestor_code
+    view_type = (
+        '(Latest)' if
+        view.default_type == DatasetView.DefaultViewType.IS_LATEST else
+        '(All Versions)'
+    )
+    view.name = f'{adm0_name} {view_type} - {dataset.label}'
+    view.save(update_fields=['name'])

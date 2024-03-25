@@ -582,6 +582,17 @@ def patch_cors_rule_for_blob_storage_resources(modeladmin, request, queryset):
         )
 
 
+@admin.action(description='Patch Names for All Dataset Views')
+def patch_names_for_all_views(modeladmin, request, queryset):
+    from georepo.tasks.dataset_view import do_patch_dataset_views_name
+    do_patch_dataset_views_name.delay()
+    modeladmin.message_user(
+        request,
+        f'Patching dataset views name will be run in the background!',
+        messages.SUCCESS
+    )
+
+
 class DatasetViewAdmin(GuardedModelAdmin):
     list_display = (
         'name', 'dataset', 'is_static', 'min_privacy_level',
@@ -595,7 +606,8 @@ class DatasetViewAdmin(GuardedModelAdmin):
                view_generate_simplified_geometry,
                populate_view_default_tile_config,
                fix_view_bbox, patch_centroid_files_in_view,
-               patch_cors_rule_for_blob_storage_resources]
+               patch_cors_rule_for_blob_storage_resources,
+               patch_names_for_all_views]
 
     def tiling_status(self, obj: DatasetView):
         status, _ = get_view_tiling_status(
