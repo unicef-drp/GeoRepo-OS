@@ -13,6 +13,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import HttpResponseNotFound
 import json
+from core.models.preferences import SitePreferences
 
 
 class CustomSchemaGenerator(OpenAPISchemaGenerator):
@@ -34,6 +35,10 @@ class CustomLoginView(LoginView):
         context['no_access'] = self.request.GET.get('no_access', False)
         context['use_azure_auth'] = settings.USE_AZURE
         context['redirect_next_uri'] = next
+        pref = SitePreferences.preferences()
+        context['login_help_text'] = (
+            pref.login_help_text if pref.login_help_text else ''
+        )
         return context
 
 

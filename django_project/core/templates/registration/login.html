@@ -53,6 +53,11 @@
                                 </p>
                             </div>
                         {% endif %}
+                        {% if not logged_out and not no_access and login_help_text != '' %}
+                            <div style="margin-bottom: 20px;">
+                                <p>{{ login_help_text }}</p>
+                            </div>
+                        {% endif %}
                         {% if use_azure_auth %}
                             <form class="basic-form" action="{% url 'azure_auth:login' %}" method="GET">
                                 <input type="hidden" name="next" value="{{ redirect_next_uri }}" /> 

@@ -94,6 +94,11 @@ class SitePreferencesAdmin(admin.ModelAdmin):
             'fields': (
                 'blob_storage_domain_whitelist',
             )
+        }),
+        ('Login Page', {
+            'fields': (
+                'login_help_text',
+            )
         })
     )
     inlines = (SitePreferencesImageInline,)
