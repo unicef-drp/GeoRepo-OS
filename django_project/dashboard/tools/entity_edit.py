@@ -639,7 +639,7 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
     def read_headers(self):
         self.headers = []
         with self.request.input_file.open('rb') as excel_file:
-            wb_obj = openpyxl.load_workbook(excel_file)
+            wb_obj = openpyxl.load_workbook(excel_file, data_only=True)
             sheet_obj = wb_obj.active
             max_col = sheet_obj.max_column
             self.total_rows = sheet_obj.max_row - 1
@@ -653,7 +653,7 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
         error_count = 0
         line_count = 0
         with self.request.input_file.open('rb') as excel_file:
-            wb_obj = openpyxl.load_workbook(excel_file)
+            wb_obj = openpyxl.load_workbook(excel_file, data_only=True)
             sheet_obj = wb_obj.active
             max_col = sheet_obj.max_column
             m_row = sheet_obj.max_row
