@@ -122,3 +122,16 @@
     border-radius: 5px;
   }
 }
+
+.Step2BatchEdit {
+  .UploadAlertMessage {
+    .AlertLink {
+      margin-top: 10px;
+      display: block;
+      a {
+        color: rgb(30, 70, 32);
+        text-decoration: underline;
+      }
+    }
+  }
+}

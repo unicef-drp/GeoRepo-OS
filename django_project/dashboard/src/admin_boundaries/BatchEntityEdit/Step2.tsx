@@ -6,6 +6,7 @@ import {
     Grid,
     AlertColor
 } from "@mui/material";
+import {Link} from 'react-router-dom';
 import axios from "axios";
 import '../../styles/UploadWizard.scss'
 import LoadingButton from '@mui/lab/LoadingButton';
@@ -144,7 +145,7 @@ export default function Step2(props: Step2Interface) {
 
     return (
         <Scrollable>
-            <div className="Step3Container Step4Container">
+            <div className="Step3Container Step4Container Step2BatchEdit">
                 <Grid container className='Step2' flexDirection='column' flex={1}>
                     <Grid item>
                         <Grid container flexDirection={'row'} justifyContent={'center'}>
@@ -156,10 +157,13 @@ export default function Step2(props: Step2Interface) {
                                     </p>
                                     { loading ? <LinearProgressWithLabel value={props.batchEdit.progress} maxBarWidth={'90%'} /> : null }
                                     { props.batchEdit.status === 'DONE' && (
-                                        <span className='vertical-center'>
-                                            <LightbulbIcon color="warning" sx={{paddingRight: '3px'}} fontSize="small" />
-                                            Please note that you will need to regenerate your vector tiles for these changes to propagate to end users.
-                                        </span>
+                                        <div>
+                                            <span className='vertical-center'>
+                                                <LightbulbIcon color="warning" sx={{paddingRight: '3px'}} fontSize="small" />
+                                                Please note that you will need to regenerate your vector tiles for these changes to propagate to end users.
+                                            </span>
+                                            <span className="AlertLink">Click <Link to={`/admin_boundaries/dataset_entities?id=${props.batchEdit.dataset_id}&tab=8`}>here</Link> to view the sync status tab.</span>
+                                        </div>
                                     )}
                                 </Alert> : null }
                         </Grid>
