@@ -6,9 +6,6 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import streamSaver from 'streamsaver';
 import ErrorIcon from '@mui/icons-material/Error';
@@ -147,56 +144,6 @@ export default function ViewDetail() {
 
     }
 
-    const downloadViewOnClick = (format: string) => {
-        setIsDownloading(true)
-        let _queryParams = []
-        if (previewSession) {
-            _queryParams.push(`session=${previewSession}`)
-        }
-        if (format) {
-            _queryParams.push(`format=${format}`) 
-        }
-        fetch(`${DOWNLOAD_VIEW_URL}${view.id}/?${_queryParams.join('&')}`)
-        .then((response) => {
-            setIsDownloading(false)
-            if (response.status === 200) {
-                const readableStream = response.body
-                let _filename = response.headers.get('content-disposition').split('filename=')[1].split(';')[0]
-                _filename = _filename.replaceAll('"', '')
-                const fileStream = streamSaver.createWriteStream(_filename)
-                // more optimized
-                if (window.WritableStream && readableStream.pipeTo) {
-                    return readableStream.pipeTo(fileStream)
-                            .then(() => {})
-                }
-                (window as any).writer = fileStream.getWriter()
-
-                const reader = response.body.getReader()
-                const pump = () => reader.read()
-                    .then(res => res.done
-                    ? (window as any).writer.close()
-                    : (window as any).writer.write(res.value).then(pump))
-                pump()
-            } else if (response.status === 404) {
-                alert('Error! The requested file does not exist!')
-            } else {
-                response.json().then((data) => {
-                    let _json = data as {detail?:string}
-                    if (_json && _json.detail) {
-                        alert(`Failed to download: ${_json.detail}`)
-                    } else {
-                        alert('Failed to download the requested file!')
-                    }
-                })                
-            }
-        })
-        .catch((error) => {
-            setIsDownloading(false)
-            console.log('Failed to download file!', error)
-            alert('Failed to download the requested file!')
-        })
-    }
-
     const getSyncStatusTab = () => {
         if (objSyncStatus === SyncStatus.Syncing) {
             return <Tab key={5} label="Sync Status"
@@ -230,7 +177,12 @@ export default function ViewDetail() {
                 <Tabs className='DatasetTabs' value={tabSelected} onChange={handleChange} aria-label="Configuration Tab">
                     <Tab label={ "Detail" + (tempData != null ? "*" : "") } {...a11yProps(0)} />
                     <Tab label="Preview" {...a11yProps(1)} disabled={!isQueryValid} />
-                    <Tab label="Download" {...a11yProps(2)} disabled={!isQueryValid} />
+                    <Tab label="Download History" {...a11yProps(2)} disabled={!isQueryValid} onClick={() => {
+                        if (tabSelected !== 2) return;
+                        if (searchParams.get('filterSession') || searchParams.get('requestId')) {
+                            handleChange(null, 2)
+                        }
+                    }} />
                     { view && view.permissions && view.permissions.includes('Manage') && (
                         <Tab label="Permission" {...a11yProps(3)} disabled={view === null} />
                     )}
