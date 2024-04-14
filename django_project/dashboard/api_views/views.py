@@ -2,12 +2,17 @@ import re
 import uuid
 import math
 import logging
-from django.db.models.expressions import Q
+from django.db.models import (
+    Exists,
+    OuterRef,
+    Q
+)
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import connection
 from django.http import Http404, HttpResponseForbidden
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
+from django.contrib.contenttypes.models import ContentType
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,7 +24,8 @@ from dashboard.serializers.view import (
 from georepo.models import (
     Dataset,
     DatasetView,
-    TagWithDescription
+    TagWithDescription,
+    TaggedRecord
 )
 from dashboard.models.entities_user_config import EntitiesUserConfig
 from georepo.restricted_sql_commands import RESTRICTED_COMMANDS
@@ -211,8 +217,22 @@ class ViewList(AzureAuthRequiredMixin, APIView):
     def _filter_tags(self, request):
         tags = dict(request.data).get('tags', [])
         if not tags:
-            return {}
-        return {'tags__name__in': tags}
+            return None
+        content_type = ContentType.objects.get(
+            app_label="georepo", model="datasetview"
+        )
+        result = []
+        tag_qs = TaggedRecord.objects.filter(
+            object_id=OuterRef('pk'),
+            content_type=content_type
+        )
+        for tag in tags:
+            result.append(
+                tag_qs.filter(
+                    tag__name=tag
+                )
+            )
+        return result
 
     def _filter_mode(self, request):
         mode = dict(request.data).get('mode', [])
@@ -251,12 +271,16 @@ class ViewList(AzureAuthRequiredMixin, APIView):
 
     def _filter_queryset(self, queryset, request):
         filter_kwargs = {}
-        filter_kwargs.update(self._filter_tags(request))
         filter_kwargs.update(self._filter_mode(request))
         filter_kwargs.update(self._filter_dataset(request))
         filter_kwargs.update(self._filter_min_privacy(request))
         filter_kwargs.update(self._filter_max_privacy(request))
-        return queryset.filter(**filter_kwargs).distinct()
+        final_qs = queryset.filter(**filter_kwargs)
+        tags_filter_qs = self._filter_tags(request)
+        if tags_filter_qs is not None:
+            for tag_filter in tags_filter_qs:
+                final_qs = final_qs.filter(Exists(tag_filter))
+        return final_qs.distinct()
 
     def _search_queryset(self, queryset, request):
         search_text = request.data.get('search_text', '')
