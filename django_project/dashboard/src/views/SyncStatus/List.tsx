@@ -26,7 +26,8 @@ import {
   addSelectedView,
   removeSelectedView,
   updateRowsSelectedInPage,
-  resetSelectedViews
+  resetSelectedViews,
+  setIsCheckAll
 } from "../../reducers/viewSyncAction";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {setAvailableFilters, setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
@@ -37,6 +38,8 @@ import AlertDialog from "../../components/AlertDialog";
 import {AddButton, CancelButton, ThemeButton} from "../../components/Elements/Buttons";
 import GradingIcon from "@mui/icons-material/Grading";
 import Typography from "@mui/material/Typography";
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from "@mui/material/FormControlLabel";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import '../../styles/ViewSync.scss';
@@ -47,6 +50,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import { DatasetDetailItemInterface } from "../../models/dataset";
+import StatusLoadingDialog from '../../components/StatusLoadingDialog';
 
 
 export function ViewSyncActionButtons() {
@@ -279,6 +283,12 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   const [tableHeight, setTableHeight] = useState(0)
   const fetchViewSyncListFuncRef = useRef(null)
   const rowsSelectedInPage = useAppSelector((state: RootState) => state.viewSyncAction.rowsSelectedInPage)
+  const selectedViews = useAppSelector((state: RootState) => state.viewSyncAction.selectedViews)
+  const isCheckAll = useAppSelector((state: RootState) => state.viewSyncAction.isCheckAll)
+  const [statusDialogOpen, setStatusDialogOpen] = useState<boolean>(false)
+  const [statusDialogTitle, setStatusDialogTitle] = useState<string>('Selecting all views')
+  const [statusDialogDescription, setStatusDialogDescription] = useState<string>('Fetching all views that are ready for batch sync...')
+
 
   let selectableRowsMode: any = isBatchAction ? 'multiple' : 'none'
 
@@ -680,6 +690,12 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
     }
   }, [syncStatusUpdatedAt])
 
+  useEffect(() => {
+    if (isCheckAll) {
+      fetchSelectAllViewList()
+    }
+  }, [isCheckAll])
+
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
       case 'changePage':
@@ -743,24 +759,24 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
     return !((rowData.is_tiling_config_match &&
       rowData.vector_tile_sync_status === 'synced') ||
       (
-        rowData.vector_tile_sync_status === 'syncing'
+        rowData.vector_tile_sync_status === 'syncing' ||
+        rowData.vector_tile_sync_status === 'Queued'
       ))
   }
-
 
   const fetchSelectAllViewList = () => {
     const datasetId = searchParams.get('id')
     const url = `${SELECT_ALL_LIST_URL}${datasetId}`
-    // setStatusDialogOpen(true)
+    setStatusDialogOpen(true)
     axios.post(
       url,
       currentFilters
     ).then((response) => {
-      // setStatusDialogOpen(false)
+      setStatusDialogOpen(false)
       dispatch(setSelectedViews([response.data, data]))
     }).catch(error => {
       console.log(error)
-      // setStatusDialogOpen(false)
+      setStatusDialogOpen(false)
       if (error.response) {
         if (error.response.status == 403) {
           // TODO: use better way to handle 403
@@ -779,12 +795,32 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           <Box sx={{textAlign:'right'}}>
             <ViewSyncActionButtons/>
           </Box>
+          <StatusLoadingDialog open={statusDialogOpen} title={statusDialogTitle} description={statusDialogDescription} />
           <div className='AdminList' ref={ref}>
             <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
                                 onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
             <div className='AdminTable'>
               <MUIDataTable
-                title=''
+                title={
+                  <Grid container flexDirection={'row'}>
+                    <Grid item>
+                      { isBatchAction && (
+                        <FormControlLabel control={
+                          <Checkbox
+                            edge="start"
+                            checked={isCheckAll}
+                            disableRipple
+                            onChange={(event: any) =>  dispatch(setIsCheckAll(event.target.checked))}
+                            disabled={props.isReadOnly || loading || !isBatchActionAvailable}
+                            indeterminate={selectedViews.length !== totalCount && selectedViews.length !== 0}
+                          />
+                        }
+                        label={`Select All (${selectedViews.length}/${totalCount})`} sx={{color:'#000'}}
+                        />
+                      )}
+                    </Grid>
+                  </Grid>
+                }
                 data={data}
                 columns={columns}
                 options={{
@@ -807,10 +843,16 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                       let _item = data[currentRowsSelected[0]['index']]
                       if (rowsSelected.indexOf(currentRowsSelected[0]['index']) > -1) {
                         // selected
-                        dispatch(addSelectedView(_item['id']))
+                        dispatch(addSelectedView({
+                          'id': _item['id'],
+                          'index': currentRowsSelected[0]['index']
+                        }))
                       } else {
                         // deselected
-                        dispatch(removeSelectedView(_item['id']))
+                        dispatch(removeSelectedView({
+                          'id': _item['id'],
+                          'index': currentRowsSelected[0]['index']
+                        }))
                       }
                     } else if (currentRowsSelected.length === 0) {
                       // deselect all

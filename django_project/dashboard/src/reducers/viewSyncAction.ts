@@ -8,6 +8,7 @@ export interface ViewSyncActionState {
     selectedViews: number[];
     updatedAt: Date;
     rowsSelectedInPage: number[];
+    isCheckAll: boolean;
 }
 
 const initialState: ViewSyncActionState = {
@@ -15,7 +16,13 @@ const initialState: ViewSyncActionState = {
     isBatchAction: false,
     selectedViews: [],
     updatedAt: null,
-    rowsSelectedInPage: []
+    rowsSelectedInPage: [],
+    isCheckAll: false
+}
+
+export interface RowSelectedUpdate {
+    id: number;
+    index: number;
 }
 
 export const viewSyncActionSlice = createSlice({
@@ -44,16 +51,18 @@ export const viewSyncActionSlice = createSlice({
             state.selectedViews = [..._selection]
             state.rowsSelectedInPage = _result
         },
-        addSelectedView: (state, action: PayloadAction<number>) => {
-            if (state.selectedViews.indexOf(action.payload) === -1){
+        addSelectedView: (state, action: PayloadAction<RowSelectedUpdate>) => {
+            if (state.selectedViews.indexOf(action.payload.id) === -1){
                 state.selectedViews = [
                     ...state.selectedViews,
-                    action.payload
+                    action.payload.id
                 ]
             }
+            state.rowsSelectedInPage = [...state.rowsSelectedInPage, action.payload.index]
         },
-        removeSelectedView: (state, action: PayloadAction<number>) => {
-            state.selectedViews = state.selectedViews.filter(a => a !== action.payload)
+        removeSelectedView: (state, action: PayloadAction<RowSelectedUpdate>) => {
+            state.selectedViews = state.selectedViews.filter(a => a !== action.payload.id)
+            state.rowsSelectedInPage = state.rowsSelectedInPage.filter(a => a !== action.payload.index)
         },
         resetSelectedViews: (state, action: PayloadAction<null>) => {
             state.selectedViews = []
@@ -70,6 +79,16 @@ export const viewSyncActionSlice = createSlice({
         },
         onBatchActionSubmitted: (state, action: PayloadAction<string>) => {
             state.updatedAt = new Date()
+            state.isCheckAll = false
+            state.selectedViews = []
+            state.rowsSelectedInPage = []
+        },
+        setIsCheckAll: (state, action: PayloadAction<boolean>) => {
+            state.isCheckAll = action.payload
+            if (!state.isCheckAll) {
+                state.selectedViews = []
+                state.rowsSelectedInPage = []
+            }
         }
     }
 })
@@ -82,7 +101,8 @@ export const {
     removeSelectedView,
     resetSelectedViews,
     updateRowsSelectedInPage,
-    onBatchActionSubmitted
+    onBatchActionSubmitted,
+    setIsCheckAll
 } = viewSyncActionSlice.actions
 
 export default viewSyncActionSlice.reducer;

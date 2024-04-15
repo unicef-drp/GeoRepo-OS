@@ -187,8 +187,6 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
         views_querysets = DatasetView.objects.filter(**filter_kwargs)
         views_querysets = self._search_queryset(views_querysets, self.request)
         views_querysets = self._filter_queryset(views_querysets, self.request)
-        # get count select all rows
-        select_all_qs = self._select_all_queryset(views_querysets)
         page = int(self.request.GET.get('page', '1'))
         page_size = int(self.request.query_params.get('page_size', '10'))
         views_querysets = self._sort_queryset(views_querysets, self.request)
@@ -211,8 +209,7 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
             'page': page,
             'total_page': total_page,
             'page_size': page_size,
-            'results': output,
-            'total_selectable_rows': select_all_qs.count()
+            'results': output
         })
 
 
