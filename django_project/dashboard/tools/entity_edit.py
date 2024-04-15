@@ -544,8 +544,14 @@ class BatchEntityEditBaseImporter(object):
         errors = []
         if id_errors:
             errors.append('; '.join(id_errors))
+        elif len(self.id_fields) > 0 and len(new_ids) == 0:
+            # no imported id_fields
+            errors.append('No valid ID value')
         if name_errors:
             errors.append('; '.join(name_errors))
+        elif len(self.name_fields) > 0 and len(new_names) == 0:
+            # no imported id_fields
+            errors.append('No valid name value')
         if success:
             if entity.id not in self.entity_ids:
                 self.entity_ids.append(entity.id)
@@ -633,7 +639,7 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
     def read_headers(self):
         self.headers = []
         with self.request.input_file.open('rb') as excel_file:
-            wb_obj = openpyxl.load_workbook(excel_file)
+            wb_obj = openpyxl.load_workbook(excel_file, data_only=True)
             sheet_obj = wb_obj.active
             max_col = sheet_obj.max_column
             self.total_rows = sheet_obj.max_row - 1
@@ -647,7 +653,7 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
         error_count = 0
         line_count = 0
         with self.request.input_file.open('rb') as excel_file:
-            wb_obj = openpyxl.load_workbook(excel_file)
+            wb_obj = openpyxl.load_workbook(excel_file, data_only=True)
             sheet_obj = wb_obj.active
             max_col = sheet_obj.max_column
             m_row = sheet_obj.max_row
@@ -658,7 +664,11 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
                 row = []
                 for col_idx in range(1, max_col + 1):
                     cell_obj = sheet_obj.cell(row=row_idx, column=col_idx)
-                    row.append(cell_obj.value if cell_obj.value else '')
+                    cell_value = (
+                        str(cell_obj.value) if
+                        cell_obj.value is not None else ''
+                    )
+                    row.append(cell_value)
                 is_row_success, output_row = self.process_row(row)
                 if is_row_success:
                     success_count += 1

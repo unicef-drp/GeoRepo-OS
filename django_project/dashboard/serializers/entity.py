@@ -5,7 +5,7 @@ from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from georepo.models.entity import EntityName, EntityId, EntityType
 from dashboard.models import EntitiesUserConfig, BatchEntityEdit
-from georepo.models.base_task_request import PENDING, READ_ONLY_STATUS
+from georepo.models.base_task_request import PENDING, PROCESSING, DONE
 
 
 class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
@@ -537,7 +537,7 @@ class BatchEntityEditSerializer(serializers.ModelSerializer):
         return 2
 
     def get_is_read_only(self, obj: BatchEntityEdit):
-        return obj.status in READ_ONLY_STATUS
+        return obj.status in [PROCESSING, DONE]
 
     def get_input_file_name(self, obj: BatchEntityEdit):
         if obj.input_file.name:

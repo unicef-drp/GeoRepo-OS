@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import Grid from '@mui/material/Grid';
 import Box from "@mui/material/Box";
 import Alert, { AlertColor } from "@mui/material/Alert";
@@ -8,7 +8,6 @@ import axios from "axios";
 import {useNavigate, useSearchParams} from "react-router-dom";
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -23,6 +22,7 @@ import Slider from '@mui/material/Slider';
 import WarningIcon from '@mui/icons-material/Warning';
 import Tooltip from '@mui/material/Tooltip';
 import {useAppDispatch} from "../../app/hooks";
+import {revertMenu, appendMenu} from "../../reducers/breadcrumbMenu";
 import Scrollable from '../../components/Scrollable';
 import List, {applyFilterDialogFooter} from "../../components/List";
 import Loading from "../../components/Loading";
@@ -685,6 +685,7 @@ interface ViewDownloadInterface {
 
 
 export default function ViewDownload(props: ViewDownloadInterface) {
+    const dispatch = useAppDispatch()
     const [searchParams, setSearchParams] = useSearchParams()
     const [requestId, setRequestId] = useState(null)
     const [filterSession, setFilterSession] = useState(null)
@@ -694,6 +695,19 @@ export default function ViewDownload(props: ViewDownloadInterface) {
         setRequestId(_requestId)
         let _filterSession = searchParams.get('filterSession') ? searchParams.get('filterSession') : null
         setFilterSession(_filterSession)
+        if (_requestId > 0) {
+            dispatch(appendMenu({
+                'id': 'request-download',
+                'name': 'Request Detail'
+            }))
+        } else if (_filterSession != null) {
+            dispatch(appendMenu({
+                'id': 'request-download',
+                'name': 'Submit Request'
+            }))
+        } else {
+            dispatch(revertMenu('view_edit'))
+        }
     }, [searchParams])
 
     return (
