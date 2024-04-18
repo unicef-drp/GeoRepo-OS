@@ -10,6 +10,7 @@ volumes:
   database:
   nginx-cache:
   backups-data:
+  nginx-entrypoint:
 
 x-common-django:
   &default-common-django
@@ -148,6 +149,7 @@ services:
       - layer-tiles:/home/web/layer_tiles
       - arcgis-configs:/home/web/arcgis
       - nginx-cache:/home/web/nginx_cache
+      - nginx-entrypoint:/docker-entrypoint.d/init_tile_auth.sh
     links:
       - auth
       - django
