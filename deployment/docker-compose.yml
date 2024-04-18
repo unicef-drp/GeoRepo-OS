@@ -73,13 +73,11 @@ x-common-django:
 services:
   redis:
     image: bitnami/redis:7.0.2
-    container_name: "georepo_redis"
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
 
   db:
     image: kartoza/postgis:14-3.2
-    container_name: "georepo_db"
     shm_size: 1gb
     environment:
       - ALLOW_IP_RANGE=0.0.0.0/0
@@ -89,7 +87,6 @@ services:
 
   dbbackups:
     image: kartoza/pg-backup:14-3.2
-    container_name: "georepo_dbbackups"
     environment:
       # take care to let the project name below match that
       # declared in the top of the makefile
@@ -108,7 +105,6 @@ services:
 
   django:
     <<: *default-common-django
-    container_name: "georepo_django"
     command: 'uwsgi --ini /uwsgi.conf'
     links:
       - db
@@ -116,7 +112,6 @@ services:
 
   worker:
     <<: *default-common-django
-    container_name: "georepo_worker"
     entrypoint: []
     command: '/bin/bash -c /home/web/django_project/worker_entrypoint.sh'
     links:
@@ -125,26 +120,22 @@ services:
 
   celery_beat:
     <<: *default-common-django
-    container_name: "georepo_celery_beat"
     entrypoint: []
     command: 'celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler'
 
   auth:
     <<: *default-common-django
-    container_name: "georepo_auth"
     entrypoint: []
     command: 'uwsgi --ini /uwsgi_auth.conf'
 
   dev:
     image: kartoza/georepo_dev
     <<: *default-common-django
-    container_name: "georepo_dev_django"
     entrypoint: []
 
   webpack-watcher:
     image: kartoza/georepo_dev
     <<: *default-common-django
-    container_name: "georepo_webpack_watcher"
     entrypoint: [ ]
 
   nginx:
