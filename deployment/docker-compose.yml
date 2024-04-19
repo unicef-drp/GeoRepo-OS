@@ -10,7 +10,7 @@ volumes:
   database:
   nginx-cache:
   backups-data:
-  nginx-entrypoint:
+  nginx-conf:
 
 x-common-django:
   &default-common-django
@@ -144,12 +144,12 @@ services:
     hostname: nginx
     volumes:
       - conf-data:/etc/nginx/conf.d:ro
+      - nginx-conf:/etc/nginx/nginx.conf:ro
       - static-data:/home/web/static
       - media-data:/home/web/media
       - layer-tiles:/home/web/layer_tiles
       - arcgis-configs:/home/web/arcgis
       - nginx-cache:/home/web/nginx_cache
-      - nginx-entrypoint:/docker-entrypoint.d/init_tile_auth.sh
     links:
       - auth
       - django
