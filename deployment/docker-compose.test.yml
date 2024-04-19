@@ -29,6 +29,7 @@ services:
   nginx:
     volumes:
       - ./nginx/sites-enabled:/etc/nginx/conf.d:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - static-data:/home/web/static
       - media-data:/home/web/media
       - layer-tiles:/home/web/layer_tiles
