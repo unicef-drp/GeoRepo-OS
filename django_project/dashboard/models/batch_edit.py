@@ -78,6 +78,10 @@ class EntityEditResult(models.Model):
         on_delete=models.CASCADE
     )
 
+    row_idx = models.IntegerField(
+        default=-1
+    )
+
     ucode = models.CharField(
         max_length=255
     )
