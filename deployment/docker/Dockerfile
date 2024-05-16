@@ -74,6 +74,7 @@ ADD deployment/docker/uwsgi_auth.conf /uwsgi_auth.conf
 # Build front end
 WORKDIR /home/web/django_project/dashboard
 RUN npm install --legacy-peer-deps && npm run build-react
+RUN rm -rf /home/web/django_project/dashboard/node_modules
 
 WORKDIR /home/web/django_project
 ENTRYPOINT ["sh", "/home/web/django_project/entrypoint.sh"]
