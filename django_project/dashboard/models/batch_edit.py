@@ -133,3 +133,6 @@ class EntityEditResult(models.Model):
         blank=True
     )
 
+    class Meta:
+        unique_together = ["batch_edit", "row_idx"]
+
