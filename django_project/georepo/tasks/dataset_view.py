@@ -268,18 +268,23 @@ def notify_requester_exporter_finished(request: ExportRequest):
             f'Error! Your download for {dataset_view.name} '
             'is finished with errors'
         )
-    message = render_to_string(
-        'emails/notify_export_request.html',
-        context
-    )
-    send_mail(
-        subject,
-        None,
-        settings.DEFAULT_FROM_EMAIL,
-        [request.submitted_by.email],
-        html_message=message,
-        fail_silently=False
-    )
+    try:
+        message = render_to_string(
+            'emails/notify_export_request.html',
+            context
+        )
+        send_mail(
+            subject,
+            None,
+            settings.DEFAULT_FROM_EMAIL,
+            [request.submitted_by.email],
+            html_message=message,
+            fail_silently=False
+        )
+    except Exception as ex:
+        logger.error('Failed Sending Email in DatasetView Exporter!')
+        logger.error(ex)
+        logger.error(traceback.format_exc())
 
 
 def try_delete_uploaded_file(file: FieldFile):
