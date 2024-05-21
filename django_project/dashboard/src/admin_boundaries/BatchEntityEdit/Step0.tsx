@@ -175,7 +175,7 @@ export default function Step0(props: Step0Interface) {
                           let _file = files[0]
                           _file.remove()
                         }
-                      }} variant="outlined" disabled={loading}>
+                      }} variant="outlined" disabled={!formValid || loading}>
                         Remove File
                       </LoadingButton>
                     )}
