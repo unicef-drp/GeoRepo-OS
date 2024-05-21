@@ -323,6 +323,7 @@ class TestApiDatasetView(TestCase):
         self.assertEqual(len(item['possible_id_types']), len(ext_ids))
         for id in ext_ids:
             self.assertIn(id, item['possible_id_types'])
+        self.assertIn('max_zoom', item)
 
     @mock.patch('django.core.cache.cache.get',
                 mock.Mock(side_effect=mocked_cache_get))

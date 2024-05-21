@@ -161,6 +161,7 @@ class DatasetViewList(ApiCache):
     - last_update date time
     - vector tiles URL
     - bbox
+    - max_zoom
     - tag list
     """
     permission_classes = [DatasetDetailAccessPermission]
@@ -310,6 +311,7 @@ class DatasetViewListForUser(ApiCache):
     - dataset name
     - last_update date time
     - vector tiles URL
+    - max_zoom
     - bbox
     - tag list
     """
@@ -394,6 +396,7 @@ class DatasetViewDetail(ApiCache, DatasetViewFetchResource):
     - created / last update date time
     - status
     - vector tiles URL
+    - max_zoom
     - tag list
     - admin levels
     - Other external code types in dataset view
