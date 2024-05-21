@@ -106,7 +106,6 @@ from dashboard.api_views.entity import (
     EntityEdit,
     BatchEntityEditAPI,
     BatchEntityEditFile,
-    BatchEntityEditResultAPI,
     DatasetEntityEditHistory,
     CountrySearchAPI,
     BatchEntityEditResultPageAPI

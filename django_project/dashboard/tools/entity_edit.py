@@ -619,7 +619,8 @@ class BatchEntityEditBaseImporter(object):
             self.name_field_idx_start > self.id_field_idx_start else []
         )
         new_names = (
-            output_row[self.name_field_idx_start:self.status_field_idx_start] if
+            output_row[
+                self.name_field_idx_start:self.status_field_idx_start] if
             self.status_field_idx_start > self.name_field_idx_start else []
         )
         if self.preview:

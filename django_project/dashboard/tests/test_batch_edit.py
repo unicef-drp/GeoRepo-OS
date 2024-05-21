@@ -1,6 +1,7 @@
 import json
 import random
 import mock
+import csv
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIRequestFactory
@@ -17,11 +18,11 @@ from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, EntityIdF,
     EntityNameF, LanguageF, UserF
 )
-from dashboard.models.batch_edit import BatchEntityEdit
+from dashboard.models.batch_edit import BatchEntityEdit, EntityEditResult
 from dashboard.api_views.entity import (
     BatchEntityEditAPI,
     BatchEntityEditFile,
-    BatchEntityEditResultAPI,
+    BatchEntityEditResultPageAPI,
     DatasetEntityEditHistory
 )
 from dashboard.tools.entity_edit import (
@@ -435,6 +436,7 @@ class TestBatchEdit(TestCase):
         self.assertEqual(batch_edit.total_count, 0)
 
     def test_fetch_result(self):
+        view = BatchEntityEditResultPageAPI.as_view()
         batch_edit = BatchEntityEdit.objects.create(
             dataset=self.dataset,
             status=PENDING,
@@ -446,30 +448,52 @@ class TestBatchEdit(TestCase):
             f'?batch_edit_id={batch_edit.id}&preview=false'
         )
         request.user = self.superuser
-        view = BatchEntityEditResultAPI.as_view()
         response = view(request)
         self.assertEqual(response.status_code, 400)
         batch_edit.status = DONE
         test_file_path = absolute_path(
             'dashboard', 'tests',
             'importer_data', 'import_valid_file.csv')
+        line_count = 0
         with open(test_file_path, 'rb') as data:
+            csv_bytes = data.read()
             file = SimpleUploadedFile(
-                content=data.read(),
+                content=csv_bytes,
                 name='import_valid_file.csv',
                 content_type='text/csv')
-        batch_edit.output_file = file
-        batch_edit.save(update_fields=['output_file', 'status'])
+            batch_edit.output_file = file
+            batch_edit.save(update_fields=['output_file', 'status'])
+            csv_file = csv_bytes.decode(
+                'utf-8', errors='ignore').splitlines()
+            csv_reader = csv.reader(csv_file)
+            for row in csv_reader:
+                if line_count == 0:
+                    line_count += 1
+                    continue
+                else:
+                    EntityEditResult.objects.create(
+                        batch_edit=batch_edit,
+                        row_idx=line_count - 1,
+                        ucode=row[0],
+                        level=0,
+                        country='Pakistan',
+                        default_name='Pakistan',
+                        default_code='PAK',
+                        status='SUCCESS',
+                        errors='-',
+                        new_names=[row[3], row[4]],
+                        new_codes=[row[1], row[2]]
+                    )
+                line_count += 1
         request = self.factory.get(
             reverse('batch-entity-edit-result') +
             f'?batch_edit_id={batch_edit.id}&preview=false'
         )
         request.user = self.superuser
-        view = BatchEntityEditResultAPI.as_view()
         response = view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['ucode'], 'PAK_V1')
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['ucode'], 'PAK_V1')
 
     def test_entity_edit_history(self):
         batch_edit = BatchEntityEdit.objects.create(

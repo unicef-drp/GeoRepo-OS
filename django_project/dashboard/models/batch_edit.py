@@ -135,4 +135,3 @@ class EntityEditResult(models.Model):
 
     class Meta:
         unique_together = ["batch_edit", "row_idx"]
-
