@@ -19,7 +19,7 @@ from georepo.models.entity import (
     EntityId,
     EntityName
 )
-from dashboard.models.batch_edit import BatchEntityEdit
+from dashboard.models.batch_edit import BatchEntityEdit, EntityEditResult
 from georepo.utils.unique_code import parse_unique_code
 from dashboard.models.notification import (
     Notification,
@@ -76,6 +76,7 @@ class BatchEntityEditBaseImporter(object):
     csv_output_file = None
     csv_output_writer = None
     entity_ids = []
+    entity_results = []
 
     def __init__(self, request: BatchEntityEdit, preview: bool) -> None:
         self.request = request
@@ -116,6 +117,13 @@ class BatchEntityEditBaseImporter(object):
         self.id_types = IdType.objects.all()
         self.languages = Language.objects.all()
         self.entity_ids = []
+        self.entity_results = []
+        # delete existing entity results
+        if self.preview:
+            entity_result_qs = EntityEditResult.objects.filter(
+                batch_edit=self.request
+            )
+            entity_result_qs._raw_delete(entity_result_qs.db)
 
     def remove_csv_output_file(self):
         """Remove temporary output file."""
@@ -334,14 +342,17 @@ class BatchEntityEditBaseImporter(object):
             'Default Name',
             'Default Code'
         ]
+        self.id_field_idx_start = len(self.output_headers)
         # add id fields
         for _, id_field in self.id_fields.items():
             field_name = id_field['field']
             self.output_headers.append(field_name)
+        self.name_field_idx_start = len(self.output_headers)
         # add name fields
         for _, name_field in self.name_fields.items():
             field_name = name_field['field']
             self.output_headers.append(field_name)
+        self.status_field_idx_start = len(self.output_headers)
         # add status and errors
         self.output_headers.append('Status')
         self.output_headers.append('Errors')
@@ -468,7 +479,10 @@ class BatchEntityEditBaseImporter(object):
             geographical_entity=entity
         ).aggregate(Max('idx'))
         if max_idx_res:
-            name_idx_start = max_idx_res['idx__max'] + 1
+            name_idx_start = (
+                max_idx_res['idx__max'] + 1 if
+                max_idx_res['idx__max'] is not None else 0
+            )
         # process new name_fields
         name_errors = []
         new_names = []
@@ -599,6 +613,74 @@ class BatchEntityEditBaseImporter(object):
         self.request.save(update_fields=['total_count', 'headers'])
         return True, None
 
+    def store_entity_edit_result(self, row_idx, output_row):
+        new_codes = (
+            output_row[self.id_field_idx_start:self.name_field_idx_start] if
+            self.name_field_idx_start > self.id_field_idx_start else []
+        )
+        new_names = (
+            output_row[
+                self.name_field_idx_start:self.status_field_idx_start] if
+            self.status_field_idx_start > self.name_field_idx_start else []
+        )
+        if self.preview:
+            self.entity_results.append(
+                EntityEditResult(
+                    batch_edit=self.request,
+                    row_idx=row_idx,
+                    ucode=output_row[2],
+                    level=output_row[1],
+                    country=output_row[0],
+                    default_name=output_row[3],
+                    default_code=output_row[4],
+                    status=output_row[self.status_field_idx_start],
+                    errors=output_row[self.status_field_idx_start + 1],
+                    new_names=new_names,
+                    new_codes=new_codes
+                )
+            )
+        else:
+            result = EntityEditResult.objects.filter(
+                batch_edit=self.request,
+                row_idx=row_idx,
+            ).first()
+            if result:
+                result.ucode = output_row[2]
+                result.level = output_row[1]
+                result.country = output_row[0]
+                result.default_name = output_row[3]
+                result.default_code = output_row[4]
+                result.status = output_row[self.status_field_idx_start]
+                result.errors = output_row[self.status_field_idx_start + 1]
+                result.new_names = new_names
+                result.new_codes = new_codes
+                self.entity_results.append(result)
+
+    def execute_batch_insert_edit_result(self, end=False):
+        should_execute = end or len(self.entity_results) % 250 == 0
+        if not should_execute:
+            return
+        if self.preview:
+            # use create
+            EntityEditResult.objects.bulk_create(self.entity_results)
+        else:
+            # use update
+            EntityEditResult.objects.bulk_update(
+                self.entity_results,
+                fields=[
+                    'ucode',
+                    'level',
+                    'country',
+                    'default_name',
+                    'default_code',
+                    'status',
+                    'errors',
+                    'new_names',
+                    'new_codes'
+                ]
+            )
+        self.entity_results.clear()
+
 
 class CSVBatchEntityEditImporter(BatchEntityEditBaseImporter):
 
@@ -629,8 +711,11 @@ class CSVBatchEntityEditImporter(BatchEntityEditBaseImporter):
                     else:
                         error_count += 1
                     self.csv_output_writer.writerow(output_row)
+                    self.store_entity_edit_result(line_count - 1, output_row)
+                self.execute_batch_insert_edit_result()
                 self.on_update_progress(line_count, self.total_rows)
                 line_count += 1
+        self.execute_batch_insert_edit_result(True)
         return line_count - 1, success_count, error_count
 
 
@@ -675,8 +760,11 @@ class ExcelBatchEntityEditImporter(BatchEntityEditBaseImporter):
                 else:
                     error_count += 1
                 self.csv_output_writer.writerow(output_row)
+                self.store_entity_edit_result(line_count, output_row)
+                self.execute_batch_insert_edit_result()
                 line_count += 1
                 self.on_update_progress(line_count, self.total_rows)
+        self.execute_batch_insert_edit_result(True)
         return line_count, success_count, error_count
 
 

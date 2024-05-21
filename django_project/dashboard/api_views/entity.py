@@ -1,9 +1,11 @@
 import csv
+import math
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from django.db.models.expressions import RawSQL
+from django.core.paginator import Paginator
 from django.utils import timezone
-from django.db.models import Value, CharField, F, Case, When
+from django.db.models import Value, CharField, F, Case, When, Q
 from django.db.models.functions import Extract
 from guardian.core import ObjectPermissionChecker
 from rest_framework import serializers
@@ -14,7 +16,8 @@ from guardian.shortcuts import get_objects_for_user
 from dashboard.models import (
     EntityUploadStatus,
     BatchEntityEdit,
-    LayerUploadSession
+    LayerUploadSession,
+    EntityEditResult
 )
 from georepo.models import (
     GeographicalEntity,
@@ -32,7 +35,8 @@ from georepo.utils.permission import (
 from dashboard.serializers.entity import (
     EntityConceptUCodeSerializer,
     EntityEditSerializer,
-    BatchEntityEditSerializer
+    BatchEntityEditSerializer,
+    EntityEditResultSerializer
 )
 from dashboard.tools.entity_edit import (
     try_delete_uploaded_file,
@@ -420,6 +424,104 @@ class BatchEntityEditResultAPI(APIView):
             csv_reader = csv.DictReader(file)
             data = [row for row in csv_reader]
         return Response(status=200, data=data)
+
+
+class BatchEntityEditResultPageAPI(APIView):
+    """API to fetch the result from batch entity edit."""
+    permission_classes = [IsAuthenticated]
+
+    def _get_countries(self, batch_edit: BatchEntityEdit):
+        return EntityEditResult.objects.filter(
+            batch_edit=batch_edit
+        ).order_by().values_list('country', flat=True).distinct()
+
+    def _get_queryset(self, batch_edit: BatchEntityEdit):
+        queryset = EntityEditResult.objects.filter(
+            batch_edit=batch_edit
+        ).order_by('row_idx')
+        search_text = self.request.GET.get('search_text', None)
+        if search_text:
+            queryset = queryset.filter(
+                Q(ucode__icontains=search_text) |
+                Q(country__icontains=search_text) |
+                Q(default_name__icontains=search_text) |
+                Q(default_code__icontains=search_text) |
+                Q(errors__icontains=search_text) |
+                Q(new_names__icontains=search_text) |
+                Q(new_codes__icontains=search_text)
+            )
+        levels_raw = self.request.GET.get('level', None)
+        if levels_raw:
+            levels = levels_raw.split(',')
+            queryset = queryset.filter(
+                level__in=levels
+            )
+        country_raw = self.request.GET.get('country', None)
+        if country_raw:
+            countries = country_raw.split(',')
+            queryset = queryset.filter(
+                country__in=countries
+            )
+        status_raw = self.request.GET.get('status', None)
+        if status_raw:
+            status = status_raw.split(',')
+            queryset = queryset.filter(
+                status__in=status
+            )
+        return queryset
+
+    def get(self, *args, **kwargs):
+        batch_edit_id = self.request.GET.get('batch_edit_id')
+        preview = self.request.GET.get('preview', 'false')
+        preview = preview.lower() == 'true'
+        batch_edit = get_object_or_404(BatchEntityEdit, id=batch_edit_id)
+        if preview:
+            if batch_edit.preview_file is None:
+                return Response(
+                    status=400,
+                    data={
+                        'detail': (
+                            'Unable to fetch the preview from batch edit '
+                            f'with status {batch_edit.status}'
+                        )
+                    }
+                )
+        else:
+            if batch_edit.status != DONE or batch_edit.output_file is None:
+                return Response(
+                    status=400,
+                    data={
+                        'detail': (
+                            'Unable to fetch the output from batch edit '
+                            f'with status {batch_edit.status}'
+                        )
+                    }
+                )
+        page = int(self.request.GET.get('page', '1'))
+        page_size = int(self.request.GET.get('page_size', '10'))
+        queryset = self._get_queryset(batch_edit)
+        paginator = Paginator(queryset, page_size)
+        total_page = math.ceil(paginator.count / page_size)
+        if page > total_page:
+            output = []
+        else:
+            paginated_entities = paginator.get_page(page)
+            output = EntityEditResultSerializer(
+                paginated_entities,
+                many=True,
+                context={
+                    'batch_edit': batch_edit
+                }
+            ).data
+
+        return Response({
+            'count': paginator.count,
+            'page': page,
+            'total_page': total_page,
+            'page_size': page_size,
+            'results': output,
+            'countries': self._get_countries(batch_edit)
+        })
 
 
 class DatasetEntityEditHistory(APIView):

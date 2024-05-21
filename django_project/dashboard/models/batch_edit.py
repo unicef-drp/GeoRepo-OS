@@ -69,3 +69,69 @@ class BatchEntityEdit(BaseTaskRequest):
         default=list,
         blank=True
     )
+
+
+class EntityEditResult(models.Model):
+
+    batch_edit = models.ForeignKey(
+        'dashboard.BatchEntityEdit',
+        on_delete=models.CASCADE
+    )
+
+    row_idx = models.IntegerField(
+        default=-1
+    )
+
+    ucode = models.CharField(
+        max_length=255
+    )
+
+    level = models.IntegerField(
+        default=-1
+    )
+
+    country = models.CharField(
+        default='',
+        blank=True,
+        null=True,
+        max_length=255
+    )
+
+    default_name = models.CharField(
+        default='',
+        blank=True,
+        null=True,
+        max_length=255
+    )
+
+    default_code = models.CharField(
+        default='',
+        blank=True,
+        null=True,
+        max_length=255
+    )
+
+    status = models.CharField(
+        default='',
+        blank=True,
+        null=True,
+        max_length=255
+    )
+
+    errors = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    new_names = models.JSONField(
+        default=list,
+        blank=True
+    )
+
+    new_codes = models.JSONField(
+        default=list,
+        blank=True
+    )
+
+    class Meta:
+        unique_together = ["batch_edit", "row_idx"]

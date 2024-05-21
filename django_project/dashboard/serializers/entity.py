@@ -1,10 +1,15 @@
 import os
+from collections import OrderedDict
 from rest_framework import serializers
 from django.db.models import Q, Max
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from georepo.models.entity import EntityName, EntityId, EntityType
-from dashboard.models import EntitiesUserConfig, BatchEntityEdit
+from dashboard.models import (
+    EntitiesUserConfig,
+    BatchEntityEdit,
+    EntityEditResult
+)
 from georepo.models.base_task_request import PENDING, PROCESSING, DONE
 
 
@@ -620,4 +625,45 @@ class BatchEntityEditListItemSerializer(serializers.ModelSerializer):
             'success_count',
             'error_count',
             'progress',
+        ]
+
+
+class EntityEditResultSerializer(serializers.ModelSerializer):
+
+    def to_representation(self, instance: EntityEditResult):
+        representation = super().to_representation(instance)
+        results = []
+        batch_edit: BatchEntityEdit = self.context.get('batch_edit')
+        for k, v in representation.items():
+            if k == 'new_codes':
+                for idx, id_field in enumerate(batch_edit.id_fields):
+                    name = id_field.get(
+                        'field', f'id_{idx}'
+                    )
+                    if idx < len(v):
+                        results.append((name, v[idx]))
+            elif k == 'new_names':
+                for idx, name_field in enumerate(batch_edit.name_fields):
+                    name = name_field.get(
+                        'field', f'name_{idx}'
+                    )
+                    if idx < len(v):
+                        results.append((name, v[idx]))
+            else:
+                results.append((k, v))
+        return OrderedDict(results)
+
+    class Meta:
+        model = EntityEditResult
+        fields = [
+            'id',
+            'country',
+            'level',
+            'ucode',
+            'default_name',
+            'default_code',
+            'new_codes',
+            'new_names',
+            'status',
+            'errors'
         ]
