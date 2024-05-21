@@ -608,6 +608,10 @@ class DatasetViewResource(models.Model):
         blank=True
     )
 
+    max_zoom = models.IntegerField(
+        default=8
+    )
+
     @property
     def resource_id(self):
         return str(self.uuid)

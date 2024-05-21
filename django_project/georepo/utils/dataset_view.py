@@ -18,6 +18,15 @@ from georepo.models.dataset_view import (
 )
 from georepo.models.entity import GeographicalEntity
 from georepo.restricted_sql_commands import RESTRICTED_COMMANDS
+from georepo.models.dataset_tile_config import (
+    DatasetTilingConfig,
+    AdminLevelTilingConfig
+)
+from georepo.models.dataset_view_tile_config import (
+    DatasetViewTilingConfig,
+    ViewAdminLevelTilingConfig
+)
+
 
 VIEW_LATEST_DESC = (
     'This dataset contains only the latest entities from main dataset'
@@ -625,3 +634,17 @@ def rename_dataset_view_from_old_pattern(view: DatasetView):
     )
     view.name = f'{adm0_name} {view_type} - {dataset.label}'
     view.save(update_fields=['name'])
+
+
+def get_max_zoom_level(dataset_view: DatasetView):
+    tiling_configs = DatasetViewTilingConfig.objects.filter(
+        dataset_view=dataset_view
+    ).order_by('zoom_level').last()
+    if tiling_configs:
+        return tiling_configs.zoom_level
+    tiling_configs = DatasetTilingConfig.objects.filter(
+        dataset=dataset_view.dataset
+    ).order_by('zoom_level').last()
+    if tiling_configs:
+        return tiling_configs.zoom_level
+    return 8

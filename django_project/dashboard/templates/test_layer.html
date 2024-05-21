@@ -85,7 +85,7 @@
               'type': 'vector',
               "tiles": ["{{ layer_tiles_base_url }}{{ vector_tiles_path }}&token="+apiKeyVal+"&georepo_user_key={{ user.email }}"],
               "tolerance": 0,
-              "minzoom": 0,
+              "minzoom": {{ min_zoom }},
               "maxzoom": {{ max_zoom }}
             });
 
