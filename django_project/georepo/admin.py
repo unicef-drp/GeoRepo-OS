@@ -833,6 +833,22 @@ def clear_centroid_files_all_resources(modeladmin, request, queryset):
     )
 
 
+@admin.action(description='Patch zoom metadata to all resources')
+def patch_zoom_metadata_for_all_resources(modeladmin, request, queryset):
+    """
+    Patch max zoom level to all resources.
+    """
+    from georepo.tasks.dataset_view import (
+        do_patch_zoom_metadata_for_all_resources
+    )
+    do_patch_zoom_metadata_for_all_resources.delay()
+    modeladmin.message_user(
+        request,
+        'Patch max zoom level to all resources will be run in background!',
+        messages.SUCCESS
+    )
+
+
 class DatasetViewResourceAdmin(admin.ModelAdmin):
     readonly_fields = (
         'vector_tiles_updated_at', 'centroid_updated_at',
@@ -850,7 +866,8 @@ class DatasetViewResourceAdmin(admin.ModelAdmin):
         start_dynamic_live_vector_tile,
         check_cache_dynamic_live_vector_tile,
         patch_centroid_files_all_resources,
-        clear_centroid_files_all_resources
+        clear_centroid_files_all_resources,
+        patch_zoom_metadata_for_all_resources
     ]
 
     def get_list_display(self, request):

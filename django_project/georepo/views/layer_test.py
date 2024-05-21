@@ -12,27 +12,12 @@ from azure_auth.handlers import AzureAuthHandler
 from georepo.models import DatasetView, GeographicalEntity,\
     DatasetViewResource
 from georepo.models.dataset_tile_config import (
-    DatasetTilingConfig,
     AdminLevelTilingConfig
 )
 from georepo.models.dataset_view_tile_config import (
-    DatasetViewTilingConfig,
     ViewAdminLevelTilingConfig
 )
-
-
-def get_max_zoom_level(dataset_view: DatasetView):
-    tiling_configs = DatasetViewTilingConfig.objects.filter(
-        dataset_view=dataset_view
-    ).order_by('zoom_level')
-    if tiling_configs.exists():
-        return tiling_configs.last().zoom_level
-    tiling_configs = DatasetTilingConfig.objects.filter(
-        dataset=dataset_view.dataset
-    ).order_by('zoom_level')
-    if tiling_configs.exists():
-        return tiling_configs.last().zoom_level
-    return 8
+from georepo.utils.dataset_view import get_max_zoom_level
 
 
 def get_view_zoom_level(level: int, dataset_view: DatasetView):
@@ -128,6 +113,7 @@ class LayerTestView(UserPassesTestMixin, TemplateView):
         ).distinct()
         # add max zoom
         ctx['max_zoom'] = get_max_zoom_level(dataset_view)
+        ctx['min_zoom'] = 0
 
         ctx['layer_tiles_base_url'] = settings.LAYER_TILES_BASE_URL
         if settings.DEBUG:

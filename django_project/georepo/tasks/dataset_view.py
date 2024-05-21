@@ -32,7 +32,10 @@ from dashboard.models.notification import (
     NOTIF_TYPE_DATASET_VIEW_EXPORTER
 )
 from georepo.utils.centroid_exporter import CentroidExporter
-from georepo.utils.dataset_view import rename_dataset_view_from_old_pattern
+from georepo.utils.dataset_view import (
+    rename_dataset_view_from_old_pattern,
+    get_max_zoom_level
+)
 
 
 logger = logging.getLogger(__name__)
@@ -378,3 +381,18 @@ def do_patch_dataset_views_name():
         rename_dataset_view_from_old_pattern(view)
     logger.info(
         f'Finished patching name for {views.count()} views')
+
+
+@shared_task(name="patch_zoom_metadata_for_view")
+def do_patch_zoom_metadata_for_all_resources():
+    resources = DatasetViewResource.objects.select_related(
+        'dataset_view'
+    ).filter(
+        entity_count__gt=0
+    )
+    logger.info(f'Patch zoom metadata to {resources.count()} resources')
+    for resource in resources.iterator(chunk_size=1):
+        resource.max_zoom = get_max_zoom_level(resource.dataset_view)
+        resource.save(update_fields=['max_zoom'])
+    logger.info(
+        f'Finished patching zoom metadata to {resources.count()} resources')

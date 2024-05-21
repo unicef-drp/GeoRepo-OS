@@ -32,6 +32,7 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
     vector_tiles = serializers.SerializerMethodField()
     bbox = serializers.SerializerMethodField()
     tags = TagListSerializerField()
+    max_zoom = serializers.SerializerMethodField()
 
     class Meta:
         swagger_schema_fields = {
@@ -69,6 +70,13 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
                     title='URL to view vector tile',
                     type=openapi.TYPE_STRING,
                 ),
+                'max_zoom': openapi.Schema(
+                    title=(
+                        'Maximum zoom level, useful for '
+                        'setting overzoom in map'
+                    ),
+                    type=openapi.TYPE_NUMBER,
+                ),
                 'bbox': openapi.Schema(
                     title='Bounding Box of the view',
                     type=openapi.TYPE_ARRAY,
@@ -101,6 +109,7 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
                     '21c8b48e-584d-4e76-b0d2-97db8208558f'
                     '/{z}/{x}/{y}?t=1675079531'
                 ),
+                'max_zoom': 8,
                 'bbox': [-121.5, 47.25, -120.4, 47.8],
                 'tags': ['latest']
             }
@@ -114,6 +123,7 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
             'root_entity',
             'last_update',
             'vector_tiles',
+            'max_zoom',
             'bbox',
             'tags'
         ]
@@ -211,6 +221,14 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
         resource = self.get_accessible_resource(obj, user_privacy_level)
         return self.view_bbox(resource)
 
+    def get_max_zoom(self, obj: DatasetView):
+        # find the correct resource based on privacy level
+        if 'user_privacy_level' not in self.context:
+            return None
+        user_privacy_level = self.context['user_privacy_level']
+        resource = self.get_accessible_resource(obj, user_privacy_level)
+        return resource.max_zoom if resource else None
+
 
 class DatasetViewItemForUserSerializer(DatasetViewItemSerializer):
 
@@ -234,6 +252,17 @@ class DatasetViewItemForUserSerializer(DatasetViewItemSerializer):
             return bbox
         resource = self.get_accessible_resource(obj, user_privacy_level)
         return self.view_bbox(resource)
+
+    def get_max_zoom(self, obj: DatasetView):
+        # find the correct resource based on privacy level
+        obj_checker = self.context['obj_checker']
+        user_privacy_level = get_view_permission_privacy_level(
+            obj_checker, obj.dataset, obj
+        )
+        if user_privacy_level < obj.min_privacy_level:
+            return None
+        resource = self.get_accessible_resource(obj, user_privacy_level)
+        return resource.max_zoom if resource else None
 
 
 class ViewAdminLevelSerializer(serializers.ModelSerializer):
@@ -339,6 +368,7 @@ class DatasetViewDetailSerializer(TaggitSerializer,
     dataset_levels = serializers.SerializerMethodField()
     possible_id_types = serializers.SerializerMethodField()
     bbox = serializers.SerializerMethodField()
+    max_zoom = serializers.SerializerMethodField()
 
     def get_vector_tiles(self, obj: DatasetView):
         url = None
@@ -473,6 +503,16 @@ class DatasetViewDetailSerializer(TaggitSerializer,
         bbox = [float(b) for b in bbox]
         return bbox
 
+    def get_max_zoom(self, obj: DatasetView):
+        # find the correct resource based on privacy level
+        if 'user_privacy_level' not in self.context:
+            return None
+        user_privacy_level = self.context['user_privacy_level']
+        resource = obj.datasetviewresource_set.filter(
+            privacy_level=obj.get_resource_level_for_user(user_privacy_level)
+        ).first()
+        return resource.max_zoom if resource else None
+
     class Meta:
         swagger_schema_fields = {
             'type': openapi.TYPE_OBJECT,
@@ -509,6 +549,13 @@ class DatasetViewDetailSerializer(TaggitSerializer,
                 'vector_tiles': openapi.Schema(
                     title='URL to view vector tile',
                     type=openapi.TYPE_STRING,
+                ),
+                'max_zoom': openapi.Schema(
+                    title=(
+                        'Maximum zoom level, useful for '
+                        'setting overzoom in map'
+                    ),
+                    type=openapi.TYPE_NUMBER,
                 ),
                 'tags': openapi.Schema(
                     title='Tag list',
@@ -568,7 +615,8 @@ class DatasetViewDetailSerializer(TaggitSerializer,
                     'uuid',
                     'PCode'
                 ],
-                'bbox': [-121.5, 47.25, -120.4, 47.8]
+                'bbox': [-121.5, 47.25, -120.4, 47.8],
+                'max_zoom': 8
             }
         }
         model = DatasetView
@@ -581,6 +629,7 @@ class DatasetViewDetailSerializer(TaggitSerializer,
             'last_update',
             'status',
             'vector_tiles',
+            'max_zoom',
             'tags',
             'dataset_levels',
             'possible_id_types',
