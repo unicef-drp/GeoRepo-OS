@@ -18,7 +18,8 @@ from georepo.models import Dataset, DatasetView, \
     EntityId, EntityName, GeographicalEntity, \
     DatasetViewResource
 from georepo.utils.dataset_view import create_sql_view, \
-    check_view_exists, get_entities_count_in_view, generate_view_resource_bbox
+    check_view_exists, get_entities_count_in_view, generate_view_resource_bbox, \
+    get_max_zoom_level
 from georepo.utils.module_import import module_function
 from georepo.utils.azure_blob_storage import (
     DirectoryClient,
@@ -565,6 +566,7 @@ def save_view_resource_on_success(view_resource: DatasetViewResource,
     view_resource.vector_tiles_updated_at = timezone.now()
     view_resource.vector_tiles_progress = 100
     view_resource.entity_count = entity_count
+    view_resource.max_zoom = get_max_zoom_level(view_resource.dataset_view)
     view_resource.vector_tiles_code_version = (
         f"{settings.CODE_RELEASE_VERSION}-{settings.CODE_COMMIT_HASH}"
     )
@@ -572,7 +574,8 @@ def save_view_resource_on_success(view_resource: DatasetViewResource,
                                       'vector_tiles_updated_at',
                                       'vector_tiles_progress',
                                       'entity_count',
-                                      'vector_tiles_code_version'])
+                                      'vector_tiles_code_version',
+                                      'max_zoom'])
     # clear any pending tile cache keys
     reset_pending_tile_cache_keys(view_resource)
 
