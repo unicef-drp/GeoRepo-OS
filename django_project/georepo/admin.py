@@ -594,6 +594,7 @@ def patch_names_for_all_views(modeladmin, request, queryset):
 
 
 class DatasetViewAdmin(GuardedModelAdmin):
+    readonly_fields = ('created_at', 'last_update',)
     list_display = (
         'name', 'dataset', 'is_static', 'min_privacy_level',
         'max_privacy_level', 'tiling_status',
@@ -833,6 +834,10 @@ def clear_centroid_files_all_resources(modeladmin, request, queryset):
 
 
 class DatasetViewResourceAdmin(admin.ModelAdmin):
+    readonly_fields = (
+        'vector_tiles_updated_at', 'centroid_updated_at',
+        'vector_tiles_code_version',
+    )
     search_fields = ['dataset_view__name', 'uuid']
     actions = [
         calculate_vector_tile_size,

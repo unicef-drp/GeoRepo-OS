@@ -598,6 +598,16 @@ class DatasetViewResource(models.Model):
         max_length=256
     )
 
+    centroid_updated_at = models.DateTimeField(
+        auto_now_add=True,
+        editable=True
+    )
+
+    vector_tiles_code_version = models.TextField(
+        default='',
+        blank=True
+    )
+
     @property
     def resource_id(self):
         return str(self.uuid)
