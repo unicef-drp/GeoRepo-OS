@@ -24,14 +24,14 @@ from georepo.models.dataset_view_tile_config import (
 def get_max_zoom_level(dataset_view: DatasetView):
     tiling_configs = DatasetViewTilingConfig.objects.filter(
         dataset_view=dataset_view
-    ).order_by('zoom_level')
-    if tiling_configs.exists():
-        return tiling_configs.last().zoom_level
+    ).order_by('zoom_level').last()
+    if tiling_configs:
+        return tiling_configs.zoom_level
     tiling_configs = DatasetTilingConfig.objects.filter(
         dataset=dataset_view.dataset
-    ).order_by('zoom_level')
-    if tiling_configs.exists():
-        return tiling_configs.last().zoom_level
+    ).order_by('zoom_level').last()
+    if tiling_configs:
+        return tiling_configs.zoom_level
     return 8
 
 
