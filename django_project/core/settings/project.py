@@ -11,7 +11,7 @@ import os  # noqa
 from django.utils.translation import gettext_lazy as _
 
 from .contrib import *  # noqa
-from .utils import code_release_version
+from .utils import code_release_version, code_commit_release_version
 
 ALLOWED_HOSTS = ['*']
 ADMINS = (
@@ -133,6 +133,7 @@ if USE_AZURE:
         os.makedirs(FILE_UPLOAD_TEMP_DIR)
 
 CODE_RELEASE_VERSION = code_release_version()
+CODE_COMMIT_HASH = code_commit_release_version()
 EXPORT_DATA_EXPIRY_IN_HOURS = int(os.environ.get(
     'EXPORT_DATA_EXPIRY_IN_HOURS', '48'
 ))

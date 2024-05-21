@@ -5,13 +5,13 @@ import toml
 import os
 import time
 from typing import List
-from datetime import datetime
 
 from django.core.cache import cache
 from django.conf import settings
 from django.db.models import Max
 from django.db.models.expressions import RawSQL
 from celery.result import AsyncResult
+from django.utils import timezone
 
 from core.settings.utils import absolute_path
 from georepo.models import Dataset, DatasetView, \
@@ -421,7 +421,9 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
             'error': '',
             'size': 0,
             'total_files': 0,
-            'cp_time': 0
+            'cp_time': 0,
+            'start_time': 0,
+            'end_time': 0
         }
     view_resource.vector_tile_detail_logs = detail_logs
     view_resource.save(update_fields=['vector_tile_detail_logs'])
@@ -430,6 +432,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         view_resource.vector_tile_detail_logs[current_zoom]['status'] = (
             'processing'
         )
+        process_start_time = timezone.now().timestamp()
         view_resource.save(update_fields=[
             'vector_tile_detail_logs'
         ])
@@ -475,7 +478,8 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
             'zoom': current_zoom,
             'command_list': ' '.join(command_list),
             'return_code': result.returncode,
-            'time': tegola_time_per_zoom
+            'time': tegola_time_per_zoom,
+            'start_time': process_start_time
         }
         if result.returncode != 0:
             logger.error(result.stderr)
@@ -508,6 +512,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         cp_time = time.time() - cp_started
         tegola_log_per_zoom['status'] = 'done'
         tegola_log_per_zoom['cp_time'] = cp_time
+        tegola_log_per_zoom['end_time'] = timezone.now().timestamp()
         view_resource.vector_tile_detail_logs[current_zoom] = (
             tegola_log_per_zoom
         )
@@ -550,19 +555,24 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
     return True
 
 
-def save_view_resource_on_success(view_resource, entity_count):
+def save_view_resource_on_success(view_resource: DatasetViewResource,
+                                  entity_count):
     view_resource.status = (
         DatasetView.DatasetViewStatus.DONE if entity_count > 0 else
         DatasetView.DatasetViewStatus.EMPTY
     )
     view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCED
-    view_resource.vector_tiles_updated_at = datetime.now()
+    view_resource.vector_tiles_updated_at = timezone.now()
     view_resource.vector_tiles_progress = 100
     view_resource.entity_count = entity_count
+    view_resource.vector_tiles_code_version = (
+        f"{settings.CODE_RELEASE_VERSION}-{settings.CODE_COMMIT_HASH}"
+    )
     view_resource.save(update_fields=['status', 'vector_tile_sync_status',
                                       'vector_tiles_updated_at',
                                       'vector_tiles_progress',
-                                      'entity_count'])
+                                      'entity_count',
+                                      'vector_tiles_code_version'])
     # clear any pending tile cache keys
     reset_pending_tile_cache_keys(view_resource)
 

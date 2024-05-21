@@ -7,6 +7,7 @@ import traceback
 from django.db.models.expressions import RawSQL
 from django.conf import settings
 from django.contrib.gis.geos import WKTWriter, GEOSGeometry
+from django.utils import timezone
 from georepo.models import (
     GeographicalEntity,
     DatasetViewResource
@@ -295,9 +296,11 @@ class CentroidExporter(object):
             DatasetViewResource.SyncStatus.SYNCED
         )
         self.resource.centroid_sync_progress = 100
+        self.resource.centroid_updated_at = timezone.now()
         self.resource.save(update_fields=['centroid_files',
                                           'centroid_sync_status',
-                                          'centroid_sync_progress'])
+                                          'centroid_sync_progress',
+                                          'centroid_updated_at'])
         self.do_remove_temp_dir()
 
     def clear_existing_resource_dir(self):

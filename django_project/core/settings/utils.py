@@ -41,5 +41,15 @@ def code_release_version():
     return '0.0.1'
 
 
+def code_commit_release_version():
+    """ Read code commit release version from file."""
+    version = absolute_path('version', 'commit.txt')
+    if os.path.exists(version):
+        commit = (open(version, 'rb').read()).decode("utf-8")
+        if commit:
+            return commit
+    return 'no-info'
+
+
 # Import the secret key
 ensure_secret_key_file()
