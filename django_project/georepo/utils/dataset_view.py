@@ -19,12 +19,10 @@ from georepo.models.dataset_view import (
 from georepo.models.entity import GeographicalEntity
 from georepo.restricted_sql_commands import RESTRICTED_COMMANDS
 from georepo.models.dataset_tile_config import (
-    DatasetTilingConfig,
-    AdminLevelTilingConfig
+    DatasetTilingConfig
 )
 from georepo.models.dataset_view_tile_config import (
-    DatasetViewTilingConfig,
-    ViewAdminLevelTilingConfig
+    DatasetViewTilingConfig
 )
 
 

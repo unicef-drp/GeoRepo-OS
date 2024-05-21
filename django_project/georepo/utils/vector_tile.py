@@ -18,8 +18,8 @@ from georepo.models import Dataset, DatasetView, \
     EntityId, EntityName, GeographicalEntity, \
     DatasetViewResource
 from georepo.utils.dataset_view import create_sql_view, \
-    check_view_exists, get_entities_count_in_view, generate_view_resource_bbox, \
-    get_max_zoom_level
+    check_view_exists, get_entities_count_in_view, \
+    generate_view_resource_bbox, get_max_zoom_level
 from georepo.utils.module_import import module_function
 from georepo.utils.azure_blob_storage import (
     DirectoryClient,
