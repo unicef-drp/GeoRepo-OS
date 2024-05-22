@@ -3243,6 +3243,7 @@ class FindEntityByUCode(APIView):
         view_dict = self.get_views_dict(entity_qs, dataset_privacy_level > 0)
         if len(view_dict) == 0:
             return self.not_found_response()
+        entity_qs = entity_qs.filter(id__in=view_dict.keys())
         entities, max_level, ids, names = self.generate_entity_query(
             entity_qs,
             dataset.id
@@ -3280,7 +3281,7 @@ class FindEntityByCUCode(FindEntityByUCode):
         ).filter(
             is_approved=True,
             concept_ucode=id_raw
-        )
+        ).order_by('unique_code_version')
 
     def generate_response(self, entities, context=None) -> Tuple[dict, dict]:
         """

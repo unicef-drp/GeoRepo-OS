@@ -841,7 +841,7 @@ class FindEntityByUCodeSerializer(GeographicalEntitySerializer):
                 **GeographicalEntitySerializer.Meta.
                 swagger_schema_fields['properties'],
                 'views': openapi.Schema(
-                                title='Views that entity belongs to',
+                                title='Views that the entity belongs to',
                                 type=openapi.TYPE_ARRAY,
                                 items=openapi.Items(
                                     type=openapi.TYPE_OBJECT,
