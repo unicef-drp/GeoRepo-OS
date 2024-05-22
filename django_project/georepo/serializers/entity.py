@@ -893,7 +893,8 @@ class FindEntityByUCodeSerializer(GeographicalEntitySerializer):
         ]
 
     def get_views(self, obj):
-        views = self.context.get('view_list', [])
+        view_dict = self.context.get('view_dict', {})
+        views = view_dict.get(obj.get('id'), [])
         result = []
         for view in views:
             result.append({
@@ -931,7 +932,8 @@ class FindEntityByUcodeGeojsonSerializer(
         ]
 
     def get_views(self, obj):
-        views = self.context.get('view_list', [])
+        view_dict = self.context.get('view_dict', {})
+        views = view_dict.get(obj.get('id'), [])
         result = []
         for view in views:
             result.append(view.name)

@@ -3041,6 +3041,17 @@ class FindEntityByUCode(APIView):
     """
     permission_classes = [IsAuthenticated]
     renderer_classes = [JSONRenderer, GeojsonRenderer]
+    id_type = 'ucode'
+
+    def get_queryset(self, id_raw):
+        ucode, version = parse_unique_code(id_raw)
+        return GeographicalEntity.objects.select_related(
+            'dataset', 'ancestor'
+        ).filter(
+            is_approved=True,
+            unique_code=ucode,
+            unique_code_version=version
+        )
 
     def get_serializer(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -3150,6 +3161,31 @@ class FindEntityByUCode(APIView):
         )
         return entity.privacy_level <= view_privacy_level
 
+    def not_found_response(self):
+        return Response(
+            status=404,
+            data=APIErrorSerializer({
+                'detail': f'No entity with matching {self.id_type} found.'
+            }).data
+        )
+
+    def get_views_dict(self, entity_qs, has_dataset_permission):
+        results = {}
+        for entity in entity_qs.iterator(chunk_size=1):
+            view_list = []
+            view_list.extend(self.find_default_views(entity))
+            view_list.extend(self.find_custom_views(entity))
+            if not has_dataset_permission:
+                # check for external permission for each view
+                view_list = [
+                    view for view in view_list if
+                    self.check_external_permission_in_view(entity, view)
+                ]
+            if len(view_list) > 0:
+                view_list.sort(key=lambda x: x.name)
+                results[entity.id] = view_list
+        return results
+
     @swagger_auto_schema(
         operation_id='search-entity-by-ucode',
         tags=[SEARCH_VIEW_ENTITY_TAG],
@@ -3180,68 +3216,41 @@ class FindEntityByUCode(APIView):
         }
     )
     def get(self, request, *args, **kwargs):
-        ucode_raw = kwargs.get('ucode')
+        entity_qs = GeographicalEntity.objects.none()
+        id_raw = kwargs.get(self.id_type)
         try:
-            ucode, version = parse_unique_code(ucode_raw)
+            entity_qs = self.get_queryset(id_raw)
         except ValueError:
             return Response(
                 status=400,
                 data=APIErrorSerializer({
-                    'detail': f'Invalid ucode value {ucode_raw}.'
+                    'detail': f'Invalid {self.id_type} value {id_raw}.'
                 }).data
             )
-        entity_qs = GeographicalEntity.objects.select_related(
-            'dataset', 'ancestor'
-        ).filter(
-            is_approved=True,
-            unique_code=ucode,
-            unique_code_version=version
-        )
         if not entity_qs.exists():
-            return Response(
-                status=404,
-                data=APIErrorSerializer({
-                    'detail': 'No entity with matching ucode found.'
-                }).data
-            )
-        entity = entity_qs.first()
-        privacy_level = get_view_permission_privacy_level(
+            return self.not_found_response()
+        dataset = entity_qs.first().dataset
+        dataset_privacy_level = get_view_permission_privacy_level(
             request.user,
-            entity.dataset
+            dataset
         )
-        if privacy_level > 0 and entity.privacy_level > privacy_level:
-            return Response(
-                status=404,
-                data=APIErrorSerializer({
-                    'detail': 'No entity with matching ucode found.'
-                }).data
+        if dataset_privacy_level > 0:
+            entity_qs = entity_qs.filter(
+                privacy_level__lte=dataset_privacy_level
             )
-        view_list = []
-        view_list.extend(self.find_default_views(entity))
-        view_list.extend(self.find_custom_views(entity))
-        if privacy_level <= 0:
-            # check for external permission for each view
-            view_list = [
-                view for view in view_list if
-                self.check_external_permission_in_view(entity, view)
-            ]
-            if len(view_list) == 0:
-                return Response(
-                    status=404,
-                    data=APIErrorSerializer({
-                        'detail': 'No entity with matching ucode found.'
-                    }).data
-                )
-        view_list.sort(key=lambda x: x.name)
+            if not entity_qs.exists():
+                return self.not_found_response()
+        view_dict = self.get_views_dict(entity_qs, dataset_privacy_level > 0)
+        if len(view_dict) == 0:
+            return self.not_found_response()
         entities, max_level, ids, names = self.generate_entity_query(
             entity_qs,
-            entity.dataset.id,
-            admin_level=entity.level
+            dataset.id
         )
         response_data, response_headers = self.generate_response(
             entities,
             {
-                'view_list': view_list,
+                'view_dict': view_dict,
                 'max_level': max_level,
                 'ids': ids,
                 'names': names
@@ -3251,4 +3260,89 @@ class FindEntityByUCode(APIView):
             status=200,
             data=response_data,
             headers=response_headers
+        )
+
+
+class FindEntityByCUCode(FindEntityByUCode):
+    """
+    Find entity by concept ucode.
+
+    Return single entity with its metadata and
+    list of views that the entity belongs to.
+    """
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [JSONRenderer, GeojsonRenderer]
+    id_type = 'cucode'
+
+    def get_queryset(self, id_raw):
+        return GeographicalEntity.objects.select_related(
+            'dataset', 'ancestor'
+        ).filter(
+            is_approved=True,
+            concept_ucode=id_raw
+        )
+
+    def generate_response(self, entities, context=None) -> Tuple[dict, dict]:
+        """
+        Return (response, response headers)
+        """
+        output = []
+        if entities is not None:
+            output = (
+                self.get_serializer()(
+                    entities,
+                    context=context,
+                    many=True
+                ).data
+            )
+        return output, None
+
+    @swagger_auto_schema(
+        operation_id='search-entity-by-cucode',
+        tags=[SEARCH_VIEW_ENTITY_TAG],
+        manual_parameters=[openapi.Parameter(
+            'cucode', openapi.IN_PATH,
+            description='Entity Concept UCode',
+            type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'geom', openapi.IN_QUERY,
+            description=(
+                'Geometry format: '
+                '[no_geom, centroid, full_geom]'
+            ),
+            type=openapi.TYPE_STRING,
+            default='no_geom',
+            required=False
+        ), openapi.Parameter(
+            'format', openapi.IN_QUERY,
+            description='Output format: [json, geojson]',
+            type=openapi.TYPE_STRING,
+            default='json',
+            required=False
+        )],
+        responses={
+            200: openapi.Schema(
+                title='Entity List',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_OBJECT,
+                    properties=(
+                        FindEntityByUCodeSerializer.Meta.
+                        swagger_schema_fields['properties']
+                    )
+                ),
+                example=[
+                    (
+                        FindEntityByUCodeSerializer.Meta.
+                        swagger_schema_fields['example']
+                    )
+                ]
+            ),
+            400: APIErrorSerializer,
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        return super(FindEntityByCUCode, self).get(
+            request, *args, **kwargs
         )
