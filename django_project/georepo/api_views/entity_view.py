@@ -1,6 +1,7 @@
 import os
 import math
 import json
+from typing import Tuple
 from rest_framework.views import APIView
 from django.db import connection
 from django.db.models.expressions import RawSQL
@@ -9,6 +10,7 @@ from django.http import Http404, FileResponse
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from rest_framework.reverse import reverse
+from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 from rest_framework.response import Response
 from drf_yasg import openapi
@@ -17,6 +19,7 @@ from rest_framework.generics import get_object_or_404
 from django.contrib.gis.geos import GEOSGeometry
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from rest_framework.parsers import MultiPartParser
+from rest_framework.renderers import JSONRenderer
 from core.models.preferences import SitePreferences
 from georepo.utils.permission import (
     DatasetViewDetailAccessPermission,
@@ -59,7 +62,9 @@ from georepo.serializers.common import APIErrorSerializer
 from georepo.serializers.entity import (
     GeographicalEntitySerializer,
     SearchGeometrySerializer,
-    FuzzySearchEntitySerializer
+    FuzzySearchEntitySerializer,
+    FindEntityByUCodeSerializer,
+    FindEntityByUcodeGeojsonSerializer
 )
 from georepo.utils.unique_code import (
     parse_unique_code,
@@ -73,8 +78,10 @@ from georepo.api_views.api_collections import (
 )
 from georepo.utils.api_parameters import common_api_params
 from georepo.utils.entity_query import (
+    GeomReturnType,
     validate_return_type,
-    do_generate_fuzzy_query
+    do_generate_fuzzy_query,
+    do_generate_entity_query
 )
 from georepo.tasks.search_id import (
     process_search_id_request
@@ -88,6 +95,11 @@ from georepo.utils.shapefile import (
 from georepo.utils.layers import \
     validate_layer_file_metadata
 from georepo.utils.url_helper import get_page_size
+from georepo.utils.dataset_view import check_entity_in_view
+from georepo.utils.renderers import GeojsonRenderer
+from georepo.utils.permission import (
+    get_external_view_permission_privacy_level
+)
 
 
 class DatasetViewDetailCheckPermission(object):
@@ -3017,4 +3029,321 @@ class ViewEntityBatchGeocodingResult(APIView,
             data={
                 'detail': 'Geocoding process is not completed yet.'
             }
+        )
+
+
+class FindEntityByUCode(APIView):
+    """
+    Find entity by ucode.
+
+    Return single entity with its metadata and
+    list of views that the entity belongs to.
+    """
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [JSONRenderer, GeojsonRenderer]
+    id_type = 'ucode'
+
+    def get_queryset(self, id_raw):
+        ucode, version = parse_unique_code(id_raw)
+        return GeographicalEntity.objects.select_related(
+            'dataset', 'ancestor'
+        ).filter(
+            is_approved=True,
+            unique_code=ucode,
+            unique_code_version=version
+        )
+
+    def get_serializer(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return None
+        # json or geojson. Default to json
+        format = self.request.GET.get('format', 'json')
+        return (
+            FindEntityByUcodeGeojsonSerializer if format == 'geojson'
+            else FindEntityByUCodeSerializer
+        )
+
+    def generate_entity_query(
+        self,
+        entities,
+        dataset_id,
+        entity_type=None,
+        admin_level=None
+    ):
+        # centroid, full_geom, no_geom. Default to no_geom
+        geom_type = self.request.GET.get('geom', 'no_geom')
+        geom_type = GeomReturnType.from_str(geom_type)
+        # json or geojson. Default to json
+        format = self.request.GET.get('format', 'json')
+        entities, values, max_level, ids, names_max_idx = (
+            do_generate_entity_query(
+                entities, dataset_id, entity_type,
+                admin_level, geom_type, format)
+        )
+        return entities.values(*values), max_level, ids, names_max_idx
+
+    def generate_response(self, entities, context=None) -> Tuple[dict, dict]:
+        """
+        Return (response, response headers)
+        """
+        output = {}
+        if entities is not None:
+            output = (
+                self.get_serializer()(entities.first(), context=context).data
+            )
+        return output, None
+
+    def find_default_view(self, dataset: Dataset,
+                          type: DatasetView.DefaultViewType,
+                          country_unique_code = None):
+        queryset = DatasetView.objects.filter(
+            dataset=dataset,
+            default_type=type
+        )
+        if country_unique_code:
+            return queryset.filter(
+                default_ancestor_code=country_unique_code
+            ).first()
+        return queryset.filter(
+            default_ancestor_code__isnull=True
+        ).first()
+
+    def find_default_views(self, entity: GeographicalEntity):
+        view_list = []
+        dataset = entity.dataset
+        country = entity.ancestor if entity.ancestor else entity
+        # add all version default view
+        view = self.find_default_view(
+            dataset, DatasetView.DefaultViewType.ALL_VERSIONS)
+        if view:
+            view_list.append(view)
+        # add all version country view
+        view = self.find_default_view(
+            dataset, DatasetView.DefaultViewType.ALL_VERSIONS,
+            country.unique_code
+        )
+        if view:
+            view_list.append(view)
+        if not entity.is_latest:
+            return view_list
+        # add latest default view
+        view = self.find_default_view(
+            dataset, DatasetView.DefaultViewType.IS_LATEST
+        )
+        if view:
+            view_list.append(view)
+        # add latest country view
+        view = self.find_default_view(
+            dataset, DatasetView.DefaultViewType.IS_LATEST,
+            country.unique_code
+        )
+        if view:
+            view_list.append(view)
+        return view_list
+
+    def find_custom_views(self, entity: GeographicalEntity):
+        view_list = []
+        queryset = DatasetView.objects.filter(
+            dataset=entity.dataset,
+            default_type__isnull=True,
+            default_ancestor_code__isnull=True
+        )
+        for view in queryset:
+            if check_entity_in_view(view, entity.id):
+                view_list.append(view)
+        return view_list
+
+    def check_external_permission_in_view(self, entity: GeographicalEntity,
+                                          view: DatasetView):
+        view_privacy_level = get_external_view_permission_privacy_level(
+            self.request.user,
+            view
+        )
+        return entity.privacy_level <= view_privacy_level
+
+    def not_found_response(self):
+        return Response(
+            status=404,
+            data=APIErrorSerializer({
+                'detail': f'No entity with matching {self.id_type} found.'
+            }).data
+        )
+
+    def get_views_dict(self, entity_qs, has_dataset_permission):
+        results = {}
+        for entity in entity_qs.iterator(chunk_size=1):
+            view_list = []
+            view_list.extend(self.find_default_views(entity))
+            view_list.extend(self.find_custom_views(entity))
+            if not has_dataset_permission:
+                # check for external permission for each view
+                view_list = [
+                    view for view in view_list if
+                    self.check_external_permission_in_view(entity, view)
+                ]
+            if len(view_list) > 0:
+                view_list.sort(key=lambda x: x.name)
+                results[entity.id] = view_list
+        return results
+
+    @swagger_auto_schema(
+        operation_id='search-entity-by-ucode',
+        tags=[SEARCH_VIEW_ENTITY_TAG],
+        manual_parameters=[openapi.Parameter(
+            'ucode', openapi.IN_PATH,
+            description='Entity UCode',
+            type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'geom', openapi.IN_QUERY,
+            description=(
+                'Geometry format: '
+                '[no_geom, centroid, full_geom]'
+            ),
+            type=openapi.TYPE_STRING,
+            default='no_geom',
+            required=False
+        ), openapi.Parameter(
+            'format', openapi.IN_QUERY,
+            description='Output format: [json, geojson]',
+            type=openapi.TYPE_STRING,
+            default='json',
+            required=False
+        )],
+        responses={
+            200: FindEntityByUCodeSerializer,
+            400: APIErrorSerializer,
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        entity_qs = GeographicalEntity.objects.none()
+        id_raw = kwargs.get(self.id_type)
+        try:
+            entity_qs = self.get_queryset(id_raw)
+        except ValueError:
+            return Response(
+                status=400,
+                data=APIErrorSerializer({
+                    'detail': f'Invalid {self.id_type} value {id_raw}.'
+                }).data
+            )
+        if not entity_qs.exists():
+            return self.not_found_response()
+        dataset = entity_qs.first().dataset
+        dataset_privacy_level = get_view_permission_privacy_level(
+            request.user,
+            dataset
+        )
+        if dataset_privacy_level > 0:
+            entity_qs = entity_qs.filter(
+                privacy_level__lte=dataset_privacy_level
+            )
+            if not entity_qs.exists():
+                return self.not_found_response()
+        view_dict = self.get_views_dict(entity_qs, dataset_privacy_level > 0)
+        if len(view_dict) == 0:
+            return self.not_found_response()
+        entity_qs = entity_qs.filter(id__in=view_dict.keys())
+        entities, max_level, ids, names = self.generate_entity_query(
+            entity_qs,
+            dataset.id
+        )
+        response_data, response_headers = self.generate_response(
+            entities,
+            {
+                'view_dict': view_dict,
+                'max_level': max_level,
+                'ids': ids,
+                'names': names
+            }
+        )
+        return Response(
+            status=200,
+            data=response_data,
+            headers=response_headers
+        )
+
+
+class FindEntityByCUCode(FindEntityByUCode):
+    """
+    Find entity by concept ucode.
+
+    Return single entity with its metadata and
+    list of views that the entity belongs to.
+    """
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [JSONRenderer, GeojsonRenderer]
+    id_type = 'cucode'
+
+    def get_queryset(self, id_raw):
+        return GeographicalEntity.objects.select_related(
+            'dataset', 'ancestor'
+        ).filter(
+            is_approved=True,
+            concept_ucode=id_raw
+        ).order_by('unique_code_version')
+
+    def generate_response(self, entities, context=None) -> Tuple[dict, dict]:
+        """
+        Return (response, response headers)
+        """
+        output = []
+        if entities is not None:
+            output = (
+                self.get_serializer()(
+                    entities,
+                    context=context,
+                    many=True
+                ).data
+            )
+        return output, None
+
+    @swagger_auto_schema(
+        operation_id='search-entity-by-cucode',
+        tags=[SEARCH_VIEW_ENTITY_TAG],
+        manual_parameters=[openapi.Parameter(
+            'cucode', openapi.IN_PATH,
+            description='Entity Concept UCode',
+            type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'geom', openapi.IN_QUERY,
+            description=(
+                'Geometry format: '
+                '[no_geom, centroid, full_geom]'
+            ),
+            type=openapi.TYPE_STRING,
+            default='no_geom',
+            required=False
+        ), openapi.Parameter(
+            'format', openapi.IN_QUERY,
+            description='Output format: [json, geojson]',
+            type=openapi.TYPE_STRING,
+            default='json',
+            required=False
+        )],
+        responses={
+            200: openapi.Schema(
+                title='Entity List',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_OBJECT,
+                    properties=(
+                        FindEntityByUCodeSerializer.Meta.
+                        swagger_schema_fields['properties']
+                    )
+                ),
+                example=[
+                    (
+                        FindEntityByUCodeSerializer.Meta.
+                        swagger_schema_fields['example']
+                    )
+                ]
+            ),
+            400: APIErrorSerializer,
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        return super(FindEntityByCUCode, self).get(
+            request, *args, **kwargs
         )

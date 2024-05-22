@@ -102,11 +102,13 @@ def do_generate_entity_query(entities, dataset_id, entity_type=None,
     # retrieve all ids+names in current dataset
     ids = EntityId.objects.filter(
         geographical_entity__is_approved=True,
-        geographical_entity__dataset_id=dataset_id
+        geographical_entity__dataset_id=dataset_id,
+        geographical_entity__in=entities
     )
     names = EntityName.objects.filter(
         geographical_entity__is_approved=True,
-        geographical_entity__dataset_id=dataset_id
+        geographical_entity__dataset_id=dataset_id,
+        geographical_entity__in=entities
     )
     if entity_type:
         ids = ids.filter(
