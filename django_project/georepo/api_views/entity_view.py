@@ -3035,7 +3035,7 @@ class ViewEntityBatchGeocodingResult(APIView,
 class FindEntityByUCode(APIView):
     """
     Find entity by ucode.
-    
+
     Return single entity with its metadata and
     list of views that the entity belongs to.
     """
@@ -3092,7 +3092,7 @@ class FindEntityByUCode(APIView):
         if country_unique_code:
             return queryset.filter(
                 default_ancestor_code=country_unique_code
-            ).first()    
+            ).first()
         return queryset.filter(
             default_ancestor_code__isnull=True
         ).first()
@@ -3201,7 +3201,7 @@ class FindEntityByUCode(APIView):
             return Response(
                 status=404,
                 data=APIErrorSerializer({
-                    'detail': f'No entity with matching ucode found.'
+                    'detail': 'No entity with matching ucode found.'
                 }).data
             )
         entity = entity_qs.first()
@@ -3213,7 +3213,7 @@ class FindEntityByUCode(APIView):
             return Response(
                 status=404,
                 data=APIErrorSerializer({
-                    'detail': f'No entity with matching ucode found.'
+                    'detail': 'No entity with matching ucode found.'
                 }).data
             )
         view_list = []
@@ -3229,7 +3229,7 @@ class FindEntityByUCode(APIView):
                 return Response(
                     status=404,
                     data=APIErrorSerializer({
-                        'detail': f'No entity with matching ucode found.'
+                        'detail': 'No entity with matching ucode found.'
                     }).data
                 )
         view_list.sort(key=lambda x: x.name)
