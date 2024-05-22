@@ -926,7 +926,8 @@ class FindEntityByUcodeGeojsonSerializer(
             'type',
             'ext_codes',
             'names',
-            'parents'
+            'parents',
+            'views'
         ]
 
     def get_views(self, obj):
