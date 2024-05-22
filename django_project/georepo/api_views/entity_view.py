@@ -97,6 +97,9 @@ from georepo.utils.layers import \
 from georepo.utils.url_helper import get_page_size
 from georepo.utils.dataset_view import check_entity_in_view
 from georepo.utils.renderers import GeojsonRenderer
+from georepo.utils.permission import (
+    get_external_view_permission_privacy_level
+)
 
 
 class DatasetViewDetailCheckPermission(object):
@@ -3139,6 +3142,14 @@ class FindEntityByUCode(APIView):
                 view_list.append(view)
         return view_list
 
+    def check_external_permission_in_view(self, entity: GeographicalEntity,
+                                          view: DatasetView):
+        view_privacy_level = get_external_view_permission_privacy_level(
+            self.request.user,
+            view
+        )
+        return entity.privacy_level <= view_privacy_level
+
     @swagger_auto_schema(
         operation_id='search-entity-by-ucode',
         tags=[SEARCH_VIEW_ENTITY_TAG],
@@ -3194,7 +3205,6 @@ class FindEntityByUCode(APIView):
                 }).data
             )
         entity = entity_qs.first()
-        print(entity.label)
         privacy_level = get_view_permission_privacy_level(
             request.user,
             entity.dataset
@@ -3210,8 +3220,18 @@ class FindEntityByUCode(APIView):
         view_list.extend(self.find_default_views(entity))
         view_list.extend(self.find_custom_views(entity))
         if privacy_level <= 0:
-            # TODO: check for external permission
-            pass
+            # check for external permission for each view
+            view_list = [
+                view for view in view_list if
+                self.check_external_permission_in_view(entity, view)
+            ]
+            if len(view_list) == 0:
+                return Response(
+                    status=404,
+                    data=APIErrorSerializer({
+                        'detail': f'No entity with matching ucode found.'
+                    }).data
+                )
         view_list.sort(key=lambda x: x.name)
         entities, max_level, ids, names = self.generate_entity_query(
             entity_qs,
