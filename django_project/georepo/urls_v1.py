@@ -38,7 +38,8 @@ from georepo.api_views.entity_view import (
     ViewEntityBatchSearchIdStatus,
     ViewEntityBatchSearchIdResult,
     ViewEntityBatchGeocodingResult,
-    ViewEntityBatchGeocodingStatus
+    ViewEntityBatchGeocodingStatus,
+    FindEntityByUCode
 )
 from georepo.api_views.entity import (
     EntityBoundingBox,
@@ -165,27 +166,14 @@ view_urls = [
 ]
 
 view_entity_urls = [
-    path(
-        'search/view/<uuid:uuid>/entity/batch/identifier/<str:input_type>/',
-        ViewEntityBatchSearchId.as_view(),
-        name='batch-search-view-by-id'
-    ),
-    path(
-        'search/view/<uuid:uuid>/entity/batch/identifier/'
-        'status/<uuid:request_id>/',
-        ViewEntityBatchSearchIdStatus.as_view(),
-        name='batch-status-search-view-by-id'
-    ),
-    path(
-        'search/view/<uuid:uuid>/entity/batch/identifier/'
-        'result/<uuid:request_id>/',
-        ViewEntityBatchSearchIdResult.as_view(),
-        name='batch-result-search-view-by-id'
-    ),
     re_path(
         r'search/view/(?P<uuid>[\da-f-]+)/entity/list/?$',
         ViewEntityListByAdminLevel0.as_view(),
         name='search-view-entity-list'),
+    path(
+        'search/entity/ucode/<str:ucode>/',
+        FindEntityByUCode.as_view(),
+        name='search-entity-by-ucode'),
     path(
         'search/view/<uuid:uuid>/entity/identifier/<str:id_type>/<str:id>/',
         FindViewEntityById.as_view(),
@@ -245,6 +233,23 @@ view_entity_urls = [
         '<path:search_text>/',
         ViewFindEntityFuzzySearch.as_view(),
         name='view-entity-fuzzy-search-by-name'
+    ),
+    path(
+        'search/view/<uuid:uuid>/entity/batch/identifier/<str:input_type>/',
+        ViewEntityBatchSearchId.as_view(),
+        name='batch-search-view-by-id'
+    ),
+    path(
+        'search/view/<uuid:uuid>/entity/batch/identifier/'
+        'status/<uuid:request_id>/',
+        ViewEntityBatchSearchIdStatus.as_view(),
+        name='batch-status-search-view-by-id'
+    ),
+    path(
+        'search/view/<uuid:uuid>/entity/batch/identifier/'
+        'result/<uuid:request_id>/',
+        ViewEntityBatchSearchIdResult.as_view(),
+        name='batch-result-search-view-by-id'
     ),
 ]
 

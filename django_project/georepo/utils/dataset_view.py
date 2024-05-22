@@ -646,3 +646,15 @@ def get_max_zoom_level(dataset_view: DatasetView):
     if tiling_configs:
         return tiling_configs.zoom_level
     return 8
+
+
+def check_entity_in_view(dataset_view: DatasetView, entity_id):
+    sql = (
+        'SELECT count(*) '
+        'FROM "{view_name}" '
+        'WHERE id=%s'
+    ).format(view_name=str(dataset_view.uuid))
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [entity_id])
+        total_count = cursor.fetchone()[0]
+    return total_count > 0

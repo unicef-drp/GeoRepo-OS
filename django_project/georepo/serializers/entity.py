@@ -828,3 +828,110 @@ class SearchGeometrySerializer(GeographicalEntitySerializer):
             if entity_raw:
                 return getattr(entity_raw[0], 'similarity', None)
         return None
+
+
+class FindEntityByUCodeSerializer(GeographicalEntitySerializer):
+    views = serializers.SerializerMethodField()
+
+    class Meta:
+        swagger_schema_fields = {
+            'type': openapi.TYPE_OBJECT,
+            'title': 'Entity Detail by UCode/CUCode',
+            'properties': {
+                **GeographicalEntitySerializer.Meta.
+                swagger_schema_fields['properties'],
+                'views': openapi.Schema(
+                                title='Views that entity belongs to',
+                                type=openapi.TYPE_ARRAY,
+                                items=openapi.Items(
+                                    type=openapi.TYPE_OBJECT,
+                                    properties={
+                                        'name': openapi.Schema(
+                                            title='View name',
+                                            type=openapi.TYPE_STRING
+                                        ),
+                                        'uuid': openapi.Schema(
+                                            title='View UUID',
+                                            type=openapi.TYPE_STRING
+                                        )
+                                    }
+                                )
+                            )
+            },
+            'example': {
+                **GeographicalEntitySerializer.Meta.
+                swagger_schema_fields['example'],
+                'views': [
+                    {
+                        'name': 'World Boundaries (Latest)',
+                        'uuid': '7b3849ee-7a5b-40e0-8d47-d0eeb2434a42'
+                    }
+                ]
+            }
+        }
+
+        model = GeographicalEntity
+        fields = [
+            'ucode',
+            'concept_ucode',
+            'uuid',
+            'concept_uuid',
+            'is_latest',
+            'start_date',
+            'end_date',
+            'name',
+            'admin_level',
+            'level_name',
+            'type',
+            'ext_codes',
+            'names',
+            'parents',
+            'centroid',
+            'geometry',
+            'bbox',
+            'views'
+        ]
+
+    def get_views(self, obj):
+        views = self.context.get('view_list', [])
+        result = []
+        for view in views:
+            result.append({
+                'name': view.name,
+                'uuid': str(view.uuid)
+            })
+        return result
+
+
+class FindEntityByUcodeGeojsonSerializer(
+        GeographicalEntitySerializer,
+        GeoFeatureModelSerializer):
+    output_format = 'geojson'
+    views = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GeographicalEntity
+        geo_field = 'geometry'
+        fields = [
+            'ucode',
+            'concept_ucode',
+            'uuid',
+            'concept_uuid',
+            'is_latest',
+            'start_date',
+            'end_date',
+            'name',
+            'admin_level',
+            'level_name',
+            'type',
+            'ext_codes',
+            'names',
+            'parents'
+        ]
+
+    def get_views(self, obj):
+        views = self.context.get('view_list', [])
+        result = []
+        for view in views:
+            result.append(view.name)
+        return ','.join(result)
