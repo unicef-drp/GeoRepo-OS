@@ -31,26 +31,25 @@ from georepo.api_views.entity_view import (
     ViewFindEntityGeometryFuzzySearch,
     ViewEntityTraverseHierarchyByUCode,
     ViewEntityTraverseChildrenHierarchyByUCode,
-    ViewEntityListByAdminLevel0
+    ViewEntityListByAdminLevel0,
+    FindEntityByUCode,
+    FindEntityByCUCode
 )
-from georepo.tests.common import EntityResponseChecker
+from georepo.tests.common import EntityResponseChecker, BaseDatasetViewTest
 from georepo.utils.dataset_view import (
     generate_default_view_dataset_latest,
     generate_default_view_dataset_all_versions,
     generate_default_view_adm0_latest,
     generate_default_view_adm0_all_versions,
     init_view_privacy_level,
-    create_sql_view
+    create_sql_view,
+    calculate_entity_count_in_view
 )
 from georepo.utils.permission import (
     grant_datasetview_external_viewer,
-    revoke_datasetview_external_viewer
+    revoke_datasetview_external_viewer,
+    grant_dataset_viewer
 )
-
-
-class FakeResolverMatchV1:
-    """Fake class to mock versioning"""
-    namespace = 'v1'
 
 
 class EntityViewTestSuite(EntityResponseChecker):
@@ -1682,7 +1681,7 @@ class TestApiEntityLatestView(EntityViewTestSuite, TestCase):
 
     def assert_view_entity_fuzzy_search_found2(self, response):
         # search with paki, should return two diff results
-        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(len(response.data['results']), 5)
         items = [x for x in response.data['results'] if
                  x['ucode'] == self.pak0_2.ucode]
         self.assertEqual(len(items), 1)
@@ -1735,6 +1734,9 @@ class TestApiEntityLatestView(EntityViewTestSuite, TestCase):
     def test_view_entity_containment_check(self):
         self.run_test_view_entity_containment_check()
 
+    @mock.patch.object(
+        ViewFindEntityFuzzySearch, 'get_trigram_similarity',
+        mock.Mock(return_value=0.45))
     def test_search_view_fuzzy_text(self):
         self.run_test_search_view_fuzzy_text()
 
@@ -2685,3 +2687,297 @@ class TestApiEntityStaticView(EntityViewTestSuite, TestCase):
 
     def test_find_view_entity_versions(self):
         self.run_test_find_view_entity_versions()
+
+
+class TestApiFindEntity(EntityResponseChecker, BaseDatasetViewTest):
+
+    def setUp(self):
+        super().setUp()
+        # create user 1 has privacy level 4 at dataset
+        self.user_1 = UserF.create()
+        grant_dataset_viewer(self.dataset, self.user_1, 4)
+        # create user 2 has privacy level 3 at dataset
+        self.user_2 = UserF.create()
+        grant_dataset_viewer(self.dataset, self.user_2, 3)
+        # create user 3 has external permission at custom view
+        self.user_3 = UserF.create()
+        # create user 4 does not have permission at all
+        self.user_4 = UserF.create()
+        sql = (
+            'select * from georepo_geographicalentity '
+            f'where dataset_id={self.dataset.id} '
+            'and is_approved=true and is_latest=true and level=0;'
+        )
+        self.custom_view = DatasetView.objects.create(
+            name='Test Custom View',
+            description='Test Custom View',
+            dataset=self.dataset,
+            is_static=False,
+            query_string=sql
+        )
+        create_sql_view(self.custom_view)
+        init_view_privacy_level(self.custom_view)
+        calculate_entity_count_in_view(self.custom_view)
+        grant_datasetview_external_viewer(self.custom_view, self.user_3, 4)
+        # generate latest for countries
+        generate_default_view_adm0_latest(self.dataset)
+        self.country_view = DatasetView.objects.filter(
+            dataset=self.dataset,
+            default_type=DatasetView.DefaultViewType.IS_LATEST,
+            default_ancestor_code=self.pak0_2.unique_code
+        ).first()
+        init_view_privacy_level(self.country_view)
+        calculate_entity_count_in_view(self.country_view)
+
+    def check_view_in_response(self, item: dict, view: DatasetView):
+        self.assertIn('views', item)
+        views = item['views']
+        find_item = [v for v in views if v['uuid'] == str(view.uuid)]
+        self.assertTrue(len(find_item) > 0)
+
+    def test_find_entity_by_ucode_not_found(self):
+        view = FindEntityByUCode.as_view()
+        kwargs = {
+            'ucode': 'TEST_EMPTY_V1'
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-ucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 404)
+        # user_2 should not be able to view the entity
+        kwargs = {
+            'ucode': self.pak0_2.ucode
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-ucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.user_2
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 404)
+        # user_4 should not be able to view at all
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-ucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.user_4
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 404)
+
+    def test_find_entity_by_ucode(self):
+        view = FindEntityByUCode.as_view()
+        kwargs = {
+            'ucode': self.pak0_2.ucode
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-ucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.check_response(response.data, self.pak0_2)
+        self.check_user_can_view_entity(response.data, self.superuser)
+        self.check_view_in_response(response.data, self.dataset_view)
+        self.check_view_in_response(response.data, self.custom_view)
+        self.check_view_in_response(response.data, self.country_view)
+        self.assertEqual(len(response.data['views']), 3)
+        # test using user 1, should have access
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-ucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.user_1
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.check_response(response.data, self.pak0_2)
+        self.check_user_can_view_entity(response.data, self.user_1)
+        self.check_view_in_response(response.data, self.dataset_view)
+        self.check_view_in_response(response.data, self.custom_view)
+        self.check_view_in_response(response.data, self.country_view)
+        self.assertEqual(len(response.data['views']), 3)
+        # test using user 3, should have access to only custom_view
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-ucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.user_3
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.check_response(response.data, self.pak0_2)
+        self.check_user_can_view_entity_in_view(
+            response.data, self.user_3, self.custom_view)
+        self.check_view_in_response(response.data, self.custom_view)
+        self.assertEqual(len(response.data['views']), 1)
+
+    def test_find_entity_by_ucode_in_prev_version(self):
+        # generate all versions view
+        generate_default_view_dataset_all_versions(self.dataset)
+        all_versions_view = DatasetView.objects.filter(
+            dataset=self.dataset,
+            default_type=DatasetView.DefaultViewType.ALL_VERSIONS,
+            default_ancestor_code__isnull=True
+        ).first()
+        init_view_privacy_level(all_versions_view)
+        calculate_entity_count_in_view(all_versions_view)
+        view = FindEntityByUCode.as_view()
+        kwargs = {
+            'ucode': self.pak0_1.ucode
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-ucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.check_response(response.data, self.pak0_1)
+        self.check_user_can_view_entity(response.data, self.superuser)
+        self.check_view_in_response(response.data, all_versions_view)
+        self.assertEqual(len(response.data['views']), 1)
+
+    def test_find_entity_by_cucode_not_found(self):
+        view = FindEntityByCUCode.as_view()
+        kwargs = {
+            'cucode': '#TEST_EMPTY_V1'
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-cucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 404)
+        # user_2 should not be able to view the entity
+        kwargs = {
+            'cucode': self.pak0_2.concept_ucode
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-cucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.user_2
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 404)
+        # user_4 should not be able to view at all
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-cucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.user_4
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 404)
+
+    def test_find_entity_by_cucode(self):
+        view = FindEntityByCUCode.as_view()
+        kwargs = {
+            'cucode': self.pak0_2.concept_ucode
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-cucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.check_response(response.data[0], self.pak0_2)
+        self.check_user_can_view_entity(response.data[0], self.superuser)
+        self.assertEqual(len(response.data[0]['views']), 3)
+        self.check_view_in_response(response.data[0], self.dataset_view)
+        self.check_view_in_response(response.data[0], self.custom_view)
+        self.check_view_in_response(response.data[0], self.country_view)
+        # test using user 1, should have access
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-cucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.user_1
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.check_response(response.data[0], self.pak0_2)
+        self.check_user_can_view_entity(response.data[0], self.superuser)
+        self.assertEqual(len(response.data[0]['views']), 3)
+        self.check_view_in_response(response.data[0], self.dataset_view)
+        self.check_view_in_response(response.data[0], self.custom_view)
+        self.check_view_in_response(response.data[0], self.country_view)
+        # test using user 3, should have access to only custom_view
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-cucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.user_3
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.check_response(response.data[0], self.pak0_2)
+        self.check_user_can_view_entity_in_view(
+            response.data[0], self.user_3, self.custom_view)
+        self.check_view_in_response(response.data[0], self.custom_view)
+        self.assertEqual(len(response.data[0]['views']), 1)
+
+    def test_find_entity_by_cucode_in_prev_version(self):
+        # generate all versions view
+        generate_default_view_dataset_all_versions(self.dataset)
+        all_versions_view = DatasetView.objects.filter(
+            dataset=self.dataset,
+            default_type=DatasetView.DefaultViewType.ALL_VERSIONS,
+            default_ancestor_code__isnull=True
+        ).first()
+        init_view_privacy_level(all_versions_view)
+        calculate_entity_count_in_view(all_versions_view)
+        view = FindEntityByCUCode.as_view()
+        kwargs = {
+            'cucode': self.pak0_1.concept_ucode
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:search-entity-by-cucode',
+                kwargs=kwargs
+            ),
+        )
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 2)
+        self.check_response(response.data[0], self.pak0_1)
+        self.check_user_can_view_entity(response.data[0], self.superuser)
+        self.check_view_in_response(response.data[0], all_versions_view)
+        self.assertEqual(len(response.data[0]['views']), 1)
+        self.check_response(response.data[1], self.pak0_2)
+        self.check_user_can_view_entity(response.data[1], self.superuser)
+        self.assertEqual(len(response.data[1]['views']), 4)
+        self.check_view_in_response(response.data[1], self.dataset_view)
+        self.check_view_in_response(response.data[1], self.custom_view)
+        self.check_view_in_response(response.data[1], self.country_view)
+        self.check_view_in_response(response.data[1], all_versions_view)

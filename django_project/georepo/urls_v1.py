@@ -7,20 +7,15 @@ from georepo.api_views.module import (
 from georepo.api_views.dataset import (
     DatasetList,
     DatasetDetail,
-    DatasetEntityListHierarchical,
-    DatasetExportDownload,
-    DatasetExportDownloadByLevel,
-    DatasetExportDownloadByCountry,
-    DatasetExportDownloadByCountryAndLevel
+    DatasetEntityListHierarchical
 )
 from georepo.api_views.dataset_view import (
     DatasetViewList,
     DatasetViewListForUser,
     DatasetViewDetail,
-    DatasetViewExportDownload,
-    DatasetViewExportDownloadByLevel,
-    DatasetViewExportDownloadByCountry,
-    DatasetViewExportDownloadByCountryAndLevel
+    DatasetViewCentroid,
+    DatasetViewDownloader,
+    DatasetViewDownloaderStatus
 )
 from georepo.api_views.entity_view import (
     FindViewEntityById,
@@ -43,7 +38,9 @@ from georepo.api_views.entity_view import (
     ViewEntityBatchSearchIdStatus,
     ViewEntityBatchSearchIdResult,
     ViewEntityBatchGeocodingResult,
-    ViewEntityBatchGeocodingStatus
+    ViewEntityBatchGeocodingStatus,
+    FindEntityByUCode,
+    FindEntityByCUCode
 )
 from georepo.api_views.entity import (
     EntityBoundingBox,
@@ -160,33 +157,28 @@ view_urls = [
         DatasetViewListForUser.as_view(),
         name='view-list'),
     re_path(
+        r'search/view/(?P<uuid>[\da-f-]+)/centroid/',
+        DatasetViewCentroid.as_view(),
+        name='view-centroid'),
+    re_path(
         r'search/view/(?P<uuid>[\da-f-]+)/',
         DatasetViewDetail.as_view(),
         name='view-detail'),
 ]
 
 view_entity_urls = [
-    path(
-        'search/view/<uuid:uuid>/entity/batch/identifier/<str:input_type>/',
-        ViewEntityBatchSearchId.as_view(),
-        name='batch-search-view-by-id'
-    ),
-    path(
-        'search/view/<uuid:uuid>/entity/batch/identifier/'
-        'status/<uuid:request_id>/',
-        ViewEntityBatchSearchIdStatus.as_view(),
-        name='batch-status-search-view-by-id'
-    ),
-    path(
-        'search/view/<uuid:uuid>/entity/batch/identifier/'
-        'result/<uuid:request_id>/',
-        ViewEntityBatchSearchIdResult.as_view(),
-        name='batch-result-search-view-by-id'
-    ),
     re_path(
         r'search/view/(?P<uuid>[\da-f-]+)/entity/list/?$',
         ViewEntityListByAdminLevel0.as_view(),
         name='search-view-entity-list'),
+    path(
+        'search/entity/ucode/<str:ucode>/',
+        FindEntityByUCode.as_view(),
+        name='search-entity-by-ucode'),
+    path(
+        'search/entity/cucode/<str:cucode>/',
+        FindEntityByCUCode.as_view(),
+        name='search-entity-by-cucode'),
     path(
         'search/view/<uuid:uuid>/entity/identifier/<str:id_type>/<str:id>/',
         FindViewEntityById.as_view(),
@@ -247,6 +239,23 @@ view_entity_urls = [
         ViewFindEntityFuzzySearch.as_view(),
         name='view-entity-fuzzy-search-by-name'
     ),
+    path(
+        'search/view/<uuid:uuid>/entity/batch/identifier/<str:input_type>/',
+        ViewEntityBatchSearchId.as_view(),
+        name='batch-search-view-by-id'
+    ),
+    path(
+        'search/view/<uuid:uuid>/entity/batch/identifier/'
+        'status/<uuid:request_id>/',
+        ViewEntityBatchSearchIdStatus.as_view(),
+        name='batch-status-search-view-by-id'
+    ),
+    path(
+        'search/view/<uuid:uuid>/entity/batch/identifier/'
+        'result/<uuid:request_id>/',
+        ViewEntityBatchSearchIdResult.as_view(),
+        name='batch-result-search-view-by-id'
+    ),
 ]
 
 operation_view_entity_urls = [
@@ -286,49 +295,15 @@ operation_view_entity_urls = [
 
 download_urls = [
     re_path(
-        r'download/view/(?P<uuid>[\da-f-]+)/?$',
-        DatasetViewExportDownload.as_view(),
-        name='dataset-view-download'),
+        r'download/view/(?P<uuid>[\da-f-]+)/status/?$',
+        DatasetViewDownloaderStatus.as_view(),
+        name='check-status-download-view-job'),
     re_path(
-        r'download/view/(?P<uuid>[\da-f-]+)/level/'
-        r'(?P<admin_level>[\d]+)/?$',
-        DatasetViewExportDownloadByLevel.as_view(),
-        name='dataset-view-download-by-level'),
-    path(
-        'download/view/<uuid:uuid>/identifier/'
-        '<id_type>/<path:id>/'
-        'level/<int:admin_level>/',
-        DatasetViewExportDownloadByCountryAndLevel.as_view(),
-        name='dataset-view-download-by-country-and-level'),
-    path(
-        'download/view/<uuid:uuid>/identifier/'
-        '<id_type>/<path:id>/',
-        DatasetViewExportDownloadByCountry.as_view(),
-        name='dataset-view-download-by-country'),
+        r'download/view/(?P<uuid>[\da-f-]+)/?$',
+        DatasetViewDownloader.as_view(),
+        name='submit-download-view-job'),
 ]
 
-download_dataset_urls = [
-    re_path(
-        r'download/dataset/(?P<uuid>[\da-f-]+)/?$',
-        DatasetExportDownload.as_view(),
-        name='dataset-download'),
-    re_path(
-        r'download/dataset/(?P<uuid>[\da-f-]+)/level/'
-        r'(?P<admin_level>[\d]+)/?$',
-        DatasetExportDownloadByLevel.as_view(),
-        name='dataset-download-by-level'),
-    path(
-        'download/dataset/<uuid:uuid>/identifier/'
-        '<id_type>/<path:id>/'
-        'level/<int:admin_level>/',
-        DatasetExportDownloadByCountryAndLevel.as_view(),
-        name='dataset-download-by-country-and-level'),
-    path(
-        'download/dataset/<uuid:uuid>/identifier/'
-        '<id_type>/<path:id>/',
-        DatasetExportDownloadByCountry.as_view(),
-        name='dataset-download-by-country'),
-]
 
 controlled_list_urls = [
     re_path(
@@ -353,7 +328,6 @@ if (
 ):
     urlpatterns += entity_urls
     urlpatterns += operation_entity_urls
-    urlpatterns += download_dataset_urls
 urlpatterns += view_entity_urls
 urlpatterns += operation_view_entity_urls
 urlpatterns += download_urls

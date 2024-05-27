@@ -2,6 +2,7 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.gis.db import models
+from django.db.models import Q
 from django.db import IntegrityError, transaction
 
 # revision uuid
@@ -278,7 +279,6 @@ class GeographicalEntity(models.Model):
         )
 
     def all_children(self):
-        from django.db.models import Q
         max_level: int = 0
         max_level_entity = GeographicalEntity.objects.all().order_by(
             'level').last()
@@ -292,6 +292,42 @@ class GeographicalEntity(models.Model):
         return GeographicalEntity.objects.filter(
             ancestor_filters,
         )
+
+    def delete_by_ancestor(self):
+        children = GeographicalEntity.objects.filter(
+            ancestor=self,
+            dataset=self.dataset
+        )
+        self._remove_referenced_entities(children)
+        children._raw_delete(children.db)
+        # delete the ancestor
+        current_ancestor = GeographicalEntity.objects.filter(
+            id=self.id
+        )
+        self._remove_referenced_entities(current_ancestor)
+        current_ancestor._raw_delete(current_ancestor.db)
+
+    def _remove_referenced_entities(self, qs):
+        simplified_entities = EntitySimplified.objects.filter(
+            geographical_entity__dataset=self.dataset,
+            geographical_entity__in=qs
+        )
+        simplified_entities._raw_delete(simplified_entities.db)
+        ids = EntityId.objects.filter(
+            geographical_entity__dataset=self.dataset,
+            geographical_entity__in=qs
+        )
+        ids._raw_delete(ids.db)
+        names = EntityName.objects.filter(
+            geographical_entity__dataset=self.dataset,
+            geographical_entity__in=qs
+        )
+        names._raw_delete(names.db)
+        history = EntityEditHistory.objects.filter(
+            geographical_entity__dataset=self.dataset,
+            geographical_entity__in=qs
+        )
+        history._raw_delete(history.db)
 
 
 class EntityName(models.Model):
@@ -449,95 +485,41 @@ class EntitySimplified(models.Model):
                 ]
 
 
-# @receiver(post_save, sender=EntityName)
-# def entity_name_post_create(
-#     sender, instance: EntityName, created, *args, **kwargs
-# ):
-#     if getattr(instance, 'skip_signal', False):
-#         return
-#     if created and instance.geographical_entity.is_approved:
-#         instance.geographical_entity.dataset.set_view_out_of_sync(
-#             vector_tile=True,
-#             product=True
-#         )
-#
-#
-# @receiver(post_delete, sender=EntityName)
-# def entity_name_post_delete(
-#     sender, instance: EntityName, *args, **kwargs
-# ):
-#     if getattr(instance, 'skip_signal', False):
-#         return
-#     try:
-#         instance.geographical_entity.dataset.set_view_out_of_sync(
-#             vector_tile=True,
-#             product=True
-#         )
-#     except GeographicalEntity.DoesNotExist:
-#         pass
-#
-#
-# @receiver(pre_save, sender=EntityName)
-# def entity_name_edit(
-#     sender, instance: EntityName, *args, **kwargs
-# ):
-#     if getattr(instance, 'skip_signal', False):
-#         return
-#     if instance.id and instance.geographical_entity.is_approved:
-#         old_instance: EntityName = EntityName.objects.get(id=instance.id)
-#         if (
-#             old_instance.name != instance.name or
-#             old_instance.language != instance.language or
-#             old_instance.default != instance.default
-#         ):
-#             instance.geographical_entity.dataset.set_view_out_of_sync(
-#                 vector_tile=True,
-#                 product=True
-#             )
-#
-#
-# @receiver(post_save, sender=EntityId)
-# def entity_id_post_create(
-#     sender, instance: EntityId, created, *args, **kwargs
-# ):
-#     if getattr(instance, 'skip_signal', False):
-#         return
-#     if created and instance.geographical_entity.is_approved:
-#         instance.geographical_entity.dataset.set_view_out_of_sync(
-#             vector_tile=True,
-#             product=True
-#         )
-#
-#
-# @receiver(post_delete, sender=EntityId)
-# def entity_id_post_delete(
-#     sender, instance: EntityId, *args, **kwargs
-# ):
-#     if getattr(instance, 'skip_signal', False):
-#         return
-#     try:
-#         instance.geographical_entity.dataset.set_view_out_of_sync(
-#             vector_tile=True,
-#             product=True
-#         )
-#     except GeographicalEntity.DoesNotExist:
-#         pass
-#
-#
-# @receiver(pre_save, sender=EntityId)
-# def entity_id_edit(
-#     sender, instance: EntityId, *args, **kwargs
-# ):
-#     if getattr(instance, 'skip_signal', False):
-#         return
-#     if instance.id and instance.geographical_entity.is_approved:
-#         old_instance: EntityId = EntityId.objects.get(id=instance.id)
-#         if (
-#             old_instance.value != instance.value or
-#             old_instance.code != instance.code or
-#             old_instance.default != instance.default
-#         ):
-#             instance.geographical_entity.dataset.set_view_out_of_sync(
-#                 vector_tile=True,
-#                 product=True
-#             )
+class EntityEditHistory(models.Model):
+    geographical_entity = models.ForeignKey(
+        'georepo.GeographicalEntity',
+        on_delete=models.CASCADE,
+        null=False,
+        blank=False
+    )
+
+    date_time = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
+    summary = models.CharField(
+        blank=True,
+        null=True,
+        default='',
+        max_length=255
+    )
+
+    entity_old = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+    )
+
+    entity_new = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+    )

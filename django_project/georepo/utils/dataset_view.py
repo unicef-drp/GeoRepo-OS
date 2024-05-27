@@ -18,6 +18,13 @@ from georepo.models.dataset_view import (
 )
 from georepo.models.entity import GeographicalEntity
 from georepo.restricted_sql_commands import RESTRICTED_COMMANDS
+from georepo.models.dataset_tile_config import (
+    DatasetTilingConfig
+)
+from georepo.models.dataset_view_tile_config import (
+    DatasetViewTilingConfig
+)
+
 
 VIEW_LATEST_DESC = (
     'This dataset contains only the latest entities from main dataset'
@@ -60,8 +67,7 @@ def trigger_generate_dynamic_views(dataset: Dataset,
         generate_view_bbox(dataset_view)
 
 
-def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
-                                          export_data: bool = True):
+def trigger_generate_vector_tile_for_view(dataset_view: DatasetView):
     """
     Trigger generate vector tiles for a view
     """
@@ -70,9 +76,6 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
     )
     dataset_view.vector_tile_sync_status = DatasetView.SyncStatus.SYNCING
     dataset_view.vector_tiles_progress = 0
-    if export_data:
-        dataset_view.product_sync_status = DatasetView.SyncStatus.SYNCING
-        dataset_view.product_progress = 0
     if dataset_view.task_id:
         res = AsyncResult(dataset_view.task_id)
         if not res.ready():
@@ -83,7 +86,7 @@ def trigger_generate_vector_tile_for_view(dataset_view: DatasetView,
                 signal='SIGKILL'
             )
     dataset_view.save()
-    task = view_vector_tiles_task.delay(dataset_view.id, export_data)
+    task = view_vector_tiles_task.delay(dataset_view.id)
     dataset_view.task_id = task.id
     dataset_view.save(update_fields=['task_id'])
 
@@ -196,7 +199,7 @@ def generate_default_view_adm0_latest(dataset: Dataset) -> List[DatasetView]:
             ).first()
             adm0_name = entity.label if entity else adm0
             # create new DatasetView
-            view_name = f'{dataset.label} - {adm0_name} (Latest)'
+            view_name = f'{adm0_name} (Latest) - {dataset.label}'
             view_desc = f'{VIEW_LATEST_DESC} for {adm0_name}'
             if dataset.description:
                 view_desc = (
@@ -272,7 +275,7 @@ def generate_default_view_adm0_all_versions(
             ).first()
             adm0_name = entity.label if entity else adm0
             # create new DatasetView
-            view_name = f'{dataset.label} - {adm0_name} (All Versions)'
+            view_name = f'{adm0_name} (All Versions) - {dataset.label}'
             view_desc = f'{VIEW_ALL_VERSIONS_DESC} for {adm0_name}'
             if dataset.description:
                 view_desc = (
@@ -518,8 +521,8 @@ def get_view_tiling_status(view_resource_queryset):
     return tiling_status, tiling_progress
 
 
-def get_view_product_status(view_resource_queryset, product=None):
-    """Get product status of dataset view."""
+def get_view_centroid_cache_status(view_resource_queryset):
+    """Get centroid cache sync status of dataset view."""
     available_resources = view_resource_queryset.filter(
         entity_count__gt=0
     )
@@ -527,29 +530,28 @@ def get_view_product_status(view_resource_queryset, product=None):
     error_queryset = available_resources.filter(
         status=DatasetView.DatasetViewStatus.ERROR
     )
-    field = f'{product}_progress' if product else 'data_product_progress'
-    pt_field = f'{product}_sync_status' if product else 'product_sync_status'
     view_resources = available_resources.aggregate(
-        Avg(field)
+        Avg('centroid_sync_progress')
     )
-    product_progress = (
-        view_resources[f'{field}__avg'] if
-        view_resources[f'{field}__avg'] else 0
+    tiling_progress = (
+        view_resources['centroid_sync_progress__avg'] if
+        view_resources['centroid_sync_progress__avg'] else 0
     )
     if error_queryset.exists():
-        return 'error', product_progress
-    pt_statuses = available_resources.order_by(pt_field).values_list(
-        pt_field, flat=True).distinct()
-    product_status = 'out_of_sync'
+        return 'error', tiling_progress
+    vt_statuses = available_resources.order_by(
+        'centroid_sync_status').values_list(
+            'centroid_sync_status', flat=True).distinct()
+    tiling_status = 'out_of_sync'
     resource_count = available_resources.count()
     if resource_count == 0:
         # set default status to out_of_sync if no resource yet
-        product_status = 'out_of_sync'
-    elif 'syncing' in pt_statuses:
-        product_status = 'syncing'
-    elif len(pt_statuses) == 1:
-        product_status = pt_statuses[0]
-    return product_status, product_progress
+        tiling_status = 'out_of_sync'
+    elif 'syncing' in vt_statuses:
+        tiling_status = 'syncing'
+    elif len(vt_statuses) == 1:
+        tiling_status = vt_statuses[0]
+    return tiling_status, tiling_progress
 
 
 def get_entities_count_in_view(
@@ -609,3 +611,50 @@ def calculate_entity_count_in_view(view: DatasetView):
             )
         )
         view_resource.save(update_fields=['entity_count'])
+
+
+def rename_dataset_view_from_old_pattern(view: DatasetView):
+    if not view.default_ancestor_code:
+        return
+    dataset = view.dataset
+    entity = GeographicalEntity.objects.filter(
+        dataset=dataset,
+        level=0,
+        is_latest=True,
+        is_approved=True,
+        unique_code=view.default_ancestor_code
+    ).first()
+    adm0_name = entity.label if entity else view.default_ancestor_code
+    view_type = (
+        '(Latest)' if
+        view.default_type == DatasetView.DefaultViewType.IS_LATEST else
+        '(All Versions)'
+    )
+    view.name = f'{adm0_name} {view_type} - {dataset.label}'
+    view.save(update_fields=['name'])
+
+
+def get_max_zoom_level(dataset_view: DatasetView):
+    tiling_configs = DatasetViewTilingConfig.objects.filter(
+        dataset_view=dataset_view
+    ).order_by('zoom_level').last()
+    if tiling_configs:
+        return tiling_configs.zoom_level
+    tiling_configs = DatasetTilingConfig.objects.filter(
+        dataset=dataset_view.dataset
+    ).order_by('zoom_level').last()
+    if tiling_configs:
+        return tiling_configs.zoom_level
+    return 8
+
+
+def check_entity_in_view(dataset_view: DatasetView, entity_id):
+    sql = (
+        'SELECT count(*) '
+        'FROM "{view_name}" '
+        'WHERE id=%s'
+    ).format(view_name=str(dataset_view.uuid))
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [entity_id])
+        total_count = cursor.fetchone()[0]
+    return total_count > 0

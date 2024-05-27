@@ -1,5 +1,11 @@
 from django.urls import re_path, path, include
-
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import (
+    permission_classes,
+    api_view,
+    authentication_classes
+)
+from rest_framework.authentication import SessionAuthentication
 from dashboard.api_views.reviews import (
     ReadyToReview,
     ReviewList,
@@ -41,7 +47,8 @@ from dashboard.api_views.entity_upload_status import (
     EntityUploadLevel1List,
     OverlapsEntityUploadList,
     OverlapsEntityUploadDetail,
-    RetriggerSingleValidation
+    RetriggerSingleValidation,
+    EntityUploadStatusMetadata
 )
 from dashboard.api_views.validate import ValidateUploadSession, \
     LayerUploadPreprocess
@@ -96,14 +103,18 @@ from dashboard.api_views.module import ModuleDashboard
 from dashboard.api_views.entity import (
     EntityRevisionList,
     EntityByConceptUCode,
-    EntityEdit
+    EntityEdit,
+    BatchEntityEditAPI,
+    BatchEntityEditFile,
+    DatasetEntityEditHistory,
+    CountrySearchAPI,
+    BatchEntityEditResultPageAPI
 )
 
 from dashboard.api_views.views import (
     CreateNewView, ViewList, DeleteView, ViewDetail,
     UpdateView, QueryViewCheck, SQLColumnsTablesList,
-    QueryViewPreview, GetViewTags,
-    DownloadView, ViewFilterValue
+    QueryViewPreview, GetViewTags, ViewFilterValue
 )
 from dashboard.api_views.tiling_config import (
     FetchDatasetTilingConfig,
@@ -132,15 +143,35 @@ from dashboard.api_views.view_sync import (
     ViewSyncFilterValue,
     ViewResourcesSyncList,
     SynchronizeView,
-    FetchSyncStatus
+    FetchSyncStatus,
+    ViewSyncSelectAllList
 )
 from dashboard.api_views.logs import (
     ExportLogs
 )
 from dashboard.views.flower_proxy_view import FlowerProxyView
 from dashboard.api_views.task_status import CheckTaskStatus
+from dashboard.api_views.exporter import (
+    ExportHistoryList,
+    ExportRequestDetail,
+    ExportRequestMetadata
+)
+from dashboard.api_views.map import (
+    DatasetBbox,
+    ViewBbox
+)
+
+
+@api_view(['GET'])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def trigger_error(request):
+    division_by_zero = 1 / 0
+    print(division_by_zero)
+
 
 urlpatterns = [
+    path('sentry-debug/', trigger_error),
     path('tinymce/', include('tinymce.urls')),
     re_path(
         r'api/dataset-group/list/?$',
@@ -166,6 +197,31 @@ urlpatterns = [
         r'(?P<entity_id>\d+)/?$',
         EntityEdit.as_view(),
         name='entity-edit'
+    ),
+    re_path(
+        r'api/batch-entity-edit/file/?$',
+        BatchEntityEditFile.as_view(),
+        name='batch-entity-edit-file'
+    ),
+    re_path(
+        r'api/batch-entity-edit/result/?$',
+        BatchEntityEditResultPageAPI.as_view(),
+        name='batch-entity-edit-result'
+    ),
+    re_path(
+        r'api/batch-entity-edit/?$',
+        BatchEntityEditAPI.as_view(),
+        name='batch-entity-edit'
+    ),
+    re_path(
+        r'api/entity-edit-history/?$',
+        DatasetEntityEditHistory.as_view(),
+        name='entity-edit-history'
+    ),
+    re_path(
+        r'api/entity/country/(?P<object_type>[\w]+)/search/?$',
+        CountrySearchAPI.as_view(),
+        name='country-search'
     ),
     re_path(
         r'api/language/list/?$',
@@ -301,6 +357,11 @@ urlpatterns = [
         r'api/entity-upload-status-list/?$',
         EntityUploadStatusList.as_view(),
         name='entity-upload-status-list'
+    ),
+    re_path(
+        r'api/entity-upload-status-metadata/?$',
+        EntityUploadStatusMetadata.as_view(),
+        name='entity-upload-status-metadata'
     ),
     re_path(
         r'api/entity-upload-level1-list/?$',
@@ -558,6 +619,9 @@ urlpatterns = [
     re_path(r'api/view-sync-list/?$',
             ViewSyncList.as_view(),
             name='view-sync-list'),
+    re_path(r'api/view-sync-list-select-all/(?P<dataset_id>\d+)/?$',
+            ViewSyncSelectAllList.as_view(),
+            name='view-sync-list-per-dataset-select-all'),
     re_path(r'^api/view-sync-filter/values/'
             r'(?P<criteria>\w+)/?$',
             ViewSyncFilterValue.as_view(),
@@ -582,9 +646,15 @@ urlpatterns = [
     re_path(r'api/view-detail/(?P<id>[\da-f-]+)?$',
             ViewDetail.as_view(),
             name='view-detail'),
-    re_path(r'api/view-download/(?P<id>[\da-f-]+)/?$',
-            DownloadView.as_view(),
-            name='view-download'),
+    re_path(r'api/exporter/(?P<id>[\da-f-]+)/list/?$',
+            ExportHistoryList.as_view(),
+            name='exporter-history-list'),
+    re_path(r'api/exporter/(?P<id>[\da-f-]+)/detail/?$',
+            ExportRequestDetail.as_view(),
+            name='exporter-request-detail'),
+    re_path(r'api/exporter/(?P<id>[\da-f-]+)/metadata/?$',
+            ExportRequestMetadata.as_view(),
+            name='exporter-request-metadata'),
     re_path(r'api/delete-view/(?P<id>[\da-f-]+)?$',
             DeleteView.as_view(),
             name='delete-view'),
@@ -700,6 +770,16 @@ urlpatterns = [
     re_path(r'api/logs/(?P<log_type>\w+)/(?P<obj_id>\d+)?$',
             ExportLogs.as_view(),
             name='export-log-csv'),
+    re_path(
+        r'api/map/dataset/(?P<id>[\da-f-]+)/bbox/?$',
+        DatasetBbox.as_view(),
+        name='dataset-bbox'
+    ),
+    re_path(
+        r'api/map/view/(?P<id>[\da-f-]+)/bbox/?$',
+        ViewBbox.as_view(),
+        name='dataset-view-bbox'
+    ),
     re_path(r'sign-up/$',
             SignUpView.as_view(),
             name='signup-view'),

@@ -4,12 +4,17 @@ from django.db import migrations
 
 
 def remove_validation_task(apps, schema_editor):
-    PeriodicTask = apps.get_model('django_celery_beat', 'PeriodicTask')
-    validate_task = PeriodicTask.objects.filter(
-        task='validate_ready_uploads'
-    ).first()
-    if validate_task:
-        validate_task.delete()
+    PeriodicTask = None
+    try:
+        PeriodicTask = apps.get_model('django_celery_beat', 'PeriodicTask')
+    except LookupError:
+        pass
+    if PeriodicTask:
+        validate_task = PeriodicTask.objects.filter(
+            task='validate_ready_uploads'
+        ).first()
+        if validate_task:
+            validate_task.delete()
 
 
 def revert_remove_validation_task(apps, schema_editor):

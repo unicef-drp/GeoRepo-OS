@@ -108,7 +108,7 @@ const zoomMapping: {[key:string]: string} = {
     "19": "1:1,128.497220"
 }
 
-const getZoomTooltip = (level: number) => {
+export const getZoomTooltip = (level: number) => {
     const levelStr = level.toString()
     return zoomMapping[levelStr]
 }
@@ -125,7 +125,7 @@ const cloneTilingConfig = (tilingConfig: TilingConfig[]) => {
 }
 
 
-function AdminLevelItemView(props: AdminLevelItemViewInterface) {
+export function AdminLevelItemView(props: AdminLevelItemViewInterface) {
     const [idx, setIdx] = useState(-1)
     const [item, setItem] = useState({
         level: props.admin_level,

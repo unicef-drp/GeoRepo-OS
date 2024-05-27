@@ -71,6 +71,12 @@ class BackgroundTask(models.Model):
         blank=True
     )
 
+    temporary_resources = models.JSONField(
+        default=list,
+        null=True,
+        blank=True
+    )
+
     def is_possible_interrupted(self, delta = 1800):
         if (
             self.status == BackgroundTask.BackgroundTaskStatus.QUEUED or

@@ -8,6 +8,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from georepo.serializers.common import APIResponseModelSerializer
 from georepo.models import GeographicalEntity
 from georepo.utils.unique_code import get_unique_code
+from georepo.utils.entity_query import normalize_attribute_name
 
 
 class GeographicalEntitySerializer(APIResponseModelSerializer):
@@ -129,25 +130,57 @@ class GeographicalEntitySerializer(APIResponseModelSerializer):
         if names_max_idx is None or names_max_idx['idx__max'] is None:
             return []
         names = []
+        default_lang_code = 'EN'
+        # find the count of name having same lang that does not have label
+        # e.g. name_1 (EN) = 'abc', name_2 (EN) = 'def'
+        # the resulting labels would be 'name_en_1' and 'name_en_2'
+        # when there is only 1 lang, then the resulting label would be:
+        # e.g. 'name_en'
+        name_labels_dict = {}
         for name_idx in range(names_max_idx['idx__max'] + 1):
             field_key = f"name_{name_idx}"
             val = obj.get(f'{field_key}__name', None)
-            lang = obj.get(f'{field_key}__language__code', None)
+            if val is None or val == '':
+                continue
+            lang = obj.get(f'{field_key}__language__code', default_lang_code)
+            if lang is None:
+                lang = default_lang_code
             label = obj.get(f'{field_key}__label', None)
-            if self.output_format == 'geojson':
-                names.append({
-                    'name': val,
-                    'label': f'name_{name_idx + 1}'
-                })
-            elif val:
-                name = {
-                    'name': val
+            name_label = ''
+            if label:
+                name_label = '{label}'.format(
+                    label=label
+                )
+            else:
+                name_label = f'name_{lang.lower()}'
+            if name_label in name_labels_dict:
+                name_labels_dict[name_label]['total'] += 1
+                name_labels_dict[name_label]['values'].append(val)
+                name_labels_dict[name_label]['langs'].append(lang)
+            else:
+                name_labels_dict[name_label] = {
+                    'total': 1,
+                    'values': [val],
+                    'langs': [lang]
                 }
-                if lang:
-                    name['lang'] = lang
-                if label:
-                    name['label'] = label
+        for name_label, values in name_labels_dict.items():
+            if values['total'] == 1:
+                name = {
+                    'name': values['values'][0],
+                    'lang': values['langs'][0],
+                    'label': name_label
+                }
                 names.append(name)
+            else:
+                for idx, value in enumerate(values['values']):
+                    name = {
+                        'name': value,
+                        'lang': values['langs'][idx],
+                        'label': normalize_attribute_name(
+                            name_label, idx
+                        )
+                    }
+                    names.append(name)
         return names
 
     def get_parents(self, obj: GeographicalEntity):
@@ -487,6 +520,116 @@ class ExportGeojsonSerializer(
         ]
 
 
+class ExportShapefileSerializer(
+        GeographicalEntitySerializer,
+        GeoFeatureModelSerializer):
+    cnpt_uuid = serializers.SerializerMethodField()
+    remove_empty_fields = False
+    output_format = 'geojson'
+
+    def get_geometry(self, obj: GeographicalEntity):
+        return None
+
+    def get_cnpt_uuid(self, obj: GeographicalEntity):
+        return str(obj.get('uuid', ''))
+
+    def get_uuid(self, obj: GeographicalEntity):
+        return str(obj.get('uuid_revision', ''))
+
+    class Meta:
+        model = GeographicalEntity
+        geo_field = 'geometry'
+        fields = [
+            'ucode',
+            'uuid',
+            'cnpt_uuid',
+            'is_latest',
+            'start_date',
+            'end_date',
+            'name',
+            'level',
+            'level_name',
+            'type',
+            'ext_codes',
+            'names',
+            'parents'
+        ]
+
+
+class ExportCentroidGeojsonSerializer(
+        GeographicalEntitySerializer,
+        GeoFeatureModelSerializer):
+    remove_empty_fields = False
+    output_format = 'geojson'
+    c = serializers.SerializerMethodField()
+    u = serializers.SerializerMethodField()
+    n = serializers.SerializerMethodField()
+    b = serializers.SerializerMethodField()
+    pc = serializers.SerializerMethodField()
+    pu = serializers.SerializerMethodField()
+
+    def get_geometry(self, obj: GeographicalEntity):
+        return None
+
+    def get_c(self, obj: GeographicalEntity):
+        return str(obj.get('uuid', ''))
+
+    def get_u(self, obj: GeographicalEntity):
+        return self.get_ucode(obj)
+
+    def get_n(self, obj: GeographicalEntity):
+        return self.get_name(obj)
+
+    def get_b(self, obj: GeographicalEntity):
+        if obj['bbox']:
+            bbox = ast.literal_eval(obj['bbox'])
+            return [round(b, 5) for b in bbox]
+        return None
+
+    def get_pc(self, obj: GeographicalEntity):
+        pc = []
+        level = obj['level']
+        related = ''
+        for i in range(level):
+            related = related + (
+                '__parent' if i > 0 else 'parent'
+            )
+            parent_uuid = obj.get(f'{related}__uuid', '')
+            if parent_uuid:
+                pc.insert(0, str(parent_uuid))
+        return pc
+
+    def get_pu(self, obj: GeographicalEntity):
+        pu = []
+        level = obj['level']
+        related = ''
+        for i in range(level):
+            related = related + (
+                '__parent' if i > 0 else 'parent'
+            )
+            unique_code = obj.get(f'{related}__unique_code', '')
+            unique_code_version = obj.get(
+                f'{related}__unique_code_version',
+                1
+            )
+            if unique_code:
+                ucode = get_unique_code(unique_code, unique_code_version)
+                pu.insert(0, ucode)
+        return pu
+
+    class Meta:
+        model = GeographicalEntity
+        geo_field = 'geometry'
+        fields = [
+            'c',
+            'n',
+            'u',
+            'b',
+            'pc',
+            'pu'
+        ]
+
+
 class SearchEntitySerializer(GeographicalEntitySerializer):
     similarity = serializers.SerializerMethodField()
 
@@ -537,6 +680,96 @@ class SearchEntitySerializer(GeographicalEntitySerializer):
 
     def get_similarity(self, obj):
         return obj.get('similarity', 0)
+
+
+class FuzzySearchEntitySerializer(GeographicalEntitySerializer):
+    similarity = serializers.SerializerMethodField()
+    matching_name = serializers.SerializerMethodField()
+
+    class Meta:
+        swagger_schema_fields = {
+            'type': openapi.TYPE_OBJECT,
+            'title': 'Geographical Entity Detail',
+            'properties': {
+                **GeographicalEntitySerializer.Meta.
+                swagger_schema_fields['properties'],
+                'similarity': openapi.Schema(
+                                title='Name Similarity',
+                                description=(
+                                    'Value is between 0-1. '
+                                    'Higher value means more similar'
+                                ),
+                                type=openapi.TYPE_NUMBER,
+                            ),
+                'matching_name': openapi.Schema(
+                    title='Name of entity from the search result',
+                    description=(
+                        'Name of entity from the search result'
+                    ),
+                    type=openapi.TYPE_NUMBER,
+                )
+            },
+            'example': {
+                **GeographicalEntitySerializer.Meta.
+                swagger_schema_fields['example'],
+                'similarity': 1.0,
+                'matching_name': 'Malema'
+            }
+        }
+
+        model = GeographicalEntity
+        fields = [
+            'ucode',
+            'concept_ucode',
+            'uuid',
+            'concept_uuid',
+            'is_latest',
+            'start_date',
+            'end_date',
+            'name',
+            'admin_level',
+            'level_name',
+            'type',
+            'ext_codes',
+            'names',
+            'parents',
+            'centroid',
+            'geometry',
+            'similarity',
+            'matching_name',
+            'bbox'
+        ]
+
+    def get_similarity(self, obj):
+        return obj.get('similarity', 0)
+
+    def get_matching_name(self, obj):
+        return obj.get('matching_name', '')
+
+    def get_parents(self, obj: GeographicalEntity):
+        parents = []
+        max_level = self.context['max_level']
+        for i in range(max_level):
+            field_key = f"parent_{i}"
+            parent_code = obj.get(f'{field_key}__internal_code', '')
+            unique_code = obj.get(f'{field_key}__unique_code', '')
+            unique_code_version = obj.get(
+                f'{field_key}__unique_code_version',
+                1
+            )
+            admin_level = obj.get(f'{field_key}__level', '')
+            type = obj.get(f'{field_key}__type__label', '')
+            if parent_code and unique_code:
+                parents.append({
+                    'default': parent_code,
+                    'ucode': get_unique_code(
+                        unique_code,
+                        unique_code_version
+                    ),
+                    'admin_level': admin_level,
+                    'type': type
+                })
+        return parents
 
 
 class SearchGeometrySerializer(GeographicalEntitySerializer):
@@ -595,3 +828,113 @@ class SearchGeometrySerializer(GeographicalEntitySerializer):
             if entity_raw:
                 return getattr(entity_raw[0], 'similarity', None)
         return None
+
+
+class FindEntityByUCodeSerializer(GeographicalEntitySerializer):
+    views = serializers.SerializerMethodField()
+
+    class Meta:
+        swagger_schema_fields = {
+            'type': openapi.TYPE_OBJECT,
+            'title': 'Entity Detail by UCode/CUCode',
+            'properties': {
+                **GeographicalEntitySerializer.Meta.
+                swagger_schema_fields['properties'],
+                'views': openapi.Schema(
+                                title='Views that the entity belongs to',
+                                type=openapi.TYPE_ARRAY,
+                                items=openapi.Items(
+                                    type=openapi.TYPE_OBJECT,
+                                    properties={
+                                        'name': openapi.Schema(
+                                            title='View name',
+                                            type=openapi.TYPE_STRING
+                                        ),
+                                        'uuid': openapi.Schema(
+                                            title='View UUID',
+                                            type=openapi.TYPE_STRING
+                                        )
+                                    }
+                                )
+                            )
+            },
+            'example': {
+                **GeographicalEntitySerializer.Meta.
+                swagger_schema_fields['example'],
+                'views': [
+                    {
+                        'name': 'World Boundaries (Latest)',
+                        'uuid': '7b3849ee-7a5b-40e0-8d47-d0eeb2434a42'
+                    }
+                ]
+            }
+        }
+
+        model = GeographicalEntity
+        fields = [
+            'ucode',
+            'concept_ucode',
+            'uuid',
+            'concept_uuid',
+            'is_latest',
+            'start_date',
+            'end_date',
+            'name',
+            'admin_level',
+            'level_name',
+            'type',
+            'ext_codes',
+            'names',
+            'parents',
+            'centroid',
+            'geometry',
+            'bbox',
+            'views'
+        ]
+
+    def get_views(self, obj):
+        view_dict = self.context.get('view_dict', {})
+        views = view_dict.get(obj.get('id'), [])
+        result = []
+        for view in views:
+            result.append({
+                'name': view.name,
+                'uuid': str(view.uuid)
+            })
+        return result
+
+
+class FindEntityByUcodeGeojsonSerializer(
+        GeographicalEntitySerializer,
+        GeoFeatureModelSerializer):
+    output_format = 'geojson'
+    views = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GeographicalEntity
+        geo_field = 'geometry'
+        fields = [
+            'ucode',
+            'concept_ucode',
+            'uuid',
+            'concept_uuid',
+            'is_latest',
+            'start_date',
+            'end_date',
+            'name',
+            'admin_level',
+            'level_name',
+            'type',
+            'ext_codes',
+            'names',
+            'parents',
+            'views'
+        ]
+
+    def get_views(self, obj):
+        view_dict = self.context.get('view_dict', {})
+        views = view_dict.get(obj.get('id'), [])
+        result = []
+        for view in views:
+            result.append(view.name)
+        return ','.join(result)

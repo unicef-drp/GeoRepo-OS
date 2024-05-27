@@ -10,6 +10,7 @@ volumes:
   database:
   nginx-cache:
   backups-data:
+  nginx-conf:
 
 x-common-django:
   &default-common-django
@@ -50,10 +51,18 @@ x-common-django:
     - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
     - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
     - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-noreply@kartoza.com}
+    # vector tile generation
     - TEGOLA_CONCURRENCY=${TEGOLA_CONCURRENCY:-0}
+    # azure storage
     - AZURE_STORAGE=${AZURE_STORAGE}
     - AZURE_STORAGE_CONTAINER=${AZURE_STORAGE_CONTAINER}
     - AZURE_TEMP_DIRECTORY=${AZURE_TEMP_DIRECTORY:-/home/web/media/tmp}
+    # exporter variables
+    - EXPORT_DATA_EXPIRY_IN_HOURS=${EXPORT_DATA_EXPIRY_IN_HOURS:-48}
+    # worker variables
+    - VECTOR_TILE_QUEUE_CONCURRENCY=${VECTOR_TILE_QUEUE_CONCURRENCY:-1}
+    - VALIDATE_QUEUE_CONCURRENCY=${VALIDATE_QUEUE_CONCURRENCY:-3}
+    - EXPORT_DATA_QUEUE_CONCURRENCY=${EXPORT_DATA_QUEUE_CONCURRENCY:-1}
   volumes:
     - static-data:/home/web/static
     - media-data:/home/web/media
@@ -65,13 +74,11 @@ x-common-django:
 services:
   redis:
     image: bitnami/redis:7.0.2
-    container_name: "georepo_redis"
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
 
   db:
     image: kartoza/postgis:14-3.2
-    container_name: "georepo_db"
     shm_size: 1gb
     environment:
       - ALLOW_IP_RANGE=0.0.0.0/0
@@ -81,7 +88,6 @@ services:
 
   dbbackups:
     image: kartoza/pg-backup:14-3.2
-    container_name: "georepo_dbbackups"
     environment:
       # take care to let the project name below match that
       # declared in the top of the makefile
@@ -100,7 +106,6 @@ services:
 
   django:
     <<: *default-common-django
-    container_name: "georepo_django"
     command: 'uwsgi --ini /uwsgi.conf'
     links:
       - db
@@ -108,7 +113,6 @@ services:
 
   worker:
     <<: *default-common-django
-    container_name: "georepo_worker"
     entrypoint: []
     command: '/bin/bash -c /home/web/django_project/worker_entrypoint.sh'
     links:
@@ -117,26 +121,22 @@ services:
 
   celery_beat:
     <<: *default-common-django
-    container_name: "georepo_celery_beat"
     entrypoint: []
     command: 'celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler'
 
   auth:
     <<: *default-common-django
-    container_name: "georepo_auth"
     entrypoint: []
     command: 'uwsgi --ini /uwsgi_auth.conf'
 
   dev:
     image: kartoza/georepo_dev
     <<: *default-common-django
-    container_name: "georepo_dev_django"
     entrypoint: []
 
   webpack-watcher:
     image: kartoza/georepo_dev
     <<: *default-common-django
-    container_name: "georepo_webpack_watcher"
     entrypoint: [ ]
 
   nginx:
@@ -144,6 +144,7 @@ services:
     hostname: nginx
     volumes:
       - conf-data:/etc/nginx/conf.d:ro
+      - nginx-conf:/etc/nginx/nginx.conf:ro
       - static-data:/home/web/static
       - media-data:/home/web/media
       - layer-tiles:/home/web/layer_tiles

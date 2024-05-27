@@ -4,7 +4,8 @@ from georepo.models.entity import GeographicalEntity
 from georepo.utils.dataset_view import (
     generate_default_view_adm0_latest,
     generate_default_view_adm0_all_versions,
-    init_view_privacy_level
+    init_view_privacy_level,
+    calculate_entity_count_in_view
 )
 from dashboard.models.layer_upload_session import (
     LayerUploadSession,
@@ -23,10 +24,12 @@ def generate_adm0_default_views(dataset: Dataset):
     for view in views:
         # update max and min privacy level of entities in view
         init_view_privacy_level(view)
+        calculate_entity_count_in_view(view)
     views = generate_default_view_adm0_all_versions(dataset)
     for view in views:
         # update max and min privacy level of entities in view
         init_view_privacy_level(view)
+        calculate_entity_count_in_view(view)
 
 
 def check_ongoing_step(upload_session: LayerUploadSession,

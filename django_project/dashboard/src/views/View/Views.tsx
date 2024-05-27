@@ -14,6 +14,7 @@ import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
@@ -78,9 +79,9 @@ interface ViewTableRowInterface {
 }
 
 
-const copyToClipboard = (value: string) => {
+const copyToClipboard = (value: string, message: string) => {
   navigator.clipboard.writeText(value)
-  alert('Link copied')
+  alert(message)
 }
 
 function ViewPopover(props: any) {
@@ -99,7 +100,18 @@ function ViewPopover(props: any) {
         <Typography sx={{pb: 0}}>UUID:</Typography>
       </Grid>
       <Grid item>
-        <Typography sx={{pb: 1}}>{props.view.uuid}</Typography>
+        <Typography sx={{pb: 1}}>
+          <span>{props.view.uuid}</span>
+          <IconButton
+              aria-label="Copy View UUID"
+              onClick={() => copyToClipboard(props.view.uuid, 'View UUID copied')}
+              edge="end"
+              title='Copy View UUID'
+              sx={{marginLeft: '10px'}}
+              >
+              <ContentCopyIcon />
+          </IconButton>
+        </Typography>
       </Grid>
       <Grid item>
         <Typography sx={{pb: 1}}>Layer Tiles:</Typography>
@@ -109,7 +121,7 @@ function ViewPopover(props: any) {
         <Grid container flexDirection={'row'} justifyContent={'space-between'} spacing={2} sx={{pb: 1}}>
           <Grid item>
             {props.view.layer_tiles && (
-              <Button variant={'outlined'} onClick={() => copyToClipboard(props.view.layer_tiles)}>Copy Vector Tile URL</Button>
+              <Button variant={'outlined'} onClick={() => copyToClipboard(props.view.layer_tiles, 'Link copied')}>Copy Vector Tile URL</Button>
             )}            
           </Grid>
           <Grid item>
@@ -158,8 +170,6 @@ export default function Views() {
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
   const [searchParams, setSearchParams] = useSearchParams()
-
-
   const [loading, setLoading] = useState(true)
   const [columns, setColumns] = useState<any>([])
   const [data, setData] = useState<ViewTableRowInterface[]>([])
@@ -344,6 +354,17 @@ export default function Views() {
               </div>
             )
           }
+        } else if (columnName === 'name') {
+          _options['options']['customBodyRender'] = (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              const handleClick = (e: any) => {
+                  e.preventDefault()
+                  navigate(ViewEditRoute.path + `?id=${rowData[0]}`)
+              };
+              return (
+                  <a href='#' onClick={handleClick}>{`${rowData[1]}`}</a>
+              )
+          }
         } else if (['tags', 'mode', 'is_default', 'min_privacy', 'max_privacy'].includes(columnName)) {
           // set filter values in dropdown
           _options.options.filterOptions = {
@@ -404,7 +425,12 @@ export default function Views() {
               </div>
             )
           },
-          filter: false
+          filter: false,
+          viewColumns: false,
+          print: false,
+          searchable: false,
+          empty: true,
+          sort: false
         }
       })
       setColumns(_columns)
@@ -530,9 +556,7 @@ export default function Views() {
                     rowsPerPageOptions: rowsPerPageOptions,
                     sortOrder: pagination.sortOrder as MUISortOptions,
                     jumpToPage: true,
-                    onRowClick: (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-                      navigate(ViewEditRoute.path + `?id=${rowData[0]}`)
-                    },
+                    onRowClick: null,
                     onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
                     customSearchRender: debounceSearchRender(500),
                     selectableRows: 'none',

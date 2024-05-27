@@ -1,6 +1,7 @@
 .idea
 .venv
 .iml
+.env
 deployment/.env
 deployment/.cache/
 .azure.env

@@ -651,16 +651,40 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
     """
     upload_session = None
 
-    def get_entity_uploads_readonly(self, level_0_data):
+    def get_review_in_progress(self):
+        return EntityUploadStatus.objects.filter(
+            upload_session__dataset=self.upload_session.dataset,
+            status=UPLOAD_REVIEWING
+        ).exclude(
+            original_geographical_entity__isnull=True
+        ).order_by('original_geographical_entity').values_list(
+            'original_geographical_entity', flat=True
+        ).distinct()
+
+    def get_entity_uploads_readonly(self, level_0_data, start_idx, end_idx):
         results = []
-        entity_uploads = self.upload_session.entityuploadstatus_set.all()
+        entity_uploads = (
+            EntityUploadStatus.objects.select_related(
+                'original_geographical_entity',
+                'original_geographical_entity__approved_by',
+                'revised_geographical_entity',
+                'revised_geographical_entity__approved_by',
+            ).filter(
+                upload_session=self.upload_session
+            ).order_by('id')
+        )
+        total_uploads = entity_uploads.count()
+        entity_uploads = entity_uploads[start_idx:end_idx]
         for entity_upload in entity_uploads:
             level1_children = EntityUploadChildLv1.objects.filter(
                 entity_upload=entity_upload
             )
+            total_level1_children = level1_children.count()
             rematched_children = level1_children.filter(
                 is_parent_rematched=True
             )
+            total_rematched_count = rematched_children.count()
+            has_rematched = total_rematched_count > 0
             entity = (
                 entity_upload.original_geographical_entity if
                 entity_upload.original_geographical_entity else
@@ -669,8 +693,8 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
             if entity:
                 updated_by = (
                     entity.approved_by.username if entity.approved_by else
-                    entity.dataset.created_by.username
-                    if entity.dataset.created_by else ''
+                    self.upload_session.dataset.created_by.username
+                    if self.upload_session.dataset.created_by else ''
                 )
                 results.append({
                     'id': str(entity.id),
@@ -686,14 +710,14 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                     ),
                     'last_update': (
                         entity.approved_date if entity.approved_date
-                        else entity.dataset.last_update
+                        else self.upload_session.dataset.last_update
                     ),
                     'updated_by': updated_by,
                     'upload_id': entity_upload.id,
-                    'has_rematched': rematched_children.exists(),
+                    'has_rematched': has_rematched,
                     'ucode': entity.unique_code,
-                    'total_level1_children': level1_children.count(),
-                    'total_rematched_count': rematched_children.count(),
+                    'total_level1_children': total_level1_children,
+                    'total_rematched_count': total_rematched_count,
                     'is_selected': (
                         True if entity_upload.revised_geographical_entity
                         else False
@@ -710,15 +734,14 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 })
             elif entity_upload.revised_entity_id:
                 layer0_file = None
-                if level_0_data:
-                    layer0 = (
-                        [(layer0, idx) for idx, layer0 in
-                            enumerate(level_0_data)
-                            if layer0['layer0_id'] ==
-                            entity_upload.revised_entity_id]
+                if (
+                    level_0_data and
+                    entity_upload.revised_entity_id in level_0_data
+                ):
+                    layer0_file = (
+                        level_0_data[
+                            entity_upload.revised_entity_id]['layer0_file']
                     )
-                    if layer0:
-                        layer0_file = layer0[0][0]['layer0_file']
                 # new data level 0 but not selected by user
                 results.append({
                     'id': str(uuid.uuid4()),
@@ -735,10 +758,10 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                     'last_update': None,
                     'updated_by': None,
                     'upload_id': entity_upload.id,
-                    'has_rematched': rematched_children.exists(),
+                    'has_rematched': has_rematched,
                     'ucode': None,
-                    'total_level1_children': level1_children.count(),
-                    'total_rematched_count': rematched_children.count(),
+                    'total_level1_children': total_level1_children,
+                    'total_rematched_count': total_rematched_count,
                     'is_selected': False,
                     'max_level_in_layer': entity_upload.max_level_in_layer,
                     'is_available': False,
@@ -747,47 +770,44 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                         entity_upload.admin_level_names else {}
                     )
                 })
-        return results
+        return results, total_uploads
 
-    def get_entity_uploads(self, level_0_data, default_max_level):
+    def get_entity_uploads(self, level_0_data,
+                           default_max_level, start_idx, end_idx):
         results = []
         entity_uploads = (
-            self.upload_session.entityuploadstatus_set.all()
-            .order_by('id')
+            EntityUploadStatus.objects.select_related(
+                'original_geographical_entity',
+                'original_geographical_entity__approved_by'
+            ).filter(
+                upload_session=self.upload_session
+            ).order_by('id')
         )
+        total_uploads = entity_uploads.count()
         has_selection = self.upload_session.entityuploadstatus_set.exclude(
             max_level=''
         ).exists()
-        review_in_progress = EntityUploadStatus.objects.filter(
-            upload_session__dataset=self.upload_session.dataset,
-            status=UPLOAD_REVIEWING
-        ).exclude(
-            original_geographical_entity__isnull=True
-        ).order_by('original_geographical_entity').values_list(
-            'original_geographical_entity', flat=True
-        ).distinct()
+        review_in_progress = self.get_review_in_progress()
+        entity_uploads = entity_uploads[start_idx:end_idx]
         for entity_upload in entity_uploads:
             entity = entity_upload.original_geographical_entity
             level1_children = EntityUploadChildLv1.objects.filter(
                 entity_upload=entity_upload
             )
+            total_level1_children = level1_children.count()
             rematched_children = level1_children.filter(
                 is_parent_rematched=True
             )
+            total_rematched_count = rematched_children.count()
+            has_rematched = total_rematched_count > 0
             layer0_id = (
                 entity.internal_code if entity
                 else entity_upload.revised_entity_id
             )
             layer0_file = None
-            if level_0_data:
-                layer0 = (
-                    [(layer0, idx) for idx, layer0 in
-                        enumerate(level_0_data)
-                        if layer0['layer0_id'] == layer0_id]
-                )
-                if layer0:
-                    layer0_id = layer0[0][0]['layer0_id']
-                    layer0_file = layer0[0][0]['layer0_file']
+            if level_0_data and layer0_id in level_0_data:
+                layer0_id = level_0_data[layer0_id]['layer0_id']
+                layer0_file = level_0_data[layer0_id]['layer0_file']
 
             is_selected = False
             if entity_upload.status != '':
@@ -800,8 +820,8 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
             if entity:
                 updated_by = (
                     entity.approved_by.username if entity.approved_by else
-                    entity.dataset.created_by.username
-                    if entity.dataset.created_by else ''
+                    self.upload_session.dataset.created_by.username
+                    if self.upload_session.dataset.created_by else ''
                 )
                 # check whether this entity is in REVIEW process
                 # inside other session
@@ -820,14 +840,14 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                     ),
                     'last_update': (
                         entity.approved_date if entity.approved_date
-                        else entity.dataset.last_update
+                        else self.upload_session.dataset.last_update
                     ),
                     'updated_by': updated_by,
                     'upload_id': entity_upload.id,
-                    'has_rematched': rematched_children.exists(),
+                    'has_rematched': has_rematched,
                     'ucode': entity.unique_code,
-                    'total_level1_children': level1_children.count(),
-                    'total_rematched_count': rematched_children.count(),
+                    'total_level1_children': total_level1_children,
+                    'total_rematched_count': total_rematched_count,
                     'is_selected': is_selected,
                     'max_level_in_layer': entity_upload.max_level_in_layer,
                     'is_available': is_available,
@@ -853,10 +873,10 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                     'last_update': None,
                     'updated_by': None,
                     'upload_id': entity_upload.id,
-                    'has_rematched': rematched_children.exists(),
+                    'has_rematched': has_rematched,
                     'ucode': None,
-                    'total_level1_children': level1_children.count(),
-                    'total_rematched_count': rematched_children.count(),
+                    'total_level1_children': total_level1_children,
+                    'total_rematched_count': total_rematched_count,
                     'is_selected': is_selected,
                     'max_level_in_layer': entity_upload.max_level_in_layer,
                     'is_available': True,
@@ -869,9 +889,10 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 # country not found from matching
                 # this case is possible only when
                 # threshold is being applied (if any)
+                first_children = level1_children.first()
                 parent_entity_id = (
-                    level1_children.first().parent_entity_id if
-                    level1_children.exists() else 'Unknown'
+                    first_children.parent_entity_id if
+                    first_children else 'Unknown'
                 )
                 results.append({
                     'id': str(uuid.uuid4()),
@@ -886,17 +907,17 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                     'upload_id': entity_upload.id,
                     'has_rematched': False,
                     'ucode': None,
-                    'total_level1_children': level1_children.count(),
+                    'total_level1_children': total_level1_children,
                     'total_rematched_count': 0,
                     'is_selected': False,
                     'is_available': True,
                     'admin_level_names': {}
                 })
-        return results
+        return results, total_uploads
 
     def get(self, request, *args, **kwargs):
         dataset = None
-        level_0_data = []
+        level_0_data_dict = {}
         is_level_0_upload = False
         available_levels = []
         default_max_level = -1
@@ -904,7 +925,9 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
         session_id = request.GET.get('session', None)
         if session_id:
             self.upload_session = (
-                LayerUploadSession.objects.get(id=session_id)
+                LayerUploadSession.objects.select_related(
+                    'dataset', 'dataset__created_by'
+                ).get(id=session_id)
             )
             dataset = self.upload_session.dataset
 
@@ -923,19 +946,50 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 default_max_level
             )
             is_level_0_upload = len(level_0_data) > 0
+            for level_0 in level_0_data:
+                level_0_data_dict[level_0['layer0_id']] = level_0
 
         if not dataset:
             raise Http404()
         if not self.upload_session:
             raise Http404()
-
+        is_id_only = request.GET.get('id_only', 'false') == 'true'
+        start_idx = int(request.GET.get('start', '0'))
+        # value from UI is inclusive, so we need to add 1
+        end_idx = int(request.GET.get('end', '99')) + 1
         results = []
-        if self.upload_session.is_read_only():
-            # fetch existing entity uploads
-            results = self.get_entity_uploads_readonly(level_0_data)
-        elif self.upload_session.status != PRE_PROCESSING:
-            # upload start from admin_level 1, then check for parent matching
-            results = self.get_entity_uploads(level_0_data, default_max_level)
+        selected_ids = []
+        if is_id_only:
+            entity_uploads = (
+                EntityUploadStatus.objects.filter(
+                    upload_session=self.upload_session
+                ).order_by('id')
+            )
+            selected_ids = entity_uploads.exclude(
+                Q(status__isnull=True) | Q(status='') |
+                Q(max_level='')
+            ).values_list('id', flat=True)
+            total_uploads = entity_uploads.count()
+            if self.upload_session.is_read_only():
+                # only fetched ids that had been selected
+                results = entity_uploads.exclude(
+                    revised_geographical_entity__isnull=True
+                ).values_list('id', flat=True)
+            else:
+                review_in_progress = self.get_review_in_progress()
+                results = entity_uploads.exclude(
+                    id__in=review_in_progress
+                ).values_list('id', flat=True)
+        else:
+            if self.upload_session.is_read_only():
+                # fetch existing entity uploads
+                results, total_uploads = self.get_entity_uploads_readonly(
+                    level_0_data_dict, start_idx, end_idx)
+            elif self.upload_session.status != PRE_PROCESSING:
+                # upload start from admin_level 1,
+                # then check for parent matching
+                results, total_uploads = self.get_entity_uploads(
+                    level_0_data_dict, default_max_level, start_idx, end_idx)
 
         return Response(
             data={
@@ -949,7 +1003,9 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 'is_read_only': self.upload_session.is_read_only(),
                 'progress': self.upload_session.progress,
                 'action_uuid': self.upload_session.current_process_uuid,
-                'current_process': self.upload_session.current_process
+                'current_process': self.upload_session.current_process,
+                'total': total_uploads,
+                'selected_ids': selected_ids
             }
         )
 

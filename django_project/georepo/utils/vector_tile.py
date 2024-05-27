@@ -5,25 +5,28 @@ import toml
 import os
 import time
 from typing import List
-from datetime import datetime
 
 from django.core.cache import cache
 from django.conf import settings
 from django.db.models import Max
 from django.db.models.expressions import RawSQL
 from celery.result import AsyncResult
+from django.utils import timezone
 
 from core.settings.utils import absolute_path
 from georepo.models import Dataset, DatasetView, \
     EntityId, EntityName, GeographicalEntity, \
     DatasetViewResource
 from georepo.utils.dataset_view import create_sql_view, \
-    check_view_exists, get_entities_count_in_view, generate_view_resource_bbox
+    check_view_exists, get_entities_count_in_view, \
+    generate_view_resource_bbox, get_max_zoom_level
 from georepo.utils.module_import import module_function
 from georepo.utils.azure_blob_storage import (
     DirectoryClient,
     get_tegola_cache_config
 )
+from georepo.utils.tile_configs import get_view_tiling_configs
+
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +83,7 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
         code_name = id['code__name']
         join_name = f'id_{code_id}'
         id_field_select.append(
-            f'{join_name}.value as {code_name}'
+            f'{join_name}.value as "{code_name}"'
         )
         id_field_left_joins.append(
             f'LEFT JOIN georepo_entityid {join_name} ON '
@@ -104,17 +107,42 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
     name_field_left_joins = []
     name_field_select = []
     if names_max_idx['idx__max'] is not None:
+        empty_label_idx = 1
         for name_idx in range(names_max_idx['idx__max'] + 1):
             join_name = f'name_{name_idx+1}'
-            name_label = join_name
-            name_field_select.append(
-                f'{join_name}.name as "{name_label}"'
+            # find labels for name with name_idx
+            name_labels_qs = names.filter(
+                idx=name_idx
+            ).order_by('label').distinct('label').values_list(
+                'label', flat=True
             )
-            name_field_left_joins.append(
-                f'LEFT JOIN georepo_entityname {join_name} ON '
-                f'{join_name}.geographical_entity_id=gg.id AND '
-                f'{join_name}.idx={name_idx} '
-            )
+            has_empty = False
+            for label_idx, label in enumerate(name_labels_qs):
+                if label:
+                    label_join_name = f'{join_name}_{label_idx}'
+                    name_field_select.append(
+                        f'{label_join_name}.name as "{label}"'
+                    )
+                    name_field_left_joins.append(
+                        f'LEFT JOIN georepo_entityname {label_join_name} ON '
+                        f'{label_join_name}.geographical_entity_id=gg.id AND '
+                        f'{label_join_name}.idx={name_idx} AND '
+                        f'{label_join_name}.label=\'{label}\''
+                    )
+                elif not has_empty:
+                    has_empty = True
+                    name_label = f'name_{empty_label_idx}'
+                    empty_label_idx += 1
+                    name_field_select.append(
+                        f'{join_name}.name as "{name_label}"'
+                    )
+                    name_field_left_joins.append(
+                        f'LEFT JOIN georepo_entityname {join_name} ON '
+                        f'{join_name}.geographical_entity_id=gg.id AND '
+                        f'{join_name}.idx={name_idx} AND '
+                        f'({join_name}.label=\'\' OR '
+                        f'{join_name}.label IS NULL)'
+                    )
     view_tiling_config_where_cond = ''
     if using_view_tiling_config:
         view_tiling_config_where_cond = (
@@ -170,84 +198,6 @@ def dataset_view_sql_query(dataset_view: DatasetView, level,
             'dataset_view_sql_query',
             end - start)
     return sql
-
-
-class TilingConfigItem(object):
-
-    def __init__(self, level: int, tolerance=None) -> None:
-        self.level = level
-        self.tolerance = tolerance
-
-
-class TilingConfigZoomLevels(object):
-
-    def __init__(self, zoom_level: int,
-                 items: List[TilingConfigItem]) -> None:
-        self.zoom_level = zoom_level
-        self.items = items
-
-
-def get_view_tiling_configs(dataset_view: DatasetView, zoom_level: int = None,
-                            **kwargs) -> List[TilingConfigZoomLevels]:
-    # return list of tiling configs for dataset_view
-    from georepo.models.dataset_tile_config import (
-        DatasetTilingConfig
-    )
-    from georepo.models.dataset_view_tile_config import (
-        DatasetViewTilingConfig
-    )
-    start = time.time()
-    tiling_configs: List[TilingConfigZoomLevels] = []
-    view_tiling_conf = DatasetViewTilingConfig.objects.filter(
-        dataset_view=dataset_view
-    ).order_by('zoom_level')
-    if zoom_level is not None:
-        view_tiling_conf = view_tiling_conf.filter(
-            zoom_level=zoom_level
-        )
-    if view_tiling_conf.exists():
-        for conf in view_tiling_conf:
-            items = []
-            tiling_levels = conf.viewadminleveltilingconfig_set.all()
-            for item in tiling_levels:
-                items.append(
-                    TilingConfigItem(item.level, item.simplify_tolerance)
-                )
-            tiling_configs.append(
-                TilingConfigZoomLevels(conf.zoom_level, items)
-            )
-        return tiling_configs, True
-    # check for dataset tiling configs
-    dataset_tiling_conf = DatasetTilingConfig.objects.filter(
-        dataset=dataset_view.dataset
-    ).order_by('zoom_level')
-    if zoom_level is not None:
-        dataset_tiling_conf = dataset_tiling_conf.filter(
-            zoom_level=zoom_level
-        )
-    if dataset_tiling_conf.exists():
-        for conf in dataset_tiling_conf:
-            items = []
-            tiling_levels = conf.adminleveltilingconfig_set.all()
-            for item in tiling_levels:
-                items.append(
-                    TilingConfigItem(item.level, item.simplify_tolerance)
-                )
-            tiling_configs.append(
-                TilingConfigZoomLevels(conf.zoom_level, items)
-            )
-        end = time.time()
-        if kwargs.get('log_object'):
-            kwargs.get('log_object').add_log(
-                'get_view_tiling_configs',
-                end - start)
-        return tiling_configs, False
-    end = time.time()
-    if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log(
-            'get_view_tiling_configs',
-            end - start)
-    return tiling_configs, False
 
 
 def create_view_configuration_files(
@@ -472,7 +422,9 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
             'error': '',
             'size': 0,
             'total_files': 0,
-            'cp_time': 0
+            'cp_time': 0,
+            'start_time': 0,
+            'end_time': 0
         }
     view_resource.vector_tile_detail_logs = detail_logs
     view_resource.save(update_fields=['vector_tile_detail_logs'])
@@ -481,6 +433,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         view_resource.vector_tile_detail_logs[current_zoom]['status'] = (
             'processing'
         )
+        process_start_time = timezone.now().timestamp()
         view_resource.save(update_fields=[
             'vector_tile_detail_logs'
         ])
@@ -526,7 +479,8 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
             'zoom': current_zoom,
             'command_list': ' '.join(command_list),
             'return_code': result.returncode,
-            'time': tegola_time_per_zoom
+            'time': tegola_time_per_zoom,
+            'start_time': process_start_time
         }
         if result.returncode != 0:
             logger.error(result.stderr)
@@ -559,6 +513,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
         cp_time = time.time() - cp_started
         tegola_log_per_zoom['status'] = 'done'
         tegola_log_per_zoom['cp_time'] = cp_time
+        tegola_log_per_zoom['end_time'] = timezone.now().timestamp()
         view_resource.vector_tile_detail_logs[current_zoom] = (
             tegola_log_per_zoom
         )
@@ -601,19 +556,26 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
     return True
 
 
-def save_view_resource_on_success(view_resource, entity_count):
+def save_view_resource_on_success(view_resource: DatasetViewResource,
+                                  entity_count):
     view_resource.status = (
         DatasetView.DatasetViewStatus.DONE if entity_count > 0 else
         DatasetView.DatasetViewStatus.EMPTY
     )
     view_resource.vector_tile_sync_status = DatasetView.SyncStatus.SYNCED
-    view_resource.vector_tiles_updated_at = datetime.now()
+    view_resource.vector_tiles_updated_at = timezone.now()
     view_resource.vector_tiles_progress = 100
     view_resource.entity_count = entity_count
+    view_resource.max_zoom = get_max_zoom_level(view_resource.dataset_view)
+    view_resource.vector_tiles_code_version = (
+        f"{settings.CODE_RELEASE_VERSION}-{settings.CODE_COMMIT_HASH}"
+    )
     view_resource.save(update_fields=['status', 'vector_tile_sync_status',
                                       'vector_tiles_updated_at',
                                       'vector_tiles_progress',
-                                      'entity_count'])
+                                      'entity_count',
+                                      'vector_tiles_code_version',
+                                      'max_zoom'])
     # clear any pending tile cache keys
     reset_pending_tile_cache_keys(view_resource)
 
@@ -640,57 +602,6 @@ def delete_vector_tiles(dataset: Dataset):
     )
     if os.path.exists(vector_tile_path):
         shutil.rmtree(vector_tile_path)
-
-
-def patch_vector_tile_path():
-    """
-    Patch vector tile path to use Dataset uuid
-    """
-    datasets = Dataset.objects.all()
-    for dataset in datasets:
-        new_vector_dir = str(dataset.uuid)
-        if not dataset.vector_tiles_path:
-            continue
-        if new_vector_dir in dataset.vector_tiles_path:
-            continue
-        old_vector_tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            dataset.label
-        )
-        new_vector_tile_path = os.path.join(
-            settings.LAYER_TILES_PATH,
-            new_vector_dir
-        )
-        try:
-            shutil.move(
-                old_vector_tile_path,
-                new_vector_tile_path
-            )
-        except FileNotFoundError as ex:
-            logger.error('Error renaming vector tiles directory ', ex)
-        dataset.vector_tiles_path = (
-            f'/layer_tiles/{new_vector_dir}/'
-            f'{{z}}/{{x}}/{{y}}?t={int(time.time())}'
-        )
-        dataset.tiling_status = Dataset.DatasetTilingStatus.DONE
-        dataset.save(update_fields=['vector_tiles_path', 'tiling_status'])
-        suffix = '.geojson'
-        old_geojson_file_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            dataset.label
-        ) + suffix
-        new_geojson_file_path = os.path.join(
-            settings.GEOJSON_FOLDER_OUTPUT,
-            str(dataset.uuid)
-        ) + suffix
-        if os.path.exists(old_geojson_file_path):
-            try:
-                shutil.move(
-                    old_geojson_file_path,
-                    new_geojson_file_path
-                )
-            except FileNotFoundError as ex:
-                logger.error('Error renaming geojson file ', ex)
 
 
 def remove_vector_tiles_dir(

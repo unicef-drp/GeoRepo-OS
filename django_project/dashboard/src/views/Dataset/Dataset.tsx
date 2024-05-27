@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import List, {ActionDataInterface} from "../../components/List";
+import List, {ActionDataInterface, applyFilterDialogFooter} from "../../components/List";
 import {useNavigate, useSearchParams} from "react-router-dom";
 import axios from "axios";
 import toLower from "lodash/toLower";
@@ -63,7 +63,23 @@ export default function Dataset() {
       display: false,
     },
     'dataset': {
-      filter: false
+      filter: false,
+      'customBodyRender': (value: any, tableMeta: any, updateValue: any) => {
+          let rowData = tableMeta.rowData
+          const handleClick = (e: any) => {
+              e.preventDefault()
+              let moduleName = toLower(rowData[3]).replace(' ', '_')
+              const datasetId = rowData[0]
+              if (!moduleName) {
+                moduleName = modules[0]
+              }
+              dispatch(setModule(moduleName))
+              navigate(`/${moduleName}/dataset_entities?id=${datasetId}`)
+          };
+          return (
+              <a href='#' onClick={handleClick}>{`${rowData[1]}`}</a>
+          )
+      },
     },
     'sync_status': {
         filter: true,
@@ -142,20 +158,6 @@ export default function Dataset() {
     }
   }
 
-  const handleEditClick = (rowData: any) => {
-    let moduleName = toLower(rowData[3]).replace(' ', '_')
-    const datasetId = rowData[0]
-    if (!moduleName) {
-      moduleName = modules[0]
-    }
-    dispatch(setModule(moduleName))
-    navigate(`/${moduleName}/dataset_entities?id=${datasetId}`)
-  }
-
-  const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-    handleEditClick(rowData)
-  }
-
   const handleDeleteClick = () => {
     setDeleteButtonDisabled(true)
     postData(
@@ -198,20 +200,14 @@ export default function Dataset() {
           listUrl={''}
           initData={dataset}
           selectionChanged={null}
-          onRowClick={handleRowClick}
+          onRowClick={null}
           actionData={[actionDeleteButton]}
           excludedColumns={['permissions', 'is_empty']}
           customOptions={customColumnOptions}
           customColumnHeaderRender={customColumnHeaderRender}
           options={{
             'confirmFilters': true,
-            'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
-              return (
-                <div style={{marginTop: '40px'}}>
-                  <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
-                </div>
-              );
-            },
+            'customFilterDialogFooter': applyFilterDialogFooter
           }}
         /> : <Loading/>
       }

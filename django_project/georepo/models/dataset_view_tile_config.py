@@ -87,6 +87,6 @@ def dataset_view_tiling_config_post_create(
         dataset_view = DatasetView.objects.get(id=instance.dataset_view_id)
         dataset_view.set_out_of_sync(
             tiling_config=True,
-            product=False,
+            centroid=False,
             vector_tile=True
         )

@@ -21,7 +21,8 @@ from dashboard.api_views.entity_upload_status import (
     EntityUploadLevel1List,
     OverlapsEntityUploadList,
     OverlapsEntityUploadDetail,
-    RetriggerSingleValidation
+    RetriggerSingleValidation,
+    EntityUploadStatusMetadata
 )
 from georepo.utils import absolute_path
 from dashboard.models.entity_upload import PROCESSING_ERROR, STARTED
@@ -68,6 +69,41 @@ class TestEntityUploadStatusApiViews(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data['comparison_ready'])
 
+    def test_entity_upload_status_metadata(self):
+        upload_session = LayerUploadSessionF.create(
+            dataset=self.dataset
+        )
+        upload_session.started_at = datetime.datetime(2023, 8, 14, 8, 8, 8)
+        upload_session.save()
+        entity_upload = EntityUploadF.create(
+            upload_session=upload_session,
+            status='Valid'
+        )
+        entity_upload.started_at = datetime.datetime(2023, 8, 14, 10, 10, 10)
+        entity_upload.save()
+        user = UserF.create()
+        request = self.factory.get(
+            reverse('entity-upload-status-metadata') +
+            f'/?id={upload_session.id}'
+        )
+        request.user = user
+        view = EntityUploadStatusMetadata.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('ids', response.data)
+        self.assertIn('countries', response.data)
+        user = UserF.create(is_superuser=True)
+        request = self.factory.get(
+            reverse('entity-upload-status-metadata') +
+            f'/?id={upload_session.id}&select_all=true'
+        )
+        request.user = user
+        view = EntityUploadStatusMetadata.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('ids', response.data)
+        self.assertIn(entity_upload.id, response.data['ids'])
+
     def test_entity_upload_status_list(self):
         upload_session = LayerUploadSessionF.create(
             dataset=self.dataset
@@ -80,8 +116,13 @@ class TestEntityUploadStatusApiViews(TestCase):
         entity_upload.started_at = datetime.datetime(2023, 8, 14, 10, 10, 10)
         entity_upload.save()
         user = UserF.create()
-        request = self.factory.get(
-            reverse('entity-upload-status-list') + f'/?id={upload_session.id}'
+        request = self.factory.post(
+            reverse('entity-upload-status-list') + f'/?id={upload_session.id}',
+            {
+                'countries': [],
+                'search_text': ''
+            },
+            format='json'
         )
         request.user = user
         view = EntityUploadStatusList.as_view()
@@ -92,7 +133,9 @@ class TestEntityUploadStatusApiViews(TestCase):
             [
                 {
                     'id': entity_upload.id,
-                    'Adm0': entity_upload.original_geographical_entity.label,
+                    'country': (
+                        entity_upload.original_geographical_entity.label
+                    ),
                     'started at': '14 August 2023 10:10:10 UTC',
                     'status': 'Queued',
                     'error_summaries': None,

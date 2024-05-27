@@ -11,6 +11,7 @@ ERROR = 'ERROR'
 CANCELLED = 'CANCELLED'
 
 COMPLETED_STATUS = [DONE, ERROR, CANCELLED]
+READ_ONLY_STATUS = [DONE, ERROR, PROCESSING, CANCELLED]
 
 
 class BaseTaskRequest(models.Model):
@@ -88,3 +89,12 @@ class BaseTaskRequest(models.Model):
 
     def __str__(self):
         return str(self.uuid)
+
+    @property
+    def requester_name(self):
+        if self.submitted_by and self.submitted_by.first_name:
+            name = self.submitted_by.first_name
+            if self.submitted_by.last_name:
+                name = f'{name} {self.submitted_by.last_name}'
+            return name
+        return '-'

@@ -106,7 +106,7 @@ def do_process_layer_files_for_parent_matching(
         f'(0/{total_features})'
     )
     upload_session.save(update_fields=['progress'])
-    for temp_entity in temp_entities:
+    for temp_entity in temp_entities.iterator(chunk_size=1):
         parent_entity_id = temp_entity.parent_entity_id
         # do search
         matched_parent_entity, overlap_percentage = (
@@ -214,7 +214,7 @@ def do_process_layer_files_for_parent_matching_level0(
         f'(0/{total_features})'
     )
     upload_session.save(update_fields=['progress'])
-    for temp_entity in temp_entities:
+    for temp_entity in temp_entities.iterator(chunk_size=1):
         parent_entity_id = temp_entity.parent_entity_id
         # do search
         matched_parent_entity, overlap_percentage = (

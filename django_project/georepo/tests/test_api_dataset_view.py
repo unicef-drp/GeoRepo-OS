@@ -1,12 +1,10 @@
 import uuid
 import json
 import mock
-from collections import OrderedDict
-import io
-import zipfile
+import datetime
 from dateutil.parser import isoparse
 from typing import List
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 from django.contrib.gis.geos import GEOSGeometry
 
@@ -14,7 +12,9 @@ from rest_framework.test import APIRequestFactory
 from rest_framework import versioning
 
 from georepo.utils import absolute_path
-from georepo.models import IdType, DatasetView, DatasetAdminLevelName
+from georepo.models import (
+    IdType, DatasetView, DatasetAdminLevelName, DatasetViewResource
+)
 from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, LanguageF, DatasetViewF,
     DatasetAdminLevelNameF, EntityIdF, IdTypeF, UserF, EntityNameF
@@ -23,14 +23,10 @@ from georepo.api_views.dataset_view import (
     DatasetViewList,
     DatasetViewListForUser,
     DatasetViewDetail,
-    DatasetViewExportDownload,
-    DatasetViewExportDownloadByLevel,
-    DatasetViewExportDownloadByCountry,
-    DatasetViewExportDownloadByCountryAndLevel
+    DatasetViewCentroid
 )
 from georepo.utils.dataset_view import (
     generate_default_view_dataset_latest,
-    generate_default_view_adm0_latest,
     create_sql_view,
     check_view_exists,
     generate_view_bbox,
@@ -43,24 +39,11 @@ from georepo.utils.permission import (
     grant_datasetview_external_viewer,
     grant_dataset_viewer
 )
-
-
-class DummyTask:
-    def __init__(self, id):
-        self.id = id
-
-
-def mocked_run_generate_vector_tiles(*args, **kwargs):
-    return DummyTask('1')
-
-
-def mocked_cache_get(self, *args, **kwargs):
-    return OrderedDict()
-
-
-class FakeResolverMatchV1:
-    """Fake class to mock versioning"""
-    namespace = 'v1'
+from georepo.tests.common import (
+    mocked_process,
+    mocked_cache_get,
+    FakeResolverMatchV1
+)
 
 
 class TestApiDatasetView(TestCase):
@@ -137,7 +120,7 @@ class TestApiDatasetView(TestCase):
 
     @mock.patch(
         'dashboard.tasks.remove_view_resource_data.delay',
-        mock.Mock(side_effect=mocked_run_generate_vector_tiles)
+        mock.Mock(side_effect=mocked_process)
     )
     def test_dataset_view_list(self):
         dataset = DatasetF.create()
@@ -340,6 +323,7 @@ class TestApiDatasetView(TestCase):
         self.assertEqual(len(item['possible_id_types']), len(ext_ids))
         for id in ext_ids:
             self.assertIn(id, item['possible_id_types'])
+        self.assertIn('max_zoom', item)
 
     @mock.patch('django.core.cache.cache.get',
                 mock.Mock(side_effect=mocked_cache_get))
@@ -485,389 +469,107 @@ class TestApiDatasetView(TestCase):
         # check disabled module
         self.check_disabled_module(dataset, view, request, kwargs=kwargs)
 
-    @override_settings(
-        GEOJSON_FOLDER_OUTPUT=(
-            '/home/web/django_project/georepo/tests/dataset_export'
-        )
-    )
-    @mock.patch('django.core.cache.cache.get',
-                mock.Mock(side_effect=mocked_cache_get))
-    def test_dataset_view_export_download(self):
-        dataset = DatasetF.create(
-            label='ABC'
-        )
-        generate_default_view_dataset_latest(dataset)
-        dataset_view = DatasetView.objects.filter(
+    def test_dataset_view_centroid(self):
+        dataset = DatasetF.create()
+        dataset_view = DatasetViewF.create(
             dataset=dataset,
-            default_type=DatasetView.DefaultViewType.IS_LATEST,
-            default_ancestor_code__isnull=True
-        ).first()
-        init_view_privacy_level(dataset_view)
-        resource = dataset_view.datasetviewresource_set.filter(
-            privacy_level=4
-        ).first()
-        resource.uuid = uuid.UUID('e59f8338-e8a8-4e6d-9e0d-c63108a8048e')
-        resource.entity_count = 2
-        resource.save()
-        parent = GeographicalEntityF.create(
-            dataset=dataset_view.dataset,
-            level=0,
-            is_latest=True,
-            is_approved=True,
-            version=1,
-            unique_code='PAK',
-            unique_code_version=1
+            last_update=isoparse('2023-01-10T06:16:13Z'),
+            is_static=False,
+            query_string=(
+                'SELECT * FROM georepo_geographicalentity where '
+                f"dataset_id={dataset.id} AND revision_number=1"
+            )
         )
+        dataset_view.tags.add('abc')
+        create_sql_view(dataset_view)
+        self.assertTrue(check_view_exists(str(dataset_view.uuid)))
         GeographicalEntityF.create(
-            dataset=dataset_view.dataset,
-            level=1,
-            parent=parent,
-            ancestor=parent,
-            is_latest=True,
+            uuid=str(uuid.uuid4()),
+            type=self.entity_type,
+            level=0,
+            dataset=dataset,
+            internal_code='PAK',
+            label='Pakistan',
             is_approved=True,
-            version=1,
-            unique_code='PAK_001',
-            unique_code_version=1
+            is_latest=True,
+            unique_code='PAK',
+            admin_level_name='TestLevel_0',
+            revision_number=1,
+            geometry=self.geometry
         )
+        # recalculate view metadata
+        init_view_privacy_level(dataset_view)
+        calculate_entity_count_in_view(dataset_view)
+
         kwargs = {
             'uuid': str(dataset_view.uuid)
         }
         request = self.factory.get(
             reverse(
-                'v1:dataset-view-download',
+                'v1:view-centroid',
                 kwargs=kwargs
-            )
-        )
-        scheme = versioning.NamespaceVersioning
-        view = DatasetViewExportDownload.as_view(
-            versioning_class=scheme
+            ) + '/?cached=false'
         )
         request.resolver_match = FakeResolverMatchV1
         request.user = self.superuser
+        scheme = versioning.NamespaceVersioning
+        view = DatasetViewCentroid.as_view(versioning_class=scheme)
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
-        self.assertEquals(
-            response.get('Content-Disposition'),
-            f'attachment; filename="{dataset_view.name}.zip"'
-        )
-        with io.BytesIO(response.content) as f:
-            with zipfile.ZipFile(f, 'r') as archive:
-                self.assertIsNone(archive.testzip())
-                name_list = archive.namelist()
-                self.assertIn('ABC (Latest) adm0.geojson', name_list)
-                self.assertIn('ABC (Latest) adm1.geojson', name_list)
-        # check disabled module
-        self.check_disabled_module(dataset, view, request, kwargs=kwargs)
-
-    @override_settings(
-        GEOJSON_FOLDER_OUTPUT=(
-            '/home/web/django_project/georepo/tests/dataset_export'
-        )
-    )
-    @mock.patch('django.core.cache.cache.get',
-                mock.Mock(side_effect=mocked_cache_get))
-    def test_dataset_view_export_download_by_level(self):
-        dataset = DatasetF.create(
-            label='ABC'
-        )
-        generate_default_view_dataset_latest(dataset)
-        dataset_view = DatasetView.objects.filter(
-            dataset=dataset,
-            default_type=DatasetView.DefaultViewType.IS_LATEST,
-            default_ancestor_code__isnull=True
-        ).first()
-        init_view_privacy_level(dataset_view)
-        resource = dataset_view.datasetviewresource_set.filter(
+        self.assertTrue(len(response.data) == 0)
+        resource = DatasetViewResource.objects.get(
+            dataset_view=dataset_view,
             privacy_level=4
-        ).first()
-        resource.uuid = uuid.UUID('e59f8338-e8a8-4e6d-9e0d-c63108a8048e')
-        resource.entity_count = 2
-        resource.save()
-        parent = GeographicalEntityF.create(
-            dataset=dataset_view.dataset,
-            level=0,
-            is_latest=True,
-            is_approved=True,
-            version=1,
-            unique_code='PAK',
-            unique_code_version=1
         )
-        GeographicalEntityF.create(
-            dataset=dataset_view.dataset,
-            level=1,
-            parent=parent,
-            ancestor=parent,
-            is_latest=True,
-            is_approved=True,
-            version=1,
-            unique_code='PAK_001',
-            unique_code_version=1
-        )
-        kwargs = {
-            'uuid': str(dataset_view.uuid),
-            'admin_level': 1
-        }
+        resource.centroid_files = [
+            {
+                'level': 0,
+                'path': (
+                    'media/centroid/'
+                    'd7655d2d-8b9c-431b-9383-269dc2d6ea09/adm0.pbf'
+                ),
+                'size': 306
+            }
+        ]
+        resource.save(update_fields=['centroid_files'])
         request = self.factory.get(
             reverse(
-                'v1:dataset-view-download-by-level',
+                'v1:view-centroid',
                 kwargs=kwargs
-            )
-        )
-        scheme = versioning.NamespaceVersioning
-        view = DatasetViewExportDownloadByLevel.as_view(
-            versioning_class=scheme
+            ) + '/?cached=false'
         )
         request.resolver_match = FakeResolverMatchV1
         request.user = self.superuser
+        scheme = versioning.NamespaceVersioning
+        view = DatasetViewCentroid.as_view(versioning_class=scheme)
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
-        self.assertEquals(
-            response.get('Content-Disposition'),
-            f'attachment; filename="{dataset_view.name}.zip"'
-        )
-        with io.BytesIO(response.content) as f:
-            with zipfile.ZipFile(f, 'r') as archive:
-                self.assertIsNone(archive.testzip())
-                name_list = archive.namelist()
-                self.assertNotIn('ABC (Latest) adm0.geojson', name_list)
-                self.assertIn('ABC (Latest) adm1.geojson', name_list)
-        # check disabled module
-        self.check_disabled_module(dataset, view, request, kwargs=kwargs)
+        self.assertTrue(len(response.data) == 1)
+        centroid_file = response.data[0]
+        self.assertIn('level', centroid_file)
+        self.assertIn('url', centroid_file)
 
-    @override_settings(
-        GEOJSON_FOLDER_OUTPUT=(
-            '/home/web/django_project/georepo/tests/dataset_export'
-        )
-    )
-    @mock.patch('django.core.cache.cache.get',
-                mock.Mock(side_effect=mocked_cache_get))
-    def test_dataset_view_export_download_by_country(self):
-        dataset = DatasetF.create(
-            label='ABC'
-        )
-        parent = GeographicalEntityF.create(
-            dataset=dataset,
-            level=0,
-            is_latest=True,
-            is_approved=True,
-            version=1,
-            label='Pakistan',
-            unique_code='PAK',
-            unique_code_version=1
-        )
-        GeographicalEntityF.create(
-            dataset=dataset,
-            level=1,
-            parent=parent,
-            ancestor=parent,
-            is_latest=True,
-            is_approved=True,
-            version=1,
-            unique_code='PAK_001',
-            unique_code_version=1
-        )
-        generate_default_view_adm0_latest(dataset)
-        dataset_view = DatasetView.objects.filter(
-            dataset=dataset,
-            default_type=DatasetView.DefaultViewType.IS_LATEST,
-            default_ancestor_code='PAK'
-        ).first()
-        init_view_privacy_level(dataset_view)
-        resource = dataset_view.datasetviewresource_set.filter(
-            privacy_level=4
-        ).first()
-        resource.uuid = uuid.UUID('e59f8338-e8a8-4e6d-9e0d-c63108a8048e')
-        resource.entity_count = 2
-        resource.save()
-        kwargs = {
-            'uuid': str(dataset_view.uuid),
-            'id_type': 'ucode',
-            'id': 'PAK_V1'
-        }
-        request = self.factory.get(
-            reverse(
-                'v1:dataset-view-download-by-country',
-                kwargs=kwargs
-            )
-        )
-        scheme = versioning.NamespaceVersioning
-        view = DatasetViewExportDownloadByCountry.as_view(
-            versioning_class=scheme
-        )
-        request.resolver_match = FakeResolverMatchV1
-        request.user = self.superuser
-        response = view(request, **kwargs)
-        self.assertEqual(response.status_code, 200)
-        self.assertEquals(
-            response.get('Content-Disposition'),
-            f'attachment; filename="{dataset_view.name}.zip"'
-        )
-        with io.BytesIO(response.content) as f:
-            with zipfile.ZipFile(f, 'r') as archive:
-                self.assertIsNone(archive.testzip())
-                name_list = archive.namelist()
-                self.assertIn('ABC - Pakistan (Latest) adm0.geojson',
-                              name_list)
-                self.assertIn('ABC - Pakistan (Latest) adm1.geojson',
-                              name_list)
-        # create latest view, should return the same for PAK_V1
-        generate_default_view_dataset_latest(dataset)
-        latest_view = DatasetView.objects.filter(
-            dataset=dataset,
-            default_type=DatasetView.DefaultViewType.IS_LATEST,
-            default_ancestor_code__isnull=True
-        ).first()
-        init_view_privacy_level(latest_view)
-        kwargs = {
-            'uuid': str(latest_view.uuid),
-            'id_type': 'ucode',
-            'id': 'PAK_V1'
-        }
-        request = self.factory.get(
-            reverse(
-                'v1:dataset-view-download-by-country',
-                kwargs=kwargs
-            )
-        )
-        scheme = versioning.NamespaceVersioning
-        view = DatasetViewExportDownloadByCountry.as_view(
-            versioning_class=scheme
-        )
-        request.resolver_match = FakeResolverMatchV1
-        request.user = self.superuser
-        response = view(request, **kwargs)
-        self.assertEqual(response.status_code, 200)
-        self.assertEquals(
-            response.get('Content-Disposition'),
-            f'attachment; filename="{dataset_view.name}.zip"'
-        )
-        with io.BytesIO(response.content) as f:
-            with zipfile.ZipFile(f, 'r') as archive:
-                self.assertIsNone(archive.testzip())
-                name_list = archive.namelist()
-                self.assertIn('ABC - Pakistan (Latest) adm0.geojson',
-                              name_list)
-                self.assertIn('ABC - Pakistan (Latest) adm1.geojson',
-                              name_list)
-        # check disabled module
-        self.check_disabled_module(dataset, view, request, kwargs=kwargs)
 
-    @override_settings(
-        GEOJSON_FOLDER_OUTPUT=(
-            '/home/web/django_project/georepo/tests/dataset_export'
-        )
-    )
-    @mock.patch('django.core.cache.cache.get',
-                mock.Mock(side_effect=mocked_cache_get))
-    def test_dataset_view_export_download_by_country_level(self):
-        dataset = DatasetF.create(
-            label='ABC'
-        )
-        parent = GeographicalEntityF.create(
-            dataset=dataset,
-            level=0,
-            is_latest=True,
-            is_approved=True,
-            version=1,
-            label='Pakistan',
-            unique_code='PAK',
-            unique_code_version=1
-        )
-        GeographicalEntityF.create(
-            dataset=dataset,
-            level=1,
-            parent=parent,
-            ancestor=parent,
-            is_latest=True,
-            is_approved=True,
-            version=1,
-            unique_code='PAK_001',
-            unique_code_version=1
-        )
-        generate_default_view_adm0_latest(dataset)
-        dataset_view = DatasetView.objects.filter(
-            dataset=dataset,
-            default_type=DatasetView.DefaultViewType.IS_LATEST,
-            default_ancestor_code='PAK'
-        ).first()
-        init_view_privacy_level(dataset_view)
-        resource = dataset_view.datasetviewresource_set.filter(
-            privacy_level=4
-        ).first()
-        resource.entity_count = 2
-        resource.uuid = uuid.UUID('e59f8338-e8a8-4e6d-9e0d-c63108a8048e')
-        resource.save()
-        kwargs = {
-            'uuid': str(dataset_view.uuid),
-            'id_type': 'ucode',
-            'id': 'PAK_V1',
-            'admin_level': 0
-        }
-        request = self.factory.get(
-            reverse(
-                'v1:dataset-view-download-by-country-and-level',
-                kwargs=kwargs
-            )
-        )
-        scheme = versioning.NamespaceVersioning
-        view = DatasetViewExportDownloadByCountryAndLevel.as_view(
-            versioning_class=scheme
-        )
-        request.resolver_match = FakeResolverMatchV1
-        request.user = self.superuser
-        response = view(request, **kwargs)
-        self.assertEqual(response.status_code, 200)
-        self.assertEquals(
-            response.get('Content-Disposition'),
-            f'attachment; filename="{dataset_view.name}.zip"'
-        )
-        with io.BytesIO(response.content) as f:
-            with zipfile.ZipFile(f, 'r') as archive:
-                self.assertIsNone(archive.testzip())
-                name_list = archive.namelist()
-                self.assertIn('ABC - Pakistan (Latest) adm0.geojson',
-                              name_list)
-                self.assertNotIn('ABC - Pakistan (Latest) adm1.geojson',
-                                 name_list)
-        # create latest view, should return the same for PAK_V1
-        generate_default_view_dataset_latest(dataset)
-        latest_view = DatasetView.objects.filter(
-            dataset=dataset,
-            default_type=DatasetView.DefaultViewType.IS_LATEST,
-            default_ancestor_code__isnull=True
-        ).first()
-        init_view_privacy_level(latest_view)
-        kwargs = {
-            'uuid': str(latest_view.uuid),
-            'id_type': 'ucode',
-            'id': 'PAK_V1',
-            'admin_level': 0
-        }
-        request = self.factory.get(
-            reverse(
-                'v1:dataset-view-download-by-country-and-level',
-                kwargs=kwargs
-            )
-        )
-        scheme = versioning.NamespaceVersioning
-        view = DatasetViewExportDownloadByCountryAndLevel.as_view(
-            versioning_class=scheme
-        )
-        request.resolver_match = FakeResolverMatchV1
-        request.user = self.superuser
-        response = view(request, **kwargs)
-        self.assertEqual(response.status_code, 200)
-        self.assertEquals(
-            response.get('Content-Disposition'),
-            f'attachment; filename="{dataset_view.name}.zip"'
-        )
-        with io.BytesIO(response.content) as f:
-            with zipfile.ZipFile(f, 'r') as archive:
-                self.assertIsNone(archive.testzip())
-                name_list = archive.namelist()
-                self.assertIn('ABC - Pakistan (Latest) adm0.geojson',
-                              name_list)
-                self.assertNotIn('ABC - Pakistan (Latest) adm1.geojson',
-                                 name_list)
-        # check disabled module
-        self.check_disabled_module(dataset, view, request, kwargs=kwargs)
+    @mock.patch('django.utils.timezone.now')
+    def test_get_url_cache_expires_in(self, mocked_time):
+        current_dt = datetime.datetime(2023, 8, 14, 8, 0, 0)
+        mocked_time.return_value = current_dt
+        url_expires_on = current_dt + datetime.timedelta(minutes=35)
+        expires_in = DatasetViewCentroid.get_url_cache_expires_in(
+            url_expires_on)
+        mocked_time.assert_called_once()
+        self.assertEqual(expires_in, 300)
+        mocked_time.reset_mock()
+        mocked_time.return_value = current_dt
+        url_expires_on = current_dt + datetime.timedelta(minutes=20)
+        expires_in = DatasetViewCentroid.get_url_cache_expires_in(
+            url_expires_on)
+        mocked_time.assert_called_once()
+        self.assertEqual(expires_in, 1200)
+        mocked_time.reset_mock()
+        mocked_time.return_value = current_dt
+        url_expires_on = current_dt - datetime.timedelta(minutes=20)
+        expires_in = DatasetViewCentroid.get_url_cache_expires_in(
+            url_expires_on)
+        mocked_time.assert_called_once()
+        self.assertEqual(expires_in, 0)

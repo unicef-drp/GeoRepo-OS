@@ -29,17 +29,10 @@ from georepo.api_views.entity import (
     EntityListByAdminLevelAndUCode,
     FindEntityVersionsByUCode
 )
-from georepo.tests.common import EntityResponseChecker
-
-
-class FakeResolverMatchV1:
-    """Fake class to mock versioning"""
-    namespace = 'v1'
-
-
-class FakeResolverMatchV2:
-    """Fake class to mock versioning"""
-    namespace = 'v2'
+from georepo.tests.common import (
+    EntityResponseChecker,
+    FakeResolverMatchV1
+)
 
 
 class TestApiEntity(EntityResponseChecker, TestCase):

@@ -170,12 +170,8 @@ export default function UploadSessionList() {
       }).then(
       response => {
         setAllData(cloneDeep(response.data.results))
-        let _sessionData = response.data.results.map((responseData: any) => {
-          delete responseData['form']
-          return responseData
-        })
         setLoading(false)
-        setData(_sessionData as UploadSessionInterface[])
+        setData(response.data.results as UploadSessionInterface[])
         setTotalCount(response.data.count)
       }
     ).catch(error => {
@@ -311,6 +307,23 @@ export default function UploadSessionList() {
         } else {
           _options.options.filter = false
         }
+        if (columnName === 'id') {
+          _options['options']['customBodyRender'] = (value: any, tableMeta: any, updateValue: any) => {
+              let rowData = tableMeta.rowData
+              const handleClick = (e: any) => {
+                  e.preventDefault()
+                  let moduleName = toLower(rowData[3].replace(' ', '_'))
+                  if (!moduleName) {
+                    moduleName = modules[0]
+                  }
+                  dispatch(setModule(moduleName))
+                  navigate(`/${moduleName}/upload_wizard/${rowData[7]}`)
+              };
+              return (
+                  <a href='#' onClick={handleClick}>{`${rowData[0]}`}</a>
+              )
+          }
+        }
         return _options
       })
       _columns.push({
@@ -383,7 +396,25 @@ export default function UploadSessionList() {
               </div>
             )
           },
-          filter: false
+          filter: false,
+          viewColumns: false,
+          print: false,
+          searchable: false,
+          empty: true,
+          sort: false
+        }
+      })
+      _columns.push({
+        name: 'form',
+        label: '',
+        options: {
+          display: false,
+          filter: false,
+          viewColumns: false,
+          print: false,
+          searchable: false,
+          empty: true,
+          sort: false
         }
       })
       setColumns(_columns)
@@ -481,16 +512,6 @@ export default function UploadSessionList() {
     setConfirmationOpen(false)
   }
 
-  const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-    const row = allData.find(sessionData => sessionData.id === rowData[0])
-    let moduleName = toLower(row.type.replace(' ', '_'))
-    if (!moduleName) {
-      moduleName = modules[0]
-    }
-    dispatch(setModule(moduleName))
-    navigate(`/${moduleName}/upload_wizard/${row.form}`)
-  }
-
   return (
     <div className="AdminContentMain">
       <AlertDialog open={confirmationOpen} alertClosed={handleClose}
@@ -530,9 +551,7 @@ export default function UploadSessionList() {
                   rowsPerPageOptions: rowsPerPageOptions,
                   sortOrder: pagination.sortOrder as MUISortOptions,
                   jumpToPage: true,
-                  onRowClick: (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-                    handleRowClick(rowData, rowMeta)
-                  },
+                  onRowClick: null,
                   onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
                   customSearchRender: debounceSearchRender(500),
                   selectableRows: 'none',

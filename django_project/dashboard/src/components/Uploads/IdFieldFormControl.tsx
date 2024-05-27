@@ -21,7 +21,7 @@ interface IdFieldFormControlProps {
     attributes: string[],
     isReadOnly: boolean,
     index: number,
-    handleIdTypeChange: (idFieldId: string, idTypeId?: string, field?: string) => void,
+    handleIdTypeChange: (idFieldId: string, idTypeId?: string, field?: string, clearedFieldName?: string) => void,
     removeIdField: (id: string) => void,
     addIdField: () => void,
     handleOnNewIdType: (idField: IdField, newValue: any) => void,
@@ -98,7 +98,7 @@ export default function IdFieldFormControl(props: IdFieldFormControlProps) {
                 value={props.idField.field}
                 attributes={props.attributes}
                 selectionChanged={(value: any) => props.handleIdTypeChange(
-                    props.idField.id, null, value as string)
+                    props.idField.id, null, value as string, 'idField')
                 }
                 required={!props.hideCheckbox}
                 isReadOnly={props.isReadOnly}

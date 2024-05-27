@@ -10,12 +10,21 @@ from django.contrib.gis.geos import GEOSGeometry
 from rest_framework.test import APIRequestFactory
 
 from georepo.utils import absolute_path
-from georepo.models import IdType, EntityName
+from georepo.models import IdType, EntityName, DatasetView
+from georepo.utils.dataset_view import (
+    generate_default_view_dataset_latest,
+    init_view_privacy_level,
+    calculate_entity_count_in_view
+)
 from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, EntityIdF,
     EntityNameF, LanguageF, UserF
 )
-from dashboard.api_views.entity import EntityEdit
+from dashboard.api_views.entity import EntityEdit, CountrySearchAPI
+from dashboard.tests.model_factories import (
+    LayerUploadSessionF,
+    EntityUploadF,
+)
 
 
 @mock.patch(
@@ -109,13 +118,15 @@ class TestApiEntity(TestCase):
                     'id': self.geographical_entity_name_1.id,
                     'default': True,
                     'name': self.geographical_entity_name_1.name,
-                    'language_id': self.geographical_entity_name_1.language_id
+                    'language_id': self.geographical_entity_name_1.language_id,
+                    'label': ''
                 },
                 {
                     'id': self.geographical_entity_name_2.id,
                     'default': False,
                     'name': self.geographical_entity_name_2.name,
-                    'language_id': self.geographical_entity_name_2.language_id
+                    'language_id': self.geographical_entity_name_2.language_id,
+                    'label': ''
                 },
             ],
             'codes': [
@@ -179,13 +190,15 @@ class TestApiEntity(TestCase):
                     'id': self.geographical_entity_name_1.id,
                     'default': True,
                     'name': self.geographical_entity_name_1.name,
-                    'language_id': self.geographical_entity_name_1.language_id
+                    'language_id': self.geographical_entity_name_1.language_id,
+                    'label': self.geographical_entity_name_1.label
                 },
                 {
                     'id': self.geographical_entity_name_2.id,
                     'default': False,
                     'name': self.geographical_entity_name_2.name,
-                    'language_id': self.geographical_entity_name_2.language_id
+                    'language_id': self.geographical_entity_name_2.language_id,
+                    'label': self.geographical_entity_name_2.label
                 },
             ],
             'codes': [
@@ -203,6 +216,7 @@ class TestApiEntity(TestCase):
                 }
             ]
         }
+        print(response.data)
         self.assertEqual(
             self._convert_response_to_dict(response.data),
             expected_response
@@ -236,7 +250,8 @@ class TestApiEntity(TestCase):
             'id': 0,
             'default': False,
             'name': 'some-name',
-            'language_id': None
+            'language_id': None,
+            'label': ''
         })
         request = self.factory.post(
             f"{reverse('entity-edit', args=[self.geographical_entity.id])}/",
@@ -265,7 +280,8 @@ class TestApiEntity(TestCase):
             'id': payload['names'][0]['id'],
             'default': True,
             'name': f"{payload['names'][0]['name']}-updated",
-            'language_id': payload['names'][0]['language_id']
+            'language_id': payload['names'][0]['language_id'],
+            'label': ''
         }
         request = self.factory.post(
             f"{reverse('entity-edit', args=[self.geographical_entity.id])}/",
@@ -362,3 +378,70 @@ class TestApiEntity(TestCase):
         response = list_view(request, self.geographical_entity.id)
         self.assertEqual(len(response.data['codes']), 1)
         mock_check_views.assert_called()
+
+    def test_country_search_in_dataset(self, mock_check_views):
+        kwargs = {
+            'object_type': 'dataset'
+        }
+        request = self.factory.get(
+            reverse(
+                'country-search',
+                kwargs=kwargs
+            ) + f'?dataset_id={self.dataset.id}&search_text=go'
+        )
+        request.user = self.superuser
+        view = CountrySearchAPI.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('countries', response.data)
+        self.assertEqual(len(response.data['countries']), 1)
+
+    def test_country_search_in_view(self, mock_check_views):
+        generate_default_view_dataset_latest(self.dataset)
+        dataset_view = DatasetView.objects.filter(
+            dataset=self.dataset,
+            default_type=DatasetView.DefaultViewType.IS_LATEST,
+            default_ancestor_code__isnull=True
+        ).first()
+        init_view_privacy_level(dataset_view)
+        calculate_entity_count_in_view(dataset_view)
+        kwargs = {
+            'object_type': 'view'
+        }
+        request = self.factory.get(
+            reverse(
+                'country-search',
+                kwargs=kwargs
+            ) + f'?view_id={dataset_view.id}&search_text=go'
+        )
+        request.user = self.superuser
+        view = CountrySearchAPI.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('countries', response.data)
+        self.assertEqual(len(response.data['countries']), 1)
+
+    def test_country_search_in_upload_session(self, mock_check_views):
+        upload_session = LayerUploadSessionF.create(
+            dataset=self.dataset
+        )
+        EntityUploadF.create(
+            upload_session=upload_session,
+            status='Valid',
+            original_geographical_entity=self.entity
+        )
+        kwargs = {
+            'object_type': 'upload_session'
+        }
+        request = self.factory.get(
+            reverse(
+                'country-search',
+                kwargs=kwargs
+            ) + f'?session_id={upload_session.id}&search_text=go'
+        )
+        request.user = self.superuser
+        view = CountrySearchAPI.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('countries', response.data)
+        self.assertEqual(len(response.data['countries']), 1)

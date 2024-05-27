@@ -1,20 +1,18 @@
-import time
 import zipfile
 import os
-import subprocess
-from django.conf import settings
-from georepo.models import (
-    DatasetView,
-    DatasetViewResource
-)
-from georepo.utils.exporter_base import (
-    DatasetViewExporterBase
+import logging
+from georepo.serializers.entity import ExportShapefileSerializer
+from georepo.utils.geojson import (
+    GeojsonBasedExporter
 )
 from georepo.utils.fiona_utils import (
     list_layers_shapefile,
     delete_tmp_shapefile,
     open_collection_by_file
 )
+
+
+logger = logging.getLogger(__name__)
 
 # buffer the data before writing/flushing to file
 SHAPEFILE_RECORDS_BUFFER_TX = 400
@@ -102,22 +100,20 @@ def validate_shapefile_zip(layer_file_path: any):
     return is_valid, error
 
 
-class ShapefileViewExporter(DatasetViewExporterBase):
-    output = 'shapefile'
+class ShapefileViewExporter(GeojsonBasedExporter):
 
-    def get_base_output_dir(self) -> str:
-        return settings.SHAPEFILE_FOLDER_OUTPUT
+    def get_serializer(self):
+        return ExportShapefileSerializer
 
-    def write_entities(self, schema, entities, context,
+    def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
-                       tmp_metadata_file, resource) -> str:
+                       tmp_metadata_file) -> str:
         suffix = '.shp'
         shape_file = os.path.join(
             tmp_output_dir,
             exported_name
         ) + suffix
-        geojson_file = self.get_geojson_reference_file(
-            resource, exported_name)
+        geojson_file = self.get_geojson_reference_file(exported_name)
         # use ogr to convert from geojson to shapefile
         command_list = (
             [
@@ -128,11 +124,13 @@ class ShapefileViewExporter(DatasetViewExporterBase):
                 '-gt',
                 '200',
                 '-skipfailures',
+                '-lco',
+                'ENCODING=UTF-8',
                 shape_file,
                 geojson_file
             ]
         )
-        subprocess.run(command_list)
+        self.do_conversion(command_list)
         # zip all the files
         zip_file_path = os.path.join(
             tmp_output_dir,
@@ -159,23 +157,3 @@ class ShapefileViewExporter(DatasetViewExporterBase):
             )
             os.remove(tmp_metadata_file)
         return zip_file_path
-
-
-def generate_view_shapefile(dataset_view: DatasetView,
-                            view_resource: DatasetViewResource = None,
-                            **kwargs):
-    """
-    Extract shape file from dataset_view and then save it to
-    shapefile dataset_view folder
-    :param dataset: dataset_view object
-    """
-    start = time.time()
-    exporter = ShapefileViewExporter(dataset_view,
-                                     view_resource=view_resource)
-    exporter.init_exporter()
-    exporter.run()
-    end = time.time()
-    if kwargs.get('log_object'):
-        kwargs.get('log_object').add_log(
-            'generate_view_shapefile',
-            end - start)

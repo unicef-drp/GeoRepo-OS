@@ -1,10 +1,10 @@
 import math
-from django.db.models.expressions import RawSQL
-from django.db.models import FilteredRelation, Q, Prefetch
-from django.http import (
-    Http404
-)
+import datetime
+from rest_framework.views import APIView
+from django.core.cache import cache
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
+from django.conf import settings
 from rest_framework.permissions import IsAuthenticated
 from django.core.paginator import Paginator
 from django.utils.decorators import method_decorator
@@ -12,13 +12,15 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from guardian.core import ObjectPermissionChecker
 from guardian.shortcuts import get_objects_for_user
+from django.contrib.sites.models import Site
+from django.utils import timezone
+from rest_framework.response import Response
 
 from georepo.utils.permission import (
     DatasetDetailAccessPermission,
     DatasetViewDetailAccessPermission,
     get_dataset_views_for_user,
-    get_view_permission_privacy_level,
-    check_user_has_view_permission
+    get_view_permission_privacy_level
 )
 from georepo.api_views.api_cache import ApiCache
 from georepo.models.dataset_view import (
@@ -26,24 +28,17 @@ from georepo.models.dataset_view import (
     DATASET_VIEW_DATASET_TAG,
     DatasetViewResource
 )
-from georepo.models.entity import (
-    EntityId,
-    MAIN_ENTITY_ID_LIST,
-    UUID_ENTITY_ID,
-    CONCEPT_UUID_ENTITY_ID,
-    CODE_ENTITY_ID, UCODE_ENTITY_ID,
-    CONCEPT_UCODE_ENTITY_ID
-)
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from georepo.serializers.dataset_view import (
     DatasetViewItemSerializer,
     DatasetViewDetailSerializer,
-    DatasetViewItemForUserSerializer
+    DatasetViewItemForUserSerializer,
+    ExportRequestStatusSerializer
 )
-from georepo.serializers.common import APIErrorSerializer
-from georepo.utils.unique_code import parse_unique_code
-from georepo.utils.uuid_helper import get_uuid_value
+from georepo.models.base_task_request import PENDING
+from georepo.models.dataset_tile_config import DatasetTilingConfig
+from georepo.models.dataset_view_tile_config import DatasetViewTilingConfig
 from georepo.utils.url_helper import get_page_size
 from georepo.api_views.api_collections import (
     SEARCH_VIEW_TAG,
@@ -53,10 +48,48 @@ from georepo.utils.api_parameters import common_api_params
 from georepo.utils.permission import (
     EXTERNAL_READ_VIEW_PERMISSION_LIST
 )
-from georepo.utils.exporter_base import APIDownloaderBase
 from georepo.utils.dataset_view import (
     get_view_resource_from_view
 )
+from georepo.utils.azure_blob_storage import (
+    StorageContainerClient,
+    DirectoryClient
+)
+from georepo.models.export_request import (
+    ExportRequest,
+    AVAILABLE_EXPORT_FORMAT_TYPES,
+    ExportRequestStatusText
+)
+from georepo.tasks.dataset_view import dataset_view_exporter
+from georepo.utils.entity_query import validate_datetime
+from georepo.serializers.common import APIErrorSerializer
+
+
+class DatasetViewFetchResource(object):
+
+    def get_dataset_view(self):
+        uuid = self.kwargs.get('uuid', None)
+        dataset_view = get_object_or_404(
+            DatasetView,
+            uuid=uuid,
+            dataset__module__is_active=True
+        )
+        self.check_object_permissions(self.request, dataset_view)
+        return dataset_view
+
+    def get_view_resource_obj(self):
+        """
+        Retrive view resource based on user permission
+        """
+        dataset_view = self.get_dataset_view()
+        # retrieve user privacy level for this dataset
+        user_privacy_level = get_view_permission_privacy_level(
+            self.request.user,
+            dataset_view.dataset,
+            dataset_view=dataset_view
+        )
+        return get_view_resource_from_view(dataset_view,
+                                           user_privacy_level)
 
 
 @method_decorator(
@@ -128,6 +161,7 @@ class DatasetViewList(ApiCache):
     - last_update date time
     - vector tiles URL
     - bbox
+    - max_zoom
     - tag list
     """
     permission_classes = [DatasetDetailAccessPermission]
@@ -277,6 +311,7 @@ class DatasetViewListForUser(ApiCache):
     - dataset name
     - last_update date time
     - vector tiles URL
+    - max_zoom
     - bbox
     - tag list
     """
@@ -349,7 +384,7 @@ class DatasetViewListForUser(ApiCache):
                 }
             )
 )
-class DatasetViewDetail(ApiCache):
+class DatasetViewDetail(ApiCache, DatasetViewFetchResource):
     """
     Find view detail
 
@@ -361,6 +396,7 @@ class DatasetViewDetail(ApiCache):
     - created / last update date time
     - status
     - vector tiles URL
+    - max_zoom
     - tag list
     - admin levels
     - Other external code types in dataset view
@@ -372,13 +408,7 @@ class DatasetViewDetail(ApiCache):
     cache_model = DatasetView
 
     def get_response_data(self, request, *args, **kwargs):
-        uuid = kwargs.get('uuid', None)
-        dataset_view = get_object_or_404(
-            DatasetView,
-            uuid=uuid,
-            dataset__module__is_active=True
-        )
-        self.check_object_permissions(request, dataset_view)
+        dataset_view = self.get_dataset_view()
         # retrieve user privacy level for this dataset
         user_privacy_level = get_view_permission_privacy_level(
             request.user,
@@ -398,646 +428,413 @@ class DatasetViewDetail(ApiCache):
         return response_data, None
 
 
-class DatasetViewExportDownload(APIDownloaderBase):
+@method_decorator(
+    name='get',
+    decorator=swagger_auto_schema(
+                operation_id='search-view-centroid',
+                tags=[SEARCH_VIEW_TAG],
+                manual_parameters=[],
+                responses={
+                    200: openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        title='View Centroid List',
+                        items=openapi.Items(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'level': openapi.Schema(
+                                    title='Admin Level',
+                                    type=openapi.TYPE_INTEGER
+                                ),
+                                'url': openapi.Schema(
+                                    title=(
+                                        'URL to download centroid in pbf file'
+                                    ),
+                                    type=openapi.TYPE_STRING
+                                ),
+                            }
+                        )
+                    )
+                }
+            )
+)
+class DatasetViewCentroid(ApiCache, DatasetViewFetchResource):
     """
-    Download dataset view as given {format} in zip file
+    Fetch the URL to download centroid for each admin level.
 
-    Download zip file of requested format from dataset view
+    Fetch the URLs to the pbf file that contains centroid \
+    of the entities in the view.
+    The pbf file has following attributes:
+    - c: concept_uuid
+    - n: name
+    - u: ucode
+    - b: bbox
+    - pc: parent concept uuid
+    - pu: parent ucode
+
+    Parent concept uuid and ucode will be a list, with item at index 0 will be
+    the parent at level 0, item at index 1 will be parent at level 1,
+    and so on.
+    Requires View UUID, can be retrieved from API search-view-list.
     """
     permission_classes = [DatasetViewDetailAccessPermission]
+    cache_model = DatasetView
+    # window between url expiration and cache expiration
+    URL_CACHE_EXPIRATION_WINDOW_IN_SECONDS = 30 * 60
 
-    uuid_param = openapi.Parameter(
-        'uuid', openapi.IN_PATH,
-        description="View UUID", type=openapi.TYPE_STRING
-    )
-    format_param = openapi.Parameter(
-        'format', openapi.IN_QUERY,
-        description='[geojson, shapefile, kml, topojson]',
-        type=openapi.TYPE_STRING,
-        default='geojson',
-        required=False
-    )
-
-    def get_exported_files(self, dataset_view: DatasetView):
-        output_format = self.get_output_format()
-        results = []
-        # retrieve user privacy level for this dataset
-        user_privacy_level = get_view_permission_privacy_level(
-            self.request.user,
-            dataset_view.dataset,
-            dataset_view=dataset_view
-        )
-        # get resource for the privacy level
-        resource = get_view_resource_from_view(
-            dataset_view,
-            user_privacy_level
-        )
-        if resource is None:
-            return [], 0
-        entities = GeographicalEntity.objects.filter(
-            dataset=dataset_view.dataset,
-            is_approved=True,
-            privacy_level__lte=user_privacy_level
-        )
-        # raw_sql to view to select id
-        raw_sql = (
-            'SELECT id from "{}"'
-        ).format(str(dataset_view.uuid))
-        entities = entities.filter(
-            id__in=RawSQL(raw_sql, [])
-        )
-        levels = entities.order_by('level').values_list(
-            'level',
-            flat=True
-        ).distinct()
-        total_count = 0
-        for level in levels:
-            exported_name = f'adm{level}'
-            file_path = self.get_resource_path(
-                output_format['directory'],
-                resource,
-                exported_name,
-                output_format['suffix']
-            )
-            if not self.check_exists(file_path):
-                return [], 0
-            results.append(file_path)
-            # add metadata (for geojson)
-            metadata_file_path = self.get_resource_path(
-                output_format['directory'],
-                resource,
-                exported_name,
-                '.xml'
-            )
-            if self.check_exists(metadata_file_path):
-                results.append(metadata_file_path)
-            total_count += 1
-        self.append_readme(resource, output_format, results)
-        return results, total_count
-
-    @swagger_auto_schema(
-        operation_id='download-dataset-view',
-        tags=[DOWNLOAD_DATA_TAG],
-        manual_parameters=[uuid_param, format_param],
-        responses={
-            200: openapi.Schema(
-                description=(
-                    'Dataset zip file'
-                ),
-                type=openapi.TYPE_FILE
-            ),
-            404: APIErrorSerializer
-        }
-    )
-    def get(self, request, *args, **kwargs):
-        uuid = kwargs.get('uuid', None)
-        dataset_view = get_object_or_404(
-            DatasetView,
-            uuid=uuid,
-            dataset__module__is_active=True
-        )
-        self.check_object_permissions(request, dataset_view)
-        result_list, total_count = self.get_exported_files(dataset_view)
-        if total_count == 0:
-            raise Http404('The requested file does not exist')
-        prefix_name, zip_file_name = self.get_output_names(dataset_view)
-        return self.prepare_response(prefix_name, zip_file_name, result_list)
-
-
-class DatasetViewExportDownloadByLevel(DatasetViewExportDownload):
-    """
-    Download dataset view as given {format} in zip file for {admin_level}
-
-    Download zip file of requested format from dataset view
-    """
-
-    uuid_param = openapi.Parameter(
-        'uuid', openapi.IN_PATH,
-        description="View UUID",
-        type=openapi.TYPE_STRING
-    )
-    level_param = openapi.Parameter(
-        'admin_level', openapi.IN_PATH,
-        description=(
-            'Admin level'
-        ),
-        type=openapi.TYPE_INTEGER
-    )
-    format_param = openapi.Parameter(
-        'format', openapi.IN_QUERY,
-        description='[geojson, shapefile, kml, topojson]',
-        type=openapi.TYPE_STRING,
-        default='geojson',
-        required=False
-    )
-
-    def get_exported_files(self, dataset_view: DatasetView):
-        output_format = self.get_output_format()
-        # retrieve user privacy level for this dataset
-        user_privacy_level = get_view_permission_privacy_level(
-            self.request.user,
-            dataset_view.dataset,
-            dataset_view=dataset_view
-        )
-        # get resource for the privacy level
-        resource = get_view_resource_from_view(
-            dataset_view,
-            user_privacy_level
-        )
-        if resource is None:
-            return [], 0
-        # admin level
-        admin_level = self.kwargs.get('admin_level')
-        results = []
-        exported_name = f'adm{admin_level}'
-        file_path = self.get_resource_path(
-            output_format['directory'],
-            resource,
-            exported_name,
-            output_format['suffix']
-        )
-        if not self.check_exists(file_path):
-            return [], 0
-        results.append(file_path)
-        # add metadata (for geojson)
-        metadata_file_path = self.get_resource_path(
-            output_format['directory'],
-            resource,
-            exported_name,
-            '.xml'
-        )
-        if self.check_exists(metadata_file_path):
-            results.append(metadata_file_path)
-        total_count = 1
-        self.append_readme(resource, output_format, results)
-        return results, total_count
-
-    @swagger_auto_schema(
-        operation_id='download-dataset-view-by-level',
-        tags=[DOWNLOAD_DATA_TAG],
-        manual_parameters=[uuid_param, level_param, format_param],
-        responses={
-            200: openapi.Schema(
-                description=(
-                    'Dataset zip file'
-                ),
-                type=openapi.TYPE_FILE
-            ),
-            404: APIErrorSerializer
-        }
-    )
-    def get(self, request, *args, **kwargs):
-        return super(DatasetViewExportDownloadByLevel, self).get(
-            request, *args, **kwargs
-        )
-
-
-class DatasetViewExportDownloadByCountry(DatasetViewExportDownload):
-    """
-    Download dataset view as given {format} in zip file for Country
-
-    Download zip file of requested format from dataset view for Country
-    """
-    permission_classes = [DatasetViewDetailAccessPermission]
-
-    uuid_param = openapi.Parameter(
-        'uuid', openapi.IN_PATH,
-        description="View UUID", type=openapi.TYPE_STRING
-    )
-    id_type_param = openapi.Parameter(
-        'id_type', openapi.IN_PATH,
-        description=(
-            'Country ID Type; The list is available from '
-            '/api/v1/id-type/. '
-            'Example: PCode'
-        ),
-        type=openapi.TYPE_STRING
-    )
-    id_param = openapi.Parameter(
-        'id', openapi.IN_PATH,
-        description=(
-            'ID value of the Country. '
-            'Example: PAK'
-        ),
-        type=openapi.TYPE_STRING
-    )
-    format_param = openapi.Parameter(
-        'format', openapi.IN_QUERY,
-        description='[geojson, shapefile, kml, topojson]',
-        type=openapi.TYPE_STRING,
-        default='geojson',
-        required=False
-    )
-
-    def get_adm0(self, dataset_view: DatasetView, privacy_level: int):
-        """Retrieve adm0 with id_type and id value, may return multiple"""
-        id_type = self.kwargs.get('id_type', None)
-        id_type = id_type.lower() if id_type else None
-        id_value = self.kwargs.get('id', None)
-        entities = GeographicalEntity.objects.filter(
-            dataset=dataset_view.dataset,
-            is_approved=True,
-            level=0,
-            privacy_level__lte=privacy_level
-        )
-        # raw_sql to view to select id
-        raw_sql = (
-            'SELECT id from "{}"'
-        ).format(str(dataset_view.uuid))
-        entities = entities.filter(
-            id__in=RawSQL(raw_sql, [])
-        )
-        if id_type in MAIN_ENTITY_ID_LIST:
-            if id_type == UUID_ENTITY_ID:
-                uuid_val = get_uuid_value(id_value)
-                entities = entities.filter(
-                    uuid_revision=uuid_val
+    def get_download_url(self, file_path):
+        download_link = None
+        expired_on = None
+        if settings.USE_AZURE:
+            bc = StorageContainerClient.get_blob_client(blob=file_path)
+            if bc.exists():
+                # generate temporary url with sas token
+                client = DirectoryClient(settings.AZURE_STORAGE,
+                                         settings.AZURE_STORAGE_CONTAINER)
+                download_link = client.generate_url_for_file(
+                    file_path, settings.EXPORT_DATA_EXPIRY_IN_HOURS)
+                expired_on = (
+                    timezone.now() +
+                    datetime.timedelta(
+                        hours=settings.EXPORT_DATA_EXPIRY_IN_HOURS)
                 )
-            elif id_type == CONCEPT_UUID_ENTITY_ID:
-                uuid_val = get_uuid_value(id_value)
-                entities = entities.filter(
-                    uuid=uuid_val
-                )
-            elif id_type == CODE_ENTITY_ID:
-                entities = entities.filter(
-                    internal_code=id_value
-                )
-            elif id_type == UCODE_ENTITY_ID:
-                try:
-                    ucode, version = parse_unique_code(id_value)
-                except ValueError:
-                    return None
-                entity_concept = GeographicalEntity.objects.filter(
-                    unique_code=ucode,
-                    unique_code_version=version,
-                    dataset=dataset_view.dataset,
-                    is_approved=True,
-                    level=0,
-                    privacy_level__lte=privacy_level
-                )
-                entity_concept = entity_concept.filter(
-                    id__in=RawSQL(raw_sql, [])
-                ).first()
-                if entity_concept is None:
-                    return None
-                entities = entities.filter(
-                    uuid=entity_concept.uuid
-                )
-            elif id_type == CONCEPT_UCODE_ENTITY_ID:
-                entities = entities.filter(
-                    concept_ucode=id_value
-                )
+            else:
+                expired_on = None
         else:
-            id_obj = EntityId.objects.filter(
-                code__name__iexact=id_type
-            ).first()
-            if not id_obj:
-                return None
-            field_key = f'id_{id_obj.code.id}'
-            annotations = {
-                field_key: FilteredRelation(
-                    'entity_ids',
-                    condition=Q(entity_ids__code__id=id_obj.code.id)
-                )
-            }
-            field_key = f'id_{id_obj.code.id}__value'
-            entities = entities.annotate(**annotations)
-            filter_by_idtype = {
-                field_key: id_value
-            }
-            entities = entities.filter(**filter_by_idtype)
-        entities = entities.order_by('-revision_number')
-        return entities
-
-    def get_exported_files(self, dataset_view: DatasetView):
-        output_format = self.get_output_format()
-        # retrieve user privacy level for this dataset
-        user_privacy_level = get_view_permission_privacy_level(
-            self.request.user,
-            dataset_view.dataset,
-            dataset_view=dataset_view
-        )
-        # get resource for the privacy level
-        resource = get_view_resource_from_view(
-            dataset_view,
-            user_privacy_level
-        )
-        if resource is None:
-            return [], 0
-        results = []
-        adm0_list = self.get_adm0(dataset_view, user_privacy_level)
-        adm0_count = adm0_list.count() if adm0_list is not None else 0
-        if adm0_count == 0:
-            return results, 0
-        added_ucodes = []
-        total_count = 0
-        for adm0 in adm0_list:
-            if adm0.unique_code in added_ucodes:
-                # skip if it's the same entity
-                continue
-            entities = GeographicalEntity.objects.filter(
-                dataset=dataset_view.dataset,
-                is_approved=True,
-                privacy_level__lte=user_privacy_level
-            ).filter(
-                Q(ancestor=adm0) |
-                (Q(ancestor__isnull=True) & Q(id=adm0.id))
+            current_site = Site.objects.get_current()
+            scheme = 'https://'
+            domain = current_site.domain
+            if not domain.endswith('/'):
+                domain = domain + '/'
+            download_link = (
+                f'{scheme}{domain}{file_path}'
             )
-            # raw_sql to view to select id
-            raw_sql = (
-                'SELECT id from "{}"'
-            ).format(str(dataset_view.uuid))
-            entities = entities.filter(
-                id__in=RawSQL(raw_sql, [])
-            )
-            levels = entities.order_by('level').values_list(
-                'level',
-                flat=True
-            ).distinct()
-            for level in levels:
-                exported_name = f'adm{level}'
-                file_path = self.get_resource_path(
-                    output_format['directory'],
-                    resource,
-                    exported_name,
-                    output_format['suffix']
-                )
-                if not self.check_exists(file_path):
-                    return [], 0
-                results.append(file_path)
-                # add metadata (for geojson)
-                metadata_file_path = self.get_resource_path(
-                    output_format['directory'],
-                    resource,
-                    exported_name,
-                    '.xml'
-                )
-                if self.check_exists(metadata_file_path):
-                    results.append(metadata_file_path)
-            added_ucodes.append(adm0.unique_code)
-            total_count += 1
-        self.append_readme(resource, output_format, results)
-        return results, total_count
+            expired_on = None
+        return download_link, expired_on
 
-    def get_adm0_view(self, dataset: Dataset, dataset_view: DatasetView,
-                      view_type):
-        """Retrieve adm0 with id_type and id value, may return multiple"""
-        # retrieve user privacy level for this dataset
-        user_privacy_level = get_view_permission_privacy_level(
-            self.request.user,
-            dataset,
-            dataset_view=dataset_view
-        )
-        id_type = self.kwargs.get('id_type', None)
-        id_type = id_type.lower() if id_type else None
-        id_value = self.kwargs.get('id', None)
-        entities = GeographicalEntity.objects.filter(
-            dataset=dataset,
-            is_approved=True,
-            level=0,
-            privacy_level__lte=user_privacy_level
-        )
-        if id_type in MAIN_ENTITY_ID_LIST:
-            if id_type == UUID_ENTITY_ID:
-                uuid_val = get_uuid_value(id_value)
-                entities = entities.filter(
-                    uuid_revision=uuid_val
-                )
-            elif id_type == CONCEPT_UUID_ENTITY_ID:
-                uuid_val = get_uuid_value(id_value)
-                entities = entities.filter(
-                    uuid=uuid_val
-                )
-            elif id_type == CODE_ENTITY_ID:
-                entities = entities.filter(
-                    internal_code=id_value
-                )
-            elif id_type == UCODE_ENTITY_ID:
-                try:
-                    ucode, version = parse_unique_code(id_value)
-                except ValueError:
-                    return None
-                entity_concept = GeographicalEntity.objects.filter(
-                    unique_code=ucode,
-                    unique_code_version=version,
-                    dataset=dataset,
-                    is_approved=True,
-                    level=0,
-                    privacy_level__lte=user_privacy_level
-                ).first()
-                if entity_concept is None:
-                    return None
-                entities = entities.filter(
-                    uuid=entity_concept.uuid
-                )
-            elif id_type == CONCEPT_UCODE_ENTITY_ID:
-                entities = entities.filter(
-                    concept_ucode=id_value
-                )
-        else:
-            id_obj = EntityId.objects.filter(
-                code__name__iexact=id_type
-            ).first()
-            if not id_obj:
-                return None
-            field_key = f'id_{id_obj.code.id}'
-            annotations = {
-                field_key: FilteredRelation(
-                    'entity_ids',
-                    condition=Q(entity_ids__code__id=id_obj.code.id)
-                )
-            }
-            field_key = f'id_{id_obj.code.id}__value'
-            entities = entities.annotate(**annotations)
-            filter_by_idtype = {
-                field_key: id_value
-            }
-            entities = entities.filter(**filter_by_idtype)
-        entities = entities.order_by('-revision_number')
-        entity = entities.first()
-        if entity is None:
-            return None
-        other_view = DatasetView.objects.filter(
-            dataset=dataset,
-            default_type=view_type,
-            default_ancestor_code=entity.unique_code
-        ).first()
-        if other_view:
-            # check permission+min privacy level
-            other_view_perm = (
-                check_user_has_view_permission(
-                    self.request.user,
-                    other_view,
-                    user_privacy_level) and
-                user_privacy_level >= other_view.min_privacy_level
-            )
-            if not other_view_perm:
-                other_view = None
-        return other_view
+    def get_url_from_cache(self, resource: DatasetViewResource):
+        _cached_data = cache.get(resource.centroid_cache_key)
+        if _cached_data:
+            return _cached_data
+        return None
 
-    @swagger_auto_schema(
-        operation_id='download-dataset-view-by-country',
-        tags=[DOWNLOAD_DATA_TAG],
-        manual_parameters=[
-            uuid_param,
-            id_type_param,
-            id_param,
-            format_param
-        ],
-        responses={
-            200: openapi.Schema(
-                description=(
-                    'Dataset zip file'
-                ),
-                type=openapi.TYPE_FILE
-            ),
-            404: APIErrorSerializer
-        }
-    )
-    def get(self, request, *args, **kwargs):
-        uuid = kwargs.get('uuid', None)
-        dataset_view = get_object_or_404(
-            DatasetView,
-            uuid=uuid,
-            dataset__module__is_active=True
-        )
-        self.check_object_permissions(request, dataset_view)
+    @staticmethod
+    def get_url_cache_expires_in(url_expires_on):
+        current_dt = timezone.now()
+        expires_in = 0
         if (
-            dataset_view.default_type and
-            dataset_view.default_ancestor_code is None
+            url_expires_on >
+            current_dt + datetime.timedelta(minutes=30)
         ):
-            # change the view to correct view based on id+id_type
-            other_view = self.get_adm0_view(
-                dataset_view.dataset,
-                dataset_view,
-                dataset_view.default_type
+            last_expired_on = (
+                url_expires_on - datetime.timedelta(minutes=30)
             )
-            if other_view is None:
-                # return not found
-                raise Http404('The requested file does not exist')
-            kwargs['uuid'] = str(other_view.uuid)
-        return super(DatasetViewExportDownloadByCountry, self).get(
-            request, *args, **kwargs
+            expires_in = (
+                last_expired_on - current_dt).total_seconds()
+        elif url_expires_on > current_dt:
+            expires_in = (
+                url_expires_on - current_dt).total_seconds()
+        return expires_in
+
+    def get_response_data(self, request, *args, **kwargs):
+        resource = self.get_view_resource_obj()
+        response_data = []
+        if resource is None:
+            return response_data, None
+        if not resource.centroid_files:
+            return response_data, None
+        cached_data = self.get_url_from_cache(resource)
+        if cached_data:
+            response_data = cached_data
+        else:
+            last_expired_on = None
+            for centroid_file in resource.centroid_files:
+                download_url, expired_on = self.get_download_url(
+                    centroid_file['path'])
+                if download_url:
+                    last_expired_on = expired_on
+                    response_data.append({
+                        'level': centroid_file['level'],
+                        'url': download_url
+                    })
+            if len(response_data) > 0 and last_expired_on:
+                # store in the cache
+                expires_in = self.get_url_cache_expires_in(
+                    last_expired_on
+                )
+                if expires_in > 0:
+                    cache.set(resource.centroid_cache_key,
+                              response_data,
+                              expires_in)
+        return response_data, None
+
+
+class DatasetViewExportBase(object):
+
+    def check_zoom_level(self, dataset_view: DatasetView, zoom_level: int):
+        if dataset_view.is_tiling_config_match:
+            return DatasetTilingConfig.objects.filter(
+                dataset=dataset_view.dataset,
+                zoom_level=zoom_level
+            ).exists()
+        return DatasetViewTilingConfig.objects.filter(
+            dataset_view=dataset_view,
+            zoom_level=zoom_level
         )
 
+    def validate_request(self,
+                         dataset_view: DatasetView,
+                         format,
+                         is_simplified_entities,
+                         simplification_zoom_level):
+        # validate format
+        if format not in AVAILABLE_EXPORT_FORMAT_TYPES:
+            return Response(
+                status=400,
+                data={
+                    'detail': f'Invalid format type: {format}'
+                }
+            )
+        # validate zoom level
+        if is_simplified_entities:
+            if not dataset_view.is_simplified_entities_ready:
+                return Response(
+                    status=400,
+                    data={
+                        'detail': (
+                            'There is ongoing simplification process'
+                            ' for the view!' if
+                            dataset_view.current_simplification_status ==
+                            'syncing' else
+                            'The view has out of sync simplified entities!'
+                        )
+                    }
+                )
+            if (
+                not self.check_zoom_level(dataset_view,
+                                          simplification_zoom_level)
+            ):
+                return Response(
+                    status=400,
+                    data={
+                        'detail': (
+                            'Invalid simplification '
+                            f'zoom level {simplification_zoom_level}'
+                        )
+                    }
+                )
+        return None
 
-class DatasetViewExportDownloadByCountryAndLevel(
-        DatasetViewExportDownloadByCountry):
+    def submit_export_request(self, dataset_view: DatasetView,
+                              format, user, is_simplified_entities,
+                              simplification_zoom_level, filters,
+                              source):
+        export_request = ExportRequest.objects.create(
+            dataset_view=dataset_view,
+            format=format,
+            submitted_on=timezone.now(),
+            submitted_by=user,
+            status=PENDING,
+            status_text=str(ExportRequestStatusText.WAITING),
+            is_simplified_entities=is_simplified_entities,
+            simplification_zoom_level=simplification_zoom_level,
+            filters=filters,
+            source=source
+        )
+        celery_task = dataset_view_exporter.apply_async(
+            (export_request.id,), queue='exporter'
+        )
+        export_request.task_id = celery_task.id
+        export_request.save(update_fields=['task_id'])
+        return export_request
+
+
+class DatasetViewDownloader(APIView, DatasetViewFetchResource,
+                            DatasetViewExportBase):
     """
-    Download dataset view as given {format} in zip file for Country and Level
+    Download dataset view to several formats.
 
-    Download zip file of requested format from dataset view
+    Available formats:
+    - GEOJSON
+    - SHAPEFILE
+    - TOPOJSON
+    - KML
+    - GEOPACKAGE
+
+    The entities can be filtered by below attributes:
+    - simplification_zoom_level (0-14)
+    - countries: List of country e.g. ['Malawi', 'Zambia']
+    - entity_types: List of entity type e.g. ['Country']
+    - names: List of entity name e.g. ['Malawi', 'Zambia']
+    - ucodes: List of entity ucodes e.g. ['DMC4_152_V1']
+    - revisions: List of revision e.g. [1, 2]
+    - levels: List of admin level e.g. [0, 1]
+    - valid_on: Datetime when entities are valid, \
+        e.g. '2014-12-05T12:30:45.123456-05:30'
+    - admin_level_names: List of admin_level_name, e.g. ['Country']
+    - sources: List of entity source
+    - privacy_levels: List of privacy level, e.g. [1, 2]
+    - search_text
     """
     permission_classes = [DatasetViewDetailAccessPermission]
+    map_filter_attributes = {
+        'countries': 'country',
+        'entity_types': 'type',
+        'names': 'name',
+        'ucodes': 'ucode',
+        'revisions': 'revision',
+        'levels': 'level',
+        'valid_on': 'valid_from',
+        'admin_level_names': 'admin_level_name',
+        'sources': 'source',
+        'privacy_levels': 'privacy_level',
+        'search_text': 'search_text'
+    }
 
-    uuid_param = openapi.Parameter(
-        'uuid', openapi.IN_PATH,
-        description="View UUID", type=openapi.TYPE_STRING
-    )
-    id_type_param = openapi.Parameter(
-        'id_type', openapi.IN_PATH,
-        description=(
-            'Country ID Type; The list is available from '
-            '/api/v1/id-type/. '
-            'Example: PCode'
-        ),
-        type=openapi.TYPE_STRING
-    )
-    id_param = openapi.Parameter(
-        'id', openapi.IN_PATH,
-        description=(
-            'ID value of the Country. '
-            'Example: PAK'
-        ),
-        type=openapi.TYPE_STRING
-    )
-    level_param = openapi.Parameter(
-        'admin_level', openapi.IN_PATH,
-        description=(
-            'Admin level'
-        ),
-        type=openapi.TYPE_INTEGER
-    )
-    format_param = openapi.Parameter(
-        'format', openapi.IN_QUERY,
-        description='[geojson, shapefile, kml, topojson]',
-        type=openapi.TYPE_STRING,
-        default='geojson',
-        required=False
-    )
-
-    def get_exported_files(self, dataset_view: DatasetView):
-        output_format = self.get_output_format()
-        # retrieve user privacy level for this dataset
-        user_privacy_level = get_view_permission_privacy_level(
-            self.request.user,
-            dataset_view.dataset,
-            dataset_view=dataset_view
-        )
-        # get resource for the privacy level
-        resource = get_view_resource_from_view(
-            dataset_view,
-            user_privacy_level
-        )
-        if resource is None:
-            return [], 0
-        # admin level
-        admin_level = self.kwargs.get('admin_level', None)
-        results = []
-        adm0_list = self.get_adm0(dataset_view, user_privacy_level)
-        if not adm0_list:
-            return results, 0
-        added_ucodes = []
-        total_count = 0
-        for adm0 in adm0_list:
-            if adm0.unique_code in added_ucodes:
-                # skip if it's the same entity
+    def get_filters(self):
+        input_filters = self.request.data.get('filters', {})
+        output_filters = {}
+        error = None
+        for attrib in self.map_filter_attributes:
+            if attrib not in input_filters:
                 continue
-            exported_name = f'adm{admin_level}'
-            file_path = self.get_resource_path(
-                output_format['directory'],
-                resource,
-                exported_name,
-                output_format['suffix']
-            )
-            if not self.check_exists(file_path):
-                return [], 0
-            results.append(file_path)
-            # add metadata (for geojson)
-            metadata_file_path = self.get_resource_path(
-                output_format['directory'],
-                resource,
-                exported_name,
-                '.xml'
-            )
-            if self.check_exists(metadata_file_path):
-                results.append(metadata_file_path)
-            added_ucodes.append(adm0.unique_code)
-            total_count += 1
-        self.append_readme(resource, output_format, results)
-        return results, total_count
+            output_filter_key = self.map_filter_attributes[attrib]
+            filter_values = input_filters[attrib]
+            if attrib == 'valid_on':
+                # validate valid datetime format
+                if filter_values:
+                    dt_result = validate_datetime(filter_values)
+                    if dt_result is not None:
+                        output_filters[output_filter_key] = filter_values
+                    else:
+                        error = (
+                            f'Invalid ISO datetime format: {filter_values}'
+                        )
+                        break
+            elif filter_values and len(filter_values) > 0:
+                output_filters[output_filter_key] = filter_values
+        if error:
+            return None, error
+        return output_filters, None
+
 
     @swagger_auto_schema(
-        operation_id='download-dataset-view-by-country-and-level',
+        operation_id='submit-download-job',
         tags=[DOWNLOAD_DATA_TAG],
-        manual_parameters=[
-            uuid_param,
-            id_type_param,
-            id_param,
-            level_param,
-            format_param
-        ],
-        responses={
-            200: openapi.Schema(
-                description=(
-                    'Dataset zip file'
+        manual_parameters=[openapi.Parameter(
+            'uuid', openapi.IN_PATH,
+            description='View UUID', type=openapi.TYPE_STRING
+        )],
+        request_body=openapi.Schema(
+            description='Download Job Request Body',
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'format': openapi.Schema(
+                    title=(
+                        'Format of exported product, '
+                        f'one of {str(AVAILABLE_EXPORT_FORMAT_TYPES)}'
+                    ),
+                    type=openapi.TYPE_STRING
                 ),
-                type=openapi.TYPE_FILE
-            ),
+                'simplification_zoom_level': openapi.Schema(
+                    title=(
+                        'Zoom level that simplification was requested for. '
+                        'Null if no simplification was requested.'
+                    ),
+                    type=openapi.TYPE_INTEGER
+                ),
+                'filters': openapi.Schema(
+                    description='A dictionary if filters applied to the view',
+                    type=openapi.TYPE_OBJECT,
+                    properties=(
+                        ExportRequestStatusSerializer.
+                        Meta.filters_schema_fields
+                    )
+                )
+            }
+        ),
+        responses={
+            200: ExportRequestStatusSerializer,
+            400: APIErrorSerializer,
             404: APIErrorSerializer
         }
     )
-    def get(self, request, *args, **kwargs):
-        return super(DatasetViewExportDownloadByCountryAndLevel, self).get(
-            request, *args, **kwargs
+    def post(self, request, *args, **kwargs):
+        dataset_view = self.get_dataset_view()
+        filters, error = self.get_filters()
+        if error:
+            return Response(
+                status=400,
+                data={
+                    'detail': error
+                }
+            )
+        simplification_zoom_level = self.request.data.get(
+            'simplification_zoom_level', None
+        )
+        is_simplified_entities = simplification_zoom_level is not None
+        format = self.request.data.get(
+            'format'
+        )
+        validation_response = self.validate_request(
+            dataset_view, format, is_simplified_entities,
+            simplification_zoom_level
+        )
+        if validation_response:
+            return validation_response
+        export_request = self.submit_export_request(
+            dataset_view, format, self.request.user,
+            is_simplified_entities, simplification_zoom_level,
+            filters, 'api'
+        )
+        return Response(
+            status=201,
+            data=ExportRequestStatusSerializer(export_request).data
+        )
+
+
+class DatasetViewDownloaderStatus(APIView, DatasetViewFetchResource):
+    """
+    Fetch the download view job status.
+    """
+    permission_classes = [DatasetViewDetailAccessPermission]
+
+    @swagger_auto_schema(
+        operation_id='fetch-download-job-status',
+        tags=[DOWNLOAD_DATA_TAG],
+        manual_parameters=[openapi.Parameter(
+            'uuid', openapi.IN_PATH,
+            description='View UUID', type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'job_uuid', openapi.IN_QUERY,
+            description=(
+                'Job UUID'
+            ),
+            type=openapi.TYPE_STRING,
+            required=True
+        )],
+        responses={
+            200: ExportRequestStatusSerializer,
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, *args, **kwargs):
+        dataset_view = self.get_dataset_view()
+        job_uuid = self.request.GET.get('job_uuid')
+        export_request = ExportRequest.objects.filter(
+            dataset_view=dataset_view,
+            uuid=job_uuid
+        ).first()
+        if export_request is None:
+            return Response(
+                status=404,
+                data={
+                    'detail': (
+                        f'There is no matching job request {job_uuid} '
+                        f'in the view {dataset_view.name}'
+                    )
+                }
+            )
+        return Response(
+            status=200,
+            data=ExportRequestStatusSerializer(export_request).data
         )

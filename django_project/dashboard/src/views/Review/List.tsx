@@ -316,6 +316,27 @@ export default function ReviewList() {
           _options.options.customBodyRender = (value: string) => {
               return new Date(value).toDateString()
           }
+        } else if (columnName === 'level_0_entity') {
+          _options.options.customBodyRender = (value: any, tableMeta: any, updateValue: any) => {
+            if (isBatchReview) {
+              return value
+            }
+            let rowData = tableMeta.rowData
+            const handleClick = (e: any) => {
+                e.preventDefault()
+                handleRowClick(rowData)
+            };
+            return (
+                <a href='#' onClick={handleClick}>{`${rowData[1]}`}</a>
+            )
+          }
+        } else if (columnName === 'is_comparison_ready') {
+          _options.options.filter = false
+          _options.options.display = false
+          _options.options.viewColumns = false
+          _options.options.searchable = false
+          _options.options.print = false
+          _options.options.sort = false
         }
         return _options
       })
@@ -348,13 +369,18 @@ export default function ReviewList() {
               </div>
             )
           },
-          filter: false
+          filter: false,
+          viewColumns: false,
+          print: false,
+          searchable: false,
+          empty: true,
+          sort: false
         }
       })
       setColumns(_columns)
     }
     fetchFilterValuesData()
-  }, [pagination, currentFilters])
+  }, [pagination, currentFilters, isBatchReview])
 
   useEffect(() => {
     fetchReviewList()
@@ -464,7 +490,7 @@ export default function ReviewList() {
     return !pendingReviews.includes(rowData['id']) && rowData['is_comparison_ready'] && rowData['status'] === 'Ready for Review'
   }, [isBatchReviewAvailable, pendingReviews])
 
-  const handleRowClick = (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
+  const handleRowClick = (rowData: string[]) => {
     if (isBatchReview) return
     let moduleName = toLower(rowData[8]).replace(' ', '_')
     if (!moduleName) {
@@ -522,9 +548,7 @@ export default function ReviewList() {
                         dispatch(resetSelectedReviews())
                       }
                     },
-                    onRowClick: (rowData: string[], rowMeta: { dataIndex: number, rowIndex: number }) => {
-                      handleRowClick(rowData, rowMeta)
-                    },
+                    onRowClick: null,
                     onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
                     customSearchRender: debounceSearchRender(500),
                     selectableRows: selectableRowsMode,

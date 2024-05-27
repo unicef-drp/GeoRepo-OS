@@ -25,6 +25,8 @@ import cloneDeep from "lodash/cloneDeep";
 import IconButton from "@mui/material/IconButton";
 import EditIcon from '@mui/icons-material/Edit';
 import {EntityEditRoute} from "../routes";
+import CountrySearch from '../../components/CountrySearch';
+
 
 export interface EntitiesTableInterface {
     dataset_id: string,
@@ -61,11 +63,10 @@ const ALL_COLUMNS = [
     'admin_level_name',
     'dataset',
     'approved_by',
-    'layer_file',
     'other_name',
-    'other_id'
+    'other_id',
+    'centroid'
 ]
-
 
 const FILTER_ENABLED_COLUMNS = [
     'country',
@@ -75,9 +76,9 @@ const FILTER_ENABLED_COLUMNS = [
     'updated',
     'rev',
     'status',
-    'privacy_level'
+    'privacy_level',
+    'centroid'
 ]
-
 
 interface EntityTableRowInterface {
     id: number,
@@ -96,8 +97,19 @@ interface EntityTableRowInterface {
 
 const FILTER_VALUES_API_URL = '/api/dashboard-dataset-filter/values/'
 const API_URL = '/api/dashboard-dataset/list/'
+const MAX_COUNTRIES_IN_FILTER_CHIP = 5
 
 const FilterIcon: any = FilterAlt
+
+interface FilterValuesInterface {
+    country?: string[];
+    level?: number[];
+    admin_level_name?: string[];
+    type?: string[];
+    rev?: number[];
+    status?: string[];
+    privacy_level?: number[];
+}
 
 export default function EntitiesTable(props: EntitiesTableInterface) {
     const initialColumns = useAppSelector((state: RootState) => state.entitiesTable.currentColumns)
@@ -106,7 +118,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
     const [data, setData] = useState<EntityTableRowInterface[]>([])
     const [totalCount, setTotalCount] = useState<number>(0)
     const [pagination, setPagination] = useState<PaginationInterface>(getDefaultPagination())
-    const [filterValues, setFilterValues] = useState({})
+    const [filterValues, setFilterValues] = useState<FilterValuesInterface>({})
     const ref = useRef(null)
     const [tableHeight, setTableHeight] = useState(0)
     const axiosSource = useRef(null)
@@ -115,6 +127,8 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
         return axiosSource.current.token;
       }, [])
     const navigate = useNavigate()
+    // index of selected rows
+    const [rowsSelected, setRowsSelected] = useState<any[]>([])
 
     const fetchFilterValues = async () => {
         if (Object.keys(filterValues).length != 0) return filterValues
@@ -146,6 +160,7 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
 
     const fetchEntities = (cancelFetchToken:any) => {
         setData([])
+        setRowsSelected([])
         setLoading(true)
         if (props.onLoadStarted) {
             props.onLoadStarted()
@@ -251,6 +266,51 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                                 }
                             }                        
                         }
+                    } else if (column_name === 'country') {
+                        let _objectType = 'dataset'
+                        let _objectId = props.dataset_id
+                        if (props.viewUuid) {
+                            _objectType = 'view'
+                            _objectId = props.viewUuid
+                        }
+                        options.label = 'Countries'
+                        options.options = {
+                            searchable: false,
+                            display: initialColumns.includes(column_name),
+                            filter: true,
+                            filterType: 'custom',
+                            filterList: getExistingFilterValue(column_name),
+                            filterOptions: {
+                                names: filter_values[column_name],
+                                logic(val:any, filters:any) {
+                                    return false;
+                                },
+                                display: (filterList: any, onChange: any, index: any, column: any) => (
+                                    <CountrySearch objectType={_objectType} objectId={_objectId}
+                                        filterList={filterList} onChange={onChange}
+                                        index={index} column={column} />
+                                )
+                            },
+                            customFilterListOptions: {
+                                render: (countries:any) => {
+                                    let result:string[] = []
+                                    if (countries.length === 1) {
+                                        result.push(`Country: ${countries[0]}`)
+                                    } else if (countries.length <= MAX_COUNTRIES_IN_FILTER_CHIP) {
+                                        result.push(`Countries: ${countries.join(', ')}`)
+                                    } else {
+                                        let _countries = countries.slice(0, MAX_COUNTRIES_IN_FILTER_CHIP)
+                                        result.push(`Countries: ${_countries.join(', ')}, and ${countries.length - MAX_COUNTRIES_IN_FILTER_CHIP} more`)
+                                    }                                    
+                                    return result
+                                },
+                                update: (filterList:any, filterPos:any, index:any) => {
+                                    filterList[index] = []
+                                    handleCountriesOnClear()
+                                    return filterList;
+                                }
+                            }                        
+                        }  
                     } else {
                         options.options = {
                             searchable: false,
@@ -280,6 +340,8 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                                     return filterList;
                                 }
                             }
+                            options.options.display = false
+                            options.options.filter = true
                             options.options.filterType = 'custom'
                             options.options.filterOptions = {
                                 logic: (location:any, filters:any, row:any) => {
@@ -363,6 +425,20 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
             triggerFetchEntitiesAPI()
     }, [pagination])
 
+    useEffect(() => {
+        if (!props.onEntitySelected) return;
+        // handle when row is selected
+        if (rowsSelected && rowsSelected.length) {
+            let _idx = rowsSelected[0]
+            if (data && _idx < data.length) {
+                let _rowData = data[_idx]
+                if (_rowData.id) {
+                    props.onEntitySelected(_rowData.id)
+                }                
+            }
+        }
+    }, [rowsSelected])
+
     const handleFilterSubmit = (applyFilters: any) => {
         let filterList = applyFilters()
         let filters:EntitiesFilterUpdateInterface[] = []
@@ -419,6 +495,17 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
             criteria: 'points',
             type: 'string_array',
             values: pointFilter,
+            date_from: null,
+            date_to: null
+        })
+    }
+
+    const handleCountriesOnClear = () => {
+        if (!props.onSingleFilterUpdated) return;
+        props.onSingleFilterUpdated({
+            criteria: 'country',
+            type: 'string_array',
+            values: [],
             date_from: null,
             date_to: null
         })
@@ -526,10 +613,16 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                 <MUIDataTable columns={columns} data={data}
                         title=''
                         options={{
-                            selectableRows: 'none',
-                            onRowClick: (rowData: string[]) => {
-                                if (!props.onEntitySelected) return;
-                                props.onEntitySelected(parseInt(rowData[0]))
+                            selectableRows: 'single',
+                            selectableRowsHeader: false,
+                            selectToolbarPlacement: 'none',
+                            selectableRowsHideCheckboxes: true,
+                            selectableRowsOnClick: true,
+                            rowsSelected: rowsSelected,
+                            onRowSelectionChange: (currentRowsSelected: any, allRowsSelected: any, rowsSelected: any) => {
+                                if (rowsSelected && rowsSelected.length) {
+                                    setRowsSelected([...rowsSelected])
+                                }
                             },
                             serverSide: true,
                             page: pagination.page,
@@ -568,12 +661,13 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                             },
                             searchText: props.filter.search_text,
                             searchOpen: (props.filter.search_text != null && props.filter.search_text.length > 0),
-                            setRowProps:(row, dataIndex, rowIndex) => {
-                                return {
-                                  onMouseEnter: (e:any) => onRowMouseEnter(row),
-                                  onMouseLeave: (e:any) => onRowMouseLeave()
-                                }
-                            },
+                            // TODO: check why the hover events are not working
+                            // setRowProps:(row, dataIndex, rowIndex) => {
+                            //     return {
+                            //       onMouseEnter: (e:any) => onRowMouseEnter(row),
+                            //       onMouseLeave: (e:any) => onRowMouseLeave()
+                            //     }
+                            // },
                             textLabels: {
                                 body: {
                                     noMatch: loading ?

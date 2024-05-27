@@ -26,6 +26,14 @@ axios.defaults.headers.common = {
     'X-CSRFToken' : (window as any).csrfToken
 }
 
+export const applyFilterDialogFooter = (currentFilterList: any, applyNewFilters: any) => {
+    return (
+        <div style={{marginTop: '40px'}}>
+        <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
+        </div>
+    );
+}
+
 export interface ActionDataInterface {
     field: string,
     name: string,
@@ -61,7 +69,8 @@ interface ListInterface {
     canRowBeSelected?: (dataIndex: number, rowData: any) => boolean,
     excludedColumns?: string[],
     title?: React.ReactNode,
-    fetchUseCache?: boolean
+    fetchUseCache?: boolean,
+    emptyTableMessage?: React.ReactNode,
 }
 
 /**
@@ -191,7 +200,8 @@ export default function List(
         canRowBeSelected = null,
         excludedColumns = [],
         title = null,
-        fetchUseCache = true
+        fetchUseCache = true,
+        emptyTableMessage = 'No Data'
     } : ListInterface
 ) {
     const [data, setData] = useState(initData);
@@ -262,7 +272,7 @@ export default function List(
                     _column['options'] = {
                         filter: false,
                         customBodyRender: (value, tableMeta, updateValue) => {
-                            if (value.includes('T') && value.includes('Z')) {
+                            if (value && (value.includes('T') && value.includes('Z') || !isNaN(value))) {
                                 return new Date(value).toDateString()
                             }
                             return value
@@ -278,6 +288,11 @@ export default function List(
                 name: '',
                 options: {
                     filter: false,
+                    viewColumns: false,
+                    print: false,
+                    searchable: false,
+                    empty: true,
+                    sort: false,
                     customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
                         const rowData: any = data.find(({id}) => id === tableMeta.rowData[0])
                         if (!rowData) return null
@@ -396,6 +411,11 @@ export default function List(
                 name: '',
                 options: {
                     filter: false,
+                    viewColumns: false,
+                    print: false,
+                    searchable: false,
+                    empty: true,
+                    sort: false,
                     customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
                         const rowData = tableMeta.rowData
                         return COLUMNS_ACTION(
@@ -474,6 +494,7 @@ export default function List(
                     ExpandableRow={expandableRow}
                     canRowBeSelected={canRowBeSelected}
                     onRowsPerPageChange={onRowsPerPageChange}
+                    emptyTableMessage={emptyTableMessage}
                     options={{
                         ...options,
                         ...(options['tableBodyMaxHeight'] === undefined && {'tableBodyMaxHeight': `${tableHeight}px`}),

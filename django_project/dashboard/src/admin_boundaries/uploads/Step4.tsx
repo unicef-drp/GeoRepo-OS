@@ -1,6 +1,7 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useState, useRef, useCallback} from "react";
 import clsx from 'clsx';
-import List from "../../components/List";
+import {TABLE_OFFSET_HEIGHT} from "../../components/List";
+import Loading from "../../components/Loading";
 import '../../styles/Step3.scss';
 import axios from "axios";
 import {useNavigate, useSearchParams} from "react-router-dom";
@@ -9,6 +10,7 @@ import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
+import Checkbox from '@mui/material/Checkbox';
 import CloseIcon from '@mui/icons-material/Close';
 import LoadingButton from "@mui/lab/LoadingButton";
 import { DataGrid, GridColDef, GridColumnGroupingModel, GridColumnHeaderParams, GridCellParams, allGridColumnsSelector } from '@mui/x-data-grid';
@@ -29,9 +31,23 @@ import SyncIcon from '@mui/icons-material/Sync';
 import ErrorIcon from '@mui/icons-material/Error';
 import HtmlTooltip from "../../components/HtmlTooltip";
 import StatusLoadingDialog from "../../components/StatusLoadingDialog";
+import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../../models/pagination";
+import FilterAlt from "@mui/icons-material/FilterAlt";
+import ResizeTableEvent from "../../components/ResizeTableEvent";
+import MUIDataTable, {debounceSearchRender, MUISortOptions, SelectableRows} from "mui-datatables";
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import FormControlLabel from "@mui/material/FormControlLabel";
+import CountrySearch from '../../components/CountrySearch';
+
 
 const URL = '/api/entity-upload-status-list/'
+const METADATA_URL = '/api/entity-upload-status-metadata/'
 const READY_TO_REVIEW_URL = '/api/ready-to-review/'
+const FilterIcon: any = FilterAlt
+const checkBoxOutlinedicon = <CheckBoxOutlineBlankIcon fontSize="small" />;
+const checkBoxCheckedIcon = <CheckBoxIcon fontSize="small" />;
+const MAX_COUNTRIES_IN_FILTER_CHIP = 5
 
 
 const columnRenderHeader = (field: string) => {
@@ -172,6 +188,41 @@ interface StatusSummaryDict {
   [Key: string]: number;
 }
 
+interface Step4FilterInterface {
+  status: string[],
+  search_text: string,
+  country: string[]
+}
+
+
+const getDefaultFilter = (): Step4FilterInterface => {
+  return {
+    status: [],
+    search_text: '',
+    country: []
+  }
+}
+
+const USER_COLUMNS = [
+  'id',
+  'started_at',
+  'error_summaries',
+  'error_report',
+  'is_importable',
+  'is_warning',
+  'progress',
+  'country',
+  'status',
+  'error_logs'
+]
+
+const VISIBLE_COLUMNS = [
+  'country',
+  'started at',
+  'status'
+]
+
+
 export default function Step4(props: WizardStepInterface) {
   const [uploadData, setUploadData] = useState<any[]>([])
   const [errorSummaries, setErrorSummaries] = useState<any[]>([])
@@ -182,6 +233,7 @@ export default function Step4(props: WizardStepInterface) {
   const [loading, setLoading] = useState<boolean>(false)
   const [openErrorModal, setOpenErrorModal] = useState<boolean>(false)
   const [selectedEntities, setSelectedEntities] = useState<number[]>([])
+  const [selectedEntitiesInPage, setSelectedEntitiesInPage] = useState<number[]>([])
   const url = URL + `?id=${props.uploadSession}`
   const [searchParams, setSearchParams] = useSearchParams()
   const [actionUuid, setActionUuid] = useState('')
@@ -189,118 +241,25 @@ export default function Step4(props: WizardStepInterface) {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const [viewOverlapError, setViewOverlapError] = useState(false)
-  const [customColumnOptions, setCustomColumnOptions] = useState({
-    'id': {
-      filter: false,
-      display: false,
-    },
-    'started at': {
-      filter: false
-    },
-    'error_summaries': {
-      filter: false,
-      display: false,
-    },
-    'error_report': {
-      filter: false,
-      display: false,
-    },
-    'is_importable': {
-      filter: false,
-      display: false,
-    },
-    'is_warning': {
-      filter: false,
-      display: false,
-    },
-    'progress': {
-      filter: false,
-      display: false,
-    },
-    'Country': {
-      filter: true,
-      sort: true,
-      display: true,
-      filterOptions: {
-        fullWidth: true,
-      }
-    },
-    'status': {
-        filter: true,
-        sort: true,
-        display: true,
-        filterOptions: {
-          fullWidth: true,
-          names: STATUS_LIST,
-          logic(val:any, filters:any) {
-            if (filters[0]) {
-              if (filters[0] === 'Not Completed') {
-                return !INCOMPLETE_STATUS_LIST.includes(val)
-              }
-              return val !== filters[0]
-            }
-            return false
-          }
-        },
-        customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
-          let id = tableMeta['rowData'][0]
-          let name = tableMeta['rowData'][1]
-          let isImportable = tableMeta['rowData'][6]
-          let isWarning = tableMeta['rowData'][7]
-          let progress = tableMeta['rowData'][8] ? tableMeta['rowData'][8] : ''
-          let summaries = tableMeta['rowData'][4]
-          let error_report = tableMeta['rowData'][5]
-          let error_logs = tableMeta['rowData'][9]
-          if (IN_PROGRES_STATUS_LIST.includes(value)) {
-            return <span style={{display:'flex'}}>
-                    <CircularProgress size={18} />
-                    <span style={{marginLeft: '5px' }}>{value}{value === 'Processing' && progress ? ` ${progress}`:''}</span>
-                  </span>
-          } else if (value === 'Error' || value === 'Warning') {
-            if (props.isReadOnly) {
-              return <span>
-                      <span>{isWarning?'Warning':value}</span>
-                      <Button id={`error-btn-${id}`} variant={'contained'} color={isWarning?"warning":"error"} onClick={
-                        () => showError(id, summaries, error_report, isImportable)} style={{marginLeft:'10px'}}
-                      >{isWarning?'Show Warning':'Show Error'}</Button>
-                    </span>
-            } else {
-              return <Button id={`error-btn-${id}`} variant={'contained'} color={isWarning?"warning":"error"} onClick={
-                        () => showError(id, summaries, error_report, isImportable)}
-                      >{isWarning?'Show Warning':'Show Error'}</Button>
-            }
-          } else if (value === 'Stopped with Error') {
-            return (
-              <span className="error-status-container">
-                <span className="error-status-label">{value}</span>
-                {error_logs && (
-                  <HtmlTooltip tooltipTitle='Error Detail' icon={<ErrorIcon fontSize="small" color="error" />}
-                    tooltipDescription={<p>{error_logs}</p>}
-                />
-                )}
-                <IconButton aria-label={'Retrigger validation'} title={'Retrigger validation'}
-                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                    e.currentTarget.disabled = true
-                    retriggerValidation(id as number, name)
-                  }}>
-                  <SyncIcon color='info' fontSize='small' />
-              </IconButton>
-              </span>
-            )
-          }
-          return value
-        }
-    },
-    'error_logs': {
-      filter: false,
-      display: false,
-    },
-  })
-  const [addNotCompletedFilter, setAddNotCompletedFilter] = useState(false)
   const [statusSummary, setStatusSummary] = useState<StatusSummaryDict>({})
   const [jobSummaryText, setJobSummaryText] = useState('-')
   const [jobSummaryProgress, setJobSummaryProgress] = useState(0)
   const [retriggerLoadingOpen, setRetriggerLoadingOpen] = useState<boolean>(false)
+  const [tableColumns, setTableColumns] = useState<any>([])
+  const [totalCount, setTotalCount] = useState<number>(0)
+  const [pagination, setPagination] = useState<PaginationInterface>(getDefaultPagination())
+  const [currentFilters, setCurrentFilters] = useState<Step4FilterInterface>(getDefaultFilter())
+  const [allIds, setAllIds] = useState<number[]>([])
+  const axiosSource = useRef(null)
+  const newCancelToken = useCallback(() => {
+    axiosSource.current = axios.CancelToken.source();
+    return axiosSource.current.token;
+  }, [])
+  const ref = useRef(null)
+  const [tableHeight, setTableHeight] = useState(0)
+  const [selectableRowsMode, setSelectableRowsMode] = useState<SelectableRows>('none')
+  const [isCheckAll, setIsCheckAll] = useState(false)
+  const [currentInterval, setCurrentInterval] = useState(null)
 
   const retriggerValidation = (id:number, title: string) => {
     setRetriggerLoadingOpen(true)
@@ -320,9 +279,207 @@ export default function Step4(props: WizardStepInterface) {
     })
   }
 
-  const getStatus = () => {
-    axios.get(url).then(
+  const getExistingFilterValue = (col_name: string):string[] =>  {
+    let values:string[] = []
+    switch (col_name) {
+        case 'country':
+            values = currentFilters.country
+            break;
+        case 'status':
+          values = currentFilters.status
+          break;
+        default:
+          break;
+    }
+    return values
+  }
+
+  const fetchMetadata = () => {
+    setLoading(true)
+    axios.get(`${METADATA_URL}?id=${props.uploadSession}`).then(
+      response =>{
+        let _allIds = response.data['ids'] as number[]
+        let _isAllFinished = response.data['is_all_finished']
+        let _level_name_0 = response.data['level_name_0']
+        let _isReadOnly = response.data['is_read_only']
+        let _init_columns = USER_COLUMNS
+        let _columns = _init_columns.map((columnName) => {
+          let _options: any = {
+            name: columnName,
+            label: columnName === 'country' ? _level_name_0 : columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' '),
+            options: {
+              display: VISIBLE_COLUMNS.includes(columnName),
+              sort: false,
+              filter: false,
+              searchable: false
+            }
+          }
+          if (columnName === 'country') {
+            _options.options = {
+              display: true,
+              sort: false,
+              searchable: false,
+              filter: true,
+              filterType: 'custom',
+              filterList: getExistingFilterValue(columnName),
+              filterOptions: {
+                names: [],
+                fullWidth: true,
+                logic(val:any, filters:any) {
+                    return false;
+                },
+                display: (filterList: any, onChange: any, index: any, column: any) => (
+                    <CountrySearch objectType={'upload_session'} objectId={props.uploadSession}
+                        filterList={filterList} onChange={onChange}
+                        index={index} column={column} />
+                )
+              },
+              customFilterListOptions: {
+                  render: (countries:any) => {
+                      let result:string[] = []
+                      if (countries.length === 1) {
+                          result.push(`Country: ${countries[0]}`)
+                      } else if (countries.length <= MAX_COUNTRIES_IN_FILTER_CHIP) {
+                          result.push(`Countries: ${countries.join(', ')}`)
+                      } else {
+                          let _countries = countries.slice(0, MAX_COUNTRIES_IN_FILTER_CHIP)
+                          result.push(`Countries: ${_countries.join(', ')}, and ${countries.length - MAX_COUNTRIES_IN_FILTER_CHIP} more`)
+                      }                                    
+                      return result
+                  },
+                  update: (filterList:any, filterPos:any, index:any) => {
+                      filterList[index] = []
+                      handleCountriesOnClear()
+                      return filterList;
+                  }
+              }
+            }
+          } else if (columnName === 'status') {
+            _options.options = {
+              display: true,
+              sort: false,
+              searchable: false,
+              filter: true,
+              filterList: _isAllFinished ? [] : ['Not Completed'],
+              filterOptions: {
+                fullWidth: true,
+                names: STATUS_LIST,
+                logic(val:any, filters:any) {
+                  if (filters[0]) {
+                    if (filters[0] === 'Not Completed') {
+                      return !INCOMPLETE_STATUS_LIST.includes(val)
+                    }
+                    return val !== filters[0]
+                  }
+                  return false
+                }
+              },
+              customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
+                // 'id' 0,
+                // 'started_at' 1,
+                // 'error_summaries' 2,
+                // 'error_report' 3,
+                // 'is_importable' 4,
+                // 'is_warning' 5,
+                // 'progress' 6,
+                // 'country' 7,
+                // 'status' 8,
+                // 'error_logs' 9
+                let id = tableMeta['rowData'][0]
+                let name = tableMeta['rowData'][7]
+                let isImportable = tableMeta['rowData'][4]
+                let isWarning = tableMeta['rowData'][5]
+                let progress = tableMeta['rowData'][6] ? tableMeta['rowData'][6] : ''
+                let summaries = tableMeta['rowData'][2]
+                let error_report = tableMeta['rowData'][3]
+                let error_logs = tableMeta['rowData'][9]
+                if (IN_PROGRES_STATUS_LIST.includes(value)) {
+                  return <span style={{display:'flex'}}>
+                          <CircularProgress size={18} />
+                          <span style={{marginLeft: '5px' }}>{value}{value === 'Processing' && progress ? ` ${progress}`:''}</span>
+                        </span>
+                } else if (value === 'Error' || value === 'Warning') {
+                  if (props.isReadOnly) {
+                    return <span>
+                            <span>{isWarning?'Warning':value}</span>
+                            <Button id={`error-btn-${id}`} variant={'contained'} color={isWarning?"warning":"error"} onClick={
+                              () => showError(id, summaries, error_report, isImportable)} style={{marginLeft:'10px'}}
+                            >{isWarning?'Show Warning':'Show Error'}</Button>
+                          </span>
+                  } else {
+                    return <Button id={`error-btn-${id}`} variant={'contained'} color={isWarning?"warning":"error"} onClick={
+                              () => showError(id, summaries, error_report, isImportable)}
+                            >{isWarning?'Show Warning':'Show Error'}</Button>
+                  }
+                } else if (value === 'Stopped with Error') {
+                  return (
+                    <span className="error-status-container">
+                      <span className="error-status-label">{value}</span>
+                      {error_logs && (
+                        <HtmlTooltip tooltipTitle='Error Detail' icon={<ErrorIcon fontSize="small" color="error" />}
+                          tooltipDescription={<p>{error_logs}</p>}
+                      />
+                      )}
+                      <IconButton aria-label={'Retrigger validation'} title={'Retrigger validation'}
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                          e.currentTarget.disabled = true
+                          retriggerValidation(id as number, name)
+                        }}>
+                        <SyncIcon color='info' fontSize='small' />
+                    </IconButton>
+                    </span>
+                  )
+                }
+                return value
+              }
+            }
+          }
+          return _options
+        })
+        setTableColumns(_columns)
+        if (_isReadOnly) {
+          setAllFinished(true)
+          setAllIds(allIds)
+        } else {
+          setAllFinished(_isAllFinished)
+          if (!_isAllFinished) {
+            setCurrentFilters({
+              ...currentFilters,
+              status: ['Not Completed']
+            })
+            props.setEditable(false)
+          } else {
+            setAllIds(_allIds)
+            props.setEditable(true)
+            if (props.onCheckProgress) {
+              props.onCheckProgress()
+            }
+          }
+        }
+      }
+    ).catch((error) => {
+      console.log('Failed to fetch metadata ', error)
+      setAlertMessage(`There is unexpected error when loading the metadata! Please try again later or contact administrator!`)
+    })
+  }
+
+  const getStatus = (isFromInterval: boolean = false) => {
+    if (axiosSource.current) axiosSource.current.cancel()
+    let cancelFetchToken = newCancelToken()
+    axios.post(
+        url + `&page=${pagination.page + 1}&page_size=${pagination.rowsPerPage}`,
+        {
+          'countries': currentFilters.country,
+          'search_text': currentFilters.search_text,
+          'status': currentFilters.status
+        },
+        {
+          cancelToken: cancelFetchToken
+        }
+      ).then(
       response => {
+        setLoading(false)
+        setTotalCount(response.data['count'])
         if (response.data && response.data['is_read_only']){
           let _results = response.data['results']
           setAllFinished(true)
@@ -336,70 +493,118 @@ export default function Step4(props: WizardStepInterface) {
           }))
         } else if (response.data && response.data['results']) {
           let _results = response.data['results']
-          const unfinished = _results.filter((responseData: any) => {
-            return INCOMPLETE_STATUS_LIST.includes(responseData['status']);
-          })
-          if (unfinished.length == 0) {
+          if (response.data['is_all_finished']) {
             setAllFinished(true)
-            props.setEditable(true)
-            if (props.onCheckProgress) {
-              props.onCheckProgress()
+            if (isFromInterval) {
+              // remove filter status
+              if (currentFilters.status.includes('Not Completed')) {
+                setCurrentFilters({...currentFilters, 'status': []})
+              }
+              // fetch all ids that are importable for select all
+              fetchMetadataForSelectAll()
             }
-          } else {
-            props.setEditable(false)
           }
-          let _statusSummary:StatusSummaryDict = {}
           setUploadData(_results.map((responseData: any) => {
             const uploadRow: any = {}
             for (let key of Object.keys(responseData)) {
                 uploadRow[key] = responseData[key]
             }
-            if (responseData['status'] in _statusSummary) {
-              _statusSummary[responseData['status']] += 1
-            } else {
-              _statusSummary[responseData['status']] = 1
-            }
             uploadRow['started at'] = utcToLocalDateTimeString(new Date(uploadRow['started at']))
             return uploadRow
           }))
-          setStatusSummary(_statusSummary)
+          let _inPage = []
+          for (let i=0; i<_results.length; i++) {
+            if (selectedEntities.includes(_results[i].id)) {
+              _inPage.push(i)
+            }
+          }
+          setSelectedEntitiesInPage(_inPage)
+          setStatusSummary(response.data['summary'])
         }
       }
-    )
+    ).catch(error => {
+      if (!axios.isCancel(error)) {
+        console.log(error)
+      }
+    })
+  }
+
+  const fetchMetadataForSelectAll = () => {
+    axios.get(`${METADATA_URL}?id=${props.uploadSession}&select_all=true`).then(
+      response => {
+        let _allIds = response.data['ids'] as number[]
+        setAllIds(_allIds)
+      }
+    ).catch((error) => {
+      console.log('Failed to fetch metadata ', error)
+      setAlertMessage(`There is unexpected error when loading the metadata! Please try again later or contact administrator!`)
+    })
   }
 
   useEffect(() => {
-    if (uploadData.length > 0 && !allFinished) {
-      // set filter by 'Not Completed'
-      let _statusFilter = {...customColumnOptions['status']} as any
-      if (!addNotCompletedFilter) {
-        _statusFilter['filterList'] = ['Not Completed']
-        setCustomColumnOptions({
-          ...customColumnOptions,
-          'status': _statusFilter
-        })
-        setAddNotCompletedFilter(true)
-      }
+    fetchMetadata()
+  }, [])
 
-      const interval = setInterval(() => {
-        getStatus()
-      }, 5000);
-      return () => clearInterval(interval);
+  const updateTableColumnFilter = () => {
+    let _tableColumns = [...tableColumns]
+    let _isUpdated = false
+    if (currentFilters.status) {
+      let idx = _tableColumns.findIndex((t) => t.name === 'status')
+      if (idx > -1) {
+        _tableColumns[idx]['options']['filterList'] = getExistingFilterValue('status')
+        _isUpdated = true
+      }
     }
-  }, [uploadData, allFinished])
+    if (currentFilters.country) {
+      let idx = _tableColumns.findIndex((t) => t.name === 'country')
+      if (idx > -1) {
+        _tableColumns[idx]['options']['filterList'] = getExistingFilterValue('country')
+        _isUpdated = true
+      }
+    }
+
+    if (_isUpdated) {
+      setTableColumns([..._tableColumns])
+    }
+  }
 
   useEffect(() => {
-    getStatus()
+    updateTableColumnFilter()
+  }, [currentFilters])
+
+  useEffect(() => {
+    if (allFinished) {
+      setSelectableRowsMode('multiple')
+    } else {
+      setSelectableRowsMode('none')
+    }
+    if (!allFinished) {
+      const interval = setInterval(() => {
+        getStatus(true)
+      }, 5000);
+      setCurrentInterval(interval)
+      return () => {
+        clearInterval(interval);
+        setCurrentInterval(null);
+      };
+    } else {
+      getStatus()
+    }
+  }, [allFinished, currentFilters, pagination])
+
+  useEffect(() => {
     const statusFilter = searchParams.get('filter_status')
     if (statusFilter === 'All') {
-      let _statusFilter = {...customColumnOptions['status']} as any
-      if ('filterList' in _statusFilter) {
-        _statusFilter['filterList'] = []
-        setCustomColumnOptions({
-          ...customColumnOptions,
-          'status': {..._statusFilter}
-        })
-      }
+      setCurrentFilters({...currentFilters, 'status': []})
+      // TODO: set status filter
+      // let _statusFilter = {...customColumnOptions['status']} as any
+      // if ('filterList' in _statusFilter) {
+      //   _statusFilter['filterList'] = []
+      //   setCustomColumnOptions({
+      //     ...customColumnOptions,
+      //     'status': {..._statusFilter}
+      //   })
+      // }
     }
   }, [searchParams])
 
@@ -441,10 +646,6 @@ export default function Step4(props: WizardStepInterface) {
     setHasErrorOverlaps(_hasErrorOverlaps && is_importable)
     setViewOverlapId(_view_overlaps)
     setOpenErrorModal(true)
-  }
-
-  const selectionChanged = (data: any) => {
-    setSelectedEntities(data)
   }
 
   const downloadReport = (reportPathId: number) => {
@@ -515,22 +716,112 @@ export default function Step4(props: WizardStepInterface) {
     }
   }
 
-  const handleFilterChange = (applyFilters: any) => {
-    const idxStatusFilter = 3
-    let filterList = applyFilters()
-    let _statusFilter = {...customColumnOptions['status']} as any
-    if ('filterList' in _statusFilter) {
-      _statusFilter['filterList'] = filterList[idxStatusFilter]
-      setCustomColumnOptions({
-        ...customColumnOptions,
-        'status': {..._statusFilter}
-      })
+  const onTableInteraction = () => {
+    setLoading(true)
+    setUploadData([])
+    // cancel any ongoing request and iterval
+    if (currentInterval) {
+      clearInterval(currentInterval)
+      setCurrentInterval(null)
     }
+    if (axiosSource.current) {
+      axiosSource.current.cancel()
+    }
+  }
+
+  useEffect(() => {
+    if (isCheckAll) {
+      setSelectedEntities([...allIds])
+      let _inPage = uploadData.filter((a) => allIds.includes(a.id)).map((a, index) => index)
+      setSelectedEntitiesInPage(_inPage)
+    } else {
+      setSelectedEntities([])
+      setSelectedEntitiesInPage([])
+    }
+  }, [isCheckAll])
+
+  const onTableChangeState = (action: string, tableState: any) => {
+    switch (action) {
+      case 'changePage':
+        onTableInteraction()
+        setPagination({
+          ...pagination,
+          page: tableState.page
+        })
+        break;
+      case 'sort':
+        onTableInteraction()
+        setPagination({
+          ...pagination,
+          page: 0,
+          sortOrder: tableState.sortOrder
+        })
+        break;
+      case 'changeRowsPerPage':
+        onTableInteraction()
+        setPagination({
+          ...pagination,
+          page: 0,
+          rowsPerPage: tableState.rowsPerPage
+        })
+        break;
+      default:
+    }
+  }
+
+  const handleSearchOnChange = (search_text: string) => {
+    onTableInteraction()
+    setPagination({
+      ...pagination,
+      page: 0,
+      sortOrder: {}
+    })
+    setCurrentFilters({...currentFilters, 'search_text': search_text})
+    setSelectedEntities([])
+    setSelectedEntitiesInPage([])
+    setIsCheckAll(false)
+  }
+
+  const handleFilterChange = (applyFilters: any) => {
+    onTableInteraction()
+    setPagination({
+      ...pagination,
+      page: 0,
+      sortOrder: {}
+    })
+    let filterList = applyFilters()
+    let filter = getDefaultFilter()
+    type Column = {
+      name: string,
+      label: string,
+      options: any
+    }
+    for (let idx in filterList) {
+      let col: Column = tableColumns[idx]
+      if (!col.options.filter)
+        continue
+      if (filterList[idx] && filterList[idx].length) {
+        const key = col.name as string
+        filter[key as keyof Step4FilterInterface] = filterList[idx]
+      }
+    }
+    setCurrentFilters({...filter, 'search_text': currentFilters['search_text']})
+    setSelectedEntities([])
+    setSelectedEntitiesInPage([])
+    setIsCheckAll(false)
+  }
+
+  const handleCountriesOnClear = () => {
+    let _currentFilters = {...currentFilters}
+    setCurrentFilters({
+      ..._currentFilters,
+      country: []
+    })
   }
 
   return (
     <Scrollable>
-    <div className="Step3Container Step4Container">
+    <div className="Step3Container Step4Container" ref={ref}>
       <Modal open={openErrorModal} onClose={() => {
             setOpenErrorModal(false)
             setViewOverlapError(false)
@@ -605,32 +896,116 @@ export default function Step4(props: WizardStepInterface) {
       <AlertMessage message={alertMessage} onClose={() => setAlertMessage('')} />
       <StatusLoadingDialog open={retriggerLoadingOpen}
             title={'Retrigger Validation'} description={'Please wait while we are submitting your request!'} />
-      <List
-        pageName={'Country'}
-        listUrl={''}
-        initData={uploadData}
-        isRowSelectable={allFinished}
-        selectionChanged={selectionChanged}
-        canRowBeSelected={canRowBeSelected}
-        editUrl={''}
-        excludedColumns={['is_importable', 'progress', 'error_summaries', 'error_report', 'is_warning']}
-        customOptions={customColumnOptions}
-        options={{
-          'selectableRowsHeader': !props.isReadOnly,
-          'onFilterChange': (column: any, filterList: any, type: any) => {
-            var newFilters = () => (filterList)
-            handleFilterChange(newFilters)
-          },
-          'confirmFilters': true,
-          'customFilterDialogFooter': (currentFilterList: any, applyNewFilters: any) => {
-            return (
-              <div style={{marginTop: '40px'}}>
-                <Button variant="contained" onClick={() => applyNewFilters()}>Apply Filters</Button>
-              </div>
-            );
-          },
-        }}
-      />
+      
+      <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
+                                onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT - 40)}/>
+      <div className="AdminTable" style={{width: '100%'}}>
+        <MUIDataTable
+            title={
+              <Grid container flexDirection={'row'}>
+                <Grid item>
+                  { allFinished && (
+                    <FormControlLabel control={
+                      <Checkbox
+                        edge="start"
+                        checked={isCheckAll}
+                        disableRipple
+                        onChange={(event: any) =>  setIsCheckAll(event.target.checked)}
+                        disabled={props.isReadOnly || loading || !allFinished}
+                        indeterminate={selectedEntities.length !== allIds.length && selectedEntities.length !== 0}
+                      />
+                    }
+                    label={`Select All (${selectedEntities.length}/${allIds.length})`} sx={{color:'#000'}} />
+                  )}
+                </Grid>
+              </Grid>
+            }
+            data={uploadData}
+            columns={tableColumns}
+            options={{
+              serverSide: true,
+              page: pagination.page,
+              count: totalCount,
+              rowsPerPage: pagination.rowsPerPage,
+              rowsPerPageOptions: rowsPerPageOptions,
+              sortOrder: pagination.sortOrder as MUISortOptions,
+              jumpToPage: true,
+              onRowClick: null,
+              onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
+              customSearchRender: debounceSearchRender(500),
+              selectableRows: selectableRowsMode,
+              tableBodyHeight: `${tableHeight}px`,
+              tableBodyMaxHeight: `${tableHeight}px`,
+              textLabels: {
+                body: {
+                  noMatch: loading ?
+                    <Loading/> :
+                    'Sorry, there is no matching data to display',
+                },
+              },
+              onSearchChange: (searchText: string) => {
+                handleSearchOnChange(searchText)
+              },
+              customFilterDialogFooter: (currentFilterList, applyNewFilters) => {
+                return (
+                  <div style={{marginTop: '40px'}}>
+                    <Button variant="contained" onClick={() => handleFilterChange(applyNewFilters)}>Apply Filters</Button>
+                  </div>
+                );
+              },
+              onFilterChange: (column, filterList, type) => {
+                var newFilters = () => (filterList)
+                handleFilterChange(newFilters)
+              },
+              searchText: currentFilters.search_text,
+              searchOpen: (currentFilters.search_text != null && currentFilters.search_text.length > 0),
+              filter: true,
+              filterType: 'multiselect',
+              confirmFilters: true,
+              rowsSelected: selectedEntitiesInPage,
+              selectToolbarPlacement: 'none',
+              selectableRowsHeader: false,
+              onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
+                if (currentRowsSelected.length > 1) {
+                  // select all
+                  setSelectedEntities([...allIds])
+                  let _inPage = uploadData.map((a, index) => index)
+                  setSelectedEntitiesInPage(_inPage)
+                } else if (currentRowsSelected.length === 1) {
+                  let _item = uploadData[currentRowsSelected[0]['index']]
+                  // check/uncheck single
+                  if (rowsSelected.indexOf(currentRowsSelected[0]['index']) > -1) {
+                    // selected
+                    setSelectedEntities(
+                      [...selectedEntities, _item['id']]
+                    )
+                    setSelectedEntitiesInPage(
+                      [...selectedEntitiesInPage, currentRowsSelected[0]['index']]
+                    )
+                  } else {
+                    // deselected
+                    let _entities = [...selectedEntities]
+                    _entities = _entities.filter(a => a !== _item['id'])
+                    setSelectedEntities(_entities)
+                    let _entitiesIndex = selectedEntitiesInPage.filter(a => a !== currentRowsSelected[0]['index'])
+                    setSelectedEntitiesInPage(_entitiesIndex)
+                  }
+                } else if (currentRowsSelected.length === 0) {
+                  setSelectedEntities([])
+                  setSelectedEntitiesInPage([])
+                }
+              },
+              isRowSelectable: (dataIndex: number, selectedRows: any) => {
+                return canRowBeSelected(dataIndex, uploadData[dataIndex])
+              }
+            }}
+            components={{
+              icons: {
+                FilterIcon
+              }
+            }}
+          />
+        </div>
         <div className="button-container" style={{marginLeft:0, width: '100%'}}>
           <Grid container direction='row' justifyContent='space-between'>
             <Grid item>

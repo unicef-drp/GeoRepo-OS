@@ -24,7 +24,8 @@ from dashboard.models import (
     EntitiesUserConfig,
     TempUsage,
     PrivacyLevel,
-    LayerUploadSessionActionLog
+    LayerUploadSessionActionLog,
+    BatchEntityEdit
 )
 from georepo.models import TemporaryTilingConfig
 from georepo.utils.layers import fetch_layer_file_metadata
@@ -90,8 +91,16 @@ def run_comparison_boundary_action(modeladmin, request, queryset):
         )
 
 
+@admin.action(description='Patch upload summaries stats')
+def run_patch_upload_summaries_stats(modeladmin, request, queryset):
+    from dashboard.tasks import patch_summaries_stat_by_upload_session
+    for upload_session in queryset:
+        patch_summaries_stat_by_upload_session.delay(upload_session.id)
+
+
 class LayerUploadSessionAdmin(admin.ModelAdmin):
     list_display = ('id', 'source', 'status', 'started_at', 'modified_at')
+    actions = [run_patch_upload_summaries_stats]
 
 
 class EntityUploadAdmin(admin.ModelAdmin):
@@ -237,6 +246,17 @@ class TemporaryTilingConfigAdmin(admin.ModelAdmin):
                     'simplify_tolerance', 'created_at')
 
 
+@admin.action(description='Clear Old Export Data')
+def clear_old_exported_data(modeladmin, request, queryset):
+    from dashboard.tasks import remove_old_exported_data
+    remove_old_exported_data.delay()
+    modeladmin.message_user(
+        request,
+        '/media/export_data/ directory will be cleared in background!',
+        messages.SUCCESS
+    )
+
+
 @admin.action(description='Clear Temp Directory')
 def clear_temp_directory_action(modeladmin, request, queryset):
     from dashboard.tasks import clear_temp_directory
@@ -262,7 +282,8 @@ def calculate_temp_directory_action(modeladmin, request, queryset):
 class TempUsageAdmin(admin.ModelAdmin):
     list_display = ('report_date', 'get_total_size', 'get_report')
     readonly_fields = ['report_file']
-    actions = [clear_temp_directory_action, calculate_temp_directory_action]
+    actions = [clear_temp_directory_action, calculate_temp_directory_action,
+               clear_old_exported_data]
 
     def get_urls(self):
         urls = super(TempUsageAdmin, self).get_urls()
@@ -306,6 +327,14 @@ class LayerUploadSessionActionLogAdmin(admin.ModelAdmin):
     list_filter = ('session', 'action', 'status')
 
 
+class BatchEntityEditAdmin(admin.ModelAdmin):
+    list_display = ('dataset', 'uuid', 'task_id', 'status',
+                    'total_count', 'success_count',
+                    'submitted_on', 'submitted_by',
+                    'started_at', 'finished_at')
+    list_filter = ('dataset', 'status')
+
+
 admin.site.register(LayerFile, LayerFileAdmin)
 admin.site.register(LayerUploadSession, LayerUploadSessionAdmin)
 admin.site.register(EntityUploadStatus, EntityUploadAdmin)
@@ -321,3 +350,4 @@ admin.site.register(TempUsage, TempUsageAdmin)
 admin.site.register(PrivacyLevel, PrivacyLevelAdmin)
 admin.site.register(LayerUploadSessionActionLog,
                     LayerUploadSessionActionLogAdmin)
+admin.site.register(BatchEntityEdit, BatchEntityEditAdmin)

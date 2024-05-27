@@ -52,24 +52,15 @@ class TestViewResourceSyncList(TestCase):
         list_view = ViewResourcesSyncList.as_view()
         response = list_view(request, self.dataset_view_1.id)
         expected_result = {
+            'centroid_size': '0B',
+            'centroid_sync_progress': 0.0,
+            'centroid_sync_status': 'out_of_sync',
             'id': self.dsv_resources_1.id,
             'uuid': str(self.dsv_resources_1.uuid),
             'privacy_level': 4,
             'vector_tile_sync_status': 'out_of_sync',
-            'geojson_sync_status': 'out_of_sync',
-            'shapefile_sync_status': 'out_of_sync',
-            'kml_sync_status': 'out_of_sync',
-            'topojson_sync_status': 'out_of_sync',
             'vector_tiles_progress': 0.0,
-            'geojson_progress': 0.0,
-            'shapefile_progress': 0.0,
-            'kml_progress': 0.0,
-            'topojson_progress': 0.0,
             'vector_tiles_size': '0B',
-            'geojson_size': '0B',
-            'shapefile_size': '0B',
-            'kml_size': '0B',
-            'topojson_size': '0B'
         }
         self.assertEqual(
             len(response.data),

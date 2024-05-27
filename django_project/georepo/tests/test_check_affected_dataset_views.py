@@ -64,7 +64,6 @@ class TestCheckAffectedViews(TestCase):
             name='custom',
             created_by=self.creator,
             dataset=self.dataset_1,
-            product_sync_status=DatasetView.SyncStatus.SYNCED,
             vector_tile_sync_status=DatasetView.SyncStatus.SYNCED,
             is_static=False,
             query_string=(
@@ -85,7 +84,7 @@ class TestCheckAffectedViews(TestCase):
                 entity_count__gt=0
             )
             for resource in resources:
-                resource.set_synced(vector_tiles=True, product=True)
+                resource.set_synced(vector_tiles=True, centroid=True)
         grant_dataset_manager(self.dataset_view_1.dataset, self.creator)
         self.dataset_view_1.refresh_from_db()
 
@@ -95,25 +94,17 @@ class TestCheckAffectedViews(TestCase):
         contains this entity. Checking uses 1 entity.
         """
         self.assertEqual(
-            self.dataset_view_1.product_sync_status,
-            DatasetView.SyncStatus.SYNCED
-        )
-        self.assertEqual(
             self.dataset_view_1.vector_tile_sync_status,
             DatasetView.SyncStatus.SYNCED
         )
         check_affected_dataset_views(
             dataset_id=self.dataset_1.id,
-            entity_id=self.geographical_entity.id
+            entity_id=[self.geographical_entity.id]
         )
 
         for dataset_view in DatasetView.objects.filter(dataset=self.dataset_1):
             self.assertEqual(
                 dataset_view.dataset.sync_status,
-                DatasetView.SyncStatus.OUT_OF_SYNC
-            )
-            self.assertEqual(
-                dataset_view.product_sync_status,
                 DatasetView.SyncStatus.OUT_OF_SYNC
             )
             self.assertEqual(
@@ -126,10 +117,6 @@ class TestCheckAffectedViews(TestCase):
         Test Dataset View containing specific entity. All Dataset View
         contains this entity. Checking uses unique_codes
         """
-        self.assertEqual(
-            self.dataset_view_1.product_sync_status,
-            DatasetView.SyncStatus.SYNCED
-        )
         self.assertEqual(
             self.dataset_view_1.vector_tile_sync_status,
             DatasetView.SyncStatus.SYNCED
@@ -145,10 +132,6 @@ class TestCheckAffectedViews(TestCase):
                 DatasetView.SyncStatus.OUT_OF_SYNC
             )
             self.assertEqual(
-                dataset_view.product_sync_status,
-                DatasetView.SyncStatus.OUT_OF_SYNC
-            )
-            self.assertEqual(
                 dataset_view.vector_tile_sync_status,
                 DatasetView.SyncStatus.OUT_OF_SYNC
             )
@@ -158,10 +141,6 @@ class TestCheckAffectedViews(TestCase):
         Test Dataset View containing specific entity. Only 2 Dataset
         Views contain this entity.
         """
-        self.assertEqual(
-            self.dataset_view_1.product_sync_status,
-            DatasetView.SyncStatus.SYNCED
-        )
         self.assertEqual(
             self.dataset_view_1.vector_tile_sync_status,
             DatasetView.SyncStatus.SYNCED
@@ -177,16 +156,12 @@ class TestCheckAffectedViews(TestCase):
         calculate_entity_count_in_view(self.dataset_view_1)
         check_affected_dataset_views(
             dataset_id=self.dataset_1.id,
-            entity_id=self.geographical_entity.id
+            entity_id=[self.geographical_entity.id]
         )
 
         # Dataset View 1 is not affected, since it does not contain the entity.
         # default status if no entity is out of synced
         self.dataset_view_1.refresh_from_db()
-        self.assertEqual(
-            self.dataset_view_1.product_sync_status,
-            DatasetView.SyncStatus.OUT_OF_SYNC
-        )
         self.assertEqual(
             self.dataset_view_1.vector_tile_sync_status,
             DatasetView.SyncStatus.OUT_OF_SYNC
@@ -199,10 +174,6 @@ class TestCheckAffectedViews(TestCase):
         for dataset_view in affected_views:
             self.assertEqual(
                 dataset_view.dataset.sync_status,
-                DatasetView.SyncStatus.OUT_OF_SYNC
-            )
-            self.assertEqual(
-                dataset_view.product_sync_status,
                 DatasetView.SyncStatus.OUT_OF_SYNC
             )
             self.assertEqual(
@@ -219,7 +190,6 @@ class TestCheckAffectedViews(TestCase):
             name='custom-1',
             created_by=self.creator,
             dataset=self.dataset_1,
-            product_sync_status=DatasetView.SyncStatus.SYNCED,
             vector_tile_sync_status=DatasetView.SyncStatus.SYNCED,
             is_static=True,
             query_string=(
@@ -231,22 +201,16 @@ class TestCheckAffectedViews(TestCase):
         init_view_privacy_level(static_view)
         # init view entity count
         calculate_entity_count_in_view(static_view)
-        static_view.product_sync_status = DatasetView.SyncStatus.SYNCED
         static_view.vector_tile_sync_status = DatasetView.SyncStatus.SYNCED
-        static_view.save(update_fields=['product_sync_status',
-                                        'vector_tile_sync_status'])
+        static_view.save(update_fields=['vector_tile_sync_status'])
 
         check_affected_dataset_views(
             dataset_id=self.dataset_1.id,
-            entity_id=self.geographical_entity.id
+            entity_id=[self.geographical_entity.id]
         )
 
         # Static View is not affected.
         static_view.refresh_from_db()
-        self.assertEqual(
-            static_view.product_sync_status,
-            DatasetView.SyncStatus.SYNCED
-        )
         self.assertEqual(
             static_view.vector_tile_sync_status,
             DatasetView.SyncStatus.SYNCED
@@ -259,10 +223,6 @@ class TestCheckAffectedViews(TestCase):
         for static_view in affected_views:
             self.assertEqual(
                 static_view.dataset.sync_status,
-                DatasetView.SyncStatus.OUT_OF_SYNC
-            )
-            self.assertEqual(
-                static_view.product_sync_status,
                 DatasetView.SyncStatus.OUT_OF_SYNC
             )
             self.assertEqual(

@@ -11,7 +11,7 @@ import os  # noqa
 from django.utils.translation import gettext_lazy as _
 
 from .contrib import *  # noqa
-from .utils import code_release_version
+from .utils import code_release_version, code_commit_release_version
 
 ALLOWED_HOSTS = ['*']
 ADMINS = (
@@ -66,38 +66,6 @@ EXPORT_FOLDER_OUTPUT = os.path.join(
 
 if not os.path.exists(EXPORT_FOLDER_OUTPUT):
     os.makedirs(EXPORT_FOLDER_OUTPUT)
-
-GEOJSON_FOLDER_OUTPUT = os.path.join(
-    EXPORT_FOLDER_OUTPUT,
-    'geojson'
-)
-
-if not os.path.exists(GEOJSON_FOLDER_OUTPUT):
-    os.makedirs(GEOJSON_FOLDER_OUTPUT)
-
-SHAPEFILE_FOLDER_OUTPUT = os.path.join(
-    EXPORT_FOLDER_OUTPUT,
-    'shapefile'
-)
-
-if not os.path.exists(SHAPEFILE_FOLDER_OUTPUT):
-    os.makedirs(SHAPEFILE_FOLDER_OUTPUT)
-
-KML_FOLDER_OUTPUT = os.path.join(
-    EXPORT_FOLDER_OUTPUT,
-    'kml'
-)
-
-if not os.path.exists(KML_FOLDER_OUTPUT):
-    os.makedirs(KML_FOLDER_OUTPUT)
-
-TOPOJSON_FOLDER_OUTPUT = os.path.join(
-    EXPORT_FOLDER_OUTPUT,
-    'topojson'
-)
-
-if not os.path.exists(TOPOJSON_FOLDER_OUTPUT):
-    os.makedirs(TOPOJSON_FOLDER_OUTPUT)
 
 # use custom filter to hide other sensitive informations
 DEFAULT_EXCEPTION_REPORTER_FILTER = (
@@ -165,3 +133,7 @@ if USE_AZURE:
         os.makedirs(FILE_UPLOAD_TEMP_DIR)
 
 CODE_RELEASE_VERSION = code_release_version()
+CODE_COMMIT_HASH = code_commit_release_version()
+EXPORT_DATA_EXPIRY_IN_HOURS = int(os.environ.get(
+    'EXPORT_DATA_EXPIRY_IN_HOURS', '48'
+))

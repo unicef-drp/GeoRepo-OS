@@ -1,0 +1,17 @@
+.ExportViewDetail {
+    padding: 16px;
+    text-align: left;
+    
+    .RowItem {
+        min-height: 65px;
+        .RowItemContainer {
+            align-items: center;
+        }
+    }
+
+    .SimplifiedCheckBox {
+        .MuiFormControlLabel-label {
+            line-height: unset;
+        }
+    }
+}

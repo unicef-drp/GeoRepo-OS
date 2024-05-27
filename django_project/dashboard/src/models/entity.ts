@@ -11,7 +11,8 @@ export interface EntityName {
     default: boolean,
     language_id: number,
     name: string,
-    uuid?: string
+    uuid?: string,
+    label?: string
 }
 
 
@@ -25,3 +26,14 @@ export default interface EntityEditInterface {
     label: string,
     is_dirty: boolean
 }
+
+export interface EntityEditHistoryItemInterface {
+    object_id: number,
+    type: string,
+    status_text: string,
+    date: Date,
+    user_first_name: string,
+    user_last_name: string,
+    summary_text?: string
+}
+

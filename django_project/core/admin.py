@@ -60,7 +60,9 @@ class SitePreferencesAdmin(admin.ModelAdmin):
         ('API Configs', {
             'fields': (
                 'api_config',
-                'api_latest_version'
+                'api_latest_version',
+                'search_similarity',
+                'search_simplify_tolerance'
             )
         }),
         ('Exporter Configs', {
@@ -86,6 +88,16 @@ class SitePreferencesAdmin(admin.ModelAdmin):
         ('Swagger UI', {
             'fields': (
                 'swagger_api_documentation_link',
+            )
+        }),
+        ('Azure Blob Storage', {
+            'fields': (
+                'blob_storage_domain_whitelist',
+            )
+        }),
+        ('Login Page', {
+            'fields': (
+                'login_help_text',
             )
         })
     )

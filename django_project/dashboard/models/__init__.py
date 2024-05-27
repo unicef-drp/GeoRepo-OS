@@ -9,3 +9,4 @@ from dashboard.models.maintenance import *
 from dashboard.models.batch_review import *
 from dashboard.models.privacy_level import *
 from dashboard.models.temp_usage import *
+from dashboard.models.batch_edit import *

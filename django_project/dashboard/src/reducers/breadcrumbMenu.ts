@@ -57,6 +57,17 @@ export const breadcrumbSlice = createSlice({
       state.currentMenu = action.payload.name
       state.menus.push(action.payload)
     },
+    appendMenu: (state, action: PayloadAction<BreadcrumbMenuInterface>) => {
+      if (typeof state.menus === 'undefined') {
+        state.menus = []
+      }
+      for (const menu of state.menus) {
+        if (menu.id === action.payload.id) {
+          return
+        }
+      }
+      state.menus.push(action.payload)
+    },
     revertMenu: (state, action: PayloadAction<string>) => {
        if (typeof state.menus === 'undefined') {
          return
@@ -76,7 +87,7 @@ export const breadcrumbSlice = createSlice({
 
 export const {
   changeCurrentMenu, changeCurrentDataset, changeMenu,
-  addMenu, revertMenu, updateMenu } = breadcrumbSlice.actions;
+  addMenu, revertMenu, updateMenu, appendMenu } = breadcrumbSlice.actions;
 
 export default breadcrumbSlice.reducer;
 

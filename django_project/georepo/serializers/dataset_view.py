@@ -13,6 +13,9 @@ from georepo.serializers.common import APIResponseModelSerializer
 from georepo.models.entity import GeographicalEntity, EntityId
 from georepo.models.dataset_view import DatasetView, DatasetViewResource
 from georepo.models.dataset import DatasetAdminLevelName
+from georepo.models.export_request import (
+    ExportRequest, ExportRequestStatusText
+)
 from georepo.utils.dataset_view import (
     get_view_resource_from_view
 )
@@ -29,6 +32,7 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
     vector_tiles = serializers.SerializerMethodField()
     bbox = serializers.SerializerMethodField()
     tags = TagListSerializerField()
+    max_zoom = serializers.SerializerMethodField()
 
     class Meta:
         swagger_schema_fields = {
@@ -66,6 +70,13 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
                     title='URL to view vector tile',
                     type=openapi.TYPE_STRING,
                 ),
+                'max_zoom': openapi.Schema(
+                    title=(
+                        'Maximum zoom level, useful for '
+                        'setting overzoom in map'
+                    ),
+                    type=openapi.TYPE_NUMBER,
+                ),
                 'bbox': openapi.Schema(
                     title='Bounding Box of the view',
                     type=openapi.TYPE_ARRAY,
@@ -98,6 +109,7 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
                     '21c8b48e-584d-4e76-b0d2-97db8208558f'
                     '/{z}/{x}/{y}?t=1675079531'
                 ),
+                'max_zoom': 8,
                 'bbox': [-121.5, 47.25, -120.4, 47.8],
                 'tags': ['latest']
             }
@@ -111,6 +123,7 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
             'root_entity',
             'last_update',
             'vector_tiles',
+            'max_zoom',
             'bbox',
             'tags'
         ]
@@ -208,6 +221,14 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
         resource = self.get_accessible_resource(obj, user_privacy_level)
         return self.view_bbox(resource)
 
+    def get_max_zoom(self, obj: DatasetView):
+        # find the correct resource based on privacy level
+        if 'user_privacy_level' not in self.context:
+            return None
+        user_privacy_level = self.context['user_privacy_level']
+        resource = self.get_accessible_resource(obj, user_privacy_level)
+        return resource.max_zoom if resource else None
+
 
 class DatasetViewItemForUserSerializer(DatasetViewItemSerializer):
 
@@ -231,6 +252,17 @@ class DatasetViewItemForUserSerializer(DatasetViewItemSerializer):
             return bbox
         resource = self.get_accessible_resource(obj, user_privacy_level)
         return self.view_bbox(resource)
+
+    def get_max_zoom(self, obj: DatasetView):
+        # find the correct resource based on privacy level
+        obj_checker = self.context['obj_checker']
+        user_privacy_level = get_view_permission_privacy_level(
+            obj_checker, obj.dataset, obj
+        )
+        if user_privacy_level < obj.min_privacy_level:
+            return None
+        resource = self.get_accessible_resource(obj, user_privacy_level)
+        return resource.max_zoom if resource else None
 
 
 class ViewAdminLevelSerializer(serializers.ModelSerializer):
@@ -336,6 +368,7 @@ class DatasetViewDetailSerializer(TaggitSerializer,
     dataset_levels = serializers.SerializerMethodField()
     possible_id_types = serializers.SerializerMethodField()
     bbox = serializers.SerializerMethodField()
+    max_zoom = serializers.SerializerMethodField()
 
     def get_vector_tiles(self, obj: DatasetView):
         url = None
@@ -470,6 +503,16 @@ class DatasetViewDetailSerializer(TaggitSerializer,
         bbox = [float(b) for b in bbox]
         return bbox
 
+    def get_max_zoom(self, obj: DatasetView):
+        # find the correct resource based on privacy level
+        if 'user_privacy_level' not in self.context:
+            return None
+        user_privacy_level = self.context['user_privacy_level']
+        resource = obj.datasetviewresource_set.filter(
+            privacy_level=obj.get_resource_level_for_user(user_privacy_level)
+        ).first()
+        return resource.max_zoom if resource else None
+
     class Meta:
         swagger_schema_fields = {
             'type': openapi.TYPE_OBJECT,
@@ -506,6 +549,13 @@ class DatasetViewDetailSerializer(TaggitSerializer,
                 'vector_tiles': openapi.Schema(
                     title='URL to view vector tile',
                     type=openapi.TYPE_STRING,
+                ),
+                'max_zoom': openapi.Schema(
+                    title=(
+                        'Maximum zoom level, useful for '
+                        'setting overzoom in map'
+                    ),
+                    type=openapi.TYPE_NUMBER,
                 ),
                 'tags': openapi.Schema(
                     title='Tag list',
@@ -565,7 +615,8 @@ class DatasetViewDetailSerializer(TaggitSerializer,
                     'uuid',
                     'PCode'
                 ],
-                'bbox': [-121.5, 47.25, -120.4, 47.8]
+                'bbox': [-121.5, 47.25, -120.4, 47.8],
+                'max_zoom': 8
             }
         }
         model = DatasetView
@@ -578,8 +629,192 @@ class DatasetViewDetailSerializer(TaggitSerializer,
             'last_update',
             'status',
             'vector_tiles',
+            'max_zoom',
             'tags',
             'dataset_levels',
             'possible_id_types',
             'bbox'
+        ]
+
+
+class ExportRequestStatusSerializer(APIResponseModelSerializer):
+    status_code = serializers.CharField(source='status_text')
+    view = serializers.SerializerMethodField()
+    request_timestamp = serializers.DateTimeField(source='submitted_on')
+    date_completed = serializers.DateTimeField(source='finished_at')
+    error_message = serializers.SerializerMethodField()
+    simplification_level = serializers.SerializerMethodField()
+    download_url = serializers.SerializerMethodField()
+
+    def get_view(self, obj: ExportRequest):
+        return obj.dataset_view.name
+
+    def get_error_message(self, obj: ExportRequest):
+        return obj.errors if obj.errors else None
+
+    def get_simplification_level(self, obj: ExportRequest):
+        return (
+            obj.simplification_zoom_level if
+            obj.is_simplified_entities else None
+        )
+
+    def get_download_url(self, obj: ExportRequest):
+        if obj.status_text == ExportRequestStatusText.EXPIRED:
+            return None
+        return obj.download_link
+
+    class Meta:
+        filters_schema_fields = {
+            'countries': openapi.Schema(
+                title='Country name list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'entity_types': openapi.Schema(
+                title='Entity type list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'names': openapi.Schema(
+                title='Entity name list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'ucodes': openapi.Schema(
+                title='Ucode list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'revisions': openapi.Schema(
+                title='Revision list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_NUMBER
+                )
+            ),
+            'levels': openapi.Schema(
+                title='Admin level list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_INTEGER
+                )
+            ),
+            'valid_on': openapi.Schema(
+                title='Date when there is revision of entity',
+                type=openapi.TYPE_STRING
+            ),
+            'admin_level_names': openapi.Schema(
+                title='Admin level name list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'sources': openapi.Schema(
+                title='Entity source list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'privacy_levels': openapi.Schema(
+                title='Privacy level list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_INTEGER
+                )
+            ),
+            'search_text': openapi.Schema(
+                title='Search text',
+                type=openapi.TYPE_STRING
+            ),
+        }
+        swagger_schema_fields = {
+            'type': openapi.TYPE_OBJECT,
+            'title': 'Download Job Detail',
+            'properties': {
+                'view': openapi.Schema(
+                    title='View Name',
+                    type=openapi.TYPE_STRING
+                ),
+                'uuid': openapi.Schema(
+                    title='Job UUID',
+                    type=openapi.TYPE_STRING,
+                ),
+                'status_code': openapi.Schema(
+                    title='Job status',
+                    type=openapi.TYPE_STRING,
+                ),
+                'format': openapi.Schema(
+                    title='Format of the exported product',
+                    type=openapi.TYPE_STRING,
+                ),
+                'request_timestamp': openapi.Schema(
+                    title='Request date time',
+                    type=openapi.TYPE_STRING,
+                ),
+                'date_completed': openapi.Schema(
+                    title='Job completed date time',
+                    type=openapi.TYPE_STRING,
+                ),
+                'error_message': openapi.Schema(
+                    title='Error message when job is stopped',
+                    type=openapi.TYPE_STRING,
+                ),
+                'simplification_level': openapi.Schema(
+                    title='Simplification zoom level',
+                    type=openapi.TYPE_STRING,
+                ),
+                'filters': openapi.Schema(
+                    title='Entities filter',
+                    type=openapi.TYPE_OBJECT,
+                    properties=filters_schema_fields
+                ),
+                'download_url': openapi.Schema(
+                    title='Download link for the zipped product',
+                    type=openapi.TYPE_STRING,
+                ),
+                'download_time_remaining': openapi.Schema(
+                    title='Remaining time before the download link is expired',
+                    type=openapi.TYPE_STRING,
+                ),
+            },
+            'required': ['uuid', 'view', 'status_code'],
+            'example': {
+                'view': 'World (Latest)',
+                'uuid': 'b815c0da-e053-44da-b040-b620777ff7bc',
+                'status_code': 'ready',
+                'format': 'GEOJSON',
+                'request_timestamp': '2022-08-15T08:09:15.049806Z',
+                'date_completed': '2022-08-15T08:15:15.049806Z',
+                'error_message': None,
+                'simplification_level': None,
+                'filters': {
+                    'levels': [0, 1]
+                },
+                'download_url': '',
+                'download_time_remaining': '1 hour'
+            }
+        }
+        model = ExportRequest
+        fields = [
+            'uuid',
+            'status_code',
+            'view',
+            'format',
+            'request_timestamp',
+            'date_completed',
+            'error_message',
+            'simplification_level',
+            'filters',
+            'download_url',
+            'download_time_remaining'
         ]

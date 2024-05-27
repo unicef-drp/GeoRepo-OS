@@ -125,7 +125,7 @@ class SitePreferences(SingletonModel):
     search_similarity = models.FloatField(
         null=True,
         blank=True,
-        default=0.3,
+        default=0.4,
         help_text='Search Similarity Threshold for fuzzy search.'
     )
     # -----------------------------------------------
@@ -258,6 +258,28 @@ class SitePreferences(SingletonModel):
         default='',
         help_text=_(
             'Documentation Link shown at the top of Swagger UI.'
+        ),
+    )
+
+    # -----------------------------------------------
+    # Blob storage domain whitelist
+    # -----------------------------------------------
+    blob_storage_domain_whitelist = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            'Whitelist for domain to be set in CORS rule '
+            'of azure blob storage.'
+        )
+    )
+
+    # -----------------------------------------------
+    # Login page config
+    # -----------------------------------------------
+    login_help_text = models.TextField(
+        default='',
+        help_text=_(
+            'Help text to show in login page.'
         ),
     )
 

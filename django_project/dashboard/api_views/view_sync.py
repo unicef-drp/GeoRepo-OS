@@ -1,8 +1,6 @@
 import math
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
-from celery.result import AsyncResult
-from core.celery import app
 from django.db.models.expressions import Q
 from django.core.paginator import Paginator
 from rest_framework.permissions import IsAuthenticated
@@ -15,14 +13,16 @@ from dashboard.serializers.view import (
     DatasetViewResourceSyncSerializer,
     ViewSyncSerializer
 )
+from georepo.tasks.dataset_view import (
+    do_patch_centroid_files_for_view
+)
 from dashboard.tasks import (
-    generate_view_export_data,
     view_simplification_task
 )
 from georepo.models import (
     Dataset,
-    DatasetView, DatasetViewResource,
-    DatasetViewTilingConfig
+    DatasetView, DatasetViewTilingConfig,
+    DatasetViewResource
 )
 from georepo.utils.dataset_view import (
     trigger_generate_vector_tile_for_view
@@ -34,6 +34,33 @@ from georepo.utils.uuid_helper import is_valid_uuid
 from georepo.utils.celery_helper import cancel_task
 
 
+MAPPED_SYNC_STATUS = {
+    'Out of Sync': DatasetView.SyncStatus.OUT_OF_SYNC,
+    'Syncing': DatasetView.SyncStatus.SYNCING,
+    'Terminated unexpectedly': DatasetView.SyncStatus.ERROR,
+    'Done': DatasetView.SyncStatus.SYNCED,
+}
+
+
+def convert_sync_status_filter_value(status_list):
+    mapped_status = []
+    for status in status_list:
+        if status in MAPPED_SYNC_STATUS:
+            mapped_status.append(MAPPED_SYNC_STATUS[status])
+    return mapped_status
+
+
+def trigger_sync_centroid_file(view: DatasetView):
+    resources = DatasetViewResource.objects.filter(
+        dataset_view=view,
+        entity_count__gt=0
+    ).order_by('id')
+    for resource in resources:
+        resource.centroid_sync_status = DatasetViewResource.SyncStatus.SYNCING
+        resource.save(update_fields=['centroid_sync_status'])
+    do_patch_centroid_files_for_view.delay(view.id)
+
+
 class ViewSyncList(AzureAuthRequiredMixin, APIView):
     """
     API view to list views sync
@@ -41,33 +68,38 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def _filter_sync_status(self, request):
-        sync_status_options = dict(request.data).get('sync_status', [])
-        if not sync_status_options:
-            return Q()
-
+        sync_status = request.data.get('vector_tile_sync_status', [])
+        tiling_config_status = request.data.get('is_tiling_config_match', [])
+        simplification_status = request.data.get('simplification_status', [])
+        centroid_sync_status = request.data.get('centroid_sync_status', [])
         filters = Q()
-
-        if 'Tiling config does not match dataset' in sync_status_options:
+        if sync_status:
             filters |= Q(
-                is_tiling_config_match=False
+                vector_tile_sync_status__in=convert_sync_status_filter_value(
+                    sync_status)
             )
-        if 'Vector tiles not up to date' in sync_status_options:
+        if centroid_sync_status:
             filters |= Q(
-                vector_tile_sync_status=DatasetView.SyncStatus.OUT_OF_SYNC
+                centroid_sync_status__in=convert_sync_status_filter_value(
+                    centroid_sync_status)
             )
-        if 'Data products not up to date' in sync_status_options:
-            filters |= Q(
-                product_sync_status=DatasetView.SyncStatus.OUT_OF_SYNC
+        if tiling_config_status:
+            tiling_filter = (
+                tiling_config_status[0] == 'Tiling config matches dataset'
             )
-        if 'Syncing' in sync_status_options:
             filters |= Q(
-                Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCING) |
-                Q(product_sync_status=DatasetView.SyncStatus.SYNCING)
+                is_tiling_config_match=tiling_filter
             )
-        if 'Synced' in sync_status_options:
+        if simplification_status:
+            status_list = convert_sync_status_filter_value(
+                simplification_status)
             filters |= Q(
-                Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED) &
-                Q(product_sync_status=DatasetView.SyncStatus.SYNCED)
+                Q(is_tiling_config_match=True) &
+                Q(dataset__simplification_sync_status__in=status_list)
+            )
+            filters |= Q(
+                Q(is_tiling_config_match=False) &
+                Q(simplification_sync_status__in=status_list)
             )
 
         return filters
@@ -91,12 +123,8 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
         )
 
     def _filter_queryset(self, queryset, request):
-        dataset_filter = self._filter_dataset(request)
         sync_status_filter = self._filter_sync_status(request)
-        args = Q()
-        args &= dataset_filter
-        args &= sync_status_filter
-        return queryset.filter(*(args,))
+        return queryset.filter(sync_status_filter)
 
     def _search_queryset(self, queryset, request):
         search_text = request.data.get('search_text', '')
@@ -107,9 +135,6 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
             field.get_internal_type() in
             ['UUIDField', 'CharField', 'TextField']
         ]
-        char_fields.extend([
-            'dataset__label'
-        ])
         q_args = [
             Q(**{f"{field}__icontains": search_text}) for field in char_fields
         ]
@@ -128,12 +153,21 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
             sort_direction = 'asc'
 
         ordering_mapping = {
-            'dataset': 'dataset__label'
+            'name': 'name'
         }
         sort_by = ordering_mapping.get(sort_by, sort_by)
         ordering = sort_by if sort_direction == 'asc' else f"-{sort_by}"
         queryset = queryset.order_by(ordering)
         return queryset
+
+    def _select_all_queryset(self, views_querysets):
+        # exclude synced and syncing
+        querysets = views_querysets.exclude(
+            Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCING) |
+            Q(vector_tile_sync_status=DatasetView.SyncStatus.SYNCED)
+        )
+        querysets = querysets.values_list('id', flat=True)
+        return querysets
 
     def post(self, *args, **kwargs):
         dataset_id = kwargs.get('dataset_id', None)
@@ -175,7 +209,7 @@ class ViewSyncList(AzureAuthRequiredMixin, APIView):
             'page': page,
             'total_page': total_page,
             'page_size': page_size,
-            'results': output,
+            'results': output
         })
 
 
@@ -292,69 +326,23 @@ class SynchronizeView(AzureAuthRequiredMixin, APIView):
         if 'tiling_config' in sync_options:
             for view in views:
                 view.match_tiling_config()
-        if len({'vector_tiles', 'products'}.difference(
+        if len({'vector_tiles', 'centroid'}.difference(
             set(sync_options))
         ) == 0:
             for view in views:
                 trigger_generate_vector_tile_for_view(
-                    view,
-                    export_data=True
+                    view
                 )
+                trigger_sync_centroid_file(view)
         # if sync only vector tiles
         elif 'vector_tiles' in sync_options:
             for view in views:
                 trigger_generate_vector_tile_for_view(
-                    view,
-                    export_data=False
+                    view
                 )
-        elif 'products' in sync_options:
+        elif 'centroid' in sync_options:
             for view in views:
-                view.product_sync_status = DatasetView.SyncStatus.SYNCING
-                view.save(
-                    update_fields=['product_sync_status']
-                )
-                view_resources = DatasetViewResource.objects.filter(
-                    dataset_view=view
-                )
-                for view_resource in view_resources:
-                    if view_resource.product_task_id:
-                        res = AsyncResult(view_resource.product_task_id)
-                        if not res.ready():
-                            # find if there is running task and stop it
-                            app.control.revoke(
-                                view_resource.product_task_id,
-                                terminate=True,
-                                signal='SIGKILL'
-                            )
-                    view_resource.status = (
-                        DatasetView.DatasetViewStatus.PENDING
-                    )
-                    view_resource.geojson_progress = 0
-                    view_resource.shapefile_progress = 0
-                    view_resource.kml_progress = 0
-                    view_resource.topojson_progress = 0
-                    view_resource.geojson_sync_status = (
-                        DatasetView.SyncStatus.SYNCING
-                    )
-                    view_resource.shapefile_sync_status = (
-                        DatasetView.SyncStatus.SYNCING
-                    )
-                    view_resource.kml_sync_status = (
-                        DatasetView.SyncStatus.SYNCING
-                    )
-                    view_resource.topojson_sync_status = (
-                        DatasetView.SyncStatus.SYNCING
-                    )
-                    view_resource.save(update_fields=[
-                        'status', 'geojson_progress', 'shapefile_progress',
-                        'kml_progress', 'topojson_progress',
-                        'shapefile_sync_status', 'kml_sync_status',
-                        'topojson_sync_status', 'geojson_sync_status'
-                    ])
-                    task = generate_view_export_data.delay(
-                        view_resource.id)
-                    view_resource.product_task_id = task.id
-                    view_resource.save(update_fields=['product_task_id'])
+                trigger_sync_centroid_file(view)
         elif 'simplify' in sync_options:
             for view in views:
                 # check if view has custom tiling config
@@ -394,19 +382,12 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
         return status, progress
 
     def get_dataset_status(self, obj: Dataset):
-        vt_sync_status = set(
+        all_status = set(
             obj.datasetview_set.all().values_list(
                 'vector_tile_sync_status',
                 flat=True
             ).distinct()
         )
-        product_sync_status = set(
-            obj.datasetview_set.all().values_list(
-                'product_sync_status',
-                flat=True
-            ).distinct()
-        )
-        all_status = vt_sync_status.union(product_sync_status)
         if all_status == {obj.SyncStatus.SYNCED}:
             return obj.SyncStatus.SYNCED
         elif obj.SyncStatus.SYNCING in all_status:
@@ -419,8 +400,6 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
         all_status = [
             obj.vector_tile_sync_status,
         ]
-        if obj.product_sync_status not in all_status:
-            all_status.append(obj.product_sync_status)
         if all_status == [obj.SyncStatus.SYNCED]:
             return obj.SyncStatus.SYNCED
         elif obj.SyncStatus.SYNCING in all_status:
@@ -485,3 +464,29 @@ class FetchSyncStatus(AzureAuthRequiredMixin, APIView):
                 'sync_status': sync_status
             }
         )
+
+
+class ViewSyncSelectAllList(ViewSyncList):
+    """
+    API to fetch list of Id for select All
+    """
+    def post(self, *args, **kwargs):
+        dataset_id = kwargs.get('dataset_id', None)
+        (
+            _,
+            views_querysets
+        ) = get_views_for_user(self.request.user)
+        view_ids = [v.id for v in views_querysets]
+
+        filter_kwargs = {
+            'id__in': view_ids
+        }
+
+        if dataset_id:
+            filter_kwargs['dataset_id'] = dataset_id
+
+        views_querysets = DatasetView.objects.filter(**filter_kwargs)
+        views_querysets = self._search_queryset(views_querysets, self.request)
+        views_querysets = self._filter_queryset(views_querysets, self.request)
+        select_all_qs = self._select_all_queryset(views_querysets)
+        return Response(status=200, data=select_all_qs)

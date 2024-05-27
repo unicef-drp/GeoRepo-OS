@@ -347,6 +347,13 @@ main {
   }
 }
 
+// Link inside MUI Table
+.MuiTableCell-root {
+  a {
+    color: var(--primary-color);
+  }
+}
+
 .api-key-input {
   input:disabled {
     color: black;
@@ -354,7 +361,7 @@ main {
   }
 }
 
-.DatasetTabs {
+.DatasetTabs, .WizardTabs {
   &.MuiTabs-root {
     .MuiTab-root {
       min-height: 48px;
@@ -368,3 +375,23 @@ p {
     margin-block: 0;
   }
 }
+
+.vertical-center {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.bold-text {
+  font-weight: bold;
+}
+
+.TableCellLink {
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+.TableCellLink:hover {
+  color: var(--primary-color-transparent);
+}
+

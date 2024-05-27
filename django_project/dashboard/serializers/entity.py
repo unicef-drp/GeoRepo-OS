@@ -1,9 +1,16 @@
+import os
+from collections import OrderedDict
 from rest_framework import serializers
 from django.db.models import Q, Max
 from georepo.models.dataset import Dataset
 from georepo.models.entity import GeographicalEntity
 from georepo.models.entity import EntityName, EntityId, EntityType
-from dashboard.models import EntitiesUserConfig
+from dashboard.models import (
+    EntitiesUserConfig,
+    BatchEntityEdit,
+    EntityEditResult
+)
+from georepo.models.base_task_request import PENDING, PROCESSING, DONE
 
 
 class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
@@ -20,7 +27,6 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
     privacy_level = serializers.SerializerMethodField(source='privacy_level')
     other_name = serializers.SerializerMethodField(source='other_name')
     other_id = serializers.SerializerMethodField(source='other_id')
-    layer_file = serializers.SerializerMethodField(source='layer_file')
     approved_by = serializers.SerializerMethodField(source='approved_by')
     is_latest = serializers.SerializerMethodField(source='is_latest')
 
@@ -44,9 +50,6 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
 
     def get_other_id(self, obj):
         return obj['other_id']
-
-    def get_layer_file(self, obj):
-        return obj['layer_file']
 
     def get_approved_by(self, obj):
         return obj['approved_by']
@@ -78,7 +81,6 @@ class DasboardDatasetEntityListSerializer(serializers.ModelSerializer):
             'admin_level_name',
             'approved_by',
             'parent',
-            'layer_file',
             'ancestor',
             'privacy_level',
             'other_name',
@@ -245,12 +247,26 @@ class EntityNameListSerializer(serializers.ListSerializer):
         for item in items:
             obj = item.save(entity)
             results.append(obj)
+        # fix name index
+        entity_names = EntityName.objects.filter(
+            geographical_entity=entity
+        ).order_by('id')
+        idx = 0
+        for entity_name in entity_names:
+            entity_name.idx = idx
+            entity_name.skip_signal = True
+            entity_name.save(update_fields=['idx'])
+            idx += 1
         return results
 
 
 class EntityNameSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField()
     language_id = serializers.IntegerField(allow_null=True)
+
+    def validate_label(self, value):
+        stripped_value = value.strip() if value else ''
+        return stripped_value
 
     def validate_code(self, value):
         stripped_value = value.strip() if value else ''
@@ -269,6 +285,7 @@ class EntityNameSerializer(serializers.ModelSerializer):
         language = self.validated_data['language_id']
         name_value = self.validated_data['name']
         default = self.validated_data['default']
+        label = self.validated_data['label']
         if name_id > 0:
             try:
                 entity_name = EntityName.objects.get(
@@ -278,6 +295,7 @@ class EntityNameSerializer(serializers.ModelSerializer):
                 entity_name.default = default
                 entity_name.language_id = language
                 entity_name.skip_signal = True
+                entity_name.label = label
                 entity_name.save()
 
                 if default:
@@ -298,7 +316,8 @@ class EntityNameSerializer(serializers.ModelSerializer):
                 default=default,
                 geographical_entity=entity,
                 language_id=language,
-                idx=idx
+                idx=idx,
+                label=label
             )
             entity_name.skip_signal = True
             entity_name.save()
@@ -308,7 +327,7 @@ class EntityNameSerializer(serializers.ModelSerializer):
         model = EntityName
         list_serializer_class = EntityNameListSerializer
         fields = [
-            'id', 'default', 'name', 'language_id'
+            'id', 'default', 'name', 'language_id', 'label'
         ]
 
 
@@ -488,4 +507,163 @@ class EntityEditSerializer(serializers.ModelSerializer):
             'names',
             'codes',
             'label'
+        ]
+
+
+class BatchEntityEditSerializer(serializers.ModelSerializer):
+    has_file = serializers.SerializerMethodField()
+    has_preview = serializers.SerializerMethodField()
+    step = serializers.SerializerMethodField()
+    is_read_only = serializers.SerializerMethodField()
+    input_file_name = serializers.SerializerMethodField()
+    input_file_size = serializers.SerializerMethodField()
+    module = serializers.SerializerMethodField()
+    dataset = serializers.SerializerMethodField()
+
+    def get_has_file(self, obj: BatchEntityEdit):
+        return (
+            obj.input_file.name and
+            obj.input_file.storage.exists(obj.input_file.name)
+        )
+
+    def get_has_preview(self, obj: BatchEntityEdit):
+        if obj.preview_file.name:
+            return (
+                obj.status == PENDING and
+                obj.preview_file.storage.exists(obj.preview_file.name)
+            )
+        return False
+
+    def get_step(self, obj: BatchEntityEdit):
+        if not self.get_has_file(obj):
+            return 0
+        if obj.status == PENDING and obj.headers and obj.total_count > 0:
+            return 1
+        return 2
+
+    def get_is_read_only(self, obj: BatchEntityEdit):
+        return obj.status in [PROCESSING, DONE]
+
+    def get_input_file_name(self, obj: BatchEntityEdit):
+        if obj.input_file.name:
+            return os.path.basename(obj.input_file.name)
+        return None
+
+    def get_input_file_size(self, obj: BatchEntityEdit):
+        if self.get_has_file(obj):
+            return obj.input_file.size
+        return 0
+
+    def get_module(self, obj: BatchEntityEdit):
+        return obj.dataset.module.name
+
+    def get_dataset(self, obj: BatchEntityEdit):
+        return obj.dataset.label
+
+    class Meta:
+        model = BatchEntityEdit
+        fields = [
+            'id',
+            'uuid',
+            'status',
+            'dataset_id',
+            'id_fields',
+            'name_fields',
+            'ucode_field',
+            'error_notes',
+            'success_notes',
+            'total_count',
+            'success_count',
+            'error_count',
+            'progress',
+            'errors',
+            'has_file',
+            'step',
+            'is_read_only',
+            'headers',
+            'input_file_name',
+            'module',
+            'dataset',
+            'input_file_size',
+            'has_preview'
+        ]
+
+
+class BatchEntityEditListItemSerializer(serializers.ModelSerializer):
+    date = serializers.SerializerMethodField()
+    user = serializers.SerializerMethodField()
+    object_id = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+
+    def get_user(self, obj: BatchEntityEdit):
+        return obj.requester_name
+
+    def get_object_id(self, obj: BatchEntityEdit):
+        return obj.id
+
+    def get_summary(self, obj: BatchEntityEdit):
+        return obj.success_notes if obj.success_notes else '-'
+
+    def get_type(self, obj: BatchEntityEdit):
+        return 'Batch'
+
+    def get_date(self, obj: BatchEntityEdit):
+        return obj.submitted_on
+
+    class Meta:
+        model = BatchEntityEdit
+        fields = [
+            'date',
+            'type',
+            'user',
+            'status',
+            'summary',
+            'object_id',
+            'dataset_id',
+            'total_count',
+            'success_count',
+            'error_count',
+            'progress',
+        ]
+
+
+class EntityEditResultSerializer(serializers.ModelSerializer):
+
+    def to_representation(self, instance: EntityEditResult):
+        representation = super().to_representation(instance)
+        results = []
+        batch_edit: BatchEntityEdit = self.context.get('batch_edit')
+        for k, v in representation.items():
+            if k == 'new_codes':
+                for idx, id_field in enumerate(batch_edit.id_fields):
+                    name = id_field.get(
+                        'field', f'id_{idx}'
+                    )
+                    if idx < len(v):
+                        results.append((name, v[idx]))
+            elif k == 'new_names':
+                for idx, name_field in enumerate(batch_edit.name_fields):
+                    name = name_field.get(
+                        'field', f'name_{idx}'
+                    )
+                    if idx < len(v):
+                        results.append((name, v[idx]))
+            else:
+                results.append((k, v))
+        return OrderedDict(results)
+
+    class Meta:
+        model = EntityEditResult
+        fields = [
+            'id',
+            'country',
+            'level',
+            'ucode',
+            'default_name',
+            'default_code',
+            'new_codes',
+            'new_names',
+            'status',
+            'errors'
         ]

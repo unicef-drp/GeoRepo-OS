@@ -52,7 +52,7 @@ class TestTrigegrSync(TestCase):
         request = self.factory.post(
             reverse('sync-view'),
             {
-                'sync_options': ['tiling_config', 'vector_tiles', 'products'],
+                'sync_options': ['tiling_config', 'vector_tiles'],
                 'view_ids': [
                     self.dataset_view_1.id
                 ],
@@ -63,14 +63,6 @@ class TestTrigegrSync(TestCase):
         list_view(request)
         self.dataset_view_1.refresh_from_db()
         self.assertEqual(
-            self.dataset_view_1.product_sync_status,
-            DatasetView.SyncStatus.SYNCING
-        )
-        self.assertEqual(
-            self.dataset_view_1.product_progress,
-            0
-        )
-        self.assertEqual(
             self.dataset_view_1.vector_tile_sync_status,
             DatasetView.SyncStatus.SYNCING
         )
@@ -78,3 +70,4 @@ class TestTrigegrSync(TestCase):
             self.dataset_view_1.vector_tiles_progress,
             0
         )
+    # TODO: add test sync centroid

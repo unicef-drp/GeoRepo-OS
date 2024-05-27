@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {GridSortingInitialState} from "@mui/x-data-grid";
-import MUIDataTable, {MUIDataTableColumnDef} from "mui-datatables";
+import MUIDataTable, {MUIDataTableColumnDef, SelectableRows} from "mui-datatables";
 import FilterAlt from '@mui/icons-material/FilterAlt';
 import { rowsPerPageOptions } from '../models/pagination';
 
@@ -29,7 +29,8 @@ interface AdminTableInterface {
     canRowBeSelected?: (dataIndex: number, rowData: any) => boolean,
     onRowsPerPageChange?: (numberOfRowsPerPage: number) => void,
     options?: any,
-    title?: React.ReactNode
+    title?: React.ReactNode,
+    emptyTableMessage?: React.ReactNode,
 }
 
 export interface ExpandedRowInterface {
@@ -65,7 +66,8 @@ export function AdminTable({
                                canRowBeSelected = null,
                                onRowsPerPageChange = null,
                                options = {},
-                               title = null
+                               title = null,
+                               emptyTableMessage = 'No Data'
                            }: AdminTableInterface) {
 
     if (rows.length > 0 && columns.length > 0) {
@@ -99,7 +101,7 @@ export function AdminTable({
                         }
                         return selectableRowsMode !== 'none'
                       },
-                      selectableRows: selectableRowsMode,
+                      selectableRows: selectableRowsMode as SelectableRows,
                       rowsPerPage: rowsPerPage,
                       rowsPerPageOptions: rowsPerPageOptions,
                       isRowExpandable: (dataIndex, expandedRows) => {
@@ -107,7 +109,7 @@ export function AdminTable({
                       },
                       expandableRows: !!ExpandableRow,
                       expandableRowsHeader: false,
-                      expandableRowsOnClick: true,
+                      expandableRowsOnClick: !!ExpandableRow,
                       onTableChange: (action:string, tableState:any) => {
                         switch (action) {
                           case 'changeRowsPerPage':
@@ -130,6 +132,6 @@ export function AdminTable({
                 />
             </div>)
     } else {
-        return <div className='AdminTable-Loading'>No data</div>
+        return <div className='AdminTable-Loading'>{emptyTableMessage}</div>
     }
 }

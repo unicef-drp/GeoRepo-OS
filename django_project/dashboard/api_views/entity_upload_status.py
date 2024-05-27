@@ -1,10 +1,12 @@
 import json
+import math
 from pytz import timezone
 from collections import OrderedDict
 from django.conf import settings
 from django.db import connection
-from django.db.models import Case, When, Value
+from django.db.models import Case, When, Value, Q, Count
 from django.shortcuts import get_object_or_404
+from django.core.paginator import Paginator
 from django.utils import timezone as django_tz
 from rest_framework import serializers
 from rest_framework.views import APIView
@@ -15,7 +17,7 @@ from georepo.models.entity import GeographicalEntity
 from georepo.models.dataset import DatasetAdminLevelName
 from dashboard.models import LayerUploadSession, EntityUploadStatus, \
     EntityUploadChildLv1, STARTED, PROCESSING, PROCESSING_ERROR, \
-    EntityUploadStatusLog
+    EntityUploadStatusLog, IMPORTABLE_UPLOAD_STATUS_LIST
 from dashboard.serializers.upload_session import DetailUploadSessionSerializer
 from georepo.utils.module_import import module_function
 from dashboard.api_views.common import EntityUploadStatusReadPermission
@@ -58,6 +60,81 @@ class EntityUploadStatusDetail(AzureAuthRequiredMixin,
         return Response(upload_session_data)
 
 
+class EntityUploadStatusMetadata(AzureAuthRequiredMixin, APIView):
+    """API to fetch all upload IDs and country names"""
+
+    def get(self, request, *args, **kwargs):
+        select_all = request.GET.get('select_all', 'false') == 'true'
+        upload_session_id = request.GET.get('id', None)
+        upload_session = LayerUploadSession.objects.get(
+            id=upload_session_id
+        )
+        entity_uploads = (
+            EntityUploadStatus.objects.select_related(
+                'revised_geographical_entity',
+                'original_geographical_entity'
+            ).filter(
+                upload_session=upload_session
+            )
+        )
+        entity_uploads = entity_uploads.exclude(
+            status=''
+        )
+        # is_all_finished should check to all uploads without pagination
+        is_all_finished = not entity_uploads.filter(
+            status__in=[STARTED, PROCESSING]
+        ).exists()
+        level_name_0 = DatasetAdminLevelName.objects.filter(
+            dataset=upload_session.dataset,
+            level=0
+        ).first()
+        return_ids = (
+            select_all or is_all_finished or upload_session.is_read_only()
+        )
+        if return_ids:
+            # filter ids that are importable
+            case_list = [
+                When(
+                    status__in=IMPORTABLE_UPLOAD_STATUS_LIST,
+                    then=Value(True)
+                ),
+                When(
+                    Q(allowable_errors__gt=0) & Q(blocking_errors=0),
+                    then=Value(True)
+                )
+            ]
+            if request.user.is_superuser:
+                case_list.append(
+                    When(
+                        Q(superadmin_bypass_errors__gt=0) &
+                        Q(superadmin_blocking_errors=0),
+                        then=Value(True)
+                    )
+                )
+            is_importable = Case(
+                *case_list,
+                default=Value(False)
+            )
+            entity_uploads = entity_uploads.annotate(
+                is_importable=is_importable
+            ).filter(is_importable=True)
+        return Response(
+            status=200,
+            data={
+                'ids': (
+                    entity_uploads.values_list('id', flat=True) if
+                    return_ids else []
+                ),
+                'countries': [],
+                'is_all_finished': is_all_finished,
+                'level_name_0': (
+                    level_name_0.label if level_name_0 else 'Country'
+                ),
+                'is_read_only': upload_session.is_read_only(),
+            }
+        )
+
+
 class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
 
     def sort_error_summaries(self, summaries):
@@ -81,77 +158,153 @@ class EntityUploadStatusList(AzureAuthRequiredMixin, APIView):
             return 'Queued'
         return status
 
-    def get(self, request, *args, **kwargs):
+    def _filter_status(self, request):
+        status_list = request.data.get('status', [])
+        if not status_list:
+            return {}
+        filter = []
+        for status in status_list:
+            if status == 'Not Completed':
+                filter.append(STARTED)
+                filter.append(PROCESSING)
+            elif status == 'Queued':
+                filter.append(STARTED)
+            else:
+                filter.append(status)
+        return {
+            'status__in': filter
+        }
+
+    def _filter_country(self, queryset, request):
+        countries = request.data.get('countries', [])
+        if not countries:
+            return queryset
+        return queryset.filter(
+            Q(revised_geographical_entity__label__in=countries) |
+            Q(original_geographical_entity__label__in=countries) |
+            Q(revised_entity_name__in=countries)
+        )
+
+    def _filter_queryset(self, queryset, request):
+        filter_kwargs = {}
+        filter_kwargs.update(self._filter_status(request))
+        queryset = queryset.filter(**filter_kwargs)
+        return self._filter_country(queryset, request)
+
+    def _search_queryset(self, queryset, request):
+        search_text = request.data.get('search_text', '')
+        if not search_text:
+            return queryset
+        return queryset.filter(
+            Q(revised_entity_name__icontains=search_text) |
+            Q(revised_geographical_entity__label__icontains=search_text) |
+            Q(original_geographical_entity__label__icontains=search_text)
+        )
+
+    def _get_job_summaries(self, queryset):
+        job_summary_qs = queryset.values(
+            'status'
+        ).annotate(total=Count('status'))
+        result = {}
+        for value in job_summary_qs:
+            result[self.get_status(value['status'])] = value['total']
+        return result
+
+    def post(self, request, *args, **kwargs):
         upload_session_id = request.GET.get('id', None)
         upload_session = LayerUploadSession.objects.get(
             id=upload_session_id
         )
         dataset = upload_session.dataset
         entity_uploads = (
-            upload_session.entityuploadstatus_set.all()
+            EntityUploadStatus.objects.select_related(
+                'revised_geographical_entity',
+                'original_geographical_entity'
+            ).filter(
+                upload_session=upload_session
+            )
         )
         entity_uploads = entity_uploads.exclude(
             status=''
         )
+        # count job summaries
+        job_summaries = self._get_job_summaries(entity_uploads)
+        # is_all_finished should check to all uploads without pagination
+        is_all_finished = not entity_uploads.filter(
+            status__in=[STARTED, PROCESSING]
+        ).exists()
+        # apply search and filter
+        entity_uploads = self._search_queryset(entity_uploads, request)
+        entity_uploads = self._filter_queryset(entity_uploads, request)
+        # annotate priority status for sorting
         status_priority = Case(
             When(status=PROCESSING, then=Value(1)),
             default=Value(2),
         )
         entity_uploads = entity_uploads.annotate(
-            status_priority=status_priority).order_by('status_priority', 'id')
-        level_name_0 = DatasetAdminLevelName.objects.filter(
-            dataset=dataset,
-            level=0
-        ).first()
+            status_priority=status_priority
+        ).order_by('status_priority', 'id')
+        # apply pagination
+        page = int(self.request.GET.get('page', '1'))
+        page_size = int(self.request.GET.get('page_size', '10'))
+        paginator = Paginator(entity_uploads, page_size)
+        total_page = math.ceil(paginator.count / page_size)
+        total_count = paginator.count
         response_data = []
-        for entity_upload in entity_uploads:
-            entity = (
-                entity_upload.revised_geographical_entity if
-                entity_upload.revised_geographical_entity else
-                entity_upload.original_geographical_entity
-            )
-            level_name = level_name_0.label if level_name_0 else 'Adm0'
-            is_importable_func = module_function(
-                dataset.module.code_name,
-                'qc_validation',
-                'is_validation_result_importable')
-            is_importable, is_warning = is_importable_func(
-                entity_upload,
-                request.user
-            )
-            tz = timezone(settings.TIME_ZONE)
-            error_logs = None
-            if entity_upload.status == PROCESSING_ERROR:
-                error_logs = (
-                    entity_upload.logs if entity_upload.logs else None
+        if page <= total_page:
+            paginated_entities = paginator.get_page(page)
+            for entity_upload in paginated_entities:
+                entity = (
+                    entity_upload.revised_geographical_entity if
+                    entity_upload.revised_geographical_entity else
+                    entity_upload.original_geographical_entity
                 )
-            response_data.append({
-                'id': entity_upload.id,
-                level_name: (
-                    entity.label
-                    if entity
-                    else entity_upload.revised_entity_name
-                ),
-                'started at': entity_upload.started_at.astimezone(tz)
-                .strftime(f"%d %B %Y %H:%M:%S {settings.TIME_ZONE}"),
-                'status': self.get_status(entity_upload.status),
-                'error_summaries': self.sort_error_summaries(
-                    entity_upload.summaries),
-                'error_report': (
-                    entity_upload.error_report.url if
-                    entity_upload.error_report else ''
-                ),
-                'is_importable': is_importable,
-                'is_warning': is_warning,
-                'progress': entity_upload.progress,
-                'error_logs': error_logs
-            })
-
+                is_importable_func = module_function(
+                    dataset.module.code_name,
+                    'qc_validation',
+                    'is_validation_result_importable')
+                is_importable, is_warning = is_importable_func(
+                    entity_upload,
+                    request.user
+                )
+                tz = timezone(settings.TIME_ZONE)
+                error_logs = None
+                if entity_upload.status == PROCESSING_ERROR:
+                    error_logs = (
+                        entity_upload.logs if entity_upload.logs else None
+                    )
+                response_data.append({
+                    'id': entity_upload.id,
+                    'country': (
+                        entity.label
+                        if entity
+                        else entity_upload.revised_entity_name
+                    ),
+                    'started at': entity_upload.started_at.astimezone(tz)
+                    .strftime(f"%d %B %Y %H:%M:%S {settings.TIME_ZONE}"),
+                    'status': self.get_status(entity_upload.status),
+                    'error_summaries': self.sort_error_summaries(
+                        entity_upload.summaries),
+                    'error_report': (
+                        entity_upload.error_report.url if
+                        entity_upload.error_report else ''
+                    ),
+                    'is_importable': is_importable,
+                    'is_warning': is_warning,
+                    'progress': entity_upload.progress,
+                    'error_logs': error_logs
+                })
         return Response(
             status=200,
             data={
+                'count': total_count,
+                'page': page,
+                'total_page': total_page,
+                'page_size': page_size,
+                'is_read_only': upload_session.is_read_only(),
+                'is_all_finished': is_all_finished,
                 'results': response_data,
-                'is_read_only': upload_session.is_read_only()
+                'summary': job_summaries
             }
         )
 

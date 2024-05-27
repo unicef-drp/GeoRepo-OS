@@ -12,8 +12,23 @@ import PaginationInterface, {getDefaultPagination, rowsPerPageOptions} from "../
 import ResizeTableEvent from "../../components/ResizeTableEvent";
 import {RootState} from "../../app/store";
 import {TABLE_OFFSET_HEIGHT} from "../../components/List";
-import {getDefaultFilter, ViewSyncFilterInterface} from "./Filter"
-import {setSelectedViews, toggleIsBatchAction, setIsBatchActionAvailable} from "../../reducers/viewSyncAction";
+import {
+  getDefaultFilter,
+  ViewSyncFilterInterface,
+  TILING_CONFIG_STATUS_FILTER,
+  SIMPLIFICATION_STATUS_FILTER,
+  VECTOR_TILE_SYNC_STATUS_FILTER
+} from "../../models/syncStatus"
+import {
+  setSelectedViews,
+  toggleIsBatchAction,
+  onBatchActionSubmitted,
+  addSelectedView,
+  removeSelectedView,
+  updateRowsSelectedInPage,
+  resetSelectedViews,
+  setIsCheckAll
+} from "../../reducers/viewSyncAction";
 import {useAppDispatch, useAppSelector} from '../../app/hooks';
 import {setAvailableFilters, setCurrentFilters as setInitialFilters} from "../../reducers/viewSyncTable";
 import Stack from '@mui/material/Stack';
@@ -23,6 +38,8 @@ import AlertDialog from "../../components/AlertDialog";
 import {AddButton, CancelButton, ThemeButton} from "../../components/Elements/Buttons";
 import GradingIcon from "@mui/icons-material/Grading";
 import Typography from "@mui/material/Typography";
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from "@mui/material/FormControlLabel";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import '../../styles/ViewSync.scss';
@@ -33,6 +50,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import { DatasetDetailItemInterface } from "../../models/dataset";
+import StatusLoadingDialog from '../../components/StatusLoadingDialog';
 
 
 export function ViewSyncActionButtons() {
@@ -41,7 +59,6 @@ export function ViewSyncActionButtons() {
   const isBatchActionAvailable = useAppSelector((state: RootState) => state.viewSyncAction.isBatchActionAvailable)
   const isBatchAction = useAppSelector((state: RootState) => state.viewSyncAction.isBatchAction)
   const selectedViews = useAppSelector((state: RootState) => state.viewSyncAction.selectedViews)
-  const initialFilters = useAppSelector((state: RootState) => state.viewSyncTable.currentFilters)
   const [alertOpen, setAlertOpen] = useState<boolean>(false)
   const [alertDialogTitle, setAlertDialogTitle] = useState<string>('')
   const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
@@ -64,7 +81,8 @@ export function ViewSyncActionButtons() {
         response => {
           setAlertLoading(false)
           setConfirmMessage('Successfully syncing Views. Your request will be processed in the background.')
-          dispatch(setInitialFilters(JSON.stringify({...initialFilters})))
+          dispatch(onBatchActionSubmitted())
+          setAlertOpen(false)
         }
       ).catch(error => {
             onToggleBatchAction()
@@ -97,7 +115,7 @@ export function ViewSyncActionButtons() {
   }
 
   const onBatchSyncClick = () => {
-    setSyncOptions(['vector_tiles', 'products'])
+    setSyncOptions(['vector_tiles', 'centroid'])
     setAlertDialogTitle('Batch Synchronize')
     setAlertDialogDescription(
       `Are you sure you want to synchronize ${selectedViews.length} views?
@@ -107,55 +125,59 @@ export function ViewSyncActionButtons() {
   }
 
   return (
-    <div style={{display:'flex', flexDirection: 'row-reverse', alignItems: 'center'}}>
+    <div style={{display:'flex', flexDirection: 'row', alignItems: 'center'}}>
       <AlertMessage message={confirmMessage} onClose={() => setConfirmMessage('')} />
       <AlertDialog open={alertOpen} alertClosed={handleAlertCancel}
                  alertConfirmed={alertConfirmed}
                  alertLoading={alertLoading}
                  alertDialogTitle={alertDialogTitle}
                  alertDialogDescription={alertDialogDescription} />
-      { isBatchActionAvailable && (
-        <div style={{display:'flex', flexDirection: 'row', alignItems: 'center'}}>
-          { !isBatchAction && (
-            <ThemeButton
-              icon={<GradingIcon />}
-              disabled={!isBatchActionAvailable}
-              title={'Batch Action'}
-              variant={'secondary'}
-              onClick={onToggleBatchAction}
-              sx={{marginLeft:'10px'}}
-            />
-          )}
-          { isBatchAction && (
-            <Typography variant={'subtitle2'} >{selectedViews.length} selected</Typography>
-          )}
-          { isBatchAction && (
-            <AddButton
-              disabled={selectedViews.length === 0}
-              text={'Match Tiling Config with Dataset'}
-              variant={'secondary'}
-              useIcon={false}
-              additionalClass={'MuiButtonMedium'}
-              onClick={onBatchMatchTilingClick}
-              sx={{marginLeft:'10px'}}
-            />
-          )}
-          { isBatchAction && (
-            <AddButton
-              disabled={selectedViews.length === 0}
-              text={'Synchronize All'}
-              variant={'secondary'}
-              useIcon={false}
-              additionalClass={'MuiButtonMedium'}
-              onClick={onBatchSyncClick}
-              sx={{marginLeft:'10px', marginRight:'10px'}}
-            />
-          )}
-          { isBatchAction && (
-            <CancelButton onClick={onToggleBatchAction} />
-          )}
-        </div>
-      )}
+      <div style={{display:'flex', flexDirection: 'row', alignItems: 'center', flex: '1'}}>
+      </div>
+      <div style={{display:'flex', flexDirection: 'row', justifyContent: 'flex-end', flex: '1'}}>
+        { isBatchActionAvailable && (
+          <div style={{display:'flex', flexDirection: 'row', alignItems: 'center'}}>
+            { !isBatchAction && (
+              <ThemeButton
+                icon={<GradingIcon />}
+                disabled={!isBatchActionAvailable}
+                title={'Batch Action'}
+                variant={'secondary'}
+                onClick={onToggleBatchAction}
+                sx={{marginLeft:'10px'}}
+              />
+            )}
+            { isBatchAction && (
+              <Typography variant={'subtitle2'} >{selectedViews.length} selected</Typography>
+            )}
+            { isBatchAction && (
+              <AddButton
+                disabled={selectedViews.length === 0}
+                text={'Match Tiling Config with Dataset'}
+                variant={'secondary'}
+                useIcon={false}
+                additionalClass={'MuiButtonMedium'}
+                onClick={onBatchMatchTilingClick}
+                sx={{marginLeft:'10px'}}
+              />
+            )}
+            { isBatchAction && (
+              <AddButton
+                disabled={selectedViews.length === 0}
+                text={'Synchronize All'}
+                variant={'secondary'}
+                useIcon={false}
+                additionalClass={'MuiButtonMedium'}
+                onClick={onBatchSyncClick}
+                sx={{marginLeft:'10px', marginRight:'10px'}}
+              />
+            )}
+            { isBatchAction && (
+              <CancelButton onClick={onToggleBatchAction} />
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -166,17 +188,17 @@ interface ViewSyncRowInterface {
   is_tiling_config_match: boolean,
   simplification_status: string,
   vector_tile_sync_status: string,
-  product_sync_status: string,
+  centroid_sync_status: string,
   simplification_progress: number,
   vector_tiles_progress: number,
-  product_progress: number,
+  centroid_progress: number,
   permissions: string[]
 }
 
-const FILTER_VALUES_API_URL = '/api/view-sync-filter/values/'
 const VIEW_LIST_URL = '/api/view-sync-list/'
 const TRIGGER_SYNC_API_URL = '/api/sync-view/'
 const FilterIcon: any = FilterAlt
+const SELECT_ALL_LIST_URL = '/api/view-sync-list-select-all/'
 
 const getQueued = () => {
   return (
@@ -236,7 +258,7 @@ const getError = (syncButtonText: string, syncButtonDisabled: boolean, syncButto
 export default function ViewSyncList(props: DatasetDetailItemInterface) {
   const initialColumns = useAppSelector((state: RootState) => state.viewSyncTable.currentColumns)
   const initialFilters = useAppSelector((state: RootState) => state.viewSyncTable.currentFilters)
-  const availableFilters = useAppSelector((state: RootState) => state.viewSyncTable.availableFilters)
+  const syncStatusUpdatedAt = useAppSelector((state: RootState) => state.viewSyncAction.updatedAt)
   const [loading, setLoading] = useState<boolean>(true)
   const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState<any[]>([])
@@ -251,7 +273,6 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   const [columns, setColumns] = useState<any>([])
   const [totalCount, setTotalCount] = useState<number>(0)
   const [pagination, setPagination] = useState<PaginationInterface>(getDefaultPagination())
-  const [filterValues, setFilterValues] = useState<ViewSyncFilterInterface>(availableFilters)
   const [currentFilters, setCurrentFilters] = useState<ViewSyncFilterInterface>(initialFilters)
   const axiosSource = useRef(null)
   const newCancelToken = useCallback(() => {
@@ -261,21 +282,15 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   const ref = useRef(null)
   const [tableHeight, setTableHeight] = useState(0)
   const fetchViewSyncListFuncRef = useRef(null)
+  const rowsSelectedInPage = useAppSelector((state: RootState) => state.viewSyncAction.rowsSelectedInPage)
+  const selectedViews = useAppSelector((state: RootState) => state.viewSyncAction.selectedViews)
+  const isCheckAll = useAppSelector((state: RootState) => state.viewSyncAction.isCheckAll)
+  const [statusDialogOpen, setStatusDialogOpen] = useState<boolean>(false)
+  const [statusDialogTitle, setStatusDialogTitle] = useState<string>('Selecting all views')
+  const [statusDialogDescription, setStatusDialogDescription] = useState<string>('Fetching all views that are ready for batch sync...')
+
 
   let selectableRowsMode: any = isBatchAction ? 'multiple' : 'none'
-
-  const fetchFilterValues = async () => {
-    let filters = []
-    filters.push(axios.get(`${FILTER_VALUES_API_URL}sync_status/`))
-    let resultData = await Promise.all(filters)
-    let filterVals = {
-      'sync_status': resultData[0].data,
-      'search_text': ''
-    }
-    setFilterValues(filterVals)
-    dispatch(setAvailableFilters(JSON.stringify(filterVals)))
-    return filterVals
-  }
 
   const fetchViewSyncList = (interval: boolean = false) => {
     if (axiosSource.current) axiosSource.current.cancel()
@@ -302,19 +317,19 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           }
           return res
       }, [] as string[])
-      const productSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
-          if (!res.includes(row.product_sync_status)) {
-              res.push(row.product_sync_status)
-          }
-          return res
-      }, [] as string[])
       const vectorTileSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
           if (!res.includes(row.vector_tile_sync_status)) {
               res.push(row.vector_tile_sync_status)
           }
           return res
       }, [] as string[])
-      if (!simplificationSyncStatus.includes('syncing') && !productSyncStatus.includes('syncing') && !vectorTileSyncStatus.includes('syncing')) {
+      const centroidSyncStatus: string[] = response.data.results.reduce((res: string[], row: ViewSyncRowInterface) => {
+          if (!res.includes(row.centroid_sync_status)) {
+              res.push(row.centroid_sync_status)
+          }
+          return res
+      }, [] as string[])
+      if (!simplificationSyncStatus.includes('syncing') && !vectorTileSyncStatus.includes('syncing') && !centroidSyncStatus.includes('syncing')) {
           setAllFinished(true)
           props.onSyncStatusShouldBeUpdated()
       } else {
@@ -322,6 +337,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
       }
       setTotalCount(response.data.count)
       setData(response.data.results as ViewSyncRowInterface[])
+      dispatch(updateRowsSelectedInPage(response.data.results))
     }).catch(error => {
       if (!axios.isCancel(error)) {
         console.log(error)
@@ -339,7 +355,6 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   fetchViewSyncListFuncRef.current = fetchViewSyncList
 
   const syncView = (viewIds: number[], syncOptions: string[]) => {
-    setLoading(true)
     axios.post(
       TRIGGER_SYNC_API_URL,
       {
@@ -350,7 +365,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
       setLoading(false)
       setConfirmMessage('Successfully submitting data regeneration. Your request will be processed in the background.')
       if (fetchViewSyncListFuncRef.current) {
-        fetchViewSyncListFuncRef.current()
+        fetchViewSyncListFuncRef.current(true)
       }
       props.onSyncStatusShouldBeUpdated()
     }).catch(error => {
@@ -370,8 +385,17 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   const getExistingFilterValue = (colName: string): string[] => {
     let values: string[] = []
     switch (colName) {
-      case 'sync_status':
-        values = currentFilters.sync_status
+      case 'is_tiling_config_match':
+        values = currentFilters.is_tiling_config_match  
+        break;
+      case 'simplification_status':
+        values = currentFilters.simplification_status
+        break;
+      case 'vector_tile_sync_status':
+        values = currentFilters.vector_tile_sync_status
+        break;
+      case 'centroid_sync_status':
+        values = currentFilters.centroid_sync_status
         break;
       default:
         break;
@@ -380,19 +404,13 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   }
 
   useEffect(() => {
-    if (data.length > 0 && columns.length === 0) {
-      const fetchFilterValuesData = async () => {
-        let filterVals: any = {}
-        if (filterValues.sync_status.length > 0) {
-          filterVals = filterValues
-        } else {
-          filterVals = await fetchFilterValues()
-        }
+    // if (data.length > 0 && columns.length === 0) {
+      // const fetchFilterValuesData = async () => {
         const getLabel = (columnName: string) : string => {
           return columnName.charAt(0).toUpperCase() + columnName.slice(1).replaceAll('_', ' ')
         }
   
-        let _columns = ['id', 'name', 'permissions', 'simplification_progress', 'vector_tiles_progress', 'product_progress'].map((columnName) => {
+        let _columns = ['id', 'name', 'permissions', 'simplification_progress', 'vector_tiles_progress', 'centroid_progress'].map((columnName) => {
           let _options: any = {
             name: columnName,
             label: getLabel(columnName),
@@ -415,7 +433,13 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                 <span>{rowData[6] ? 'Tiling config matches dataset' : 'View uses custom tiling config'}</span>
               )
             },
-            filter: false
+            filter: true,
+            filterOptions: {
+              fullWidth: true,
+              names: TILING_CONFIG_STATUS_FILTER
+            },
+            filterList: getExistingFilterValue('is_tiling_config_match'),
+            sort: false
           }
         })
 
@@ -451,7 +475,16 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                 <span>{_status}</span>
               )
             },
-            filter: false
+            filter: true,
+            filterOptions: {
+              fullWidth: true,
+              names: SIMPLIFICATION_STATUS_FILTER
+            },
+            filterList: getExistingFilterValue('simplification_status'),
+            sort: false,
+            customFilterListOptions: {
+              render: (v: any) => `Simplification Status: ${v}`
+            }
           }
         })
   
@@ -499,13 +532,22 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                 <span>{_status}</span>
               )
             },
-            filter: false
+            filter: true,
+            filterOptions: {
+              fullWidth: true,
+              names: VECTOR_TILE_SYNC_STATUS_FILTER
+            },
+            filterList: getExistingFilterValue('vector_tile_sync_status'),
+            sort: false,
+            customFilterListOptions: {
+              render: (v: any) => `Vector Tile Sync Status: ${v}`
+            }
           }
         })
-  
+
         _columns.push({
-          name: 'product_sync_status',
-          label: 'Data Products',
+          name: 'centroid_sync_status',
+          label: 'Centroid',
           options: {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
@@ -513,22 +555,22 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
               let _progress = rowData[5] as number
               if (_status === 'out_of_sync') {
                 return (
-                  getOutOfSync('Data products need refresh', 'Click to update data products', !rowData[2].includes('Manage'), (e: any) => {
+                  getOutOfSync('Centroid need refresh', 'Click to update centroid', !rowData[2].includes('Manage'), (e: any) => {
                     e.stopPropagation()
-                    syncView([rowData[0]], ['products'])
+                    syncView([rowData[0]], ['centroid'])
                   })
                 )
               } else if (_status === 'synced') {
-                return getSynced('Data products are synced')
+                return getSynced('Centroid are synced')
               } else if (_status === 'syncing') {
                 return getSyncing(_progress)
               } else if (_status === 'Queued') {
                 return getQueued()
               } else if (_status === 'error') {
                 return (
-                  getError('Click to retrigger data products generation', !rowData[2].includes('Manage'), (e: any) => {
+                  getError('Click to retrigger centroid cache generation', !rowData[2].includes('Manage'), (e: any) => {
                     e.stopPropagation()
-                    syncView([rowData[0]], ['products'])
+                    syncView([rowData[0]], ['centroid'])
                   })
                 )
               }
@@ -536,25 +578,19 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                 <span>{_status}</span>
               )
             },
-            filter: false
-          }
-        })
-  
-        _columns.push(
-          {
-            name: 'sync_status',
-            label: 'Sync Status',
-            options: {
-              display: false,
-              sort: false,
-              filter: false,
-              filterOptions: {
-                names: filterVals['sync_status']
-              },
-              filterList: getExistingFilterValue('sync_status')
+            filter: true,
+            filterOptions: {
+              fullWidth: true,
+              names: VECTOR_TILE_SYNC_STATUS_FILTER
+            },
+            filterList: getExistingFilterValue('centroid_sync_status'),
+            sort: false,
+            customFilterListOptions: {
+              render: (v: any) => `Centroid Sync Status: ${v}`
             }
           }
-        )
+        })
+
         _columns.push({
           name: '',
           label: 'Action',
@@ -562,12 +598,14 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
             customBodyRender: (value: any, tableMeta: any, updateValue: any) => {
               let rowData = tableMeta.rowData
               let _simplificationStatus = rowData[7]
-              let _syncButtonDisabled = (rowData[8] === 'synced' && rowData[9] === 'synced') || (rowData[8] === 'syncing' || rowData[9] === 'syncing')
+              let _syncButtonDisabled = rowData[8] === 'synced'|| rowData[8] === 'syncing'
+              let _syncInQueued = rowData[8] === 'Queued'
               const getSyncText = () => {
                 if (_syncButtonDisabled) {
                   return 'Vector Tile and Data Products are synchronized'
                 }
                 if (_simplificationStatus !== 'synced') return 'Please trigger simplification before regenerate vector tiles!'
+                if (_syncInQueued) return 'Waiting in the queue'
                 return 'Synchronize'
               }
               return (
@@ -578,7 +616,7 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                     disabled={!rowData[2].includes('Manage')}
                     onClick={(e) => {
                       e.stopPropagation()
-                      navigate(`/view_edit?id=${rowData[0]}&tab=4`)
+                      navigate(`/view_edit?id=${rowData[0]}&tab=5`)
                     }}
                     variant={'contained'}
                   >
@@ -588,20 +626,19 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                   <Button
                     aria-label={'Synchronize'}
                     title={getSyncText()}
-                    disabled={!rowData[2].includes('Manage') || _syncButtonDisabled || _simplificationStatus !== 'synced' }
+                    disabled={!rowData[2].includes('Manage') || _syncButtonDisabled || _simplificationStatus !== 'synced' || _syncInQueued }
                     onClick={(e) => {
                       e.stopPropagation()
-                      if (_syncButtonDisabled || _simplificationStatus !== 'synced') {
+                      if (_syncButtonDisabled || _simplificationStatus !== 'synced' || _syncInQueued) {
                         return
                       }
                       syncView(
                         [rowData[0]],
-                        ['vector_tiles', 'products']
+                        ['vector_tiles', 'centroid']
                       )
                     }}
                     variant={
-                      rowData[8] === 'out_of_sync' || rowData[9] === 'out_of_sync' ?
-                        'contained' : 'outlined'
+                      rowData[8] === 'out_of_sync' ? 'contained' : 'outlined'
                     }
                   >
                     Synchronize
@@ -614,9 +651,9 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
         })
   
         setColumns(_columns)
-      }
-      fetchFilterValuesData()
-    }
+      // }
+      // fetchFilterValuesData()
+    // }
   }, [data, pagination, currentFilters])
 
   useEffect(() => {
@@ -634,8 +671,30 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
   }, [allFinished])
 
   useEffect(() => {
+    if (currentInterval) {
+      clearInterval(currentInterval)
+      setCurrentInterval(null)
+      setAllFinished(true)
+    }
     fetchViewSyncList()
   }, [pagination, currentFilters, initialFilters, searchParams])
+
+  useEffect(() => {
+    if (syncStatusUpdatedAt) {
+      if (currentInterval) {
+        clearInterval(currentInterval)
+        setCurrentInterval(null)
+        setAllFinished(true)
+      }
+      fetchViewSyncList(true)
+    }
+  }, [syncStatusUpdatedAt])
+
+  useEffect(() => {
+    if (isCheckAll) {
+      fetchSelectAllViewList()
+    }
+  }, [isCheckAll])
 
   const onTableChangeState = (action: string, tableState: any) => {
     switch (action) {
@@ -698,15 +757,33 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
     if (!isBatchActionAvailable)
       return false
     return !((rowData.is_tiling_config_match &&
-      rowData.product_sync_status === 'synced' &&
       rowData.vector_tile_sync_status === 'synced') ||
       (
-        rowData.product_sync_status === 'syncing' || rowData.vector_tile_sync_status === 'syncing'
+        rowData.vector_tile_sync_status === 'syncing' ||
+        rowData.vector_tile_sync_status === 'Queued'
       ))
   }
 
-  const selectionChanged = (data: any) => {
-    dispatch(setSelectedViews(data))
+  const fetchSelectAllViewList = () => {
+    const datasetId = searchParams.get('id')
+    const url = `${SELECT_ALL_LIST_URL}${datasetId}`
+    setStatusDialogOpen(true)
+    axios.post(
+      url,
+      currentFilters
+    ).then((response) => {
+      setStatusDialogOpen(false)
+      dispatch(setSelectedViews([response.data, data]))
+    }).catch(error => {
+      console.log(error)
+      setStatusDialogOpen(false)
+      if (error.response) {
+        if (error.response.status == 403) {
+          // TODO: use better way to handle 403
+          navigate('/invalid_permission')
+        }
+      }
+    })
   }
 
   return (
@@ -718,12 +795,32 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
           <Box sx={{textAlign:'right'}}>
             <ViewSyncActionButtons/>
           </Box>
+          <StatusLoadingDialog open={statusDialogOpen} title={statusDialogTitle} description={statusDialogDescription} />
           <div className='AdminList' ref={ref}>
             <ResizeTableEvent containerRef={ref} onBeforeResize={() => setTableHeight(0)}
                                 onResize={(clientHeight: number) => setTableHeight(clientHeight - TABLE_OFFSET_HEIGHT)}/>
             <div className='AdminTable'>
               <MUIDataTable
-                title={''}
+                title={
+                  <Grid container flexDirection={'row'}>
+                    <Grid item>
+                      { isBatchAction && (
+                        <FormControlLabel control={
+                          <Checkbox
+                            edge="start"
+                            checked={isCheckAll}
+                            disableRipple
+                            onChange={(event: any) =>  dispatch(setIsCheckAll(event.target.checked))}
+                            disabled={props.isReadOnly || loading || !isBatchActionAvailable}
+                            indeterminate={selectedViews.length !== totalCount && selectedViews.length !== 0}
+                          />
+                        }
+                        label={`Select All (${selectedViews.length}/${totalCount})`} sx={{color:'#000'}}
+                        />
+                      )}
+                    </Grid>
+                  </Grid>
+                }
                 data={data}
                 columns={columns}
                 options={{
@@ -738,14 +835,35 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                     return canRowBeSelected(dataIndex, data[dataIndex])
                   },
                   onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
-                    // @ts-ignore
-                    const rowDataSelected = rowsSelected.map((index) => data[index]['id'])
-                    selectionChanged(rowDataSelected)
+                    if (currentRowsSelected.length > 1) {
+                      // select all
+                      fetchSelectAllViewList()
+                    } else if (currentRowsSelected.length === 1) {
+                      // check/uncheck single item
+                      let _item = data[currentRowsSelected[0]['index']]
+                      if (rowsSelected.indexOf(currentRowsSelected[0]['index']) > -1) {
+                        // selected
+                        dispatch(addSelectedView({
+                          'id': _item['id'],
+                          'index': currentRowsSelected[0]['index']
+                        }))
+                      } else {
+                        // deselected
+                        dispatch(removeSelectedView({
+                          'id': _item['id'],
+                          'index': currentRowsSelected[0]['index']
+                        }))
+                      }
+                    } else if (currentRowsSelected.length === 0) {
+                      // deselect all
+                      dispatch(resetSelectedViews())
+                    }
                   },
                   onTableChange: (action: string, tableState: any) => onTableChangeState(action, tableState),
                   customSearchRender: debounceSearchRender(500),
                   selectableRows: selectableRowsMode,
                   selectToolbarPlacement: 'none',
+                  rowsSelected: rowsSelectedInPage,
                   textLabels: {
                     body: {
                       noMatch: loading ?
@@ -770,9 +888,12 @@ export default function ViewSyncList(props: DatasetDetailItemInterface) {
                   },
                   searchText: currentFilters.search_text,
                   searchOpen: (currentFilters.search_text != null && currentFilters.search_text.length > 0),
-                  filter: false,
+                  filter: true,
+                  filterType: 'multiselect',
+                  confirmFilters: true,
                   tableBodyHeight: `${tableHeight}px`,
                   tableBodyMaxHeight: `${tableHeight}px`,
+                  selectableRowsHeader: false
                 }}
                 components={{
                   icons: {

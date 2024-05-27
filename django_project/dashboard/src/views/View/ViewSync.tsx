@@ -36,29 +36,17 @@ const COLUMNS = [
     'uuid',
     'privacy_level',
     'vector_tile_sync_status',
-    'geojson_sync_status',
-    'shapefile_sync_status',
-    'kml_sync_status',
-    'topojson_sync_status',
     'vector_tiles_progress',
-    'geojson_progress',
-    'shapefile_progress',
-    'kml_progress',
-    'topojson_progress',
     'vector_tiles_size',
-    'geojson_size',
-    'shapefile_size',
-    'kml_size',
-    'topojson_size'
+    'centroid_sync_status',
+    'centroid_progress',
+    'centroid_size'
 ]
 
 const DEFAULT_SHOWN_COLUMNS = [
     'privacy_level',
     'vector_tile_sync_status',
-    'geojson_sync_status',
-    'shapefile_sync_status',
-    'kml_sync_status',
-    'topojson_sync_status'
+    'centroid_sync_status'
 ]
 
 export default function ViewSync(props: ViewResourceInterface) {
@@ -98,7 +86,8 @@ export default function ViewSync(props: ViewResourceInterface) {
           _options.options.filter = false
           return _options
         })
-        for (let i=3; i < 8; i++) {
+        // _sync_status columns
+        for (let i of [3, 6]) {
           let col = _columns[i]
           col.options.customBodyRender = (value: any, tableMeta: any, updateValue: any) => {
             let rowData = tableMeta.rowData
@@ -116,7 +105,7 @@ export default function ViewSync(props: ViewResourceInterface) {
                       <SyncIcon color='info' fontSize='small' />
                       <span className='sync-status-desc'>{`Actively being processed`}</span>                      
                     </span>
-                    <LinearProgress variant="determinate" value={rowData[i+5]} />
+                    <LinearProgress variant="determinate" value={rowData[i+1]} />
                 </span>
               )
             } else if (rowData[i] === 'syncing' || rowData[i] === 'Queued') {
@@ -137,7 +126,7 @@ export default function ViewSync(props: ViewResourceInterface) {
               return (
                 <span className='sync-status-desc-container'>
                   <CheckCircleIcon color='success' fontSize='small' />
-                  <span className='sync-status-desc'>{`Completed successfully (${rowData[i+10]})`}</span>
+                  <span className='sync-status-desc'>{`Completed successfully (${rowData[i+2]})`}</span>
                 </span>
               )
             }
@@ -154,7 +143,7 @@ export default function ViewSync(props: ViewResourceInterface) {
         setLoading(false)
         setData(response.data)
         let allStatus: string[] = []
-        let products: string[] = ['vector_tile', 'geojson', 'shapefile', 'kml', 'topojson']
+        let products: string[] = ['vector_tile', 'centroid']
         //@ts-ignore
         products.forEach(function(product: string, idx: number){
           response.data.forEach(function (row: any, idxRow: number) {
@@ -235,24 +224,17 @@ export default function ViewSync(props: ViewResourceInterface) {
       )
     }
 
-    const regenerateProductData = () => {
-      syncView(
-        [props.view.id],
-        ['products']
-      )
-    }
-
-    const regenerateAll = () => {
-      syncView(
-        [props.view.id],
-        ['vector_tiles', 'products']
-      )
-    }
-
     const simplifyView = () => {
       syncView(
         [props.view.id],
         ['simplify']
+      )
+    }
+
+    const regenerateCentroidFiles = () => {
+      syncView(
+        [props.view.id],
+        ['centroid']
       )
     }
 
@@ -295,16 +277,8 @@ export default function ViewSync(props: ViewResourceInterface) {
                       <Grid item>
                         <ThemeButton
                           variant={'secondary'}
-                          onClick={regenerateProductData}
-                          title={'Regenerate Data Products'}
-                          icon={null}
-                        />
-                      </Grid>
-                      <Grid item>
-                        <ThemeButton
-                          variant={'secondary'}
-                          onClick={regenerateAll}
-                          title={'Regenerate All'}
+                          onClick={regenerateCentroidFiles}
+                          title={'Regenerate Centroid'}
                           icon={null}
                         />
                       </Grid>

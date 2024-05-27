@@ -18,7 +18,8 @@ from georepo.utils.dataset_view import (
     generate_default_view_adm0_all_versions,
     check_view_exists,
     trigger_generate_dynamic_views,
-    get_view_resource_from_view
+    get_view_resource_from_view,
+    rename_dataset_view_from_old_pattern
 )
 
 
@@ -131,7 +132,7 @@ class TestToolsDatasetView(TestCase):
         )
         self.assertEqual(views.count(), 1)
         view = views.first()
-        self.assertEqual(view.name, 'World - Pakistan (Latest)')
+        self.assertEqual(view.name, 'Pakistan (Latest) - World')
         self.assertEqual(
             view.description,
             'Test. This dataset contains only the latest entities '
@@ -174,7 +175,7 @@ class TestToolsDatasetView(TestCase):
         )
         self.assertEqual(views.count(), 1)
         view = views.first()
-        self.assertEqual(view.name, 'World - Syria (Latest)')
+        self.assertEqual(view.name, 'Syria (Latest) - World')
         self.assertEqual(
             view.description,
             'Test. This dataset contains only the latest entities '
@@ -224,7 +225,7 @@ class TestToolsDatasetView(TestCase):
         )
         self.assertEqual(views.count(), 1)
         view = views.first()
-        self.assertEqual(view.name, 'World - Pakistan (All Versions)')
+        self.assertEqual(view.name, 'Pakistan (All Versions) - World')
         self.assertEqual(
             view.description,
             'Test. This dataset contains all the entities '
@@ -267,7 +268,7 @@ class TestToolsDatasetView(TestCase):
         )
         self.assertEqual(views.count(), 1)
         view = views.first()
-        self.assertEqual(view.name, 'World - Syria (All Versions)')
+        self.assertEqual(view.name, 'Syria (All Versions) - World')
         self.assertEqual(
             view.description,
             'Test. This dataset contains all the entities '
@@ -322,7 +323,6 @@ class TestToolsDatasetView(TestCase):
         )
         generate_default_view_adm0_latest(dataset)
         self.assertEqual(views.count(), 2)
-
 
     def test_get_view_resource_from_view(self):
         dataset = DatasetF.create(
@@ -447,3 +447,46 @@ class TestToolsDatasetView(TestCase):
         view.refresh_from_db()
         self.assertEqual(view.vector_tile_sync_status,
                          DatasetView.SyncStatus.SYNCED)
+
+    def test_rename_dataset_view_from_old_pattern(self):
+        dataset = DatasetF.create(
+            label='World',
+            description='Test'
+        )
+        adm0 = GeographicalEntityF.create(
+            label='Pakistan',
+            unique_code='PAK',
+            dataset=dataset,
+            is_latest=True,
+            is_approved=True
+        )
+        generate_default_view_adm0_all_versions(dataset)
+        generate_default_view_adm0_latest(dataset)
+        views = DatasetView.objects.filter(
+            dataset=dataset,
+            is_static=False,
+            default_type=DatasetView.DefaultViewType.ALL_VERSIONS,
+            default_ancestor_code=adm0.unique_code
+        )
+        self.assertEqual(views.count(), 1)
+        view_all_versions = views.first()
+        view_all_versions.name = 'World - Pakistan (All Versions)'
+        view_all_versions.save()
+        views = DatasetView.objects.filter(
+            dataset=dataset,
+            is_static=False,
+            default_type=DatasetView.DefaultViewType.IS_LATEST,
+            default_ancestor_code=adm0.unique_code
+        )
+        self.assertEqual(views.count(), 1)
+        view_latest = views.first()
+        view_latest.name = 'World - Pakistan (Latest)'
+        view_latest.save()
+        rename_dataset_view_from_old_pattern(view_all_versions)
+        view_all_versions.refresh_from_db()
+        self.assertEqual(view_all_versions.name,
+                         'Pakistan (All Versions) - World')
+        rename_dataset_view_from_old_pattern(view_latest)
+        view_latest.refresh_from_db()
+        self.assertEqual(view_latest.name,
+                         'Pakistan (Latest) - World')
