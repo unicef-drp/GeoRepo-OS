@@ -1,0 +1,966 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="Project technical and user documentation." name="description"/>
+<meta content="Unicef" name="author"/>
+<link href="../" rel="prev"/>
+<link href="../context-help/" rel="next"/>
+<link href="../../../assets/logo.png" rel="icon"/>
+<meta content="mkdocs-1.4.2, mkdocs-material-9.0.6" name="generator"/>
+<title>GeoRepo-OS Documentation Home - GeoRepo-OS</title>
+<link href="../../../assets/stylesheets/main.558e4712.min.css" rel="stylesheet"/>
+<link href="../../../assets/stylesheets/palette.2505c338.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../../../assets/_mkdocstrings.css" rel="stylesheet"/>
+<link href="../../../css/print.css" rel="stylesheet"/>
+<script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="grey" data-md-color-primary="blue" data-md-color-scheme="default" dir="ltr">
+<script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#documentation">29. 
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--lifted" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="GeoRepo-OS" class="md-header__button md-logo" data-md-component="logo" href="../../.." title="GeoRepo-OS">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 22a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-6v7L9.5 7.5 7 9V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12Z"></path></svg>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            GeoRepo-OS
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              GeoRepo-OS Documentation Home
+            
+          </span>
+</div>
+</div>
+</div>
+<form class="md-header__option" data-md-component="palette">
+<input aria-label="Switch to dark mode" class="md-option" data-md-color-accent="grey" data-md-color-media="" data-md-color-primary="blue" data-md-color-scheme="default" id="__palette_1" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_2" hidden="" title="Switch to dark mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"></path></svg>
+</label>
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="grey" data-md-color-media="" data-md-color-primary="blue" data-md-color-scheme="slate" id="__palette_2" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_1" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 18V6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-2.69L23.31 12 20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69Z"></path></svg>
+</label>
+</form>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<a aria-label="Share" class="md-search__icon md-icon" data-clipboard="" data-clipboard-text="" data-md-component="search-share" href="javascript:void(0)" tabindex="-1" title="Share">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7 0-.24-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91 1.61 0 2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08Z"></path></svg>
+</a>
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"></path></svg>
+</button>
+</nav>
+<div class="md-search__suggest" data-md-component="search-suggest"></div>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/unicef-drp/GeoRepo-OS" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"></path></svg>
+</div>
+<div class="md-source__repository">
+    GeoRepo-OS
+  </div>
+</a>
+</div>
+</nav>
+<nav aria-label="Tabs" class="md-tabs" data-md-component="tabs">
+<div class="md-tabs__inner md-grid">
+<ul class="md-tabs__list">
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../..">
+        Home
+      </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../../user/">
+        Users
+      </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../../administrator/">
+        Administrators
+      </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link md-tabs__link--active" href="../../">
+        Developers
+      </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../../../devops/">
+        DevOps
+      </a>
+</li>
+</ul>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary md-nav--lifted" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="GeoRepo-OS" class="md-nav__button md-logo" data-md-component="logo" href="../../.." title="GeoRepo-OS">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 22a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-6v7L9.5 7.5 7 9V2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12Z"></path></svg>
+</a>
+    GeoRepo-OS
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/unicef-drp/GeoRepo-OS" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"></path></svg>
+</div>
+<div class="md-source__repository">
+    GeoRepo-OS
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_1" id="__nav_1" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../..">Home</a>
+<label for="__nav_1">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-label="Home" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_1">
+<span class="md-nav__icon md-icon"></span>
+          Home
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../about/">
+        About
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../about/contributing/">
+        Contributing
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../about/code-of-conduct/">
+        Code of Conduct
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../about/running-instances/">
+        Running Instances
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_2" id="__nav_2" type="checkbox"/>
+<label aria-expanded="false" class="md-nav__link" for="__nav_2" tabindex="0">
+          Users
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="Users" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+          Users
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_2_1" id="__nav_2_1" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../../user/">Overview</a>
+<label for="__nav_2_1">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-label="Overview" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_2_1">
+<span class="md-nav__icon md-icon"></span>
+          Overview
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_2_1_2" id="__nav_2_1_2" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../../user/quickstart/">Quickstart</a>
+</div>
+<nav aria-label="Quickstart" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_2_1_2">
+<span class="md-nav__icon md-icon"></span>
+          Quickstart
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_2_1_3" id="__nav_2_1_3" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../../user/guide/">Guide</a>
+<label for="__nav_2_1_3">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-label="Guide" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_2_1_3">
+<span class="md-nav__icon md-icon"></span>
+          Guide
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../about/disclaimer/">
+        Disclaimer
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../about/license/">
+        License
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_2_1_4" id="__nav_2_1_4" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../../user/manual/">Manual</a>
+<label for="__nav_2_1_4">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-label="Manual" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_2_1_4">
+<span class="md-nav__icon md-icon"></span>
+          Manual
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../user/manual/home/">
+        Home Page
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_2_1_5" id="__nav_2_1_5" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../../user/api/">API</a>
+<label for="__nav_2_1_5">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-label="API" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_2_1_5">
+<span class="md-nav__icon md-icon"></span>
+          API
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../user/api/guide/">
+        Guide
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../user/api/vector_tiles/">
+        Vector Tiles
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="https://georepo.unicef.org/api/v1/docs/">
+        Manual
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_3" id="__nav_3" type="checkbox"/>
+<label aria-expanded="false" class="md-nav__link" for="__nav_3" tabindex="0">
+          Administrators
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="Administrators" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+          Administrators
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--section md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_3_1" id="__nav_3_1" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../../administrator/">Overview</a>
+<label for="__nav_3_1">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-label="Overview" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_3_1">
+<span class="md-nav__icon md-icon"></span>
+          Overview
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_3_1_2" id="__nav_3_1_2" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../../administrator/guide/">Guide</a>
+</div>
+<nav aria-label="Guide" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_3_1_2">
+<span class="md-nav__icon md-icon"></span>
+          Guide
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_3_1_3" id="__nav_3_1_3" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../../administrator/manual/">Manual</a>
+</div>
+<nav aria-label="Manual" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_3_1_3">
+<span class="md-nav__icon md-icon"></span>
+          Manual
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" data-md-toggle="__nav_4" id="__nav_4" type="checkbox"/>
+<label aria-expanded="true" class="md-nav__link" for="__nav_4" tabindex="0">
+          Developers
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-label="Developers" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+          Developers
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1" id="__nav_4_1" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../">Overview</a>
+<label for="__nav_4_1">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-label="Overview" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_4_1">
+<span class="md-nav__icon md-icon"></span>
+          Overview
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_4_1_2" id="__nav_4_1_2" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../guide/">Guide</a>
+<label for="__nav_4_1_2">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-label="Guide" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_4_1_2">
+<span class="md-nav__icon md-icon"></span>
+          Guide
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/architecture/">
+        Architecture
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/prerequisites/">
+        Prerequisites
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/cloning/">
+        Cloning
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/ide-setup/">
+        IDE Setup
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/building/">
+        Building
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/design/">
+        Design
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/roadmap/">
+        Road Map
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/workflows/">
+        Workflows
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/faq/">
+        FAQ
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/templates/pull-request-template/">
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../guide/templates/commit-message-convention/">
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1_3" id="__nav_4_1_3" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../">Documentation</a>
+<label for="__nav_4_1_3">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-label="Documentation" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_4_1_3">
+<span class="md-nav__icon md-icon"></span>
+          Documentation
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" data-md-toggle="toc" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+          Overview
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+        Overview
+      </a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#overview">29.1 
+    Overview
+  </a>
+<nav aria-label="Overview" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#some-terminology">29.1.1 
+    Some terminology
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#organisation">29.1.2 
+    Organisation
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#file-naming-conventions">29.2 
+    File naming conventions
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#contributing-to-the-documentation">29.3 
+    Contributing to the documentation
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#creating-new-files">29.4 
+    Creating new files
+  </a>
+<nav aria-label="Creating new files" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#page-metadata">29.4.1 
+    Page metadata
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#navigation">29.4.2 
+    Navigation
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#technical-notes">29.5 
+    Technical notes
+  </a>
+<nav aria-label="Technical notes" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#working-locally">29.5.1 
+    Working locally
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#hooks">29.5.2 
+    Hooks
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#permalinks-for-user-and-admin-docs">29.5.3 
+    Permalinks for user and admin docs
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#generating-pdfs">29.5.4 
+    Generating PDFS
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#generating-static-site">29.5.5 
+    Generating Static Site
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../context-help/">
+        Context Help
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_4_1_4" id="__nav_4_1_4" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../manual/">Manual</a>
+</div>
+<nav aria-label="Manual" class="md-nav" data-md-level="3">
+<label class="md-nav__title" for="__nav_4_1_4">
+<span class="md-nav__icon md-icon"></span>
+          Manual
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../about/license/">
+        License
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_5" id="__nav_5" type="checkbox"/>
+<div class="md-nav__link md-nav__link--index">
+<a href="../../../devops/">DevOps</a>
+<label for="__nav_5">
+<span class="md-nav__icon md-icon"></span>
+</label>
+</div>
+<nav aria-label="DevOps" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_5">
+<span class="md-nav__icon md-icon"></span>
+          DevOps
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../devops/guide/">
+        Guide
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../../devops/manual/">
+        Manual
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#overview">29.1 
+    Overview
+  </a>
+<nav aria-label="Overview" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#some-terminology">29.1.1 
+    Some terminology
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#organisation">29.1.2 
+    Organisation
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#file-naming-conventions">29.2 
+    File naming conventions
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#contributing-to-the-documentation">29.3 
+    Contributing to the documentation
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#creating-new-files">29.4 
+    Creating new files
+  </a>
+<nav aria-label="Creating new files" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#page-metadata">29.4.1 
+    Page metadata
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#navigation">29.4.2 
+    Navigation
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#technical-notes">29.5 
+    Technical notes
+  </a>
+<nav aria-label="Technical notes" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#working-locally">29.5.1 
+    Working locally
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#hooks">29.5.2 
+    Hooks
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#permalinks-for-user-and-admin-docs">29.5.3 
+    Permalinks for user and admin docs
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#generating-pdfs">29.5.4 
+    Generating PDFS
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#generating-static-site">29.5.5 
+    Generating Static Site
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<div><h1 id="documentation"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.</span> Documentation<a class="headerlink" href="#documentation" title="Permanent link">¶</a></h1>
+<h2 id="overview"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.1</span> Overview<a class="headerlink" href="#overview" title="Permanent link">¶</a></h2>
+<p>Welcome to the instructions for those wishing to contribute to our documentation!</p>
+<p>Our documentation system is based on the popular <a href="https://www.mkdocs.org/">mkdocs</a> system. We encourage you to read the upstream documentation from mkdocs for the finer details of how mkdocs. In particular, read <a href="https://www.mkdocs.org/user-guide/writing-your-docs/">this page</a> before you get to work. Mkdocs is not hard, but it may feel initially a little different if you are used to creating your documentation in word.</p>
+<p>We use mkdocs because it has some great and useful features. Most especially:</p>
+<ul>
+<li>The code and the documentation are versioned together. This means that for whatever version of the code we have in our production release, we can be sure the documentation matches that release. We can also look back at changes over time through the version history when needed.</li>
+<li>It can render beautiful static (not needing a backend server) web sites with great features like search, styling, intuitive navigation etc.</li>
+<li>It can optionally render PDF documents from the same source markdown.</li>
+<li>An ecosystem of plugins and themes makes mkdocs really flexible and extensible.</li>
+</ul>
+<h3 id="some-terminology"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.1.1</span> Some terminology<a class="headerlink" href="#some-terminology" title="Permanent link">¶</a></h3>
+<p>In our documentation, we have organised the information using a specific nomenclature:</p>
+<ul>
+<li><strong>guide</strong>: A guide is a multi-step workflow / tutorial that leads your through common activities.</li>
+<li><strong>manual</strong>: A collection of documents that describe each part of the project in a matter of fact way without presupposing any specific workflow is being undertaken.</li>
+</ul>
+<p>For each of the main topic areas (user, admin, developer, devops, api user) we provide guides and manuals as is appropriate.</p>
+<h3 id="organisation"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.1.2</span> Organisation<a class="headerlink" href="#organisation" title="Permanent link">¶</a></h3>
+<p>The documentation is broadly organised in the following structure. This structure may change over time as sections are added / moved / removed:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>src
+<a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a>├── about
+<a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a>├── administrator
+<a href="#__codelineno-0-4" id="__codelineno-0-4" name="__codelineno-0-4"></a>│   ├── guide
+<a href="#__codelineno-0-5" id="__codelineno-0-5" name="__codelineno-0-5"></a>│   └── manual
+<a href="#__codelineno-0-6" id="__codelineno-0-6" name="__codelineno-0-6"></a>├── developer
+<a href="#__codelineno-0-7" id="__codelineno-0-7" name="__codelineno-0-7"></a>│   ├── documentation
+<a href="#__codelineno-0-8" id="__codelineno-0-8" name="__codelineno-0-8"></a>│   ├── guide
+<a href="#__codelineno-0-9" id="__codelineno-0-9" name="__codelineno-0-9"></a>│   └── manual
+<a href="#__codelineno-0-10" id="__codelineno-0-10" name="__codelineno-0-10"></a>├── devops
+<a href="#__codelineno-0-11" id="__codelineno-0-11" name="__codelineno-0-11"></a>│   ├── guide
+<a href="#__codelineno-0-12" id="__codelineno-0-12" name="__codelineno-0-12"></a>│   └── manual
+<a href="#__codelineno-0-13" id="__codelineno-0-13" name="__codelineno-0-13"></a>└── user
+<a href="#__codelineno-0-14" id="__codelineno-0-14" name="__codelineno-0-14"></a>│   ├── api
+<a href="#__codelineno-0-15" id="__codelineno-0-15" name="__codelineno-0-15"></a>    ├── guide
+<a href="#__codelineno-0-16" id="__codelineno-0-16" name="__codelineno-0-16"></a>    ├── manual
+<a href="#__codelineno-0-17" id="__codelineno-0-17" name="__codelineno-0-17"></a>    └── quickstart
+</code></pre></div>
+<h2 id="file-naming-conventions"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.2</span> File naming conventions<a class="headerlink" href="#file-naming-conventions" title="Permanent link">¶</a></h2>
+<p>Please follow these conventions when writing your documentation:</p>
+<ol>
+<li>Write file names in all lower case, with hyphens separating words (no spaces). e.g. <code>important-file.md</code> not <code>Important File.md</code> or other deviations.</li>
+<li>Place the image files in the img folder adjacent to your content.</li>
+<li>Do not abbreviate any words in file names - but try to use terse, descriptive names.</li>
+<li>Place your content into the appropriate place as outline in the structure above.</li>
+<li>Each file should only one level one heading e.g. <code># Page title</code></li>
+<li>Headings and subheadings should be written as a terse phrase starting with a capital letter and subsequent words in lower case unless they are proper nouns. Do not place a colon after the heading.</li>
+<li>Use unicode number markers to reference numbers in images e.g. 1️⃣</li>
+<li>Every heading / sub-heading should have a single line underneath it summarising the content that will follow. This sentence will be used in the help center in the application to give the user a reference point for the text that will follow. It also makes the help text more consistent and readable.</li>
+<li>For every section that images, the first image will be used as the thumbnail if the heading is referenced from the application.</li>
+</ol>
+<h2 id="contributing-to-the-documentation"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.3</span> Contributing to the documentation<a class="headerlink" href="#contributing-to-the-documentation" title="Permanent link">¶</a></h2>
+<p><img alt="✏" class="twemoji" src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/270f.svg" title=":pencil2:"/> Note: The repo name in the images below is blurred out, you should work against the GeoRepo-OS repository when following these notes.</p>
+<p>To start adding to the documentation navigate to the <a href="https://github.com/unicef-drp/GeoRepo-OS">home page</a> of the repository.</p>
+<p>Once on the repository home page, 1️⃣ click on Fork
+<img alt="Fork Repository 1" src="../img/dev-docs-fork-repo-1.png"/></p>
+<p>On the next page 1️⃣ Make sure your github account is selected as the owner and 2️⃣ make sure the "<strong>Copy the</strong> <code>main</code> <strong>branch only</strong>" option is ticked as you will only need the main branch.
+<img alt="Fork Repository 2" src="../img/dev-docs-fork-repo-2.png"/></p>
+<p>Once you have forked the repository, ensure that you are working in the main branch.
+<img alt="Change Branch" src="../img/dev-docs-check-branch.png"/></p>
+<p>Once you are in your fork of the repository, click on <code>.</code> on your keyboard. This will open a web editor where you can begin adding to, or editing, the documentation.
+<img alt="Web Editor 1" src="../img/dev-docs-web-editor-1.png"/></p>
+<p>Once the editor loads, you will be greeted by 1️⃣ a preview of the project's README.txt. 2️⃣ Click on the <code>docs</code> directory in the menu on the left, this will expand the directory. To confirm that you are working in the right branch 3️⃣️ it will say <code>main</code> in the bottom left of the editor.
+<img alt="Web Editor 2" src="../img/dev-docs-web-editor-2.png"/></p>
+<p>Once you have expanded the <code>docs</code> directory, 1️⃣ click on the <code>src</code> directory. All sub-directories within the <code>src</code> directory contain the files that become the documentation. Each sub-directory contains an <code>index.md</code> file that is required for the building of the documentation and static site. If you add a new sub-directory into any folder it must also contain a populated <code>index.md</code> file.
+<img alt="Web Editor 3" src="../img/dev-docs-web-editor-3.png" style="height:300px"/></p>
+<p>Once you have chosen which section of documentation you would like to edit (e.g. user/guide/index.md), click on the file and it will open in the web editor.
+<img alt="Web Editor 4" src="../img/dev-docs-web-editor-4.png"/></p>
+<p>Once you have the file open, you can start adding to the documentation using <a href="https://www.markdownguide.org/">Markdown</a> syntax. If you need to add images to your documentation, add them to the relative <code>img</code> sub-directories following the naming conventions set out in the <code>naming-convention.README</code> within the <code>img</code> folders.
+<img alt="Web Editor 5" src="../img/dev-docs-web-editor-5.png"/></p>
+<p>When you have completed making additions to (or editing) the documentation, 1️⃣ click on the source control tab then 2️⃣ click on the <code>plus</code> symbol next to the changes you are finished with to stage them, 3️⃣️ add a commit message that is associated with the work you have done, and the 4️⃣ Click on <code>Commit &amp; Push</code>
+<img alt="Web Editor 6" src="../img/dev-docs-web-editor-6.png"/></p>
+<p>Once you have committed your changes, 1️⃣ Click on the burger menu and then 2️⃣ click on <code>Go To Repository</code>
+<img alt="Web Editor 7" src="../img/dev-docs-web-editor-7.png"/></p>
+<p>Your fork of the repository will be opened in a new tab within your browser, navigate to that tab. Once there 1️⃣ ensure you are on the <code>main</code>, you should see how many commits ahead of the upstream branch you are, then 2️⃣ click on <code>Contribute</code>-&gt; <code>Open pull request</code>.
+<img alt="Pull Request 1" src="../img/dev-docs-pull-request-1.png"/></p>
+<p>On the next screen, 1️⃣ give your pull request a meaningful title, 2️⃣ give additional details regarding changes made in the larger text box, then 3️⃣️ click on <code>Create pull request</code>. Also ensure you are creating a pull request to the upstream <code>main</code> branch from your <code>main</code> branch.
+<img alt="Pull Request 2" src="../img/dev-docs-pull-request-2.png"/></p>
+<p>Once your pull request is opened you need to wait for it to be merged before you can open a new one.</p>
+<h2 id="creating-new-files"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.4</span> Creating new files<a class="headerlink" href="#creating-new-files" title="Permanent link">¶</a></h2>
+<h3 id="page-metadata"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.4.1</span> Page metadata<a class="headerlink" href="#page-metadata" title="Permanent link">¶</a></h3>
+<p>Whenever you create a new file, you should add the standard header to the top of the file:</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-1-1" id="__codelineno-1-1" name="__codelineno-1-1"></a>---
+<a href="#__codelineno-1-2" id="__codelineno-1-2" name="__codelineno-1-2"></a>title: GeoRepo-OS Documentation 
+<a href="#__codelineno-1-3" id="__codelineno-1-3" name="__codelineno-1-3"></a>summary: GeoRepo is a UNICEF's geospatial web-based data storage and administrative boundary harmonization platform.
+<a href="#__codelineno-1-4" id="__codelineno-1-4" name="__codelineno-1-4"></a>    - Tim Sutton
+<a href="#__codelineno-1-5" id="__codelineno-1-5" name="__codelineno-1-5"></a>    - Dimas Tri Ciputra
+<a href="#__codelineno-1-6" id="__codelineno-1-6" name="__codelineno-1-6"></a>    - Danang Tri Massandy
+<a href="#__codelineno-1-7" id="__codelineno-1-7" name="__codelineno-1-7"></a>date: 2023-08-03
+<a href="#__codelineno-1-8" id="__codelineno-1-8" name="__codelineno-1-8"></a>copyright: Copyright 2023, Unicef
+<a href="#__codelineno-1-9" id="__codelineno-1-9" name="__codelineno-1-9"></a>contact: georepo-no-reply@unicef.org
+<a href="#__codelineno-1-10" id="__codelineno-1-10" name="__codelineno-1-10"></a>license: This program is free software; you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
+<a href="#__codelineno-1-11" id="__codelineno-1-11" name="__codelineno-1-11"></a>#context_id: 1234
+<a href="#__codelineno-1-12" id="__codelineno-1-12" name="__codelineno-1-12"></a>---
+</code></pre></div>
+<p>The summary can be updated to include your name for documents you contribute to.</p>
+<p>The context_id is used to create a unique permalink to this document, and is optional. See further down in this document for more details.</p>
+<h3 id="navigation"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.4.2</span> Navigation<a class="headerlink" href="#navigation" title="Permanent link">¶</a></h3>
+<p>All pages need to be added to the 'Nav' section of the <code>mkdocs-base.yml</code> file. This will ensure that it is available in the menus and that mkdocs renders without errors. For example, if you wish to add a new page to the User Guide area, in Nav you would add a line like this:</p>
+<p><code>- "Navigating the map": users/guide/map-navigation.md</code></p>
+<p>Sometimes you may not wish to have the new page displayed in the menu system (this can be useful when, for example, it is accessed via a link in another page. In these cases, leave the menu entry part blank e.g.</p>
+<p><code>- "": users/guide/map-navigation.md</code></p>
+<p>Mkdocs will still generate the page but it will not be added to the menu.</p>
+<h2 id="technical-notes"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.5</span> Technical notes<a class="headerlink" href="#technical-notes" title="Permanent link">¶</a></h2>
+<h3 id="working-locally"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.5.1</span> Working locally<a class="headerlink" href="#working-locally" title="Permanent link">¶</a></h3>
+<p>If you want to work with the documentation locally (i.e. directly on your PC), you need to follow this general process:</p>
+<ol>
+<li>Install python</li>
+<li>Install pip</li>
+<li>Install virtualenv (<code>pip install virtualenv</code>)</li>
+<li>Make the docs folder your working directory (<code>cd docs</code>)</li>
+<li>Create the virtual env in the docs folder (<code>python -m venv env</code>)</li>
+<li>Activate the venv (<code>source env/bin/activate</code>)</li>
+<li>Install the python modules listed in docs/requirements.txt (<code>pip install -r requirements.txt</code>)</li>
+<li>If you are on Linux or macOS, open the docs directory in a shell and run <code>build-docs-html.sh</code></li>
+<li>In the docs directory, run <code>mkdocs serve</code></li>
+<li>Open your web browser at https://localhost:8000 to view the rendered docs.</li>
+</ol>
+<p>Note that <code>mkdocs serve</code> will dynamically re-render the docs any time you make a change. The process above is illustrated in the diagram below:</p>
+<p><img alt="" src="../img/html-workflow.png"/></p>
+<h3 id="hooks"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.5.2</span> Hooks<a class="headerlink" href="#hooks" title="Permanent link">¶</a></h3>
+<p>We implement two hooks (plugins for mkdocs that are invoked during the docs rendering process).</p>
+<ul>
+<li><strong>uuid_redirects_hook.py</strong> - this is used to handle page redirects from a uuid - see below for more details</li>
+<li><strong>python_manual_hook.py</strong> - this is used to auto-generate the reference guide for the python modules, classes and functions that make up the code base for this project.</li>
+</ul>
+<h3 id="permalinks-for-user-and-admin-docs"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.5.3</span> Permalinks for user and admin docs<a class="headerlink" href="#permalinks-for-user-and-admin-docs" title="Permanent link">¶</a></h3>
+<p>If you are a developer, you should be aware of the workflow for creating user and administrator documentation for each page you create.</p>
+<p>Every page should have a help link on it that leads to the appropriate manual page. The workflow for doing this is:</p>
+<ol>
+<li>Generate a new page UUID using the provided python utility e.g. <code>./create-uuid.py</code></li>
+<li>Create a new page in the appropriate manual section e.g. <code>docs/src/user/manual/login.md</code></li>
+<li>In the metadata section at the top of the page, add the context id e.g. <code>context_id: V4cVEFd2TmwYJVb5HvWRwa</code></li>
+<li>In your django view, set up your help button to point to the site url and your context id. e.g. <code>https://siteurl/V4cVEFd2TmwYJVb5HvWRwa</code></li>
+</ol>
+<p>Whenever the user visits the page using the UUID URL, they will be redirected to the correct page e.g. <code>https://siteurl/login/</code>. This system protects us from file renaming and reorganising on the site, and ensures that the help link will always remain valid.</p>
+<h3 id="generating-pdfs"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.5.4</span> Generating PDFS<a class="headerlink" href="#generating-pdfs" title="Permanent link">¶</a></h3>
+<p>To generate PDFS, <code>cd</code> into <code>GEOREPO-OS/docs</code> and then run the <code>build-docs-pdf</code> in a local terminal</p>
+<h3 id="generating-static-site"><span class="enumerate-headings-plugin enumerate-heading-plugin">29.5.5</span> Generating Static Site<a class="headerlink" href="#generating-static-site" title="Permanent link">¶</a></h3>
+<p>To generate HTML, <code>cd</code> into <code>GEOREPO-OS/docs</code> and then run the <code>build-docs-html</code> in a local terminal.
+You can then run <code>mkdocs serve</code> to generate the static site on your local host, if there is a port conflict you can specify the port using the <code>-a</code> flag e.g <code>mkdocs serve -a 127.0.0.1:8001</code>.</p></div>
+<hr/>
+<div class="md-source-file">
+<small>
+    
+      Last update:
+      <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">October 5, 2023</span>
+</small>
+</div>
+</article>
+</div>
+<script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var tab,labels=set.querySelector(".tabbed-labels");for(tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+</div>
+<a class="md-top md-icon" data-md-component="top" hidden="" href="#">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"></path></svg>
+            Back to top
+          </a>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+<div class="md-copyright__highlight">
+      Unicef and Contributors
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+<div class="md-social">
+<a class="md-social__link" href="https://github.com/unicef-drp/" rel="noopener" target="_blank" title="github.com">
+<svg viewbox="0 0 496 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"></path></svg>
+</a>
+<a class="md-social__link" href="https://twitter.com/UNICEF" rel="noopener" target="_blank" title="twitter.com">
+<svg viewbox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"></path></svg>
+</a>
+<a class="md-social__link" href="https://www.facebook.com/unicef/" rel="noopener" target="_blank" title="www.facebook.com">
+<svg viewbox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M504 256C504 119 393 8 256 8S8 119 8 256c0 123.78 90.69 226.38 209.25 245V327.69h-63V256h63v-54.64c0-62.15 37-96.48 93.67-96.48 27.14 0 55.52 4.84 55.52 4.84v61h-31.28c-30.8 0-40.41 19.12-40.41 38.73V256h68.78l-11 71.69h-57.78V501C413.31 482.38 504 379.78 504 256z"></path></svg>
+</a>
+<a class="md-social__link" href="https://www.unicef.org/" rel="noopener" target="_blank" title="www.unicef.org">
+<svg viewbox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="m177.8 63.2 10 17.4c2.8 4.8 4.2 10.3 4.2 15.9v41.4c0 3.9 1.6 7.7 4.3 10.4 6.2 6.2 16.5 5.7 22-1.2l13.6-17c4.7-5.9 12.9-7.7 19.6-4.3l15.2 7.6c3.4 1.7 7.2 2.6 11 2.6 6.5 0 12.8-2.6 17.4-7.2l3.9-3.9c2.9-2.9 7.3-3.6 11-1.8l29.2 14.6c7.8 3.9 12.6 11.8 12.6 20.5 0 10.5-7.1 19.6-17.3 22.2l-35.4 8.8c-7.4 1.8-15.1 1.5-22.3-.9l-32-10.7c-3.3-1.1-6.7-1.7-10.2-1.7-7 0-13.8 2.3-19.4 6.5L176 212c-10.1 7.6-16 19.4-16 32v28c0 26.5 21.5 48 48 48h32c8.8 0 16 7.2 16 16v48c0 17.7 14.3 32 32 32 10.1 0 19.6-4.7 25.6-12.8l25.6-34.1c8.3-11.1 12.8-24.6 12.8-38.4v-12.1c0-3.9 2.6-7.3 6.4-8.2l5.3-1.3c11.9-3 20.3-13.7 20.3-26 0-7.1-2.8-13.9-7.8-18.9l-33.5-33.5c-3.7-3.7-3.7-9.7 0-13.4 5.7-5.7 14.1-7.7 21.8-5.1l14.1 4.7c12.3 4.1 25.7-1.5 31.5-13 3.5-7 11.2-10.8 18.9-9.2l27.4 5.5C432 112.4 351.5 48 256 48c-27.7 0-54 5.4-78.2 15.2zM512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z"></path></svg>
+</a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.tabs.link", "header.autohide", "navigation.expand", "navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+<script src="../../../assets/javascripts/bundle.51d95adb.min.js"></script>
+<script src="https://unpkg.com/tablesort@5.3.0/dist/tablesort.min.js"></script>
+<script src="../../../js/tablesort.js"></script>
+</body>
+</html>
