@@ -3273,7 +3273,7 @@ class FindEntityByCUCode(FindEntityByUCode):
     """
     permission_classes = [IsAuthenticated]
     renderer_classes = [JSONRenderer, GeojsonRenderer]
-    id_type = 'cucode'
+    id_type = 'concept_ucode'
 
     def get_queryset(self, id_raw):
         return GeographicalEntity.objects.select_related(
@@ -3299,10 +3299,10 @@ class FindEntityByCUCode(FindEntityByUCode):
         return output, None
 
     @swagger_auto_schema(
-        operation_id='search-entity-by-cucode',
+        operation_id='search-entity-by-concept-ucode',
         tags=[SEARCH_VIEW_ENTITY_TAG],
         manual_parameters=[openapi.Parameter(
-            'cucode', openapi.IN_PATH,
+            'concept_ucode', openapi.IN_PATH,
             description='Entity Concept UCode',
             type=openapi.TYPE_STRING
         ), openapi.Parameter(
