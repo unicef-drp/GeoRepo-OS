@@ -176,9 +176,9 @@ view_entity_urls = [
         FindEntityByUCode.as_view(),
         name='search-entity-by-ucode'),
     path(
-        'search/entity/cucode/<str:cucode>/',
+        'search/entity/concept_ucode/<str:concept_ucode>/',
         FindEntityByCUCode.as_view(),
-        name='search-entity-by-cucode'),
+        name='search-entity-by-concept-ucode'),
     path(
         'search/view/<uuid:uuid>/entity/identifier/<str:id_type>/<str:id>/',
         FindViewEntityById.as_view(),
