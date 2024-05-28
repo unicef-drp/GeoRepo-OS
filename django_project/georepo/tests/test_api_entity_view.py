@@ -2856,11 +2856,11 @@ class TestApiFindEntity(EntityResponseChecker, BaseDatasetViewTest):
     def test_find_entity_by_cucode_not_found(self):
         view = FindEntityByCUCode.as_view()
         kwargs = {
-            'cucode': '#TEST_EMPTY_V1'
+            'concept_ucode': '#TEST_EMPTY_V1'
         }
         request = self.factory.get(
             reverse(
-                'v1:search-entity-by-cucode',
+                'v1:search-entity-by-concept-ucode',
                 kwargs=kwargs
             ),
         )
@@ -2869,11 +2869,11 @@ class TestApiFindEntity(EntityResponseChecker, BaseDatasetViewTest):
         self.assertEqual(response.status_code, 404)
         # user_2 should not be able to view the entity
         kwargs = {
-            'cucode': self.pak0_2.concept_ucode
+            'concept_ucode': self.pak0_2.concept_ucode
         }
         request = self.factory.get(
             reverse(
-                'v1:search-entity-by-cucode',
+                'v1:search-entity-by-concept-ucode',
                 kwargs=kwargs
             ),
         )
@@ -2883,7 +2883,7 @@ class TestApiFindEntity(EntityResponseChecker, BaseDatasetViewTest):
         # user_4 should not be able to view at all
         request = self.factory.get(
             reverse(
-                'v1:search-entity-by-cucode',
+                'v1:search-entity-by-concept-ucode',
                 kwargs=kwargs
             ),
         )
@@ -2894,11 +2894,11 @@ class TestApiFindEntity(EntityResponseChecker, BaseDatasetViewTest):
     def test_find_entity_by_cucode(self):
         view = FindEntityByCUCode.as_view()
         kwargs = {
-            'cucode': self.pak0_2.concept_ucode
+            'concept_ucode': self.pak0_2.concept_ucode
         }
         request = self.factory.get(
             reverse(
-                'v1:search-entity-by-cucode',
+                'v1:search-entity-by-concept-ucode',
                 kwargs=kwargs
             ),
         )
@@ -2915,7 +2915,7 @@ class TestApiFindEntity(EntityResponseChecker, BaseDatasetViewTest):
         # test using user 1, should have access
         request = self.factory.get(
             reverse(
-                'v1:search-entity-by-cucode',
+                'v1:search-entity-by-concept-ucode',
                 kwargs=kwargs
             ),
         )
@@ -2932,7 +2932,7 @@ class TestApiFindEntity(EntityResponseChecker, BaseDatasetViewTest):
         # test using user 3, should have access to only custom_view
         request = self.factory.get(
             reverse(
-                'v1:search-entity-by-cucode',
+                'v1:search-entity-by-concept-ucode',
                 kwargs=kwargs
             ),
         )
@@ -2958,11 +2958,11 @@ class TestApiFindEntity(EntityResponseChecker, BaseDatasetViewTest):
         calculate_entity_count_in_view(all_versions_view)
         view = FindEntityByCUCode.as_view()
         kwargs = {
-            'cucode': self.pak0_1.concept_ucode
+            'concept_ucode': self.pak0_1.concept_ucode
         }
         request = self.factory.get(
             reverse(
-                'v1:search-entity-by-cucode',
+                'v1:search-entity-by-concept-ucode',
                 kwargs=kwargs
             ),
         )

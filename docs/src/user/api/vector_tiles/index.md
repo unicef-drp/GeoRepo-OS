@@ -33,7 +33,7 @@ where `809ad72b-f083-4f2f-aca0-e756482dbd6d` is the resource ID from the View. T
 
 ## How to authenticate to the vector tiles
 
-The vector tiles requires [API KEY](../guide/index.md#generating-an-api-key) and your `email address` for the authentication. This is similar to how to call the GeoRepo API, but the different is the `API KEY` and your `email address` need to be appened to the vector tiles URL as a request parameters. Below format is a complete vector tiles URL with the `API KEY` and `email address`:
+The vector tiles requires [API KEY](../guide/index.md#generating-an-api-key) and your `email address` for the authentication. This is similar to how to call the GeoRepo API, but the different is the `API KEY` and your `email address` need to be appended to the vector tiles URL as a request parameters. Below format is a complete vector tiles URL with the `API KEY` and `email address`:
 
 ```
 https://georepo.unicef.org/layer_tiles/809ad72b-f083-4f2f-aca0-e756482dbd6d/{z}/{x}/{y}?t=1700218824&&token=YOUR_API_KEY&georepo_user_key=YOUR_EMAIL_ADDRESS
@@ -63,7 +63,7 @@ The GeoRepo APIs that return the vector tiles URL will also return bounding box 
 
 ### Apply Overzoom in the Map
 
-The GeoRepo APIs also returns the maximum zoom (`max_zoom` field) for the view. The map client can use this value to apply the overzoom so the map does not request vector tiles above the `max_zoom`.
+The GeoRepo APIs also return the maximum zoom (`max_zoom` field) for the view. The map client can use this value to apply the overzoom so the map does not request vector tiles above the `max_zoom`.
 
 ### Sample code
 
@@ -91,3 +91,7 @@ map.on('load', function () {
     map.addLayer({'id': 'Level-0', 'source': 'World (Latest)', 'source-layer': 'Level-0', 'type': 'line', 'paint': {'line-color': '#69C868', 'line-width': 1}, 'minzoom': 0})
 });
 ```
+
+**Notes**
+- BOUNDING_BOX_VALUE is in [sw, ne] order, or an array of numbers in [west, south, east, north] order. For example: [[-73.9876, 40.7661], [-73.9397, 40.8002]]
+- source-layer is available in the vector tiles using ID with format: `Level-N` where N is the admin level. Please use the available admin levels from Find View Detail API (`dataset_levels` field).
