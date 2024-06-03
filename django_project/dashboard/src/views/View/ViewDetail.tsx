@@ -127,6 +127,10 @@ export default function ViewDetail() {
     }
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+        if (tempData) {
+            setTabSelected(0)
+            return
+        }
         let viewId = searchParams.get('id') ? parseInt(searchParams.get('id')) : 0
         navigate(`/view_edit?id=${viewId}&tab=${newValue}`)
     }
@@ -189,8 +193,8 @@ export default function ViewDetail() {
             <Box display={'flex'} flexDirection={'row'} justifyContent={'space-between'} sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs className='DatasetTabs' value={tabSelected} onChange={handleChange} aria-label="Configuration Tab">
                     <Tab label={ "Detail" + (tempData != null ? "*" : "") } {...a11yProps(0)} />
-                    <Tab label="Preview" {...a11yProps(1)} disabled={!isQueryValid} />
-                    <Tab label="Download History" {...a11yProps(2)} disabled={!isQueryValid} onClick={() => {
+                    <Tab label="Preview" {...a11yProps(1)} disabled={view === null} />
+                    <Tab label="Download History" {...a11yProps(2)} disabled={view === null} onClick={() => {
                         if (tabSelected !== 2) return;
                         if (searchParams.get('filterSession') || searchParams.get('requestId')) {
                             handleChange(null, 2)
@@ -231,6 +235,7 @@ export default function ViewDetail() {
                         <Grid container flexDirection={'column'} sx={{height:'100%'}}>
                             <Grid item sx={{display:'flex', flex:1, height:'100%'}}>
                                 <DatasetEntities datasetId={tempData.dataset} session={previewSession}
+                                    datasetUuid={tempData.datasetUuid}
                                     mapProps={{
                                         'datasetViewUuid': view ? view.uuid : null
                                     }} />
