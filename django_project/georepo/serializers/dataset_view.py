@@ -432,8 +432,10 @@ class DatasetViewDetailSerializer(TaggitSerializer,
             id__in=RawSQL(raw_sql, [])
         )
         if (
-            obj.default_type and obj.default_ancestor_code and
-            entities.exists()
+            (
+                (obj.default_type and obj.default_ancestor_code) or
+                obj.is_custom_view
+            ) and entities.exists()
         ):
             serializer = ViewAdminLevelDictSerializer
             level_names = entities.order_by(

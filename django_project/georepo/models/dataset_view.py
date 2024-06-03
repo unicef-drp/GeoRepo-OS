@@ -376,6 +376,12 @@ class DatasetView(models.Model):
             DatasetView.SyncStatus.SYNCED
         )
 
+    @property
+    def is_custom_view(self):
+        return (
+            self.default_type is None and self.default_ancestor_code is None
+        )
+
 
 class DatasetViewUserObjectPermission(UserObjectPermissionBase):
     content_object = models.ForeignKey(DatasetView, on_delete=models.CASCADE)
