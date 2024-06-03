@@ -7,13 +7,12 @@ import Tabs from '@mui/material/Tabs';
 import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
-import streamSaver from 'streamsaver';
 import ErrorIcon from '@mui/icons-material/Error';
 import CircularProgress from '@mui/material/CircularProgress';
 import TabPanel, {a11yProps} from '../../components/TabPanel';
 import {RootState} from "../../app/store";
 import {useAppDispatch, useAppSelector} from "../../app/hooks";
-import {updateMenu} from "../../reducers/breadcrumbMenu";
+import {updateMenu, insertBefore} from "../../reducers/breadcrumbMenu";
 import ViewCreate, {TempQueryCreateInterface} from './ViewCreate';
 import {postData} from "../../utils/Requests";
 import View, {isReadOnlyView} from "../../models/view";
@@ -22,7 +21,7 @@ import ViewPermission from './ViewPermission';
 import ViewSync from './ViewSync';
 import '../../styles/ViewDetail.scss';
 import {useNavigate, useSearchParams} from "react-router-dom";
-import {parseInt} from "lodash";
+import {parseInt, toLower} from "lodash";
 import TilingConfiguration from '../TilingConfig/TilingConfigRevamp';
 import { SyncStatus } from "../../models/syncStatus";
 import {updateViewTabStatuses, resetViewTabStatuses} from "../../reducers/viewTabs";
@@ -32,7 +31,6 @@ import StatusLoadingDialog from '../../components/StatusLoadingDialog';
 import ViewDownload from './ViewDownload';
 
 const QUERY_CHECK_URL = '/api/query-view-preview/'
-const DOWNLOAD_VIEW_URL = '/api/view-download/'
 
 interface ButtonContainerInterface {
     children?: React.ReactNode;
@@ -81,19 +79,34 @@ export default function ViewDetail() {
             if (view.id) {
                 let tab = searchParams.get('tab') ? parseInt(searchParams.get('tab')) : 0
                 setTabSelected(tab as unknown as number)
+                let _viewName = view.name
+                if (view.is_default === 'Yes') {
+                    _viewName = _viewName.replaceAll(` - ${view.dataset_name}`, '')
+                    // old format
+                    _viewName = _viewName.replaceAll(`${view.dataset_name} - `, '')
+                }
                 let _isReadOnly = isReadOnlyView(view)
                 if (_isReadOnly) {
                     setTabSelected(1)
                     dispatch(updateMenu({
                         id: `view_edit`,
-                        name: `View ${view.name}`
+                        name: `View ${_viewName}`
                     }))
                 } else {
                     dispatch(updateMenu({
                         id: `view_edit`,
-                        name: `Edit ${view.name}`
+                        name: `Edit ${_viewName}`
                     }))
                 }
+                let moduleName = toLower(view.module_name.replace(' ', '_'))
+                dispatch(insertBefore({
+                    'beforeId': 'view_edit',
+                    'newMenu': {
+                        'id': 'dataset_link',
+                        'name': view.dataset_name,
+                        'link': `/${moduleName}/dataset_entities?id=${view.dataset}`
+                    }
+                }))
                 fetchTilingStatus()
             }
         }
@@ -114,6 +127,10 @@ export default function ViewDetail() {
     }
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+        if (tempData) {
+            setTabSelected(0)
+            return
+        }
         let viewId = searchParams.get('id') ? parseInt(searchParams.get('id')) : 0
         navigate(`/view_edit?id=${viewId}&tab=${newValue}`)
     }
@@ -176,8 +193,8 @@ export default function ViewDetail() {
             <Box display={'flex'} flexDirection={'row'} justifyContent={'space-between'} sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs className='DatasetTabs' value={tabSelected} onChange={handleChange} aria-label="Configuration Tab">
                     <Tab label={ "Detail" + (tempData != null ? "*" : "") } {...a11yProps(0)} />
-                    <Tab label="Preview" {...a11yProps(1)} disabled={!isQueryValid} />
-                    <Tab label="Download History" {...a11yProps(2)} disabled={!isQueryValid} onClick={() => {
+                    <Tab label="Preview" {...a11yProps(1)} disabled={view === null} />
+                    <Tab label="Download History" {...a11yProps(2)} disabled={view === null} onClick={() => {
                         if (tabSelected !== 2) return;
                         if (searchParams.get('filterSession') || searchParams.get('requestId')) {
                             handleChange(null, 2)
@@ -218,6 +235,7 @@ export default function ViewDetail() {
                         <Grid container flexDirection={'column'} sx={{height:'100%'}}>
                             <Grid item sx={{display:'flex', flex:1, height:'100%'}}>
                                 <DatasetEntities datasetId={tempData.dataset} session={previewSession}
+                                    datasetUuid={tempData.datasetUuid}
                                     mapProps={{
                                         'datasetViewUuid': view ? view.uuid : null
                                     }} />

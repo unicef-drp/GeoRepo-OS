@@ -63,6 +63,7 @@ export interface TempQueryCreateInterface {
   mode: string,
   queryCheckResult: string,
   tags?: string[],
+  datasetUuid?: string
 }
 
 interface ViewCreateInterface {
@@ -84,6 +85,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
   const [mode, setMode] = useState<string>('')
   const [datasets, setDatasets] = useState<any[]>([])
   const [dataset, setDataset] = useState<string>('')
+  const [datasetUuid, setDatasetUuid] = useState<string>('')
   const [query, setQuery] = useState<string>(`<span class="keyword">SELECT * FROM geographicalentity WHERE </span>`)
   const [queryChanged, setQueryChanged] = useState<boolean>(false)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -104,6 +106,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
       left: 0
   })
   const isAdminUser = (window as any).is_admin
+  const [editView, setEditView] = useState<View>(null)
 
   useEffect(() => {
     if (datasets.length > 0 && props.tempData) {
@@ -112,11 +115,13 @@ export default function ViewCreate(props: ViewCreateInterface) {
       setName(props.tempData.name)
       setDescription(props.tempData.description)
       setDataset(props.tempData.dataset)
+      setDatasetUuid(props.tempData.datasetUuid)
       setMode(props.tempData.mode)
       setQueryCheckResult(props.tempData.queryCheckResult)
       setTags(props.tempData.tags)
       setLoading(false)
       setIsReadOnly(false)
+      setEditView(null)
     } else if (searchParams.get('id')) {
       fetchData(DETAIL_VIEW_URL + `/${searchParams.get('id')}`).then(
         response => {
@@ -133,6 +138,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
             setQuery(`<span class="keyword">${view.query_string}</span>`)
           }
           setDataset(view.dataset)
+          setDatasetUuid(view.dataset_uuid)
           setMode(view.mode)
           if (props.onViewLoaded) {
             props.onViewLoaded(view)
@@ -146,7 +152,8 @@ export default function ViewCreate(props: ViewCreateInterface) {
               id: parseInt(view.dataset),
               dataset: view.dataset_name
             })
-          } 
+          }
+          setEditView(view)
         }
       ).catch((error) => {
           console.log(error)
@@ -161,6 +168,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
     } else {
       // create
       setIsReadOnly(false)
+      setEditView(null)
     }
   }, [datasets])
 
@@ -198,6 +206,12 @@ export default function ViewCreate(props: ViewCreateInterface) {
     const queryWithoutHtml = query ? stripHtml(query) : ''
     props.onQueryValidation(false, queryWithoutHtml)
     if (query) {
+      if (editView && editView.query_string === queryWithoutHtml) {
+        setQueryCheckResult('Query Valid!')
+        setQueryChanged(false)
+        setPopoverOpen(false)
+        return
+      }
       setQueryCheckResult('')
       setQueryChanged(true)
       if (!queryWithoutHtml.at(-1) || queryWithoutHtml.at(-1) === " ") {
@@ -224,6 +238,11 @@ export default function ViewCreate(props: ViewCreateInterface) {
 
   const handleDatasetChange = (event: SelectChangeEvent) => {
     setDataset(event.target.value)
+    // find dataset uuid
+    let _dataset = datasets.find(e => e.id == event.target.value)
+    if (_dataset) {
+      setDatasetUuid(_dataset.uuid)
+    }
   }
 
   const updateView = () => {
@@ -378,7 +397,8 @@ export default function ViewCreate(props: ViewCreateInterface) {
       mode: mode,
       queryCheckResult: queryCheckResult,
       queryString: stripHtml(query),
-      tags: tags
+      tags: tags,
+      datasetUuid: datasetUuid
     })
   }
 
