@@ -7,6 +7,11 @@ export interface BreadcrumbMenuInterface {
   link?: string;
 }
 
+export interface BreadcrumbMenuInsertPayload {
+  beforeId: string;
+  newMenu: BreadcrumbMenuInterface;
+}
+
 export interface BreadcrumbState {
   currentMenu: string;
   currentDataset?: string;
@@ -33,13 +38,15 @@ export const breadcrumbSlice = createSlice({
         return
       }
       let index = 0
-      for (const menu of state.menus) {
+      let _menus = [...state.menus]
+      for (const menu of _menus) {
         if (menu.id === action.payload.id) {
-          state.menus[index] = action.payload;
-          return;
+          _menus[index] = action.payload;
+          break
         }
         index += 1
       }
+      state.menus = _menus
     },
     changeMenu: (state, action: PayloadAction<BreadcrumbMenuInterface>) => {
       state.menus = [action.payload]
@@ -55,7 +62,7 @@ export const breadcrumbSlice = createSlice({
         }
       }
       state.currentMenu = action.payload.name
-      state.menus.push(action.payload)
+      state.menus = [...state.menus, action.payload]
     },
     appendMenu: (state, action: PayloadAction<BreadcrumbMenuInterface>) => {
       if (typeof state.menus === 'undefined') {
@@ -66,7 +73,7 @@ export const breadcrumbSlice = createSlice({
           return
         }
       }
-      state.menus.push(action.payload)
+      state.menus = [...state.menus, action.payload]
     },
     revertMenu: (state, action: PayloadAction<string>) => {
        if (typeof state.menus === 'undefined') {
@@ -82,12 +89,28 @@ export const breadcrumbSlice = createSlice({
          index += 1
        }
     },
+    insertBefore: (state, action: PayloadAction<BreadcrumbMenuInsertPayload>) => {
+      // ensure no duplicate id
+      let _menus = [...state.menus]
+      for (const menu of _menus) {
+        if (menu.id === action.payload.newMenu.id) {
+          return
+        }
+      }
+      let findIdx = _menus.findIndex(e => e.id === action.payload.beforeId)
+      if (findIdx > -1) {
+        _menus.splice(findIdx, 0, action.payload.newMenu)
+        state.menus = _menus
+      } else {
+        state.menus = [..._menus, action.payload.newMenu]
+      }
+    }
   }
 });
 
 export const {
   changeCurrentMenu, changeCurrentDataset, changeMenu,
-  addMenu, revertMenu, updateMenu, appendMenu } = breadcrumbSlice.actions;
+  addMenu, revertMenu, updateMenu, appendMenu, insertBefore } = breadcrumbSlice.actions;
 
 export default breadcrumbSlice.reducer;
 

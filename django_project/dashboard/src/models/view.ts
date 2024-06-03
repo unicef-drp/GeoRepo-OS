@@ -19,7 +19,8 @@ export default interface View {
   dataset_uuid?: string,
   dataset_style_source_name?: string,
   dataset_name?: string,
-  module_name?: string
+  module_name?: string,
+  default_ancestor_code?: string
 }
 
 export const isReadOnlyView = (view: View): boolean => {

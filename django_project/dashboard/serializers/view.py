@@ -153,6 +153,7 @@ class DatasetViewDetailSerializer(TaggitSerializer,
     query_string = serializers.SerializerMethodField()
     dataset_name = serializers.SerializerMethodField()
     module_name = serializers.SerializerMethodField()
+    is_default = serializers.SerializerMethodField()
 
     def get_mode(self, obj: DatasetView):
         if obj.is_static is None:
@@ -223,6 +224,9 @@ class DatasetViewDetailSerializer(TaggitSerializer,
     def get_module_name(self, obj: DatasetView):
         return obj.dataset.module.name
 
+    def get_is_default(self, obj: DatasetView):
+        return 'Yes' if obj.default_type else 'No'
+
     class Meta:
         model = DatasetView
         fields = [
@@ -243,7 +247,9 @@ class DatasetViewDetailSerializer(TaggitSerializer,
             'dataset_uuid',
             'dataset_style_source_name',
             'dataset_name',
-            'module_name'
+            'module_name',
+            'is_default',
+            'default_ancestor_code'
         ]
 
 
