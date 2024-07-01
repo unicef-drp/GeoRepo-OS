@@ -171,6 +171,16 @@ class LayerUploadSession(models.Model):
         null=True
     )
 
+    validation_summaries = models.JSONField(
+        help_text='Pre-validation summary',
+        default=dict
+    )
+
+    validation_report = models.FileField(
+        upload_to='upload_session_reports',
+        null=True
+    )
+
     def __str__(self):
         return f'{self.source} - {self.status}'
 
