@@ -173,11 +173,14 @@ class LayerUploadSession(models.Model):
 
     validation_summaries = models.JSONField(
         help_text='Pre-validation summary',
-        default=dict
+        default=dict,
+        blank=True,
+        null=True
     )
 
     validation_report = models.FileField(
         upload_to='upload_session_reports',
+        blank=True,
         null=True
     )
 

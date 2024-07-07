@@ -239,7 +239,7 @@ def read_temp_layer_file(upload_session: LayerUploadSession,
                         ancestor = feature_parent_code
                     elif parent:
                         ancestor = parent.ancestor_entity_id
-                    if parent is None:
+                    if parent is None and level > 1:
                         # parent missing
                         validation_result['parent_missing'].append({
                             'level': level,
@@ -248,7 +248,7 @@ def read_temp_layer_file(upload_session: LayerUploadSession,
                             'entity_id': entity_id,
                             'parent': feature_parent_code
                         })
-                else:
+                elif level > 1:
                     # parent code missing error
                     validation_result['parent_code_missing'].append({
                         'level': level,
@@ -354,11 +354,12 @@ def read_layer_files_entity_temp(upload_session: LayerUploadSession):
     ).order_by('level_int')
     for layer_file in layer_files:
         validation_result = read_temp_layer_file(upload_session, layer_file)
-        # save into upload session
-        upload_session.validation_summaries[validation_result['level']] = (
-            validation_result
-        )
-        upload_session.save(update_fields=['validation_summaries'])
+        if validation_result['level'] > 1:
+            # save into upload session
+            upload_session.validation_summaries[validation_result['level']] = (
+                validation_result
+            )
+            upload_session.save(update_fields=['validation_summaries'])
     # write validation_summaries into csv file
     store_validation_summaries(upload_session)
 
