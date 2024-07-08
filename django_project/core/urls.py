@@ -1,5 +1,6 @@
 # coding=utf-8
 """Main django urls."""
+from collections import OrderedDict
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -14,6 +15,7 @@ from django.contrib import admin
 from django.http import HttpResponseNotFound
 import json
 from core.models.preferences import SitePreferences
+from core.api_orders import API_ORDERS, find_api_method, find_api_idx
 
 
 class CustomSchemaGenerator(OpenAPISchemaGenerator):
@@ -23,6 +25,37 @@ class CustomSchemaGenerator(OpenAPISchemaGenerator):
         if settings.DEBUG:
             schema.schemes = ['http'] + schema.schemes
         return schema
+
+    def get_paths_object(self, paths: OrderedDict):
+        """Sort API endpoints by API_ORDERS."""
+        tag_dict = OrderedDict()
+        for tag in API_ORDERS:
+            tag_dict[tag] = []
+        for api_path, pathItem in paths.items():
+            method, pathMethod = find_api_method(pathItem)
+            if method is None:
+                continue
+            tags = pathMethod.get('tags', [])
+            tag = tags[0] if len(tags) > 0 else 'other-api'
+            if tag in tag_dict:
+                tag_dict[tag].append({
+                    'path': api_path,
+                    'pathItem': pathItem,
+                    'apiIdx': find_api_idx(tag, pathMethod)
+                })
+            else:
+                tag_dict[tag] = [{
+                    'path': api_path,
+                    'pathItem': pathItem,
+                    'apiIdx': find_api_idx(tag, pathMethod)
+                }]
+        results = OrderedDict()
+        for tag in tag_dict.keys():
+            sorted_list = sorted(
+                tag_dict[tag], key=lambda api_item: api_item['apiIdx'])
+            for api_item in sorted_list:
+                results[api_item['path']] = api_item['pathItem']
+        return super().get_paths_object(results)
 
 
 class CustomLoginView(LoginView):
