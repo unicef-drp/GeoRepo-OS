@@ -73,7 +73,7 @@ jobs:
       - name: Run Coverage test
         working-directory: deployment
         run: |
-          cat << EOF | docker-compose exec -T dev bash
+          cat << EOF | docker compose exec -T dev bash
           python manage.py makemigrations
           python manage.py migrate
           python manage.py collectstatic --noinput --verbosity 0
