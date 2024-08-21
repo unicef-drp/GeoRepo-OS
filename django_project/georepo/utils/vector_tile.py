@@ -354,7 +354,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                                       'vector_tiles_log'])
     # Create a sql view
     sql_view = str(view_resource.dataset_view.uuid)
-    if not check_view_exists(sql_view):
+    if not check_view_exists(sql_view, view_resource.dataset_view.is_static):
         create_sql_view(view_resource.dataset_view, **kwargs)
     # check the number of entity in view_resource
     entity_count = get_entities_count_in_view(

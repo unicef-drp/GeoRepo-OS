@@ -315,7 +315,24 @@ def generate_default_view_adm0_all_versions(
     return views
 
 
-def check_view_exists(view_uuid: str) -> bool:
+def is_materialized_view_exists(view_name):
+    """Check if materialized view exists."""
+    sql = (
+        """
+        select exists(
+            select 1 from pg_matviews where matviewname=%s
+        )
+        """
+    )
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [view_name])
+        row = cursor.fetchone()
+        return row[0]
+
+
+def check_view_exists(view_uuid: str, is_static: bool = False) -> bool:
+    if is_static:
+        return is_materialized_view_exists(view_uuid)
     sql = (
         'SELECT count(table_name) '
         'FROM information_schema.tables '
@@ -457,7 +474,7 @@ def generate_view_resource_bbox(view_resource: DatasetViewResource,
     """
     start = time.time()
     sql_view = str(view_resource.dataset_view.uuid)
-    if not check_view_exists(sql_view):
+    if not check_view_exists(sql_view, view_resource.dataset_view.is_static):
         return ''
     bbox = []
     geom_col = 'geometry'
