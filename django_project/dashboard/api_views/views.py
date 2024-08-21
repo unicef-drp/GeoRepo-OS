@@ -567,7 +567,9 @@ class CreateNewView(AzureAuthRequiredMixin,
         create_sql_view(dataset_view)
         init_view_privacy_level(dataset_view)
         calculate_entity_count_in_view(dataset_view)
-        return Response(status=201)
+        return Response(status=201, data={
+            'view_id': dataset_view.id
+        })
 
 
 class GetViewTags(APIView):
