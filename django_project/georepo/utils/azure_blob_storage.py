@@ -1,5 +1,7 @@
 import os
 import io
+import logging
+import traceback
 from azure.storage.blob import (
     BlobServiceClient,
     BlobSasPermissions,
@@ -12,6 +14,9 @@ from django.conf import settings
 from datetime import datetime, timedelta, timezone
 import zipfile
 from zipfly import ZipFly
+
+
+logger = logging.getLogger(__name__)
 
 
 class DirectoryClient:
@@ -187,9 +192,10 @@ class DirectoryClient:
                         self.client.delete_blobs(*blobs[start:blobs_length])
 
     def movedir(self, source_path, dest_path, is_copy=False):
+        warns = []
         blobs = self.ls_files(source_path, recursive=True)
         if not blobs:
-            return
+            return warns
 
         if not source_path == '' and not source_path.endswith('/'):
             source_path += '/'
@@ -200,6 +206,26 @@ class DirectoryClient:
                 self.container_name,
                 source_path + blob
             )
+
+            # verify blob exists
+            if not source_blob.exists():
+                logger.warn(
+                    f'Source blob does not exists! {source_path + blob}')
+                warns.append(source_path + blob)
+                continue
+
+            # copy file using sas token
+            self.cp_file(source_path, dest_path, blob, source_blob)
+
+            # delete original file if it's not copy op
+            if not is_copy:
+                source_blob.delete_blob()
+        return warns
+
+    def cp_file(self, source_path, dest_path, blob, source_blob):
+        dest_blob = None
+        copy_properties = None
+        try:
             # Create sas token for blob
             sas_token = generate_blob_sas(
                 blob_name=source_path + blob,
@@ -207,9 +233,11 @@ class DirectoryClient:
                 container_name=self.container_name,
                 account_key=self.client.credential.account_key,
                 permission=BlobSasPermissions(read=True),
-                start=datetime.now(),
-                expiry=datetime.utcnow() + timedelta(hours=1)
+                start=datetime.now(timezone.utc),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1)
             )
+
+            # Start copy blob file using sas url to the destination
             dest_blob = self.service_client.get_blob_client(
                 self.container_name,
                 dest_path + blob
@@ -217,15 +245,18 @@ class DirectoryClient:
             sas_url = f"{source_blob.url}?{sas_token}"
             dest_blob.start_copy_from_url(sas_url, requires_sync=True)
             copy_properties = dest_blob.get_blob_properties().copy
+        except Exception as ex:
+            logger.error(f"Unable to copy blob {source_path + blob}")
+            logger.error(traceback.format_exc())
+            raise ex
 
-            if copy_properties.status != "success":
-                dest_blob.abort_copy(copy_properties.id)
-                raise Exception(
-                    "Unable to copy blob %s with status %s"
-                    % (source_path + blob, copy_properties.status)
-                )
-            if not is_copy:
-                source_blob.delete_blob()
+        if copy_properties and copy_properties.status != "success":
+            dest_blob.abort_copy(copy_properties.id)
+            raise Exception(
+                "Unable to copy blob %s with status %s"
+                % (source_path + blob, copy_properties.status)
+            )
+
 
     def dir_size(self, path):
         if not path == '' and not path.endswith('/'):
