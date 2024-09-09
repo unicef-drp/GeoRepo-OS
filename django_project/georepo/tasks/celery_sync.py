@@ -32,16 +32,10 @@ def check_celery_background_tasks():
     tasks = BackgroundTask.objects.filter(
         status__in=[
             BackgroundTask.BackgroundTaskStatus.QUEUED,
-            BackgroundTask.BackgroundTaskStatus.RUNNING,
-            BackgroundTask.BackgroundTaskStatus.STOPPED
+            BackgroundTask.BackgroundTaskStatus.RUNNING
         ],
-    )
+    ).order_by('id')
     for task in tasks:
-        if task.status == BackgroundTask.BackgroundTaskStatus.STOPPED:
-            # stopped/failure task needs to be handled manually
-            # we just need to sync the status back to the resources
-            handle_task_failure(task)
-            continue
         if not task.is_possible_interrupted():
             continue
         try:
@@ -63,15 +57,7 @@ def on_task_invalidated(task: BackgroundTask):
 
 
 def handle_task_with_status(task: BackgroundTask, status: str):
-    if status == states.FAILURE:
-        try:
-            handle_task_failure(task)
-        except Exception as ex:
-            logger.error(f'Failed to handle failure task: {str(task)}')
-            logger.error(ex)
-        finally:
-            on_task_invalidated(task)
-    elif status == TASK_NOT_FOUND:
+    if status == TASK_NOT_FOUND:
         try:
             handle_task_interrupted(task)
         except Exception as ex:
@@ -125,16 +111,15 @@ def handle_task_failure(task: BackgroundTask):
                                          centroid=True)
         except DatasetViewResource.DoesNotExist as ex:
             logger.error(ex)
-    elif task_name == 'view_vector_tiles_task':
+    elif task_name == 'view_simplification_task':
         if len(task_param) == 0:
             raise ValueError(
-                'Invalid parameter view_vector_tiles_task')
+                'Invalid parameter view_simplification_task')
         try:
             view_id = task_param[0]
             view = DatasetView.objects.filter(id=view_id).first()
             if view is None:
                 return
-            view.status = DatasetView.DatasetViewStatus.ERROR
             has_custom_tiling_config = (
                 view.datasetviewtilingconfig_set.all().exists()
             )
@@ -142,11 +127,10 @@ def handle_task_failure(task: BackgroundTask):
                 view.simplification_progress = 'Simplification error'
                 view.simplification_current_task = None
                 view.simplification_sync_status = DatasetView.SyncStatus.ERROR
-                view.save(update_fields=['status', 'simplification_progress',
+                view.save(update_fields=['simplification_progress',
                                          'simplification_current_task',
                                          'simplification_sync_status'])
             else:
-                view.save(update_fields=['status'])
                 # update dataset simplification status
                 dataset = view.dataset
                 dataset.simplification_progress = 'Simplification error'

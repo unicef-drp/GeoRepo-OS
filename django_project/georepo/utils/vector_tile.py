@@ -354,7 +354,7 @@ def generate_view_vector_tiles(view_resource: DatasetViewResource,
                                       'vector_tiles_log'])
     # Create a sql view
     sql_view = str(view_resource.dataset_view.uuid)
-    if not check_view_exists(sql_view):
+    if not check_view_exists(sql_view, view_resource.dataset_view.is_static):
         create_sql_view(view_resource.dataset_view, **kwargs)
     # check the number of entity in view_resource
     entity_count = get_entities_count_in_view(
@@ -661,7 +661,12 @@ def on_zoom_level_ends(view_resource: DatasetViewResource,
                     f'layer_tiles/{view_resource.resource_id}'
                 )
             client.rmdir(directory_to_be_cleared)
-            client.movedir(layer_tiles_source, layer_tiles_dest, is_copy=True)
+            warns = client.movedir(
+                layer_tiles_source, layer_tiles_dest, is_copy=True)
+            if len(warns) > 0:
+                view_resource.vector_tile_detail_logs[
+                    current_zoom]['warnings'] = warns
+                view_resource.save(update_fields=['vector_tile_detail_logs'])
         else:
             original_vector_tile_path = os.path.join(
                 settings.LAYER_TILES_PATH,

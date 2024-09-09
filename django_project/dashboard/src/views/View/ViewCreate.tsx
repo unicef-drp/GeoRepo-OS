@@ -25,7 +25,7 @@ import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete';
 import axios from "axios";
 import {useNavigate, useSearchParams} from "react-router-dom";
 import {fetchData, postData} from "../../utils/Requests";
-import {ViewListRoute} from "../routes";
+import {ViewEditRoute} from "../routes";
 import View, {isReadOnlyView} from "../../models/view";
 import Loading from "../../components/Loading";
 import {
@@ -258,7 +258,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
     postData(UPDATE_VIEW_URL + `${searchParams.get('id')}`, payload).then(
       response => {
         setLoading(false)
-        navigate(ViewListRoute.path)
+        navigate(ViewEditRoute.path + `?id=${searchParams.get('id')}`)
       }
     ).catch(error => {
       alert('Error updating view...')
@@ -279,7 +279,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
     postData(CREATE_VIEW_URL, payload).then(
       response => {
         setLoading(false)
-        navigate(ViewListRoute.path)
+        navigate(ViewEditRoute.path + `?id=${response.data['view_id']}`)
       }
     ).catch(error => {
       alert('Error creating view...')

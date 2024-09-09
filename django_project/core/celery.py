@@ -150,10 +150,11 @@ def task_success_handler(sender, **kwargs):
 def task_failure_handler(sender, task_id=None, args=None,
                          exception=None, **kwargs):
     from georepo.models.background_task import BackgroundTask
+    from georepo.tasks.celery_sync import handle_task_failure
     task_name = sender.name if sender else ''
     if task_name in EXCLUDED_TASK_LIST:
         return
-    task, _ = BackgroundTask.objects.get_or_create(
+    task, is_created = BackgroundTask.objects.get_or_create(
         task_id=task_id,
         defaults={
             'name': task_name,
@@ -168,6 +169,12 @@ def task_failure_handler(sender, task_id=None, args=None,
     task.save(
         update_fields=['last_update', 'finished_at', 'status', 'errors']
     )
+    if is_created:
+        return
+    try:
+        handle_task_failure(task)
+    except Exception:
+        pass
 
 
 @signals.task_revoked.connect

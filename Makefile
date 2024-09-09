@@ -21,7 +21,7 @@ update:
 	@echo "------------------------------------------------------------------"
 	@echo "Update production instance"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} up -d django auth worker celery_beat nginx
+	@docker compose ${ARGS} up -d django auth worker celery_beat nginx
 
 # use .azure.env in docker-compose.override.yml
 test-azure:
@@ -29,28 +29,28 @@ test-azure:
 	@echo "------------------------------------------------------------------"
 	@echo "Run Azure production instance"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} up -d azurite django auth worker celery_beat nginx
+	@docker compose ${ARGS} up -d azurite django auth worker celery_beat nginx
 
 # below commands are executed already from django entrypoint+initialize.py
-# @docker-compose ${ARGS} exec -T django python manage.py migrate
-# @docker-compose ${ARGS} exec -T django npm --prefix /home/web/django_project/dashboard install /home/web/django_project/dashboard --legacy-peer-deps
-# @docker-compose ${ARGS} exec -T django npm run build-react --prefix /home/web/django_project/dashboard
-# @docker-compose ${ARGS} exec -T django python manage.py collectstatic --noinput
-# @docker-compose ${ARGS} restart django auth worker celery_beat nginx
+# @docker compose ${ARGS} exec -T django python manage.py migrate
+# @docker compose ${ARGS} exec -T django npm --prefix /home/web/django_project/dashboard install /home/web/django_project/dashboard --legacy-peer-deps
+# @docker compose ${ARGS} exec -T django npm run build-react --prefix /home/web/django_project/dashboard
+# @docker compose ${ARGS} exec -T django python manage.py collectstatic --noinput
+# @docker compose ${ARGS} restart django auth worker celery_beat nginx
 
 kill-django:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Killing in production mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} stop django auth worker nginx
+	@docker compose ${ARGS} stop django auth worker nginx
 
 down-django: kill-django
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Removing production instance!!! "
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} rm -f django nginx auth worker
+	@docker compose ${ARGS} rm -f django nginx auth worker
 	
 
 web:
@@ -58,7 +58,7 @@ web:
 	@echo "------------------------------------------------------------------"
 	@echo "Running in production mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose up -d django
+	@docker compose up -d django
 
 frontend-dev:
 	@echo
@@ -72,22 +72,22 @@ frontend-test:
 	@echo "------------------------------------------------------------------"
 	@echo "Run frontend test"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} exec -T dev npm run test --prefix /home/web/django_project/dashboard
+	@docker compose ${ARGS} exec -T dev npm run test --prefix /home/web/django_project/dashboard
 
 frontend-serve:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Serve frontend"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} exec -T dev npm run serve --prefix /home/web/django_project/dashboard
+	@docker compose ${ARGS} exec -T dev npm run serve --prefix /home/web/django_project/dashboard
 
 dev:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Running in dev mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} up -d dev webpack-watcher worker celery_beat
-	@docker-compose ${ARGS} up --no-recreate --no-deps -d
+	@docker compose ${ARGS} up -d dev webpack-watcher worker celery_beat
+	@docker compose ${ARGS} up --no-recreate --no-deps -d
 
 # use .azure.env in docker-compose.override.yml
 dev-azure:
@@ -95,8 +95,8 @@ dev-azure:
 	@echo "------------------------------------------------------------------"
 	@echo "Running in dev mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} up -d dev webpack-watcher worker celery_beat azurite
-	@docker-compose ${ARGS} up --no-recreate --no-deps -d
+	@docker compose ${ARGS} up -d dev webpack-watcher worker celery_beat azurite
+	@docker compose ${ARGS} up --no-recreate --no-deps -d
 
 dev-kill:
 	@echo
@@ -116,14 +116,14 @@ build:
 	@echo "------------------------------------------------------------------"
 	@echo "Building in production mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose build
+	@docker compose build
 
 build-no-cache:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Building in production mode without cache"
 	@echo "------------------------------------------------------------------"
-	@docker-compose build --no-cache
+	@docker compose build --no-cache
 
 nginx:
 	@echo
@@ -133,7 +133,7 @@ nginx:
 	@echo "In a production environment you will typically use nginx running"
 	@echo "on the host rather if you have a multi-site host."
 	@echo "------------------------------------------------------------------"
-	@docker-compose up -d nginx
+	@docker compose up -d nginx
 	@echo "Site should now be available at http://localhost"
 
 up: web
@@ -143,49 +143,49 @@ status:
 	@echo "------------------------------------------------------------------"
 	@echo "Show status for all containers"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ps
+	@docker compose ps
 
 kill:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Killing in production mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose stop
+	@docker compose stop
 
 down: kill
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Removing production instance!!! "
 	@echo "------------------------------------------------------------------"
-	@docker-compose down
+	@docker compose down
 
 shell:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Shelling in in production mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose exec django /bin/bash
+	@docker compose exec django /bin/bash
 
 devweb-shell:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Shelling in in development mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose exec dev /bin/bash
+	@docker compose exec dev /bin/bash
 
 run-local:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Running Django in development mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose exec dev python manage.py runserver 0.0.0.0:8080 --settings=core.settings.dev
+	@docker compose exec dev python manage.py runserver 0.0.0.0:8080 --settings=core.settings.dev
 
 db-bash:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Entering DB Bash in production mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose exec db sh
+	@docker compose exec db sh
 
 db-shell:
 	@echo
@@ -199,7 +199,7 @@ collectstatic:
 	@echo "------------------------------------------------------------------"
 	@echo "Collecting static in production mode"
 	@echo "------------------------------------------------------------------"
-	#@docker-compose run django python manage.py collectstatic --noinput
+	#@docker compose run django python manage.py collectstatic --noinput
 	#We need to run collect static in the same context as the running
 	# django container it seems so I use docker exec here
 	# no -it flag so we can run over remote shell
@@ -218,7 +218,7 @@ migrate:
 	@echo "------------------------------------------------------------------"
 	@echo "Running migrate static in production mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose exec django python manage.py migrate
+	@docker compose exec django python manage.py migrate
 
 
 # --------------- help --------------------------------
@@ -246,20 +246,20 @@ tegola:
 	@echo "------------------------------------------------------------------"
 	@echo "Running tegola in production mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} up -d tegola
+	@docker compose ${ARGS} up -d tegola
 
 db:
 	@echo
 	@echo "------------------------------------------------------------------"
 	@echo "Running db in production mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} up -d db dbbackups
+	@docker compose ${ARGS} up -d db dbbackups
 
 wait-db:
-	@docker-compose ${ARGS} exec -T db su - postgres -c "until pg_isready; do sleep 5; done"
+	@docker compose ${ARGS} exec -T db su - postgres -c "until pg_isready; do sleep 5; done"
 
 create-test-db:
-	@docker-compose ${ARGS} exec -T db su - postgres -c "psql -c 'create database test_db;'"
+	@docker compose ${ARGS} exec -T db su - postgres -c "psql -c 'create database test_db;'"
 
 
 devweb: db
@@ -267,7 +267,7 @@ devweb: db
 	@echo "------------------------------------------------------------------"
 	@echo "Running in DEVELOPMENT mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose ${ARGS} up --no-recreate --no-deps -d dev
+	@docker compose ${ARGS} up --no-recreate --no-deps -d dev
 
 sleep:
 	@echo
@@ -282,10 +282,10 @@ devweb-test:
 	@echo "------------------------------------------------------------------"
 	@echo "Running in DEVELOPMENT mode"
 	@echo "------------------------------------------------------------------"
-	@docker-compose exec -T dev python manage.py test --keepdb --noinput
+	@docker compose exec -T dev python manage.py test --keepdb --noinput
 
 coverage-test:
-	@docker-compose exec -T dev bash -c "python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic --noinput --verbosity 0 && coverage run manage.py test && coverage xml"
+	@docker compose exec -T dev bash -c "python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic --noinput --verbosity 0 && coverage run manage.py test && coverage xml"
 
 # --------------- TESTS ---------------
 run-flake8:

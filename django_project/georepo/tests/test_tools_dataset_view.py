@@ -9,7 +9,7 @@ from georepo.models.dataset_view import (
     DatasetViewResource
 )
 from georepo.tests.model_factories import (
-    DatasetF, GeographicalEntityF
+    DatasetF, GeographicalEntityF, DatasetViewF
 )
 from georepo.utils.dataset_view import (
     generate_default_view_dataset_latest,
@@ -19,7 +19,10 @@ from georepo.utils.dataset_view import (
     check_view_exists,
     trigger_generate_dynamic_views,
     get_view_resource_from_view,
-    rename_dataset_view_from_old_pattern
+    rename_dataset_view_from_old_pattern,
+    create_sql_view,
+    init_view_privacy_level,
+    calculate_entity_count_in_view
 )
 
 
@@ -490,3 +493,24 @@ class TestToolsDatasetView(TestCase):
         view_latest.refresh_from_db()
         self.assertEqual(view_latest.name,
                          'Pakistan (Latest) - World')
+
+    def test_check_existing_static_view(self):
+        dataset = DatasetF.create(
+            label='World',
+            description='Test'
+        )
+        static_view = DatasetViewF.create(
+            name='custom-1',
+            dataset=dataset,
+            vector_tile_sync_status=DatasetView.SyncStatus.SYNCED,
+            is_static=True,
+            query_string=(
+                f'select * from georepo_geographicalentity where '
+                f'dataset_id={dataset.id}'
+            )
+        )
+        create_sql_view(static_view)
+        init_view_privacy_level(static_view)
+        # init view entity count
+        calculate_entity_count_in_view(static_view)
+        self.assertTrue(check_view_exists(str(static_view.uuid), True))

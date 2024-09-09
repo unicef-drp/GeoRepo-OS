@@ -22,46 +22,6 @@ var KEY_AUTH = slugify(window.location.pathname) + "-drf-yasg-auth";
 // load the saved authorization state from localStorage; ImmutableJS is used for consistency with swagger-ui state
 var savedAuth = Immutable.fromJS({});
 
-// ordering API
-var API_ORDERS = {
-    "02-search-dataset": [
-        "search-dataset-list",
-        "search-dataset-detail"
-    ],
-    "04-search-view-entity": [
-        "search-entity-by-ucode",
-        "search-entity-by-concept-ucode",
-        "search-view-entity-by-id",
-        "search-view-entity-by-level",
-        "search-view-entity-by-level-and-ucode",
-        "search-view-entity-by-level-and-concept-ucode",
-        "search-view-entity-by-level-0",
-        "search-view-entity-by-type",
-        "search-view-entity-by-type-and-ucode",
-        "search-view-entity-versions-by-ucode",
-        "search-view-entity-versions-by-concept-ucode",
-        "search-view-entity-by-name",
-        "search-view-entity-children-by-ucode",
-        "search-view-entity-parents-by-ucode",
-        "search-view-entity-by-geometry",
-        "batch-search-view-by-id",
-        "check-batch-status-search-view-by-id",
-        "get-result-batch-search-view-by-id",
-    ],
-    "05-operation-view-entity": [
-        "operation-view-bbox",
-        "operation-view-containment-check",
-        "batch-geocoding",
-        "check-status-batch-geocoding",
-        "get-result-batch-geocoding"
-    ],
-    "06-download": [
-        "submit-download-job",
-        "fetch-download-job-status"
-    ],
-}
-
-
 // global SwaggerUI config object; can be changed directly or by hooking initSwaggerUiConfig
 var swaggerUiConfig = {
     url: defaultSpecUrl,
@@ -84,19 +44,6 @@ var swaggerUiConfig = {
         }
 
         return request;
-    },
-    operationsSorter: function (a, b) {
-        var a_operationId = a.get("operation").get("operationId");
-        var b_operationId = b.get("operation").get("operationId");
-        var a_tags = a.get("operation").get("tags");
-        var a_tag = a_tags.get(0, '');
-        if (!(a_tag in API_ORDERS)) {
-            var order = { 'get': '0', 'post': '1', 'put': '2', 'delete': '3' };
-            return order[a.get("method")].localeCompare(order[b.get("method")]);
-        }
-        var a_idx = API_ORDERS[a_tag].indexOf(a_operationId);
-        var b_idx = API_ORDERS[a_tag].indexOf(b_operationId);
-        return a_idx === b_idx ? 0 : a_idx < b_idx ? -1 : 1;
     },
 };
 

@@ -1,6 +1,6 @@
 import factory
 from datetime import datetime
-from typing import Generic, TypeVar
+# from typing import Generic, TypeVar
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 
@@ -12,18 +12,18 @@ from georepo.models import (
     DatasetAdminLevelName, BoundaryType
 )
 
-T = TypeVar('T')
+# The BaseFactory classes causing error in tests
+# T = TypeVar('T')
+
+# class BaseMetaFactory(Generic[T], factory.base.FactoryMetaClass):
+#     def __call__(cls, *args, **kwargs) -> T:
+#         return super().__call__(*args, **kwargs)
 
 
-class BaseMetaFactory(Generic[T], factory.base.FactoryMetaClass):
-    def __call__(cls, *args, **kwargs) -> T:
-        return super().__call__(*args, **kwargs)
-
-
-class BaseFactory(Generic[T], factory.django.DjangoModelFactory):
-    @classmethod
-    def create(cls, **kwargs) -> T:
-        return super().create(**kwargs)
+# class BaseFactory(Generic[T], factory.django.DjangoModelFactory):
+#     @classmethod
+#     def create(cls, **kwargs) -> T:
+#         return super().create(**kwargs)
 
 
 class UserF(factory.django.DjangoModelFactory):
@@ -66,8 +66,7 @@ class DatasetF(factory.django.DjangoModelFactory):
     created_by = factory.SubFactory(UserF)
 
 
-class DatasetViewF(BaseFactory[DatasetView],
-                   metaclass=BaseMetaFactory[DatasetView]):
+class DatasetViewF(factory.django.DjangoModelFactory):
     class Meta:
         model = DatasetView
 
@@ -82,10 +81,7 @@ class DatasetViewF(BaseFactory[DatasetView],
     created_by = factory.SubFactory(UserF)
 
 
-class DatasetViewResourceF(
-    BaseFactory[DatasetViewResource],
-    metaclass=BaseMetaFactory[DatasetViewResource]
-):
+class DatasetViewResourceF(factory.django.DjangoModelFactory):
     class Meta:
         model = DatasetViewResource
 
@@ -101,8 +97,7 @@ class EntityTypeF(factory.django.DjangoModelFactory):
     )
 
 
-class GeographicalEntityF(BaseFactory[GeographicalEntity],
-                          metaclass=BaseMetaFactory[GeographicalEntity]):
+class GeographicalEntityF(factory.django.DjangoModelFactory):
     class Meta:
         model = GeographicalEntity
 
