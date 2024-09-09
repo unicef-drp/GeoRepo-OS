@@ -1,5 +1,6 @@
 """Azure B2C authentication functions."""
 import logging
+import os
 from http import HTTPStatus
 
 import msal
@@ -8,6 +9,7 @@ import requests
 from django.conf import settings
 from django.urls import reverse
 from django.shortcuts import resolve_url
+from django.contrib.auth import login, get_user_model
 
 from .configuration import AzureAuthConfig
 from .exceptions import (
@@ -18,6 +20,7 @@ from .exceptions import (
 from .utils import logger_debug
 
 logger = logging.getLogger(__name__)
+UserModel = get_user_model()
 
 
 class AzureAuthHandler:
@@ -144,6 +147,8 @@ class AzureAuthHandler:
 
     def get_token_from_cache(self):
         """Retrieve the token from cache, otherwise fetch new token."""
+        if settings.DEBUG and self._mock_auth():
+            return True
         if not self.msal_app:
             return None
         accounts = self.msal_app.get_accounts()
@@ -318,3 +323,16 @@ class AzureAuthHandler:
         """Remove session variables."""
         self.request.session.pop(self.token_cache_session_key, '')
         self.request.session.pop(self.id_claims_session_key, '')
+
+    def _mock_auth(self):
+        mock_azure_auth_username = os.environ.get(
+            'MOCK_AZURE_AUTH_USERNAME', None)
+        if mock_azure_auth_username:
+            if not self.request.user.is_authenticated:
+                login(
+                    self.request,
+                    UserModel.objects.get(username=mock_azure_auth_username),
+                    'azure_auth.backends.AzureAuthBackend'
+                )
+            return True
+        return False
