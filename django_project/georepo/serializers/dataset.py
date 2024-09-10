@@ -19,6 +19,7 @@ from georepo.models import (
 class DatasetItemSerializer(APIResponseModelSerializer):
     name = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
+    is_favorite = serializers.SerializerMethodField()
     last_update = serializers.SerializerMethodField()
 
     class Meta:
@@ -42,6 +43,10 @@ class DatasetItemSerializer(APIResponseModelSerializer):
                     title='Module Name',
                     type=openapi.TYPE_STRING,
                 ),
+                'is_favorite': openapi.Schema(
+                    title='Favorite Dataset',
+                    type=openapi.TYPE_BOOLEAN,
+                ),
                 'last_update': openapi.Schema(
                     title='Dataset Last Updated Date Time',
                     type=openapi.TYPE_STRING,
@@ -55,6 +60,7 @@ class DatasetItemSerializer(APIResponseModelSerializer):
                 ),
                 'short_code': 'TST',
                 'type': 'Admin Boundaries',
+                'is_favorite': False,
                 'last_update': '2022-08-15T08:09:15.049806Z'
             }]
         }
@@ -65,11 +71,15 @@ class DatasetItemSerializer(APIResponseModelSerializer):
             'uuid',
             'short_code',
             'type',
+            'is_favorite',
             'last_update'
         ]
 
     def get_name(self, obj: Dataset):
         return obj.label
+
+    def get_is_favorite(self, obj: Dataset):
+        return obj.is_preferred
 
     def get_type(self, obj: Dataset):
         return obj.module.name if obj.module else ''
@@ -179,6 +189,7 @@ class AdminLevelSerializer(APIResponseModelSerializer):
 class DetailedDatasetSerializer(APIResponseModelSerializer):
     name = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
+    is_favorite = serializers.SerializerMethodField()
     dataset_levels = serializers.SerializerMethodField()
     possible_id_types = serializers.SerializerMethodField()
 
@@ -202,6 +213,10 @@ class DetailedDatasetSerializer(APIResponseModelSerializer):
                 'type': openapi.Schema(
                     title='Module Name',
                     type=openapi.TYPE_STRING
+                ),
+                'is_favorite': openapi.Schema(
+                    title='Favorite Dataset',
+                    type=openapi.TYPE_BOOLEAN,
                 ),
                 'description': openapi.Schema(
                     title='Dataset Description',
@@ -238,6 +253,7 @@ class DetailedDatasetSerializer(APIResponseModelSerializer):
                 'name': 'Ukraine',
                 'uuid': '8c4582ab-15b1-4ed0-b8e4-00640ec10a65',
                 'type': 'Admin Boundaries',
+                'is_favorite': False,
                 'description': 'Ukraine Boundaries',
                 'last_update': '2023-01-26T03:39:01.518482Z',
                 'dataset_levels': [
@@ -261,6 +277,7 @@ class DetailedDatasetSerializer(APIResponseModelSerializer):
             'uuid',
             'short_code',
             'type',
+            'is_favorite',
             'description',
             'last_update',
             'dataset_levels',
@@ -272,6 +289,9 @@ class DetailedDatasetSerializer(APIResponseModelSerializer):
 
     def get_type(self, obj: Dataset):
         return obj.module.name if obj.module else ''
+
+    def get_is_favorite(self, obj: Dataset):
+        return obj.is_preferred
 
     def get_last_update(self, obj: Dataset):
         if obj.last_update:

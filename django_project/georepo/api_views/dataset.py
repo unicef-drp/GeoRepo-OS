@@ -114,7 +114,7 @@ class DatasetList(ApiCache):
         self.check_object_permissions(request, module)
         datasets = Dataset.objects.filter(
             module__uuid=uuid
-        ).order_by('label')
+        ).order_by('-is_preferred', 'label')
         datasets = get_dataset_for_user(
             self.request.user,
             datasets
