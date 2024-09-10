@@ -223,6 +223,10 @@ class Dataset(models.Model):
         default=False
     )
 
+    is_preferred = models.BooleanField(
+        default=False
+    )
+
     def save(self, *args, **kwargs):
         if not self.uuid:
             self.uuid = uuid.uuid4()

@@ -46,8 +46,9 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
     const [alertDialogDescription, setAlertDialogDescription] = useState<string>('')
     const [privacyLevelLabels, setPrivacyLevelLabels] = useState<PrivacyLevel>({})
     const [updateDatasetTaskId, setUpdateDatasetTaskId] = useState('')
+    const [isPreferred, setIsPreferred] = useState<boolean>(false)
 
-    const updateDatasetDetail = (name: string, thresholdNew: number, thresholdOld: number, generateAdm0DefaultViews: boolean, isActive: boolean) => {
+    const updateDatasetDetail = (name: string, thresholdNew: number, thresholdOld: number, generateAdm0DefaultViews: boolean, isActive: boolean, isPreferred: boolean) => {
         setLoading(true)
         setAlertLoading(true)
         postData(
@@ -57,7 +58,8 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
                 'geometry_similarity_threshold_new': thresholdNew,
                 'geometry_similarity_threshold_old': thresholdOld,
                 'generate_adm0_default_views': generateAdm0DefaultViews,
-                'is_active': isActive
+                'is_active': isActive,
+                'is_preferred': isPreferred
             }
         ).then(
             response => {
@@ -96,12 +98,13 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
             setMaxPrivacyLevel(props.dataset.max_privacy_level)
             setMinPrivacyLevel(props.dataset.min_privacy_level)
             setDatasetShortCode(props.dataset.short_code)
+            setIsPreferred(props.dataset.is_preferred)
         }
         fetchPrivacyLevelLabels()
     }, [props.dataset])
 
     const handleSaveClick = () => {
-        updateDatasetDetail(datasetName, thresholdNew, thresholdOld, generateAdm0DefaultViews, props.dataset.is_active)
+        updateDatasetDetail(datasetName, thresholdNew, thresholdOld, generateAdm0DefaultViews, props.dataset.is_active, isPreferred)
     }
 
     const toggleDatasetStatus = () => {
@@ -113,7 +116,7 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
     }
 
     const alertConfirmed = () => {
-        updateDatasetDetail(datasetName, thresholdNew, thresholdOld, generateAdm0DefaultViews, !props.dataset.is_active)
+        updateDatasetDetail(datasetName, thresholdNew, thresholdOld, generateAdm0DefaultViews, !props.dataset.is_active, isPreferred)
     }
 
     const handleAlertCancel = () => {
@@ -301,6 +304,32 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
                                                     disabled={loading || !props.dataset.is_active}
                                                     onChange={(val) => setGenerateAdm0DefaultViews(val.target.checked)}/>}
                                                     label="" />
+                            </Grid>
+                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                <Grid container flexDirection={'row'} alignItems={'center'}>
+                                    <Grid item>
+                                        <Typography variant={'subtitle1'}>
+                                            Is Favorite
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item>
+                                    <HtmlTooltip tooltipTitle='Dataset Favorite Flag'
+                                        tooltipDescription={
+                                            <div>
+                                                <p>
+                                                    The favorite dataset will appear at the top in the GeoRepo Dataset List API.
+                                                </p>
+                                            </div>
+                                        }
+                                    />
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                                <FormControlLabel control={<Checkbox value={isPreferred} checked={isPreferred}
+                                    disabled={loading || !props.dataset.is_active}
+                                    onChange={(val) => setIsPreferred(val.target.checked)}/>}
+                                    label="" />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
                                 <Typography variant={'subtitle1'}>Status</Typography>

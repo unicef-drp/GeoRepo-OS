@@ -16,6 +16,7 @@ export default interface Dataset {
     permissions?: string[],
     is_active?: boolean,
     is_empty?: boolean,
+    is_preferred?: boolean
 }
 
 
