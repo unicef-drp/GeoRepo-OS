@@ -15,7 +15,6 @@ from dashboard.models import (
     LayerFile,
     EntityTemp
 )
-from georepo.utils.unique_code import get_latest_revision_number
 
 
 logger = logging.getLogger(__name__)
@@ -27,12 +26,11 @@ def do_search_parent_entity_by_geometry(
     **kwargs
 ) -> Tuple[GeographicalEntity, float]:
     start = time.time()
-    max_revision_number = get_latest_revision_number(dataset)
     entities = GeographicalEntity.objects.filter(
         dataset=dataset,
         level=0,
         is_approved=True,
-        revision_number=max_revision_number,
+        is_latest=True,
         geometry__bboverlaps=geometry
     )
     # annotate the overlaps area

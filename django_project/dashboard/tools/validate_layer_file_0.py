@@ -7,7 +7,6 @@ from georepo.models import (
 from georepo.validation.layer_validation import (
     retrieve_layer0_default_codes
 )
-from georepo.utils.unique_code import get_latest_revision_number
 from dashboard.models import (
     LayerUploadSession, EntityUploadStatus
 )
@@ -69,12 +68,11 @@ def preprocess_layer_file_0(
     start = time.time()
     level_0_data = retrieve_layer0_default_codes(upload_session,
                                                  overwrite=True)
-    max_revision_number = get_latest_revision_number(upload_session.dataset)
     entities = GeographicalEntity.objects.filter(
         dataset=upload_session.dataset,
         level=0,
         is_approved=True,
-        revision_number=max_revision_number
+        is_latest=True
     ).order_by('uuid').distinct('uuid')
     results = []
     # merge level_0_data from layer_file with existing level0 data
