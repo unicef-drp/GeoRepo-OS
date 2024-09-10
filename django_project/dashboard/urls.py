@@ -95,7 +95,8 @@ from dashboard.api_views.dataset import (
     DatasetStyle, UpdateDatasetStyle,
     CheckDatasetShortCode, UpdateDataset,
     DatasetAdminLevelNames, DatasetBoundaryTypes,
-    DatasetMVTTilesView, DatasetMVTTilesPreviewTilingConfig
+    DatasetMVTTilesView, DatasetMVTTilesPreviewTilingConfig,
+    ValidationErrorCountryPreprosessing
 )
 from dashboard.api_views.notification import NotificationList
 from dashboard.api_views.language import LanguageList, FetchLanguages
@@ -181,6 +182,10 @@ urlpatterns = [
         r'api/dataset-entity/list/?$',
         DatasetEntityList.as_view(),
         name='dataset-entity-list'),
+    re_path(
+        r'api/dataset-entity/country-validation/?$',
+        ValidationErrorCountryPreprosessing.as_view(),
+        name='dataset-country-validation'),
     re_path(
         r'api/entity-revisions/?$',
         EntityRevisionList.as_view(),

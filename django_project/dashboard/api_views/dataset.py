@@ -73,6 +73,9 @@ from dashboard.api_views.common import (
 )
 from georepo.tasks.dataset_delete import dataset_delete
 from dashboard.tasks.patch import do_generate_adm0_default_views
+from dashboard.serializers.upload_session import (
+    ValidationCSVRenderer
+)
 
 
 DATASET_SHORT_CODE_MAX_LENGTH = 4
@@ -991,6 +994,30 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 results, total_uploads = self.get_entity_uploads(
                     level_0_data_dict, default_max_level, start_idx, end_idx)
 
+        validation_errors = []
+        if self.upload_session.validation_summaries:
+            for level, summary in self.upload_session.\
+                validation_summaries.items():
+                parent_missing = summary.get('parent_missing', [])
+                if len(parent_missing) > 0:
+                    for pm in parent_missing:
+                        entity_id = pm.get('entity_id', '')
+                        validation_errors.append(
+                            f'Parent missing {entity_id} - Level {level}'
+                        )
+                parent_code_missing = summary.get('parent_code_missing', [])
+                if len(parent_code_missing) > 0:
+                    for pm in parent_code_missing:
+                        entity_id = pm.get('entity_id', '')
+                        validation_errors.append(
+                            f'Parent code missing {entity_id} - Level {level}'
+                        )
+            if len(validation_errors) > 3:
+                total_validations = len(validation_errors)
+                validation_errors = validation_errors[:3]
+                validation_errors.append(
+                    f'And {total_validations - 3} other error(s)')
+
         return Response(
             data={
                 'is_level_0_upload': is_level_0_upload,
@@ -1005,9 +1032,35 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 'action_uuid': self.upload_session.current_process_uuid,
                 'current_process': self.upload_session.current_process,
                 'total': total_uploads,
-                'selected_ids': selected_ids
+                'selected_ids': selected_ids,
+                'validation_summaries': validation_errors
             }
         )
+
+
+class ValidationErrorCountryPreprosessing(AzureAuthRequiredMixin, APIView):
+    """
+    Fetch csv of validation error during country preprocessing.
+    """
+
+    renderer_classes = (ValidationCSVRenderer,)
+
+    def get(self, request, *args, **kwargs):
+        session_id = request.GET.get('session', None)
+        upload_session = get_object_or_404(LayerUploadSession, id=session_id)
+        data = []
+        if upload_session.validation_summaries is None:
+            return Response(data)
+        for level, summary in upload_session.validation_summaries.items():
+            parent_missing = summary.get('parent_missing', [])
+            for pm in parent_missing:
+                pm['error'] = 'Parent Missing'
+                data.append(pm)
+            parent_code_missing = summary.get('parent_code_missing', [])
+            for pm in parent_code_missing:
+                pm['error'] = 'Parent Code Missing'
+                data.append(pm)
+        return Response(data)
 
 
 class CreateDataset(AzureAuthRequiredMixin,

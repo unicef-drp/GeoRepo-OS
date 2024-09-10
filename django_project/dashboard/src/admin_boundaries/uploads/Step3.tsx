@@ -80,6 +80,8 @@ const getEmptyCountryItem = (index: number) => {
   } as CountryItem
 }
 
+const DOWNLOAD_ERROR_REPORT_URL = '/api/dataset-entity/country-validation/'
+
 
 export default function Step3(props: WizardStepInterface) {
   const [datasetData, setDatasetData] = useState<CountryItem[]>([])
@@ -106,6 +108,7 @@ export default function Step3(props: WizardStepInterface) {
   const listRef = useRef({} as any);
   const rowHeights = useRef({} as any);
   const [actionUuid, setActionUuid] = useState('')
+  const [validationError, setValidationError] = useState(null)
 
   const isItemLoaded = (index: number) => {
     return index < datasetData.length ? datasetData[index].loaded : false
@@ -126,6 +129,9 @@ export default function Step3(props: WizardStepInterface) {
           let _originalData = [...datasetData]
           _originalData.splice(startIndex, _data.length, ..._data)
           setDatasetData([..._originalData])
+        }
+        if ('validation_summaries' in response.data) {
+          _parseValidationSummaries(response.data['validation_summaries'])
         }
       },
       error => {
@@ -170,6 +176,9 @@ export default function Step3(props: WizardStepInterface) {
             if (props.onCheckProgress) {
               props.onCheckProgress()
             }
+          }
+          if ('validation_summaries' in response.data) {
+            _parseValidationSummaries(response.data['validation_summaries'])
           }
         } else if (response.data['status'] === 'Canceled') {
           setIsFetchingData(false)
@@ -335,6 +344,27 @@ export default function Step3(props: WizardStepInterface) {
     setSelectedUpload(value)
     setSelectedUploadCountry(name)
     setOpenAdminLevel1Modal(true)
+  }
+
+  const _parseValidationSummaries = (validation_summaries: any) => {
+    // Parse validation summaries dictionary<Level, dict> that contains parent_code_missing and parent_missing
+    let _hasErrors = validation_summaries && validation_summaries.length > 0
+    let _error_message = ''
+    for (let i=0; i < validation_summaries.length; ++i) {
+      _error_message += validation_summaries[i] + '\n'
+    }
+    if (_hasErrors) {
+      setValidationError(_error_message)
+    } else {
+      setValidationError(null)
+    }
+  }
+
+  const _downloadReport = () => {
+    const link = document.createElement("a");
+    link.download = `country_error_report.csv`;
+    link.href = `${DOWNLOAD_ERROR_REPORT_URL}?session=${props.uploadSession}`;
+    link.click();
   }
 
   const secondaryAction = (rowIndex: number, rowData: CountryItem) => {
@@ -621,7 +651,7 @@ export default function Step3(props: WizardStepInterface) {
                 disableRipple
                 inputProps={{ "aria-labelledby": labelId }}
                 onChange={(event: any) =>  selectionChanged(`${value.upload_id}`, event.target.checked)}
-                disabled={props.isReadOnly || !value.is_available || loading}
+                disabled={props.isReadOnly || !value.is_available || loading || validationError !== null}
               />
             </ListItemIcon>
           </Grid>
@@ -670,6 +700,20 @@ export default function Step3(props: WizardStepInterface) {
           title="Processing selected countries" onError={onSessionActionError} onSuccess={onSessionActionSuccess}
           description="Please do not close this page while background task is in progress..."/>
       </Grid>
+      <Grid item>
+        <Grid container flexDirection={'row'} justifyContent={'center'}>
+            { validationError ?
+                <Alert className="UploadAlertMessage" severity='error'>
+                    <AlertTitle>Validation Error!</AlertTitle>
+                    <p className="display-linebreak">
+                        { validationError }
+                    </p>
+                    <div>
+                      <span className="AlertLink">Click <Link onClick={_downloadReport} style={{cursor: 'pointer'}}>here</Link> to download the full error report.</span>
+                    </div>
+                </Alert> : null }
+        </Grid>
+      </Grid>
       <Grid item style={{ width: '100%' }}>
         <h3 style={{ textAlign: 'left' }}>Import Data</h3>
         <Typography sx={{textAlign: 'left'}}>Unpacking spatial datasets and loading them into the database. When this process completes, you will see a list of the Admin 0 entities below.</Typography>
@@ -700,7 +744,7 @@ export default function Step3(props: WizardStepInterface) {
                             checked={isCheckAll}
                             disableRipple
                             onChange={(event: any) =>  setCheckAll(event.target.checked)}
-                            disabled={props.isReadOnly || loading}
+                            disabled={props.isReadOnly || loading || validationError !== null}
                             indeterminate={selectedEntities.length !== totalUploads && selectedEntities.length !== 0}
                           />
                         }
@@ -766,7 +810,7 @@ export default function Step3(props: WizardStepInterface) {
             {
               datasetData.length > 0 ?
                 <LoadingButton loading={props.isUpdatingStep} loadingPosition="start" startIcon={<div style={{width: 0}}/>} variant="contained"
-                        disabled={loading || (selectedEntities.length == 0)}
+                        disabled={loading || (selectedEntities.length == 0) || (validationError !== null)}
                         onClick={validateButtonClicked}
                 >
                   { props.isReadOnly? 'Next': 'Validate'}
