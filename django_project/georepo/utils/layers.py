@@ -360,8 +360,6 @@ def read_layer_files_entity_temp(upload_session: LayerUploadSession):
                 validation_result
             )
             upload_session.save(update_fields=['validation_summaries'])
-    # write validation_summaries into csv file
-    store_validation_summaries(upload_session)
 
 
 def check_value_as_string_valid(value: str):
