@@ -2,8 +2,12 @@ from typing import Tuple
 import time
 import json
 import logging
+import traceback
+import csv
+from io import StringIO
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from django.db.models import IntegerField
+from django.core.files.base import ContentFile
 from django.db.models.functions import Cast
 from django.core.files.uploadedfile import (
     InMemoryUploadedFile,
@@ -181,6 +185,11 @@ def read_temp_layer_file(upload_session: LayerUploadSession,
                          layer_file: LayerFile):
     """Read layer file and store to EntityTemp table."""
     level = int(layer_file.level)
+    validation_result = {
+        'level': level,
+        'parent_code_missing': [],
+        'parent_missing': []
+    }
     # clear existing
     existing_entities = EntityTemp.objects.filter(
         level=level,
@@ -189,7 +198,7 @@ def read_temp_layer_file(upload_session: LayerUploadSession,
     )
     existing_entities._raw_delete(existing_entities.db)
     if not layer_file.layer_file.storage.exists(layer_file.layer_file.name):
-        return
+        return validation_result
     id_field = (
         [id_field['field'] for id_field in layer_file.id_fields
             if id_field['default']][0]
@@ -221,16 +230,33 @@ def read_temp_layer_file(upload_session: LayerUploadSession,
                     )
                 )
                 if feature_parent_code:
+                    parent = EntityTemp.objects.filter(
+                        upload_session=upload_session,
+                        level=level - 1,
+                        entity_id=feature_parent_code
+                    ).first()
                     if level == 1:
                         ancestor = feature_parent_code
-                    else:
-                        parent = EntityTemp.objects.filter(
-                            upload_session=upload_session,
-                            level=level - 1,
-                            entity_id=feature_parent_code
-                        ).first()
-                        if parent:
-                            ancestor = parent.ancestor_entity_id
+                    elif parent:
+                        ancestor = parent.ancestor_entity_id
+                    if parent is None and level > 1:
+                        # parent missing
+                        validation_result['parent_missing'].append({
+                            'level': level,
+                            'feature_id': feature_idx,
+                            'name': entity_name,
+                            'entity_id': entity_id,
+                            'parent': feature_parent_code
+                        })
+                elif level > 1:
+                    # parent code missing error
+                    validation_result['parent_code_missing'].append({
+                        'level': level,
+                        'feature_id': feature_idx,
+                        'name': entity_name,
+                        'entity_id': entity_id,
+                        'parent': None
+                    })
             # add geom
             # create geometry
             geom_str = json.dumps(feature['geometry'])
@@ -316,6 +342,7 @@ def read_temp_layer_file(upload_session: LayerUploadSession,
         if len(data) > 0:
             EntityTemp.objects.bulk_create(data)
         delete_tmp_shapefile(features.path)
+        return validation_result
 
 
 def read_layer_files_entity_temp(upload_session: LayerUploadSession):
@@ -326,7 +353,13 @@ def read_layer_files_entity_temp(upload_session: LayerUploadSession):
         layer_upload_session=upload_session
     ).order_by('level_int')
     for layer_file in layer_files:
-        read_temp_layer_file(upload_session, layer_file)
+        validation_result = read_temp_layer_file(upload_session, layer_file)
+        if validation_result['level'] > 1:
+            # save into upload session
+            upload_session.validation_summaries[validation_result['level']] = (
+                validation_result
+            )
+            upload_session.save(update_fields=['validation_summaries'])
 
 
 def check_value_as_string_valid(value: str):
@@ -342,3 +375,33 @@ def check_tmp_entity_metadata_valid(metadata, field):
         return False
     value = metadata[field] if metadata[field] else ''
     return check_value_as_string_valid(value)
+
+
+def store_validation_summaries(upload_session: LayerUploadSession):
+    """Store validation summaries into csv file."""
+    rows = []
+    for summary in upload_session.validation_summaries.values():
+        if len(summary) == 0:
+            continue
+        rows.extend(summary)
+    if len(rows) == 0:
+        upload_session.validation_report = None
+        upload_session.save(update_fields=['validation_report'])
+        return
+    try:
+        keys = rows[0].keys()
+        csv_buffer = StringIO()
+        csv_writer = csv.DictWriter(csv_buffer, keys)
+        csv_writer.writeheader()
+        csv_writer.writerows(rows)
+
+        csv_file = ContentFile(csv_buffer.getvalue().encode('utf-8'))
+        upload_session.validation_report.save(
+            f'validation-summaries-{upload_session.id}.csv',
+            csv_file
+        )
+    except Exception as e:
+        logger.error(
+            'There is unexpected error in store_validation_summaries')
+        logger.error(e)
+        logger.error(traceback.format_exc())

@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework_csv import renderers as r
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
 from georepo.models.entity import GeographicalEntity
@@ -229,3 +230,7 @@ class DetailUploadSessionSerializer(serializers.ModelSerializer):
             'dataset_name',
             'module_name'
         ]
+
+
+class ValidationCSVRenderer(r.CSVRenderer):
+    header = ['level', 'name', 'entity_id', 'error']

@@ -9,6 +9,7 @@ from django.urls import reverse
 from rest_framework.test import APIRequestFactory
 
 from dashboard.api_views.upload_session import UploadSessionList
+from dashboard.api_views.dataset import ValidationErrorCountryPreprosessing
 from dashboard.models.entity_upload import REVIEWING, REJECTED
 from dashboard.tests.model_factories import (
     EntityUploadF, LayerUploadSessionF
@@ -191,3 +192,39 @@ class TestUploadSessionList(TestCase):
             response.data['results'][0].get('level_0_entity'),
             'some-random-entity-1...'
         )
+
+    def test_validation_error_step4(self):
+        self.upload_session.validation_summaries = {
+            "2": {
+                "level": 2,
+                "parent_missing": [
+                    {
+                        "level": 2,
+                        "feature_id": 1,
+                        "name": "Entity ABC",
+                        "entity_id": "1",
+                        "parent": None
+                    }
+                ],
+                "parent_code_missing": [
+                    {
+                        "level": 2,
+                        "feature_id": 1,
+                        "name": "Entity ABC",
+                        "entity_id": "1",
+                        "parent": None
+                    }
+                ]
+            }
+        }
+        self.upload_session.save()
+        request = self.factory.get(
+            reverse('dataset-country-validation') +
+            f'?session={self.upload_session.id}'
+        )
+        request.user = self.superuser
+        view = ValidationErrorCountryPreprosessing.as_view()
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers['Content-Type'], 'text/html; charset=utf-8')
