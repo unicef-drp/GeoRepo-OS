@@ -33,7 +33,8 @@ class DatasetSerializer(serializers.ModelSerializer):
             'tiling_status', 'sync_status', 'short_code',
             'generate_adm0_default_views',
             'max_privacy_level', 'min_privacy_level',
-            'permissions', 'is_empty', 'is_active'
+            'permissions', 'is_empty', 'is_active',
+            'is_preferred'
         ]
 
     def get_created_by(self, obj: Dataset):

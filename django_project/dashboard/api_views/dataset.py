@@ -1074,6 +1074,7 @@ class CreateDataset(AzureAuthRequiredMixin,
         name = request.data.get('name')
         description = request.data.get('description')
         short_code = request.data.get('short_code', None)
+        is_preferred = request.data.get('is_preferred', False)
         max_privacy_level = request.data.get('max_privacy_level', 4)
         min_privacy_level = request.data.get('min_privacy_level', 1)
         module_id = request.data.get('module_id')
@@ -1115,7 +1116,8 @@ class CreateDataset(AzureAuthRequiredMixin,
             ),
             short_code=short_code,
             max_privacy_level=max_privacy_level,
-            min_privacy_level=min_privacy_level
+            min_privacy_level=min_privacy_level,
+            is_preferred=is_preferred
         )
         populate_tile_configs(dataset.id)
         populate_default_dataset_admin_level_names(dataset)
@@ -1333,6 +1335,7 @@ class UpdateDataset(AzureAuthRequiredMixin, DatasetManagePermission, APIView):
             generate_default_views_task = task.id
         tmp_active = dataset.is_active
         dataset.is_active = request.data.get('is_active')
+        dataset.is_preferred = request.data.get('is_preferred', False)
         if not dataset.is_active and tmp_active:
             # deprecate dataset action
             # validate if user has own permission

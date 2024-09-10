@@ -2,6 +2,8 @@ import React, {useEffect, useRef, useState} from "react";
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InputAdornment from '@mui/material/InputAdornment';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import axios from "axios";
 import debounce from "lodash/debounce";
 import {Box, Button, FormControl, Grid, MenuItem, TextField, Typography} from "@mui/material";
@@ -41,6 +43,7 @@ export default function DatasetCreate() {
   const [minPrivacyLevel, setMinPrivacyLevel] = useState(1)
   const [privacyLevelLabels, setPrivacyLevelLabels] = useState<PrivacyLevel>({})
   const [alertMessage, setAlertMessage] = useState<string>('')
+  const [isPreferred, setIsPreferred] = useState<boolean>(false)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const debounceCheckShortCode = useRef(debounce((code) => {
@@ -59,7 +62,8 @@ export default function DatasetCreate() {
       description: description,
       short_code: shortCode,
       max_privacy_level: maxPrivacyLevel,
-      min_privacy_level: minPrivacyLevel
+      min_privacy_level: minPrivacyLevel,
+      is_preferred: isPreferred
     }).then((response) => {
       setLoading(false)
       if (response.status === 201) {
@@ -257,6 +261,32 @@ export default function DatasetCreate() {
                     <MenuItem value={4}>{`4${privacyLevelLabels[4] ? ' - ' + privacyLevelLabels[4] : ''}`}</MenuItem>
                 </Select>
               </FormControl>
+            </Grid>
+            <Grid className={'form-label'} item md={2} xl={2} xs={12}>
+              <Grid container flexDirection={'row'} alignItems={'center'}>
+                <Grid item>
+                    <Typography variant={'subtitle1'}>
+                        Is Favorite
+                    </Typography>
+                </Grid>
+                <Grid item>
+                  <HtmlTooltip tooltipTitle='Dataset Favorite Flag'
+                      tooltipDescription={
+                          <div>
+                              <p>
+                                  The favorite dataset will appear at the top in the GeoRepo Dataset List API.
+                              </p>
+                          </div>
+                      }
+                  />
+                </Grid>
+              </Grid>
+            </Grid>
+            <Grid item md={10} xs={12} sx={{ display: 'flex' }}>
+              <FormControlLabel control={<Checkbox value={isPreferred} checked={isPreferred}
+                  disabled={loading}
+                  onChange={(val) => setIsPreferred(val.target.checked)}/>}
+                  label="" />
             </Grid>
           </Grid>
           <Box sx={{ textAlign: 'right' }}>
