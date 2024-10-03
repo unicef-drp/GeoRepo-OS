@@ -1,4 +1,5 @@
 import mock
+import json
 from django.urls import reverse
 from django.utils import timezone
 
@@ -62,6 +63,14 @@ class TestSearchId(BaseDatasetViewTest):
             id_request.output_file.storage.exists(
                 id_request.output_file.name)
         )
+        f = id_request.output_file.open()
+        data = json.load(f)
+        # match the uuid and concept_uuid from PAK_V2
+        self.assertEqual(
+            str(self.pak0_2.uuid), data['PAK'][0]['concept_uuid'])
+        self.assertEqual(
+            str(self.pak0_2.uuid_revision), data['PAK'][0]['uuid'])
+        f.close()
         id_request.delete()
 
     @mock.patch('georepo.api_views.entity_view.'
