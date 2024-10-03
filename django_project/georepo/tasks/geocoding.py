@@ -30,6 +30,7 @@ from georepo.utils.entity_query import (
     get_column_id,
     get_return_type_key
 )
+from georepo.utils.uuid_helper import UUIDEncoder
 
 
 logger = logging.getLogger(__name__)
@@ -257,7 +258,8 @@ def do_containment_check(geocoding_request: GeocodingRequest,
                         "properties": properties,
                         "geometry": geom
                     }
-                    geojson_file.write(json.dumps(feature_data))
+                    geojson_file.write(
+                        json.dumps(feature_data, cls=UUIDEncoder))
                     geojson_file.write(',\n')
                     idx += 1
                     feature_idx = row[1]
@@ -287,7 +289,7 @@ def do_containment_check(geocoding_request: GeocodingRequest,
                     "properties": properties,
                     "geometry": geom
                 }
-                geojson_file.write(json.dumps(feature_data))
+                geojson_file.write(json.dumps(feature_data, cls=UUIDEncoder))
                 geojson_file.write('\n')
             geojson_file.write(']\n')
             geojson_file.write('}\n')
