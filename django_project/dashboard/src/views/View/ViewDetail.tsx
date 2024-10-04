@@ -87,7 +87,9 @@ export default function ViewDetail() {
                 }
                 let _isReadOnly = isReadOnlyView(view)
                 if (_isReadOnly) {
-                    setTabSelected(1)
+                    // set tab to preview if accessing tab > 2
+                    let _tab = tab <= 2 ? tab : 1
+                    setTabSelected(_tab)
                     dispatch(updateMenu({
                         id: `view_edit`,
                         name: `View ${_viewName}`

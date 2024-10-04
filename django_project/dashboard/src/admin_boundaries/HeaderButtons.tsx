@@ -10,7 +10,7 @@ import { BatchEntityEditInterface } from "../models/upload";
 const LOAD_BATCH_ENTITY_EDIT_URL = '/api/batch-entity-edit/'
 
 const BatchEditButton = (props: any) => {
-  const {dataset} = props
+  const {dataset, canUpload} = props
   const navigate = useNavigate()
 
   const createNewBatchEdit = () => {
@@ -45,7 +45,7 @@ const BatchEditButton = (props: any) => {
     <Box>
       <Button
           id='batch-edit-button'
-          disabled={dataset?.is_empty}
+          disabled={dataset?.is_empty || !canUpload}
           className={'ThemeButton MuiButton-secondary DatasetBatchEditButton'}
           onClick={(event: React.MouseEvent<HTMLButtonElement>) => createNewBatchEdit()}
           disableElevation

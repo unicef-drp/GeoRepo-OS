@@ -131,7 +131,8 @@ export const UploadDataButton = (props: UploadDataButtonInterface) => {
                onClick={addButtonClick}/>
         { props.moreActions ? <Divider orientation='vertical' flexItem={true} sx={{marginLeft: '10px'}} /> : null }
         { props.moreActions ? MoreActionsElement(props.moreActions, {
-          dataset: dataset
+          dataset: dataset,
+          canUpload: canUpload
         }) : null }
     </div>
   )
