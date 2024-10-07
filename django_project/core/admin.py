@@ -99,6 +99,11 @@ class SitePreferencesAdmin(admin.ModelAdmin):
             'fields': (
                 'login_help_text',
             )
+        }),
+        ('Logging', {
+            'fields': (
+                'ephemeral_paths',
+            )
         })
     )
     inlines = (SitePreferencesImageInline,)
