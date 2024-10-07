@@ -6,7 +6,7 @@ from core.models import SitePreferences
 
 def du(paths):
     """disk usage for each path"""
-    cmd = ['du','-sc']
+    cmd = ['du', '-sc']
     cmd.extend(paths)
     bytes_arr = subprocess.check_output(cmd).splitlines()
     return [b.decode('utf-8') for b in bytes_arr]
