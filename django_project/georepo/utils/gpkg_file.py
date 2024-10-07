@@ -1,6 +1,5 @@
 import os
 import logging
-from django.conf import settings
 from georepo.utils.geojson import (
     GeojsonBasedExporter
 )
