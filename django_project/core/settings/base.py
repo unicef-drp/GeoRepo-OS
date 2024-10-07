@@ -71,7 +71,8 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.contrib.redirects.middleware.RedirectFallbackMiddleware',
-    'core.middleware.VersionMiddleware'
+    'core.middleware.VersionMiddleware',
+    'core.middleware.EphemeralMiddleware'
 ]
 
 ROOT_URLCONF = 'core.urls'

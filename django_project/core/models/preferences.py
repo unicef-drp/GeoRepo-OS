@@ -283,6 +283,15 @@ class SitePreferences(SingletonModel):
         ),
     )
 
+    ephemeral_paths = models.JSONField(
+        default=list,
+        blank=True,
+        null=True,
+        help_text=(
+            'List of path to monitor the size and send to sentry.'
+        )
+    )
+
     class Meta:  # noqa: D106
         verbose_name_plural = "site preferences"
 

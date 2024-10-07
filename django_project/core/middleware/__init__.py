@@ -1,1 +1,2 @@
-from .VersionMiddleware import VersionMiddleware
+from .version import VersionMiddleware
+from .ephemeral import EphemeralMiddleware
