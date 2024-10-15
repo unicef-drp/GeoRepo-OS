@@ -55,7 +55,7 @@ class TestNotification(TestCase):
         self.assertEqual(Notification.objects.filter(
             recipient=user_2).count(), 1)
 
-    @mock.patch('dashboard.api_views.notification.datetime')
+    @mock.patch('dashboard.api_views.notification.timezone')
     def test_check_for_maintenance(self, mocked_datetime):
         user_1 = UserF.create()
         mocked_datetime.now.return_value = datetime.strptime(
