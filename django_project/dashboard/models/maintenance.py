@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from datetime import datetime
+from django.utils import timezone
 
 
 class Maintenance(models.Model):
@@ -17,7 +17,7 @@ class Maintenance(models.Model):
     )
 
     scheduled_from_date = models.DateTimeField(
-        default=datetime.now,
+        default=timezone.now,
         null=False,
         blank=False
     )

@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from azure_auth.backends import AzureAuthRequiredMixin
@@ -32,7 +31,7 @@ class NotificationList(AzureAuthRequiredMixin, APIView):
         return serializer.data
 
     def get_maintenance(self):
-        current_datetime = datetime.now()
+        current_datetime = timezone.now()
         maintenance = Maintenance.objects.filter(
             scheduled_from_date__lte=current_datetime
         ).filter(
