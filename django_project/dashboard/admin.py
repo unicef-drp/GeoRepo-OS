@@ -25,7 +25,8 @@ from dashboard.models import (
     TempUsage,
     PrivacyLevel,
     LayerUploadSessionActionLog,
-    BatchEntityEdit
+    BatchEntityEdit,
+    StorageLog
 )
 from georepo.models import TemporaryTilingConfig
 from georepo.utils.layers import fetch_layer_file_metadata
@@ -335,6 +336,10 @@ class BatchEntityEditAdmin(admin.ModelAdmin):
     list_filter = ('dataset', 'status')
 
 
+class StorageLogAdmin(admin.ModelAdmin):
+    list_display = ('date_time',)
+
+
 admin.site.register(LayerFile, LayerFileAdmin)
 admin.site.register(LayerUploadSession, LayerUploadSessionAdmin)
 admin.site.register(EntityUploadStatus, EntityUploadAdmin)
@@ -351,3 +356,4 @@ admin.site.register(PrivacyLevel, PrivacyLevelAdmin)
 admin.site.register(LayerUploadSessionActionLog,
                     LayerUploadSessionActionLogAdmin)
 admin.site.register(BatchEntityEdit, BatchEntityEditAdmin)
+admin.site.register(StorageLog, StorageLogAdmin)

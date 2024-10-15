@@ -43,3 +43,24 @@ class Maintenance(models.Model):
             f'{self.scheduled_from_date} - '
             f'{self.scheduled_end_date}'
         )
+
+
+class StorageLog(models.Model):
+    """Class that represents logs of storage/memory."""
+
+    date_time = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    storage_log = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    memory_log = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    def __str__(self):
+        return f'{self.date_time}'
