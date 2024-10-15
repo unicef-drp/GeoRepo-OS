@@ -1,10 +1,12 @@
 import csv
+import subprocess
 
 from django.db.models import Q
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
+from rest_framework.response import Response
 
 from azure_auth.backends import AzureAuthRequiredMixin
 from dashboard.models.entity_upload import (
@@ -16,6 +18,7 @@ from georepo.models.dataset_view import (
     DatasetViewResourceLog,
     DatasetView
 )
+from dashboard.models.maintenance import StorageLog
 
 
 class CSVBuffer:
@@ -125,3 +128,37 @@ class ExportLogs(AzureAuthRequiredMixin, APIView):
         )
 
         return response
+
+
+class CheckDjangoStorageUsage(APIView):
+    permission_classes = [IsAdminUser]
+
+    def check_storage(self):
+        cmd = ['du -shc /* | sort -h']
+        bytes_arr = subprocess.check_output(
+            cmd,
+            shell=True,
+            stderr=subprocess.DEVNULL
+        )
+        return bytes_arr.decode('utf-8')
+
+    def check_memory(self):
+        cmd = ['free', '-m']
+        bytes_arr = subprocess.check_output(cmd)
+        return bytes_arr.decode('utf-8')
+
+    def get(self, request, *args, **kwargs):
+        try:
+            StorageLog.objects.create(
+                storage_log=self.check_storage(),
+                memory_log=self.check_memory()
+            )
+        except Exception as ex:
+            return Response(
+                status=400,
+                data={
+                    'message': str(ex)
+                }
+            )
+
+        return Response(status=204)

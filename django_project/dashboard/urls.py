@@ -148,7 +148,8 @@ from dashboard.api_views.view_sync import (
     ViewSyncSelectAllList
 )
 from dashboard.api_views.logs import (
-    ExportLogs
+    ExportLogs,
+    CheckDjangoStorageUsage
 )
 from dashboard.views.flower_proxy_view import FlowerProxyView
 from dashboard.api_views.task_status import CheckTaskStatus
@@ -775,6 +776,9 @@ urlpatterns = [
     re_path(r'api/logs/(?P<log_type>\w+)/(?P<obj_id>\d+)?$',
             ExportLogs.as_view(),
             name='export-log-csv'),
+    re_path(r'api/maintenance/check-storage-usage/?$',
+            CheckDjangoStorageUsage.as_view(),
+            name='check-django-storage'),
     re_path(
         r'api/map/dataset/(?P<id>[\da-f-]+)/bbox/?$',
         DatasetBbox.as_view(),

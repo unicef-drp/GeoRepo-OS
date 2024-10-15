@@ -102,7 +102,7 @@ class SitePreferencesAdmin(admin.ModelAdmin):
         }),
         ('Logging', {
             'fields': (
-                'ephemeral_paths',
+                'ephemeral_paths', 'storage_checker_config',
             )
         })
     )

@@ -13,8 +13,18 @@ def create_clear_dashboard_session_periodic_task():
         PeriodicTask = (
             import_module('django_celery_beat.models').PeriodicTask
         )
-        schedule, created = IntervalSchedule.objects.get_or_create(
+        schedule, _ = IntervalSchedule.objects.get_or_create(
             every=7,
+            period=IntervalSchedule.DAYS
+        )
+
+        sched_storage_checker, _ = IntervalSchedule.objects.get_or_create(
+            every=15,
+            period=IntervalSchedule.MINUTES
+        )
+
+        sched_log_cleaner, _ = IntervalSchedule.objects.get_or_create(
+            every=14,
             period=IntervalSchedule.DAYS
         )
     except Exception as e:
@@ -27,6 +37,20 @@ def create_clear_dashboard_session_periodic_task():
             defaults={
                 'name': 'Clear dashboard dataset session',
                 'interval': schedule
+            }
+        )
+        PeriodicTask.objects.update_or_create(
+            task='trigger_storage_checker_api',
+            defaults={
+                'name': 'Check storage django container',
+                'interval': sched_storage_checker
+            }
+        )
+        PeriodicTask.objects.update_or_create(
+            task='clean_old_storage_log',
+            defaults={
+                'name': 'Clean storage log',
+                'interval': sched_log_cleaner
             }
         )
     except ValidationError as e:

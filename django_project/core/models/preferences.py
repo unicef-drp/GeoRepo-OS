@@ -283,12 +283,24 @@ class SitePreferences(SingletonModel):
         ),
     )
 
+    # -----------------------------------------------
+    # Maintenance
+    # -----------------------------------------------
     ephemeral_paths = models.JSONField(
         default=list,
         blank=True,
         null=True,
         help_text=(
             'List of path to monitor the size and send to sentry.'
+        )
+    )
+
+    storage_checker_config = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text=(
+            'Config for storage checker job.'
         )
     )
 
