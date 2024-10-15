@@ -154,7 +154,7 @@ class GeojsonBasedExporter(DatasetViewExporterBase):
     def get_env(self) -> dict:
         """Get dictionary env variables for running ogr2ogr.
 
-        :return: environment variables 
+        :return: environment variables
         :rtype: dict
         """
         return os.environ.copy()
