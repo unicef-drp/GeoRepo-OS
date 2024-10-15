@@ -36,6 +36,23 @@ def get_gpkg_feature_count(layer_file):
 
 class GPKGViewExporter(GeojsonBasedExporter):
 
+    def get_env(self) -> dict:
+        """Get env vars for GPKG ogr2ogr.
+
+        :return: dictionary of environment variables
+        :rtype: dict
+        """
+        my_env = super().get_env()
+        # speed up writing to sqlite
+        my_env["OGR_SQLITE_SYNCHRONOUS"] = "OFF"
+        # resolve the issue when converting geojson to gpkg
+        # over the network drive, but this will disable file locking.
+        my_env["SQLITE_USE_OGR_VFS"] = "YES"
+        # ensure only 1 thread for gpkg conversion
+        # which to have safety over SQLITE_USE_OGR_VFS
+        my_env["OGR_GPKG_NUM_THREADS"] = "1"
+        return my_env
+
     def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
                        tmp_metadata_file) -> str:

@@ -151,9 +151,18 @@ class GeojsonBasedExporter(DatasetViewExporterBase):
         )
         super().run()
 
+    def get_env(self) -> dict:
+        """Get dictionary env variables for running ogr2ogr.
+
+        :return: environment variables
+        :rtype: dict
+        """
+        return os.environ.copy()
+
     def do_conversion(self, command_list):
         logger.info(command_list)
-        result = subprocess.run(command_list, capture_output=True)
+        my_env = self.get_env()
+        result = subprocess.run(command_list, capture_output=True, env=my_env)
         logger.info(f'{self.request.format} conversion '
                     f'result_code: {result.returncode}')
         if result.returncode != 0:
