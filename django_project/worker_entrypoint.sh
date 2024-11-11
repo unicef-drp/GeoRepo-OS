@@ -26,10 +26,10 @@ VALIDATE_C=${VALIDATE_QUEUE_CONCURRENCY:-3}
 EXPORTER_C=${EXPORT_DATA_QUEUE_CONCURRENCY:-1}
 
 # start tile and validate workers
-celery -A core multi start tile validate exporter -c:tile $TILE_C -c:validate $VALIDATE_C -c:exporter $EXPORTER_C -Q:tile tegola -Q:validate validation -Q:exporter exporter -l INFO --logfile=/proc/1/fd/1
+celery -A core multi start tile validate exporter -c:tile $TILE_C -c:validate $VALIDATE_C -c:exporter $EXPORTER_C -Q:tile tegola -Q:validate validation -Q:exporter exporter -l INFO --logfile=/tmp/workers.log
 
 # start default worker
-celery -A core worker -l INFO --logfile=/proc/1/fd/1
+celery -A core worker -l INFO --logfile=/tmp/master_worker.log
 
 echo "-----------------------------------------------------"
 echo "FINISHED WORKER COMMAND --------------------------"

@@ -7,6 +7,11 @@ services:
     ports:
       - "4432:5432"
 
+  redis:
+    volumes:
+      - ./volumes/tmp_data/redis:/tmp
+      - ./redis/redis.conf:/opt/bitnami/redis/mounted-etc/overrides.conf
+
   dbbackups:
     volumes:
       - ./volumes/backups:/backups
@@ -23,6 +28,7 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data/django:/tmp
 
   worker:
     volumes:
@@ -32,6 +38,7 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data/worker:/tmp
 
   celery_beat:
     volumes:
@@ -41,6 +48,7 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data/celery_beat:/tmp
 
   auth:
     build:
@@ -54,6 +62,7 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data/auth:/tmp
 
   webpack-watcher:
     command: bash -c 'cd /home/web/django_project/dashboard/; npm run dev-watch'
@@ -92,6 +101,7 @@ services:
       - ./volumes/layer_tiles:/home/web/layer_tiles
       - ./volumes/nginx_cache:/home/web/nginx_cache
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data/nginx:/tmp
     ports:
       - "${HTTP_PORT:-8888}:80"
       - "9001:9001"
