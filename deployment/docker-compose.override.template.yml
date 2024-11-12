@@ -31,6 +31,7 @@ services:
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
       - ./volumes/tmp_data/django:/tmp
+      - ./volumes/tmp_data:/home/web/logs
 
   worker:
     volumes:
@@ -87,6 +88,7 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data:/home/web/logs
     ports:
       # for django test server
       - "51102:8080"

@@ -58,6 +58,8 @@ services:
       - ./volumes/static:/home/web/static
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/tmp_data/django:/tmp
+      - ./volumes/tmp_data:/home/web/logs
     links:
       - db
       - worker

@@ -133,6 +133,15 @@ class ExportLogs(AzureAuthRequiredMixin, APIView):
 class CheckDjangoStorageUsage(APIView):
     permission_classes = [IsAdminUser]
 
+    def check_space(self):
+        cmd = ['df -h']
+        bytes_arr = subprocess.check_output(
+            cmd,
+            shell=True,
+            stderr=subprocess.DEVNULL
+        )
+        return bytes_arr.decode('utf-8')
+
     def check_storage(self):
         cmd = ['du -shc /* | sort -h']
         bytes_arr = subprocess.check_output(
@@ -149,8 +158,12 @@ class CheckDjangoStorageUsage(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
+            storage_log = (
+                self.check_storage() + '\r\n' +
+                self.check_space()
+            )
             StorageLog.objects.create(
-                storage_log=self.check_storage(),
+                storage_log=storage_log,
                 memory_log=self.check_memory()
             )
         except Exception as ex:

@@ -55,6 +55,8 @@ services:
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
+      - ./volumes/tmp_data/django:/tmp
+      - ./volumes/tmp_data:/home/web/logs
 
   logrotate:
     volumes:
