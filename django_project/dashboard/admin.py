@@ -386,8 +386,7 @@ class LogFileAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
-            path(
-                '/api/download_log/<int:pk>/',
+            re_path(r'^download-log-file/(?P<pk>\d+)$',
                 self.download_log_file,
                 name='dashboard_download_log_file'
             ),
