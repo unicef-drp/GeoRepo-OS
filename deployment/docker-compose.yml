@@ -14,6 +14,7 @@ volumes:
   tmp-data:
   redis-conf:
   tmp-logrotate:
+  redis-data:
 
 x-common-django:
   &default-common-django
@@ -82,6 +83,7 @@ services:
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
     volumes:
+      - redis-data:/bitnami/redis/data
       - tmp-data:/tmp
       - redis-conf:/opt/bitnami/redis/mounted-etc/overrides.conf
 
