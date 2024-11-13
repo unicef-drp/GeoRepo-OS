@@ -140,4 +140,5 @@ EXPORT_DATA_EXPIRY_IN_HOURS = int(os.environ.get(
 
 # LOGS Directory
 LOGS_DIRECTORY = os.environ.get(
-    'LOGS_DIRECTORY', '/home/web/logs')
+    'LOGS_DIRECTORY', '/home/web/logs'
+)
