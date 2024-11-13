@@ -7,6 +7,13 @@ services:
     ports:
       - "5432:5432"
 
+  redis:
+    volumes:
+      # fix redis permission issue because it's using user redis (1001)
+      # sudo chown -R 1001:1001 ./volumes/tmp_data/redis
+      - ./volumes/tmp_data/redis:/tmp
+      - ./redis/redis.conf:/opt/bitnami/redis/mounted-etc/overrides.conf
+
   worker:
     image: kartoza/georepo_dev
     build:
@@ -19,6 +26,7 @@ services:
       - ./volumes/static:/home/web/static
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/tmp_data/worker:/tmp
     links:
       - db
       - azurite
@@ -35,6 +43,7 @@ services:
       - ./volumes/static:/home/web/static
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/tmp_data/celery_beat:/tmp
 
   dev:
     image: kartoza/georepo_dev
@@ -49,6 +58,8 @@ services:
       - ./volumes/static:/home/web/static
       - ./volumes/media:/home/web/media
       - ./volumes/tegola_config:/opt/tegola_config
+      - ./volumes/tmp_data/django:/tmp
+      - ./volumes/tmp_data:/home/web/logs
     links:
       - db
       - worker
@@ -61,3 +72,8 @@ services:
       - ./volumes/azurite:/opt/azurite/data
     ports:
       - 10000:10000
+
+  logrotate:
+    volumes:
+      - ./volumes/tmp_data:/logs
+      - ./volumes/tmp_data/logrotate:/tmp

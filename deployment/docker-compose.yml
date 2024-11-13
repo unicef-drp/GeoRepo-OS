@@ -11,6 +11,10 @@ volumes:
   nginx-cache:
   backups-data:
   nginx-conf:
+  tmp-data:
+  redis-conf:
+  tmp-logrotate:
+  redis-data:
 
 x-common-django:
   &default-common-django
@@ -70,6 +74,7 @@ x-common-django:
     - tegola-data:/opt/tegola_config
     - layer-tiles:/opt/layer_tiles
     - arcgis-configs:/home/web/arcgis
+    - tmp-data:/tmp
   restart: on-failure
 
 services:
@@ -77,6 +82,10 @@ services:
     image: bitnami/redis:7.0.2
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+    volumes:
+      - redis-data:/bitnami/redis/data
+      - tmp-data:/tmp
+      - redis-conf:/opt/bitnami/redis/mounted-etc/overrides.conf
 
   db:
     image: kartoza/postgis:14-3.2
@@ -123,7 +132,9 @@ services:
   celery_beat:
     <<: *default-common-django
     entrypoint: []
-    command: 'celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler'
+    command: 'celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler --logfile=/tmp/celery_beat.log'
+    links:
+      - db
 
   auth:
     <<: *default-common-django
@@ -151,7 +162,20 @@ services:
       - layer-tiles:/home/web/layer_tiles
       - arcgis-configs:/home/web/arcgis
       - nginx-cache:/home/web/nginx_cache
+      - tmp-data:/tmp
     links:
       - auth
       - django
       - worker
+
+  logrotate:
+    image: blacklabelops/logrotate:1.3
+    volumes:
+      - tmp-data:/logs
+      - tmp-logrotate:/tmp
+    environment:
+      - LOGS_DIRECTORIES=/logs
+      - LOGROTATE_STATUSFILE=/tmp/logrotate.status
+      - LOGROTATE_COPIES=${LOGROTATE_COPIES:-14}
+      - LOGROTATE_SIZE=${LOGROTATE_SIZE:-100M}
+      - LOGROTATE_INTERVAL=${LOGROTATE_INTERVAL:-daily}

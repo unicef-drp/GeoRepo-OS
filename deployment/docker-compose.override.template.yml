@@ -7,6 +7,13 @@ services:
     ports:
       - "4432:5432"
 
+  redis:
+    volumes:
+      # fix redis permission issue because it's using user redis (1001)
+      # sudo chown -R 1001:1001 ./volumes/tmp_data/redis
+      - ./volumes/tmp_data/redis:/tmp
+      - ./redis/redis.conf:/opt/bitnami/redis/mounted-etc/overrides.conf
+
   dbbackups:
     volumes:
       - ./volumes/backups:/backups
@@ -23,6 +30,8 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data/django:/tmp
+      - ./volumes/tmp_data:/home/web/logs
 
   worker:
     volumes:
@@ -32,6 +41,7 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data/worker:/tmp
 
   celery_beat:
     volumes:
@@ -41,6 +51,7 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data/celery_beat:/tmp
 
   auth:
     build:
@@ -54,6 +65,7 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data/auth:/tmp
 
   webpack-watcher:
     command: bash -c 'cd /home/web/django_project/dashboard/; npm run dev-watch'
@@ -76,6 +88,7 @@ services:
       - ./volumes/tegola_config:/opt/tegola_config
       - ./volumes/layer_tiles:/opt/layer_tiles
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data:/home/web/logs
     ports:
       # for django test server
       - "51102:8080"
@@ -92,6 +105,7 @@ services:
       - ./volumes/layer_tiles:/home/web/layer_tiles
       - ./volumes/nginx_cache:/home/web/nginx_cache
       - ./volumes/arcgis-configs:/home/web/arcgis
+      - ./volumes/tmp_data/nginx:/tmp
     ports:
       - "${HTTP_PORT:-8888}:80"
       - "9001:9001"
@@ -99,3 +113,8 @@ services:
       - auth
       - django
       - worker
+
+  logrotate:
+    volumes:
+      - ./volumes/tmp_data:/logs
+      - ./volumes/tmp_data/logrotate:/tmp
