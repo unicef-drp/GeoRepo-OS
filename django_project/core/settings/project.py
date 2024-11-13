@@ -137,3 +137,8 @@ CODE_COMMIT_HASH = code_commit_release_version()
 EXPORT_DATA_EXPIRY_IN_HOURS = int(os.environ.get(
     'EXPORT_DATA_EXPIRY_IN_HOURS', '48'
 ))
+
+# LOGS Directory
+LOGS_DIRECTORY = os.environ.get(
+    'LOGS_DIRECTORY', '/home/web/logs'
+)

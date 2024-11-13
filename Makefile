@@ -29,7 +29,7 @@ test-azure:
 	@echo "------------------------------------------------------------------"
 	@echo "Run Azure production instance"
 	@echo "------------------------------------------------------------------"
-	@docker compose ${ARGS} up -d azurite django auth worker celery_beat nginx
+	@docker compose ${ARGS} up -d azurite django auth worker celery_beat nginx logrotate
 
 # below commands are executed already from django entrypoint+initialize.py
 # @docker compose ${ARGS} exec -T django python manage.py migrate
