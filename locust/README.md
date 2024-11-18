@@ -18,7 +18,7 @@ Below is the sample:
 [
     {
         "username": "YOUR_USERNAME",
-        "password": "YOUR_PASSWORD",
+        "api_key": "YOUR_PASSWORD",
         "wait_time_start": null,
         "wait_time_end": null
     }
@@ -47,7 +47,7 @@ pip3 install locust
 
 3. Run locust master
 ```
-locust -f georepo --class-picker
+locust -f locustfiles --class-picker
 ```
 
 Web UI is available on http://localhost:8089/
