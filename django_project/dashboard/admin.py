@@ -352,9 +352,15 @@ class StorageLogAdmin(admin.ModelAdmin):
 def list_log_files(parent_dir):
     """Get list of log files from parent_dir."""
     log_files = []
+    files_to_save = ['.log', '.txt', '.status']
     for root, dirs, files in os.walk(parent_dir):
         for file in files:
-            if ".log" in file:
+            should_save = False
+            for file_ext in files_to_save:
+                if file_ext in file:
+                    should_save = True
+                    break
+            if should_save:
                 file_path = os.path.join(root, file)
                 file_size = os.path.getsize(file_path)
                 created_on = datetime.fromtimestamp(
