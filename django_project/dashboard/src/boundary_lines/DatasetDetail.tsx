@@ -7,6 +7,11 @@ import DatasetGeneral from "./Configurations/DatasetGeneral";
 import BoundaryTypes from "./Configurations/BoundaryTypes";
 import DatasetEntities from "../views/Dataset/DatasetEntities";
 import TilingConfiguration from "../views/TilingConfig/TilingConfigRevamp";
+import ViewSyncList from "../views/SyncStatus/List";
+
+export function NavigateComponent() {
+    return (<></>)
+}
 
 
 export default function DatasetDetailWrapper() {
@@ -39,6 +44,21 @@ export default function DatasetDetailWrapper() {
         {
             title: 'TILING CONFIG',
             element: TilingConfiguration,
+            permissions: ['Manage']
+        },
+        {
+            title: 'UPLOAD HISTORY',
+            element: NavigateComponent,
+            permissions: ['Manage']
+        },
+        {
+            title: 'VIEWS',
+            element: NavigateComponent,
+            permissions: ['Manage']
+        },
+        {
+            title: 'SYNC STATUS',
+            element: ViewSyncList,
             permissions: ['Manage']
         }
     ])
