@@ -77,3 +77,30 @@ class TestApiCache(TestCase):
         request.user = self.superuser
         response = self.view(request, **kwargs)
         self.assertEqual(response.status_code, 404)
+
+    def test_dataset_list_with_search(self):
+        kwargs = {
+            'uuid': self.dataset.module.uuid
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:dataset-list',
+                kwargs=kwargs
+            ) + '?cached=False&search=Dataset'
+        )
+        request.user = self.superuser
+        response = self.view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('dataset', response.data['results'][0].get('name'))
+
+        # test empty
+        request = self.factory.get(
+            reverse(
+                'v1:dataset-list',
+                kwargs=kwargs
+            ) + '?cached=False&search=random'
+        )
+        request.user = self.superuser
+        response = self.view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['results']), 0)

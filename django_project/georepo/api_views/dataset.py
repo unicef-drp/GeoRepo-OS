@@ -31,7 +31,7 @@ from georepo.api_views.api_collections import (
     SEARCH_DATASET_TAG,
     SEARCH_ENTITY_TAG
 )
-from georepo.utils.api_parameters import common_api_params
+from georepo.utils.api_parameters import common_api_params, search_param
 
 
 @method_decorator(
@@ -43,7 +43,8 @@ from georepo.utils.api_parameters import common_api_params
                     openapi.Parameter(
                         'uuid', openapi.IN_PATH,
                         description="Module UUID", type=openapi.TYPE_STRING
-                    ), *common_api_params
+                    ),
+                    search_param, *common_api_params
                 ],
                 responses={
                     200: openapi.Schema(
@@ -111,10 +112,15 @@ class DatasetList(ApiCache):
         module = get_object_or_404(
             Module, uuid=uuid, is_active=True
         )
+        search = request.GET.get('search', None)
         self.check_object_permissions(request, module)
         datasets = Dataset.objects.filter(
             module__uuid=uuid
         ).order_by('-is_preferred', 'label')
+        if search:
+            datasets = datasets.filter(
+                label__icontains=search
+            )
         datasets = get_dataset_for_user(
             self.request.user,
             datasets
