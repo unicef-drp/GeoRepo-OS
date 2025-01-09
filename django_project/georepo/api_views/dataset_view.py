@@ -44,7 +44,7 @@ from georepo.api_views.api_collections import (
     SEARCH_VIEW_TAG,
     DOWNLOAD_DATA_TAG
 )
-from georepo.utils.api_parameters import common_api_params
+from georepo.utils.api_parameters import common_api_params, search_param
 from georepo.utils.permission import (
     EXTERNAL_READ_VIEW_PERMISSION_LIST
 )
@@ -103,6 +103,7 @@ class DatasetViewFetchResource(object):
                         description='Dataset UUID',
                         type=openapi.TYPE_STRING
                     ),
+                    search_param,
                     *common_api_params
                 ],
                 responses={
@@ -171,6 +172,7 @@ class DatasetViewList(ApiCache):
         dataset_uuid = self.kwargs.get('uuid', None)
         page = int(request.GET.get('page', '1'))
         page_size = get_page_size(request)
+        search = request.GET.get('search', None)
         dataset = get_object_or_404(
             Dataset, uuid=dataset_uuid, module__is_active=True
         )
@@ -188,6 +190,8 @@ class DatasetViewList(ApiCache):
                 ),
             )
         ).order_by('id').distinct()
+        if search:
+            dataset_views_1 = dataset_views_1.filter(name__icontains=search)
         dataset_views_1, user_privacy_level = get_dataset_views_for_user(
             self.request.user,
             dataset,
@@ -206,6 +210,8 @@ class DatasetViewList(ApiCache):
         ).exclude(
             tags__name__in=[DATASET_VIEW_DATASET_TAG]
         ).order_by('id').distinct()
+        if search:
+            dataset_views_2 = dataset_views_2.filter(name__icontains=search)
         dataset_views_2, user_privacy_level = get_dataset_views_for_user(
             self.request.user,
             dataset,
@@ -254,6 +260,7 @@ class DatasetViewList(ApiCache):
                 operation_id='search-view-list',
                 tags=[SEARCH_VIEW_TAG],
                 manual_parameters=[
+                    search_param,
                     *common_api_params
                 ],
                 responses={
@@ -322,6 +329,7 @@ class DatasetViewListForUser(ApiCache):
     def get_response_data(self, request, *args, **kwargs):
         page = int(request.GET.get('page', '1'))
         page_size = get_page_size(request)
+        search = request.GET.get('search', None)
         checker = ObjectPermissionChecker(request.user)
         views = (
             DatasetView.objects.select_related('dataset').filter(
@@ -338,6 +346,8 @@ class DatasetViewListForUser(ApiCache):
                 'name'
             )
         )
+        if search:
+            views = views.filter(name__icontains=search)
         permission_list = ['view_datasetview']
         permission_list.extend(EXTERNAL_READ_VIEW_PERMISSION_LIST)
         dataset_views = get_objects_for_user(

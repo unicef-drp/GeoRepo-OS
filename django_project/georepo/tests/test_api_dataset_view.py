@@ -249,6 +249,38 @@ class TestApiDatasetView(TestCase):
             response.data['results'][0]['vector_tiles'])
         # check disabled module
         self.check_disabled_module(dataset, view, request, kwargs=kwargs)
+        dataset.module.is_active = True
+        dataset.module.save()
+        # use search query param
+        request = self.factory.get(
+            reverse(
+                'v1:view-list-by-dataset', kwargs=kwargs
+            ) + '?search=latest'
+        )
+        request.user = self.superuser
+        with self.assertNumQueries(9):
+            response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(
+            response.data['results'][0]['uuid'],
+            str(dataset_view.uuid))
+        self.assertEqual(
+            len(response.data['results'][0]['bbox']),
+            4
+        )
+        request = self.factory.get(
+            reverse(
+                'v1:view-list-by-dataset', kwargs=kwargs
+            ) + '?search=random'
+        )
+        request.user = self.superuser
+        with self.assertNumQueries(6):
+            response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        self.assertEqual(len(response.data['results']), 0)
 
 
     def test_dataset_view_list_for_user(self):
@@ -287,6 +319,26 @@ class TestApiDatasetView(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('results', response.data)
         self.assertEqual(len(response.data['results']), 0)
+        dataset.module.is_active = True
+        dataset.module.save()
+        # use search query param
+        request = self.factory.get(
+            reverse('v1:view-list') + '?search=latest'
+        )
+        request.user = self.superuser
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        self.assertEqual(len(response.data['results']), 1)
+        request = self.factory.get(
+            reverse('v1:view-list') + '?search=random'
+        )
+        request.user = self.superuser
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        self.assertEqual(len(response.data['results']), 0)
+
 
     def assert_view_detail(self, item, dataset_view: DatasetView,
                            adm_levels: List[DatasetAdminLevelName],

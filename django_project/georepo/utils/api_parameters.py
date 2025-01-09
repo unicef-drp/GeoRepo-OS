@@ -38,3 +38,10 @@ common_api_params = [
         **api_pagination_params
     )
 ]
+
+
+search_param = openapi.Parameter(
+    'search', openapi.IN_QUERY,
+    description='Search query',
+    type=openapi.TYPE_STRING
+)
