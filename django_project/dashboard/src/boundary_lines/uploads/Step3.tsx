@@ -119,7 +119,10 @@ export default function Step3(props: WizardStepInterface) {
   })
 
   const getStatus = () => {
-    axios.get(url).then(
+    axios.post(
+      url + `&page=1&page_size=1000000`,
+      {}
+    ).then(
       response => {
         if (response.data && response.data['is_read_only']){
           setIsReadOnly(true)
