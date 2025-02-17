@@ -760,10 +760,12 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
         format = self.request.GET.get('format', 'json')
         output = []
         total_page = 0
+        total_count = 0
         if entities is not None:
             # set pagination
             paginator = Paginator(entities, page_size)
             total_page = math.ceil(paginator.count / page_size)
+            total_count = paginator.count
             if page > total_page:
                 output = []
                 output = (
@@ -794,12 +796,14 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
             return output, {
                 'page': page,
                 'total_page': total_page,
-                'page_size': page_size
+                'page_size': page_size,
+                'count': total_count
             }
         return {
             'page': page,
             'total_page': total_page,
             'page_size': page_size,
+            'count': total_count,
             'results': output
         }, None
 
@@ -964,10 +968,12 @@ class EntityFuzzySearch(EntitySearchBase):
         format = self.request.GET.get('format', 'json')
         output = []
         total_page = 0
+        total_count = 0
         if entities is not None:
             # set pagination
             paginator = Paginator(entities, page_size)
             total_page = math.ceil(paginator.count / page_size)
+            total_count = paginator.count
             if page > total_page:
                 output = []
             else:
@@ -985,13 +991,15 @@ class EntityFuzzySearch(EntitySearchBase):
                 headers={
                     'page': page,
                     'total_page': total_page,
-                    'page_size': page_size
+                    'page_size': page_size,
+                    'count': total_count,
                 }
             )
         return Response(data={
             'page': page,
             'total_page': total_page,
             'page_size': page_size,
+            'count': total_count,
             'results': output
         })
 
@@ -1016,6 +1024,10 @@ class EntityFuzzySearch(EntitySearchBase):
                                 title='Total Page',
                                 type=openapi.TYPE_INTEGER
                             ),
+                            'count': openapi.Schema(
+                                title='Total Count',
+                                type=openapi.TYPE_INTEGER
+                            ),
                             'page_size': openapi.Schema(
                                 title='Total item in 1 page',
                                 type=openapi.TYPE_INTEGER
@@ -1036,6 +1048,7 @@ class EntityFuzzySearch(EntitySearchBase):
                             'page': 1,
                             'total_page': 10,
                             'page_size': 10,
+                            'count': 1,
                             'results': [
                                 (
                                     SearchEntitySerializer.Meta.
@@ -1255,6 +1268,10 @@ class EntityGeometryFuzzySearch(EntitySearchBase):
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -1271,6 +1288,7 @@ class EntityGeometryFuzzySearch(EntitySearchBase):
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             SearchGeometrySerializer.Meta.
@@ -1350,6 +1368,7 @@ class EntityGeometryFuzzySearch(EntitySearchBase):
                 'page': 1,
                 'total_page': 1,
                 'page_size': 10,
+                'count': entities.count(),
                 'results': output
             }
         )
@@ -1405,6 +1424,10 @@ class EntityGeometryFuzzySearch(EntitySearchBase):
                                 title='Total item in 1 page',
                                 type=openapi.TYPE_INTEGER
                             ),
+                            'count': openapi.Schema(
+                                title='Total Count',
+                                type=openapi.TYPE_INTEGER
+                            ),
                             'results': openapi.Schema(
                                 title='List of geographical entity',
                                 type=openapi.TYPE_ARRAY,
@@ -1421,6 +1444,7 @@ class EntityGeometryFuzzySearch(EntitySearchBase):
                             'page': 1,
                             'total_page': 10,
                             'page_size': 10,
+                            'count': 1,
                             'results': [
                                 (
                                     GeographicalEntitySerializer.Meta.
@@ -1515,6 +1539,10 @@ class EntityList(EntitySearchBase):
                                 title='Total item in 1 page',
                                 type=openapi.TYPE_INTEGER
                             ),
+                            'count': openapi.Schema(
+                                title='Total Count',
+                                type=openapi.TYPE_INTEGER
+                            ),
                             'results': openapi.Schema(
                                 title='List of geographical entity',
                                 type=openapi.TYPE_ARRAY,
@@ -1531,6 +1559,7 @@ class EntityList(EntitySearchBase):
                             'page': 1,
                             'total_page': 10,
                             'page_size': 10,
+                            'count': 1,
                             'results': [
                                 (
                                     GeographicalEntitySerializer.Meta.
@@ -1620,6 +1649,10 @@ class EntityListByUCode(EntitySearchBase):
                                 title='Total item in 1 page',
                                 type=openapi.TYPE_INTEGER
                             ),
+                            'count': openapi.Schema(
+                                title='Total Count',
+                                type=openapi.TYPE_INTEGER
+                            ),
                             'results': openapi.Schema(
                                 title='List of geographical entity',
                                 type=openapi.TYPE_ARRAY,
@@ -1636,6 +1669,7 @@ class EntityListByUCode(EntitySearchBase):
                             'page': 1,
                             'total_page': 10,
                             'page_size': 10,
+                            'count': 1,
                             'results': [
                                 (
                                     GeographicalEntitySerializer.Meta.
@@ -1727,6 +1761,10 @@ class EntityListByAdminLevel(EntitySearchBase):
                                 title='Total item in 1 page',
                                 type=openapi.TYPE_INTEGER
                             ),
+                            'count': openapi.Schema(
+                                title='Total Count',
+                                type=openapi.TYPE_INTEGER
+                            ),
                             'results': openapi.Schema(
                                 title='List of geographical entity',
                                 type=openapi.TYPE_ARRAY,
@@ -1743,6 +1781,7 @@ class EntityListByAdminLevel(EntitySearchBase):
                             'page': 1,
                             'total_page': 10,
                             'page_size': 10,
+                            'count': 1,
                             'results': [
                                 (
                                     GeographicalEntitySerializer.Meta.
@@ -1838,6 +1877,10 @@ class EntityListByAdminLevelAndUCode(EntitySearchBase):
                                 title='Total item in 1 page',
                                 type=openapi.TYPE_INTEGER
                             ),
+                            'count': openapi.Schema(
+                                title='Total Count',
+                                type=openapi.TYPE_INTEGER
+                            ),
                             'results': openapi.Schema(
                                 title='List of geographical entity',
                                 type=openapi.TYPE_ARRAY,
@@ -1854,6 +1897,7 @@ class EntityListByAdminLevelAndUCode(EntitySearchBase):
                             'page': 1,
                             'total_page': 10,
                             'page_size': 10,
+                            'count': 1,
                             'results': [
                                 (
                                     GeographicalEntitySerializer.Meta.
@@ -2044,6 +2088,10 @@ class FindEntityVersionsByConceptUCode(EntitySearchBase):
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -2060,6 +2108,7 @@ class FindEntityVersionsByConceptUCode(EntitySearchBase):
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
@@ -2218,6 +2267,10 @@ class FindEntityVersionsByUCode(FindEntityVersionsByConceptUCode):
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -2234,6 +2287,7 @@ class FindEntityVersionsByUCode(FindEntityVersionsByConceptUCode):
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
