@@ -31,7 +31,12 @@ from georepo.api_views.api_collections import (
     SEARCH_DATASET_TAG,
     SEARCH_ENTITY_TAG
 )
-from georepo.utils.api_parameters import common_api_params, search_param
+from georepo.utils.api_parameters import (
+    common_api_params,
+    search_param,
+    sort_param,
+    APISortBase
+)
 
 
 @method_decorator(
@@ -44,7 +49,7 @@ from georepo.utils.api_parameters import common_api_params, search_param
                         'uuid', openapi.IN_PATH,
                         description="Module UUID", type=openapi.TYPE_STRING
                     ),
-                    search_param, *common_api_params
+                    search_param, sort_param, *common_api_params
                 ],
                 responses={
                     200: openapi.Schema(
@@ -95,7 +100,7 @@ from georepo.utils.api_parameters import common_api_params, search_param
                 }
             )
 )
-class DatasetList(ApiCache):
+class DatasetList(ApiCache, APISortBase):
     """
     Get datasets by module
 
@@ -109,6 +114,13 @@ class DatasetList(ApiCache):
     permission_classes = [ModuleAccessPermission]
     cache_model = Dataset
     use_cache = True
+    sort_attribute_mapping = {
+        'name': 'label',
+        'is_favorite': 'is_preferred',
+        'last_update': 'last_update',
+        'short_code': 'short_code'
+    }
+    default_sort = ['-is_preferred', 'label']
 
     def get_response_data(self, request, *args, **kwargs):
         uuid = kwargs.get('uuid')
@@ -121,7 +133,7 @@ class DatasetList(ApiCache):
         self.check_object_permissions(request, module)
         datasets = Dataset.objects.filter(
             module__uuid=uuid
-        ).order_by('-is_preferred', 'label')
+        )
         if search:
             datasets = datasets.filter(
                 label__icontains=search
@@ -130,6 +142,8 @@ class DatasetList(ApiCache):
             self.request.user,
             datasets
         )
+        # order queryset
+        datasets = self.sort_queryset(request, datasets)
         # set pagination
         paginator = Paginator(datasets, page_size)
         total_page = math.ceil(paginator.count / page_size)

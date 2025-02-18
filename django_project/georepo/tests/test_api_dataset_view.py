@@ -281,6 +281,18 @@ class TestApiDatasetView(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('results', response.data)
         self.assertEqual(len(response.data['results']), 0)
+        # use sort query param
+        request = self.factory.get(
+            reverse(
+                'v1:view-list-by-dataset', kwargs=kwargs
+            ) + '?sort=dataset,-last_update'
+        )
+        request.user = self.superuser
+        with self.assertNumQueries(8):
+            response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        self.assertEqual(len(response.data['results']), 1)
 
 
     def test_dataset_view_list_for_user(self):
@@ -338,6 +350,15 @@ class TestApiDatasetView(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('results', response.data)
         self.assertEqual(len(response.data['results']), 0)
+        # use sort param
+        request = self.factory.get(
+            reverse('v1:view-list') + '?sort=-dataset'
+        )
+        request.user = self.superuser
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        self.assertEqual(len(response.data['results']), len(views))
 
 
     def assert_view_detail(self, item, dataset_view: DatasetView,

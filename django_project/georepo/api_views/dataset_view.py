@@ -44,7 +44,12 @@ from georepo.api_views.api_collections import (
     SEARCH_VIEW_TAG,
     DOWNLOAD_DATA_TAG
 )
-from georepo.utils.api_parameters import common_api_params, search_param
+from georepo.utils.api_parameters import (
+    common_api_params,
+    search_param,
+    sort_param,
+    APISortBase
+)
 from georepo.utils.permission import (
     EXTERNAL_READ_VIEW_PERMISSION_LIST
 )
@@ -104,6 +109,7 @@ class DatasetViewFetchResource(object):
                         type=openapi.TYPE_STRING
                     ),
                     search_param,
+                    sort_param,
                     *common_api_params
                 ],
                 responses={
@@ -155,7 +161,7 @@ class DatasetViewFetchResource(object):
                 }
             )
 )
-class DatasetViewList(ApiCache):
+class DatasetViewList(ApiCache, APISortBase):
     """
     Get views by dataset.
 
@@ -172,16 +178,14 @@ class DatasetViewList(ApiCache):
     """
     permission_classes = [DatasetDetailAccessPermission]
     cache_model = DatasetView
+    sort_attribute_mapping = {
+        'name': 'name',
+        'description': 'description',
+        'last_update': 'last_update'
+    }
+    default_sort = []
 
-    def get_response_data(self, request, *args, **kwargs):
-        dataset_uuid = self.kwargs.get('uuid', None)
-        page = int(request.GET.get('page', '1'))
-        page_size = get_page_size(request)
-        search = request.GET.get('search', None)
-        dataset = get_object_or_404(
-            Dataset, uuid=dataset_uuid, module__is_active=True
-        )
-        self.check_object_permissions(request, dataset)
+    def _get_queryset_default(self, dataset_uuid, dataset, search):
         # sort by id to make view with dataset tag on top
         dataset_views_1 = DatasetView.objects.filter(
             dataset__uuid=dataset_uuid,
@@ -224,6 +228,50 @@ class DatasetViewList(ApiCache):
         )
         dataset_views = dataset_views_1.union(dataset_views_2)
         dataset_views = dataset_views.order_by('id')
+
+        return dataset_views, user_privacy_level
+
+    def _get_queryset_for_sorting(self, dataset_uuid, dataset, search):
+        dataset_views = DatasetView.objects.filter(
+            dataset__uuid=dataset_uuid
+        ).select_related('dataset').prefetch_related(
+            'tags',
+            Prefetch(
+                'datasetviewresource_set',
+                queryset=DatasetViewResource.objects.filter(
+                    entity_count__gt=0
+                ),
+            )
+        ).order_by('id').distinct()
+        if search:
+            dataset_views = dataset_views.filter(name__icontains=search)
+        return get_dataset_views_for_user(
+            self.request.user,
+            dataset,
+            dataset_views
+        )
+
+    def get_response_data(self, request, *args, **kwargs):
+        dataset_uuid = self.kwargs.get('uuid', None)
+        page = int(request.GET.get('page', '1'))
+        page_size = get_page_size(request)
+        search = request.GET.get('search', None)
+        dataset = get_object_or_404(
+            Dataset, uuid=dataset_uuid, module__is_active=True
+        )
+        self.check_object_permissions(request, dataset)
+
+        sort = request.GET.get('sort', None)
+        if sort:
+            dataset_views, user_privacy_level = self._get_queryset_for_sorting(
+                dataset_uuid, dataset, search
+            )
+            dataset_views = self.sort_queryset(request, dataset_views)
+        else:
+            # sort by id to make view with dataset tag on top
+            dataset_views, user_privacy_level = self._get_queryset_default(
+                dataset_uuid, dataset, search
+            )
         # get dict of unique_code and unique_code_version
         root_entities = GeographicalEntity.objects.filter(
             dataset=dataset,
@@ -267,6 +315,7 @@ class DatasetViewList(ApiCache):
                 tags=[SEARCH_VIEW_TAG],
                 manual_parameters=[
                     search_param,
+                    sort_param,
                     *common_api_params
                 ],
                 responses={
@@ -318,7 +367,7 @@ class DatasetViewList(ApiCache):
                 }
             )
 )
-class DatasetViewListForUser(ApiCache):
+class DatasetViewListForUser(ApiCache, APISortBase):
     """
     Get views that user can access.
 
@@ -336,6 +385,13 @@ class DatasetViewListForUser(ApiCache):
 
     permission_classes = [IsAuthenticated]
     cache_model = DatasetView
+    sort_attribute_mapping = {
+        'name': 'name',
+        'description': 'description',
+        'last_update': 'last_update',
+        'dataset': 'dataset__label'
+    }
+    default_sort = ['name']
 
     def get_response_data(self, request, *args, **kwargs):
         page = int(request.GET.get('page', '1'))
@@ -353,12 +409,11 @@ class DatasetViewListForUser(ApiCache):
                         entity_count__gt=0
                     ),
                 )
-            ).order_by(
-                'name'
             )
         )
         if search:
             views = views.filter(name__icontains=search)
+        views = self.sort_queryset(request, views)
         permission_list = ['view_datasetview']
         permission_list.extend(EXTERNAL_READ_VIEW_PERMISSION_LIST)
         dataset_views = get_objects_for_user(
