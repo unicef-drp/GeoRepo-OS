@@ -104,3 +104,19 @@ class TestApiCache(TestCase):
         response = self.view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data['results']), 0)
+
+    def test_get_with_sort(self):
+        kwargs = {
+            'uuid': self.dataset.module.uuid
+        }
+        request = self.factory.get(
+            reverse(
+                'v1:dataset-list',
+                kwargs=kwargs
+            ) + '?cached=False&sort=-name,-last_update'
+        )
+        request.user = self.superuser
+        response = self.view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('dataset', response.data['results'][0].get('name'))
+        self.assertNotIn('short_code', response.data['results'][0])
