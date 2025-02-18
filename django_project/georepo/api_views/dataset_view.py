@@ -123,6 +123,10 @@ class DatasetViewFetchResource(object):
                                 title='Total item in 1 page',
                                 type=openapi.TYPE_INTEGER
                             ),
+                            'count': openapi.Schema(
+                                title='Total Count',
+                                type=openapi.TYPE_INTEGER
+                            ),
                             'results': openapi.Schema(
                                 title='Dataset view list',
                                 type=openapi.TYPE_ARRAY,
@@ -139,6 +143,7 @@ class DatasetViewFetchResource(object):
                             'page': 1,
                             'total_page': 10,
                             'page_size': 10,
+                            'count': 1,
                             'results': [
                                 (
                                     DatasetViewItemSerializer.Meta.
@@ -250,6 +255,7 @@ class DatasetViewList(ApiCache):
             'page': page,
             'total_page': total_page,
             'page_size': page_size,
+            'count': paginator.count,
             'results': output
         }, None
 
@@ -276,6 +282,10 @@ class DatasetViewList(ApiCache):
                                 title='Total Page',
                                 type=openapi.TYPE_INTEGER
                             ),
+                            'count': openapi.Schema(
+                                title='Total Count',
+                                type=openapi.TYPE_INTEGER
+                            ),
                             'page_size': openapi.Schema(
                                 title='Total item in 1 page',
                                 type=openapi.TYPE_INTEGER
@@ -296,6 +306,7 @@ class DatasetViewList(ApiCache):
                             'page': 1,
                             'total_page': 10,
                             'page_size': 10,
+                            'count': 1,
                             'results': [
                                 (
                                     DatasetViewItemSerializer.Meta.
@@ -379,6 +390,7 @@ class DatasetViewListForUser(ApiCache):
             'page': page,
             'total_page': total_page,
             'page_size': page_size,
+            'count': paginator.count,
             'results': output
         }, None
 

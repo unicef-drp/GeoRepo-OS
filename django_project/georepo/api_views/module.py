@@ -36,6 +36,10 @@ from georepo.utils.api_parameters import common_api_params
                                 title='Total item in 1 page',
                                 type=openapi.TYPE_INTEGER
                             ),
+                            'count': openapi.Schema(
+                                title='Total Count',
+                                type=openapi.TYPE_INTEGER
+                            ),
                             'results': openapi.Schema(
                                 title='List of module',
                                 type=openapi.TYPE_ARRAY,
@@ -52,6 +56,7 @@ from georepo.utils.api_parameters import common_api_params
                             'page': 1,
                             'total_page': 10,
                             'page_size': 10,
+                            'count': 1,
                             'results': [
                                 (
                                     ModuleSerializer.Meta.
@@ -98,5 +103,6 @@ class ModuleList(APIView):
             'page': page,
             'total_page': total_page,
             'page_size': page_size,
+            'count': paginator.count,
             'results': output
         })

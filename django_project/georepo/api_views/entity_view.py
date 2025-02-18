@@ -265,6 +265,10 @@ class FindViewEntityById(DatasetViewSearchBase, FindEntityById):
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -281,6 +285,7 @@ class FindViewEntityById(DatasetViewSearchBase, FindEntityById):
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                                 GeographicalEntitySerializer.Meta.
@@ -366,6 +371,10 @@ class ViewEntityListByAdminLevel0(DatasetViewSearchBase,
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -382,6 +391,7 @@ class ViewEntityListByAdminLevel0(DatasetViewSearchBase,
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
@@ -478,6 +488,10 @@ class ViewEntityListByAdminLevel(DatasetViewSearchBase,
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -494,6 +508,7 @@ class ViewEntityListByAdminLevel(DatasetViewSearchBase,
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
@@ -589,6 +604,10 @@ class ViewEntityListByAdminLevelAndUCode(
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -605,6 +624,7 @@ class ViewEntityListByAdminLevelAndUCode(
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
@@ -701,6 +721,10 @@ class ViewEntityListByAdminLevelAndConceptUCode(
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -717,6 +741,7 @@ class ViewEntityListByAdminLevelAndConceptUCode(
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
@@ -811,6 +836,10 @@ class ViewEntityListByEntityType(
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -827,6 +856,7 @@ class ViewEntityListByEntityType(
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
@@ -926,6 +956,10 @@ class ViewEntityListByEntityTypeAndUcode(
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -942,6 +976,7 @@ class ViewEntityListByEntityTypeAndUcode(
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
@@ -1028,6 +1063,10 @@ class ViewFindEntityVersionsByConceptUCode(
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -1044,6 +1083,7 @@ class ViewFindEntityVersionsByConceptUCode(
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
@@ -1130,6 +1170,10 @@ class ViewFindEntityVersionsByUCode(
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -1146,6 +1190,7 @@ class ViewFindEntityVersionsByUCode(
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
@@ -1245,6 +1290,10 @@ class ViewFindEntityFuzzySearch(APIView, DatasetViewDetailCheckPermission):
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -1261,6 +1310,7 @@ class ViewFindEntityFuzzySearch(APIView, DatasetViewDetailCheckPermission):
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             FuzzySearchEntitySerializer.Meta.
@@ -1300,6 +1350,7 @@ class ViewFindEntityFuzzySearch(APIView, DatasetViewDetailCheckPermission):
             'page': page,
             'total_page': total_page,
             'page_size': page_size,
+            'count': count_row,
             'results': output
         })
 
@@ -1426,6 +1477,10 @@ class ViewFindEntityGeometryFuzzySearch(
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -1442,6 +1497,7 @@ class ViewFindEntityGeometryFuzzySearch(
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             SearchGeometrySerializer.Meta.
@@ -2162,6 +2218,10 @@ class ViewEntityTraverseHierarchyByUCode(
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -2178,6 +2238,7 @@ class ViewEntityTraverseHierarchyByUCode(
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
@@ -2267,6 +2328,10 @@ class ViewEntityTraverseChildrenHierarchyByUCode(
                         title='Total item in 1 page',
                         type=openapi.TYPE_INTEGER
                     ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
                     'results': openapi.Schema(
                         title='List of geographical entity',
                         type=openapi.TYPE_ARRAY,
@@ -2283,6 +2348,7 @@ class ViewEntityTraverseChildrenHierarchyByUCode(
                     'page': 1,
                     'total_page': 10,
                     'page_size': 10,
+                    'count': 1,
                     'results': [
                         (
                             GeographicalEntitySerializer.Meta.
