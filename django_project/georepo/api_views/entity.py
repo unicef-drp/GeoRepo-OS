@@ -52,7 +52,8 @@ from georepo.models.entity import (
 )
 from georepo.utils.unique_code import (
     parse_unique_code,
-    get_unique_code
+    get_unique_code,
+    try_parse_unique_code
 )
 from georepo.utils.url_helper import get_ucode_from_url_path
 from georepo.utils.uuid_helper import get_uuid_value
@@ -797,6 +798,18 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
             entities, names, search_text
         )
 
+    def search_query_by_ucode(self, entities, search_text):
+        """Search query by ucode text."""
+        unique_code, version = try_parse_unique_code(search_text)
+        entities = entities.filter(
+            unique_code__icontains=unique_code
+        )
+        if version:
+            entities = entities.filter(
+                unique_code_version=version
+            )
+        return entities
+
     def get_serializer(self):
         if getattr(self, 'swagger_fake_view', False):
             return None
@@ -975,7 +988,9 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
                     self.get_search_fuzzy_config()
                 )
             elif search_type == 'ucode':
-                pass
+                entities = self.search_query_by_ucode(
+                    entities, search_text
+                )
 
         return self.generate_response(
             entities,

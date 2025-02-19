@@ -108,7 +108,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
                 idx=1
             )
 
-    def test_get_entity_list(self):
+    def _create_data_for_entity_list(self):
         dataset = DatasetF.create()
         entity_type0 = EntityType.objects.get_by_label('Country')
         entity_type1 = EntityType.objects.get_by_label('Region')
@@ -156,9 +156,13 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             idx=0
         )
         geo = GeographicalEntity.objects.get(id=geo.id)
+        return dataset, geo, parent
+
+    def test_get_entity_list(self):
+        dataset, geo, parent = self._create_data_for_entity_list()
         kwargs = {
             'uuid': dataset.uuid,
-            'entity_type': entity_type1.label.lower()
+            'entity_type': geo.type.label.lower()
         }
         scheme = versioning.NamespaceVersioning
         view = EntityList.as_view(versioning_class=scheme)
@@ -176,7 +180,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         # test search by entity_type+ucode
         kwargs = {
             'uuid': dataset.uuid,
-            'entity_type': entity_type1.label,
+            'entity_type': geo.type.label,
             'ucode': f'{parent.unique_code}_V1'
         }
         scheme = versioning.NamespaceVersioning
@@ -197,7 +201,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         # fetch as geojson
         kwargs = {
             'uuid': dataset.uuid,
-            'entity_type': entity_type1.label,
+            'entity_type': geo.type.label,
             'ucode': f'{parent.unique_code}_V1'
         }
         scheme = versioning.NamespaceVersioning
@@ -218,53 +222,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         self.assertTrue(response.has_header('total_page'))
 
     def test_get_entity_list_by_admin_level(self):
-        dataset = DatasetF.create()
-        entity_type0 = EntityType.objects.get_by_label('Country')
-        entity_type1 = EntityType.objects.get_by_label('Region')
-        parent = GeographicalEntityF.create(
-            uuid=str(uuid.uuid4()),
-            type=entity_type0,
-            level=0,
-            dataset=dataset,
-            unique_code='PAK0',
-            unique_code_version=1,
-            internal_code='PAK0',
-            start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK0_1'
-        )
-        geo = GeographicalEntityF.create(
-            uuid=str(uuid.uuid4()),
-            type=entity_type1,
-            level=1,
-            dataset=dataset,
-            parent=parent,
-            ancestor=parent,
-            internal_code='PAK0001',
-            unique_code='PAK_0001',
-            unique_code_version=1,
-            geometry=self.geographical_entity.geometry,
-            is_approved=True,
-            is_latest=True,
-            admin_level_name='Province',
-            start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK0_2',
-            centroid=self.geographical_entity.centroid,
-            bbox=self.geographical_entity.bbox
-        )
-        EntityIdF.create(
-            code=self.pCode,
-            geographical_entity=geo,
-            default=True,
-            value=geo.internal_code
-        )
-        EntityNameF.create(
-            geographical_entity=geo,
-            name=geo.label,
-            language=self.enLang,
-            default=True,
-            idx=0
-        )
-        geo = GeographicalEntity.objects.get(id=geo.id)
+        dataset, geo, parent = self._create_data_for_entity_list()
         kwargs = {
             'uuid': dataset.uuid,
             'admin_level': 1
@@ -796,49 +754,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         self.assertEqual(len(response.data['results']), 0)
 
     def test_search_entity_by_id(self):
-        dataset = DatasetF.create()
-        entity_type0 = EntityType.objects.get_by_label('Country')
-        entity_type1 = EntityType.objects.get_by_label('Region')
-        parent = GeographicalEntityF.create(
-            uuid=uuid.uuid4(),
-            type=entity_type0,
-            level=0,
-            dataset=dataset,
-            unique_code='PAK0',
-            internal_code='PAK0',
-            start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK0_1'
-        )
-        geo = GeographicalEntityF.create(
-            uuid=uuid.uuid4(),
-            type=entity_type1,
-            level=1,
-            dataset=dataset,
-            parent=parent,
-            internal_code='PAK0001',
-            unique_code='PAK_0001',
-            unique_code_version=1,
-            geometry=self.geographical_entity.geometry,
-            is_approved=True,
-            is_latest=True,
-            start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK0_2',
-            centroid=self.geographical_entity.centroid,
-            bbox=self.geographical_entity.bbox
-        )
-        EntityIdF.create(
-            code=self.pCode,
-            geographical_entity=geo,
-            default=True,
-            value=geo.internal_code
-        )
-        EntityNameF.create(
-            geographical_entity=geo,
-            name=geo.label,
-            language=self.enLang,
-            default=True,
-            idx=0
-        )
+        dataset, geo, _ = self._create_data_for_entity_list()
         geo = GeographicalEntity.objects.get(id=geo.id)
         # search by PCode
         kwargs = {
@@ -1095,53 +1011,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         preferences = SitePreferences.load()
         preferences.api_config['use_fuzzy_search'] = False
         preferences.save()
-        dataset = DatasetF.create()
-        entity_type0 = EntityType.objects.get_by_label('Country')
-        entity_type1 = EntityType.objects.get_by_label('Region')
-        parent = GeographicalEntityF.create(
-            uuid=str(uuid.uuid4()),
-            type=entity_type0,
-            level=0,
-            dataset=dataset,
-            unique_code='PAK0',
-            unique_code_version=1,
-            internal_code='PAK0',
-            start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK0_1'
-        )
-        geo = GeographicalEntityF.create(
-            uuid=str(uuid.uuid4()),
-            type=entity_type1,
-            level=1,
-            dataset=dataset,
-            parent=parent,
-            ancestor=parent,
-            internal_code='PAK0001',
-            unique_code='PAK_0001',
-            unique_code_version=1,
-            geometry=self.geographical_entity.geometry,
-            is_approved=True,
-            is_latest=True,
-            admin_level_name='Province',
-            start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK0_2',
-            centroid=self.geographical_entity.centroid,
-            bbox=self.geographical_entity.bbox
-        )
-        EntityIdF.create(
-            code=self.pCode,
-            geographical_entity=geo,
-            default=True,
-            value=geo.internal_code
-        )
-        EntityNameF.create(
-            geographical_entity=geo,
-            name=geo.label,
-            language=self.enLang,
-            default=True,
-            idx=0
-        )
-        geo = GeographicalEntity.objects.get(id=geo.id)
+        dataset, geo, _ = self._create_data_for_entity_list()
         kwargs = {
             'uuid': dataset.uuid,
             'admin_level': 1
@@ -1159,3 +1029,32 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         self.assertEqual(len(response.data['results']), 1)
         self.check_response(response.data['results'][0], geo,
                             excluded_columns=['centroid', 'geometry'])
+
+    def test_entity_search_text_with_ucode(self):
+        dataset, geo, _ = self._create_data_for_entity_list()
+        kwargs = {
+            'uuid': dataset.uuid,
+            'admin_level': 1
+        }
+        scheme = versioning.NamespaceVersioning
+        view = EntityListByAdminLevel.as_view(versioning_class=scheme)
+        request = self.factory.get(
+            reverse('v1:search-entity-by-level', kwargs=kwargs) +
+            f'?search=PAK_0001&search_type=ucode'
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['results']), 1)
+        self.check_response(response.data['results'][0], geo,
+                            excluded_columns=['centroid', 'geometry'])
+        request = self.factory.get(
+            reverse('v1:search-entity-by-level', kwargs=kwargs) +
+            f'?search=0002&search_type=ucode'
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['results']), 0)
