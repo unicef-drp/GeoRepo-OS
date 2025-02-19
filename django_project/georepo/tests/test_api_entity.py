@@ -9,6 +9,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from rest_framework.test import APIRequestFactory
 from rest_framework import versioning
 
+from core.models.preferences import SitePreferences
 from georepo.utils import absolute_path
 from georepo.models import IdType, GeographicalEntity, EntityType
 from georepo.tests.model_factories import (
@@ -1089,3 +1090,72 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data['results']), 0)
+
+    def test_entity_search_name_without_fuzzy(self):
+        preferences = SitePreferences.load()
+        preferences.api_config['use_fuzzy_search'] = False
+        preferences.save()
+        dataset = DatasetF.create()
+        entity_type0 = EntityType.objects.get_by_label('Country')
+        entity_type1 = EntityType.objects.get_by_label('Region')
+        parent = GeographicalEntityF.create(
+            uuid=str(uuid.uuid4()),
+            type=entity_type0,
+            level=0,
+            dataset=dataset,
+            unique_code='PAK0',
+            unique_code_version=1,
+            internal_code='PAK0',
+            start_date=isoparse('2023-01-01T06:16:13Z'),
+            concept_ucode='#PAK0_1'
+        )
+        geo = GeographicalEntityF.create(
+            uuid=str(uuid.uuid4()),
+            type=entity_type1,
+            level=1,
+            dataset=dataset,
+            parent=parent,
+            ancestor=parent,
+            internal_code='PAK0001',
+            unique_code='PAK_0001',
+            unique_code_version=1,
+            geometry=self.geographical_entity.geometry,
+            is_approved=True,
+            is_latest=True,
+            admin_level_name='Province',
+            start_date=isoparse('2023-01-01T06:16:13Z'),
+            concept_ucode='#PAK0_2',
+            centroid=self.geographical_entity.centroid,
+            bbox=self.geographical_entity.bbox
+        )
+        EntityIdF.create(
+            code=self.pCode,
+            geographical_entity=geo,
+            default=True,
+            value=geo.internal_code
+        )
+        EntityNameF.create(
+            geographical_entity=geo,
+            name=geo.label,
+            language=self.enLang,
+            default=True,
+            idx=0
+        )
+        geo = GeographicalEntity.objects.get(id=geo.id)
+        kwargs = {
+            'uuid': dataset.uuid,
+            'admin_level': 1
+        }
+        scheme = versioning.NamespaceVersioning
+        view = EntityListByAdminLevel.as_view(versioning_class=scheme)
+        request = self.factory.get(
+            reverse('v1:search-entity-by-level', kwargs=kwargs) +
+            f'?search={geo.label}&search_type=name'
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['results']), 1)
+        self.check_response(response.data['results'][0], geo,
+                            excluded_columns=['centroid', 'geometry'])

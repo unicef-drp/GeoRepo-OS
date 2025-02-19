@@ -719,6 +719,83 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
     # [Dataset, View]
     search_source = 'Dataset'
     permission_classes = [DatasetDetailAccessPermission]
+    search_similarity_threshold = None
+
+    def get_trigram_similarity(self):
+        if self.search_similarity_threshold:
+            return self.search_similarity_threshold
+
+        # fetch from site preferences
+        return SitePreferences.preferences().search_similarity
+
+    def get_search_fuzzy_config(self):
+        return SitePreferences.preferences().api_config.get(
+            'use_fuzzy_search',
+            True
+        )
+
+    def sanitize_search_text(self, search_text):
+        """
+        sanitize the search text
+        """
+        # strip null characters
+        search_text = search_text.replace('\x00', '')
+        return search_text
+
+    def _fuzzy_search_entity_names(self, entities, names, search_text):
+        """Search using fuzzy search of entity names."""
+        similarities = []
+        if names['idx__max'] is not None:
+            for name_idx in range(names['idx__max'] + 1):
+                field_key = f"name_{name_idx}__name"
+                similarities.append(
+                    TrigramWordSimilarity(
+                        F(field_key),
+                        Value(search_text)
+                    )
+                )
+        if len(similarities) == 1:
+            annotation = {
+                'similarity': similarities[0]
+            }
+        elif len(similarities) > 1:
+            annotation = {
+                'similarity': Greatest(
+                    *similarities
+                )
+            }
+        else:
+            annotation = {
+                'similarity': Value(0, output_field=IntegerField())
+            }
+        entities = entities.annotate(**annotation).filter(
+            similarity__gte=self.get_trigram_similarity()
+        ).order_by('-similarity')
+        return entities
+
+    def _search_entity_names(self, entities, names, search_text):
+        """Search using icontains of entity names."""
+        if names['idx__max'] is not None:
+            filters = {}
+            for name_idx in range(names['idx__max'] + 1):
+                field_key = f"name_{name_idx}__name__icontains"
+                filters[field_key] = search_text
+            entities = entities.filter(**filters)
+
+        return entities
+
+    def search_query_by_entity_name(
+        self, entities, names, search_text, is_fuzzy=True
+    ):
+        """Search query by entity name."""
+        if is_fuzzy:
+            return self._fuzzy_search_entity_names(
+                entities, names, search_text
+            )
+
+        return self._search_entity_names(
+            entities, names, search_text
+        )
 
     def get_serializer(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -820,6 +897,10 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
         ancestor_ucode = kwargs.get('ucode', None)
         # concept ucode filter
         ancestor_concept_ucode = kwargs.get('concept_ucode', None)
+        # search
+        search_text = request.GET.get('search', '')
+        search_text = self.sanitize_search_text(search_text)
+        search_type = request.GET.get('search_type', 'name')
 
         # find entity type:
         if entity_type:
@@ -884,6 +965,18 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
             entity_type=entity_type,
             admin_level=admin_level
         )
+
+        if search_text:
+            if search_type == 'name':
+                entities = self.search_query_by_entity_name(
+                    entities,
+                    names,
+                    search_text,
+                    self.get_search_fuzzy_config()
+                )
+            elif search_type == 'ucode':
+                pass
+
         return self.generate_response(
             entities,
             context={
@@ -947,18 +1040,6 @@ class EntityFuzzySearch(EntitySearchBase):
             GeographicalGeojsonSerializer if format == 'geojson'
             else SearchEntitySerializer
         )
-
-    def get_trigram_similarity(self):
-        # fetch from site preferences
-        return SitePreferences.preferences().search_similarity
-
-    def sanitize_search_text(self, search_text):
-        """
-        sanitize the search text
-        """
-        # strip null characters
-        search_text = search_text.replace('\x00', '')
-        return search_text
 
     def generate_response(self, entities, context=None):
         # pagination parameter
@@ -1062,6 +1143,7 @@ class EntityFuzzySearch(EntitySearchBase):
     )
     def get(self, request, *args, **kwargs):
         search_text = kwargs.get('search_text', '')
+        search_text = self.sanitize_search_text(search_text)
         if not search_text:
             return Response(
                 status=400,
@@ -1088,33 +1170,9 @@ class EntityFuzzySearch(EntitySearchBase):
             entities,
             dataset.id
         )
-        similarities = []
-        if names['idx__max'] is not None:
-            for name_idx in range(names['idx__max'] + 1):
-                field_key = f"name_{name_idx}__name"
-                similarities.append(
-                    TrigramWordSimilarity(
-                        F(field_key),
-                        Value(search_text)
-                    )
-                )
-        if len(similarities) == 1:
-            annotation = {
-                'similarity': similarities[0]
-            }
-        elif len(similarities) > 1:
-            annotation = {
-                'similarity': Greatest(
-                    *similarities
-                )
-            }
-        else:
-            annotation = {
-                'similarity': Value(0, output_field=IntegerField())
-            }
-        entities = entities.annotate(**annotation).filter(
-            similarity__gte=self.get_trigram_similarity()
-        ).order_by('-similarity')
+        entities = self.search_query_by_entity_name(
+            entities, names, search_text, is_fuzzy=True
+        )
         return self.generate_response(
             entities,
             context={

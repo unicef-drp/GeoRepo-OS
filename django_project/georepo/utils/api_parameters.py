@@ -45,6 +45,11 @@ search_param = openapi.Parameter(
     description='Search query',
     type=openapi.TYPE_STRING
 )
+search_type_param = openapi.Parameter(
+    'search_type', openapi.IN_QUERY,
+    description='Search query type: name or ucode',
+    type=openapi.TYPE_STRING
+)
 
 
 sort_param = openapi.Parameter(
