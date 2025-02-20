@@ -1040,7 +1040,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         view = EntityListByAdminLevel.as_view(versioning_class=scheme)
         request = self.factory.get(
             reverse('v1:search-entity-by-level', kwargs=kwargs) +
-            f'?search=PAK_0001&search_type=ucode'
+            '?search=PAK_0001&search_type=ucode'
         )
         request.resolver_match = FakeResolverMatchV1
         request.user = self.superuser
@@ -1051,7 +1051,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
                             excluded_columns=['centroid', 'geometry'])
         request = self.factory.get(
             reverse('v1:search-entity-by-level', kwargs=kwargs) +
-            f'?search=0002&search_type=ucode'
+            '?search=0002&search_type=ucode'
         )
         request.resolver_match = FakeResolverMatchV1
         request.user = self.superuser

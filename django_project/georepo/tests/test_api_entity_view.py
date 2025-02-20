@@ -392,6 +392,11 @@ class EntityViewTestSuite(EntityResponseChecker):
             'assert_view_entity_fuzzy_search_found2'
         )
 
+    def assert_view_entity_fuzzy_search_found_adm0_only(self, response):
+        raise NotImplementedError(
+            'assert_view_entity_fuzzy_search_found_adm0_only'
+        )
+
     def assert_view_entity_fuzzy_geom_search_found1(self, response):
         raise NotImplementedError(
             'assert_view_entity_fuzzy_geom_search_found1'
@@ -1256,6 +1261,16 @@ class EntityViewTestSuite(EntityResponseChecker):
         self.assertEqual(response.status_code, 200)
         # search with paki, should return two diff results
         self.assert_view_entity_fuzzy_search_found2(response)
+        # search with admin_level 1, should return the same
+        request = self.factory.get(
+            reverse('v1:view-entity-fuzzy-search-by-name', kwargs=kwargs) +
+            '?admin_level=0'
+        )
+        request.user = self.superuser
+        view = ViewFindEntityFuzzySearch.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assert_view_entity_fuzzy_search_found_adm0_only(response)
         # test permission
         kwargs = {
             'uuid': str(self.dataset_view.uuid),
@@ -1682,6 +1697,19 @@ class TestApiEntityLatestView(EntityViewTestSuite, TestCase):
     def assert_view_entity_fuzzy_search_found2(self, response):
         # search with paki, should return two diff results
         self.assertEqual(len(response.data['results']), 5)
+        items = [x for x in response.data['results'] if
+                 x['ucode'] == self.pak0_2.ucode]
+        self.assertEqual(len(items), 1)
+        self.check_response(items[0],
+                            self.pak0_2,
+                            excluded_columns=['centroid', 'geometry'])
+        items = [x for x in response.data['results'] if
+                 x['ucode'] == 'PAK1_V1']
+        self.assertEqual(len(items), 1)
+
+    def assert_view_entity_fuzzy_search_found_adm0_only(self, response):
+        # search with paki, should return two diff results
+        self.assertEqual(len(response.data['results']), 2)
         items = [x for x in response.data['results'] if
                  x['ucode'] == self.pak0_2.ucode]
         self.assertEqual(len(items), 1)

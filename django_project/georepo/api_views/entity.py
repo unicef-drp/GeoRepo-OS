@@ -720,12 +720,10 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
     # [Dataset, View]
     search_source = 'Dataset'
     permission_classes = [DatasetDetailAccessPermission]
-    search_similarity_threshold = None
+    # some of APIs will not have search_text parameters
+    enable_search_text = True
 
     def get_trigram_similarity(self):
-        if self.search_similarity_threshold:
-            return self.search_similarity_threshold
-
         # fetch from site preferences
         return SitePreferences.preferences().search_similarity
 
@@ -744,7 +742,12 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
         return search_text
 
     def _fuzzy_search_entity_names(self, entities, names, search_text):
-        """Search using fuzzy search of entity names."""
+        """Search using fuzzy search of entity names.
+        
+        Note: this method is not optimised because
+            it does not uses trigram index.
+            Check the implementation of fuzzy search in view.
+        """
         similarities = []
         if names['idx__max'] is not None:
             for name_idx in range(names['idx__max'] + 1):
@@ -979,13 +982,14 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
             admin_level=admin_level
         )
 
-        if search_text:
+        if self.enable_search_text and search_text:
             if search_type == 'name':
+                # use icontains, not the fuzzy search
                 entities = self.search_query_by_entity_name(
                     entities,
                     names,
                     search_text,
-                    self.get_search_fuzzy_config()
+                    False
                 )
             elif search_type == 'ucode':
                 entities = self.search_query_by_ucode(
@@ -1015,6 +1019,7 @@ class EntityFuzzySearch(EntitySearchBase):
     GET /search/dataset/{uuid}/entity/PAK/?is_latest=True
     ```
     """
+    enable_search_text = False
     dataset_uuid_param = openapi.Parameter(
         'uuid', openapi.IN_PATH,
         description='Dataset UUID', type=openapi.TYPE_STRING
@@ -1214,6 +1219,7 @@ class EntityGeometryFuzzySearch(EntitySearchBase):
     Request Body: Geojson
     ```
     """
+    enable_search_text = False
     dataset_uuid_param = openapi.Parameter(
         'uuid', openapi.IN_PATH,
         description='Dataset UUID', type=openapi.TYPE_STRING
@@ -1997,6 +2003,7 @@ class FindEntityById(EntitySearchBase):
     GET /search/dataset/{dataset_uuid}/entity/identifier/ucode/PAK_001_V1/
     ```
     """
+    enable_search_text = False
 
     def parse_timestamp(self, value):
         result = None
@@ -2108,6 +2115,7 @@ class FindEntityVersionsByConceptUCode(EntitySearchBase):
         {concept_ucode}/?timestamp=2014-12-05T12:30:45.123456-05:30
     ```
     """
+    enable_search_text = False
 
     @swagger_auto_schema(
         operation_id='search-entity-versions-by-concept-ucode',

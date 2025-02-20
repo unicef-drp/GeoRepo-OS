@@ -182,7 +182,7 @@ def do_generate_entity_query(entities, dataset_id, entity_type=None,
 
 def do_generate_fuzzy_query(view: DatasetView, search_text: str,
                             max_privacy_level: int, page: int,
-                            page_size: int):
+                            page_size: int, admin_level: int = None):
     dataset: Dataset = view.dataset
     select_dicts = {
         'id': 'gg.id',
@@ -298,6 +298,7 @@ def do_generate_fuzzy_query(view: DatasetView, search_text: str,
         WHERE %s <%% ename.name and gg.dataset_id = {dataset_id} and
         gg.privacy_level <= {max_privacy_level}
         and gg.id in (SELECT id from "{view_uuid}")
+        {admin_level_cond}
         {order_by}
         """
     )
@@ -309,6 +310,9 @@ def do_generate_fuzzy_query(view: DatasetView, search_text: str,
         dataset_id=dataset.id,
         max_privacy_level=max_privacy_level,
         view_uuid=str(view.uuid),
+        admin_level_cond=(
+            f'and gg.level={admin_level}' if admin_level is not None else ''
+        ),
         order_by=f'ORDER BY similarity DESC {pagination}'
     )
     count_sql = sql_template.format(
@@ -317,6 +321,9 @@ def do_generate_fuzzy_query(view: DatasetView, search_text: str,
         dataset_id=dataset.id,
         max_privacy_level=max_privacy_level,
         view_uuid=str(view.uuid),
+        admin_level_cond=(
+            f'and gg.level={admin_level}' if admin_level is not None else ''
+        ),
         order_by=''
     )
     query_values = [search_text, search_text]
