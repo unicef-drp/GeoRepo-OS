@@ -76,7 +76,11 @@ from georepo.api_views.api_collections import (
     SEARCH_VIEW_ENTITY_TAG,
     OPERATION_VIEW_ENTITY_TAG
 )
-from georepo.utils.api_parameters import common_api_params
+from georepo.utils.api_parameters import (
+    common_api_params,
+    search_param,
+    search_type_param
+)
 from georepo.utils.entity_query import (
     GeomReturnType,
     validate_return_type,
@@ -353,7 +357,7 @@ class ViewEntityListByAdminLevel0(DatasetViewSearchBase,
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        )],
+        ), search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -470,7 +474,7 @@ class ViewEntityListByAdminLevel(DatasetViewSearchBase,
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        )],
+        ), search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -586,7 +590,7 @@ class ViewEntityListByAdminLevelAndUCode(
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        )],
+        ), search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -703,7 +707,7 @@ class ViewEntityListByAdminLevelAndConceptUCode(
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        )],
+        ), search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -818,7 +822,7 @@ class ViewEntityListByEntityType(
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        )],
+        ), search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -938,7 +942,7 @@ class ViewEntityListByEntityTypeAndUcode(
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        )],
+        ), search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -1235,10 +1239,11 @@ class ViewFindEntityFuzzySearch(APIView, DatasetViewDetailCheckPermission):
 
     def do_run_sql_query(self, view: DatasetView, search_text: str,
                          max_privacy_level: int,
-                         page: int, page_size: int):
-        fuzzy_query = (
-            do_generate_fuzzy_query(view, search_text, max_privacy_level,
-                                    page, page_size)
+                         page: int, page_size: int,
+                         admin_level: int = None):
+        fuzzy_query = do_generate_fuzzy_query(
+            view, search_text, max_privacy_level,
+            page, page_size, admin_level
         )
         rows = []
         with connection.cursor() as cursor:
@@ -1271,6 +1276,10 @@ class ViewFindEntityFuzzySearch(APIView, DatasetViewDetailCheckPermission):
             'search_text', openapi.IN_PATH,
             description='search text',
             type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'admin_level', openapi.IN_QUERY,
+            description='Filter by admin level',
+            type=openapi.TYPE_INTEGER
         ), *common_api_params
         ],
         responses={
@@ -1328,11 +1337,15 @@ class ViewFindEntityFuzzySearch(APIView, DatasetViewDetailCheckPermission):
         )
         search_text = kwargs.get('search_text', '')
         search_text = self.sanitize_search_text(search_text)
+        # search in admin_level
+        admin_level = self.request.GET.get('admin_level', None)
         # pagination parameter
         page = int(self.request.GET.get('page', '1'))
         page_size = get_page_size(self.request)
         rows, count_row, fuzzy_query = self.do_run_sql_query(
-            view, search_text, max_privacy_level, page, page_size)
+            view, search_text, max_privacy_level, page, page_size,
+            admin_level
+        )
         total_page = math.ceil(count_row / page_size)
         if page > total_page:
             output = []
@@ -2098,6 +2111,7 @@ class ViewEntityTraverseHierarchyByUCode(
         | parents | All parents in upper level |
         | bbox | Bounding box of this geographical entity |
     """
+    enable_search_text = False
     traverse_direction = 'up'
 
     def get_response_data(self, request, *args, **kwargs):

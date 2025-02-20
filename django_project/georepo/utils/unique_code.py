@@ -204,6 +204,31 @@ def parse_unique_code(unique_code: str):
     return ucode, version_number
 
 
+def try_parse_unique_code(unique_code: str):
+    """
+    Try parsing incomplete ucode.
+
+    E.g. AGO_0001_V100 -> AGO_0001, 100
+    AGO_0001_V1.5 -> AGO_0001, 1.5
+    AGO_0001 -> AGO_0001, None
+    """
+    codes = unique_code.split('_')
+    if len(codes) == 1:
+        return unique_code, None
+
+    version = codes[-1]
+    if not version.lower().startswith('v'):
+        return unique_code, None
+
+    ucode = unique_code.replace(f'_{version}', '')
+    version = version.lower().replace('v', '', 1)
+    try:
+        version_number = float(version)
+    except ValueError:
+        version_number = None
+    return ucode, version_number
+
+
 def get_version_code(version: float) -> str:
     """
     Convert version number to string

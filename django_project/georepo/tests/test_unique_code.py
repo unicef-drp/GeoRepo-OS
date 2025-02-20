@@ -19,7 +19,8 @@ from georepo.utils.unique_code import (
     generate_unique_code_from_comparison,
     count_max_unique_code,
     generate_concept_ucode_base,
-    generate_concept_ucode
+    generate_concept_ucode,
+    try_parse_unique_code
 )
 
 
@@ -216,6 +217,37 @@ class TestUniqueCodeGeneration(TestCase):
             self.assertIn(f'Invalid ucode {unique_code}: '
                           'version number must be numeric',
                           str(context.exception))
+
+    def test_try_parse_unique_code(self):
+        unique_code = 'ISO_0001_V1'
+        code, version = try_parse_unique_code(unique_code)
+        self.assertEqual(code, 'ISO_0001')
+        self.assertEqual(version, 1)
+        unique_code = 'ISO_0001_V1.5'
+        code, version = try_parse_unique_code(unique_code)
+        self.assertEqual(code, 'ISO_0001')
+        self.assertEqual(version, 1.5)
+        unique_code = 'ISO_0001_0001_V1.75'
+        code, version = try_parse_unique_code(unique_code)
+        self.assertEqual(code, 'ISO_0001_0001')
+        self.assertEqual(version, 1.75)
+        # test parse invalid code
+        unique_code = 'ISO'
+        code, version = try_parse_unique_code(unique_code)
+        self.assertEqual(code, 'ISO')
+        self.assertIsNone(version)
+        unique_code = 'ISO_0001_v1.5'
+        code, version = try_parse_unique_code(unique_code)
+        self.assertEqual(code, 'ISO_0001')
+        self.assertEqual(version, 1.5)
+        unique_code = 'ISO_0001_Vaaa'
+        code, version = try_parse_unique_code(unique_code)
+        self.assertEqual(code, 'ISO_0001')
+        self.assertIsNone(version)
+        unique_code = 'ISO_0001'
+        code, version = try_parse_unique_code(unique_code)
+        self.assertEqual(code, 'ISO_0001')
+        self.assertIsNone(version)
 
     def test_get_unique_code(self):
         code = 'ISO_0001'

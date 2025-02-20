@@ -9,7 +9,11 @@ def default_api_config():
     """
     Default value for Preference's api_config.
     """
-    return {'default_page_size': 50, 'max_page_size': 50}
+    return {
+        'default_page_size': 50,
+        'max_page_size': 50,
+        'use_fuzzy_search': True
+    }
 
 
 def default_metadata_xml_config():
@@ -189,12 +193,12 @@ class SitePreferences(SingletonModel):
         help_text='Default admin level names.'
     )
     # -----------------------------------------------
-    # API pagination setting
+    # API setting
     # -----------------------------------------------
     api_config = models.JSONField(
         default=default_api_config,
         blank=True,
-        help_text='API pagination configuration.'
+        help_text='API configuration.'
     )
     # -----------------------------------------------
     # API current latest version - Usage in background task that generates URL
