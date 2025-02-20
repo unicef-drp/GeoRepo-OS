@@ -743,7 +743,7 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
 
     def _fuzzy_search_entity_names(self, entities, names, search_text):
         """Search using fuzzy search of entity names.
-        
+
         Note: this method is not optimised because
             it does not uses trigram index.
             Check the implementation of fuzzy search in view.
