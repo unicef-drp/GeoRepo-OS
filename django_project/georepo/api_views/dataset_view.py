@@ -5,6 +5,7 @@ from django.core.cache import cache
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from django.conf import settings
+from django.db.models.expressions import RawSQL
 from rest_framework.permissions import IsAuthenticated
 from django.core.paginator import Paginator
 from django.utils.decorators import method_decorator
@@ -478,6 +479,7 @@ class DatasetViewDetail(ApiCache, DatasetViewFetchResource):
     - admin levels
     - Other external code types in dataset view
     - bbox
+    - countries
 
     Requires View UUID, can be retrieved from API search-view-list
     """
@@ -492,13 +494,43 @@ class DatasetViewDetail(ApiCache, DatasetViewFetchResource):
             dataset_view.dataset,
             dataset_view=dataset_view
         )
+        # get distinct ancestor_id in current view
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(dataset_view.uuid))
+        ancestors = GeographicalEntity.objects.filter(
+            dataset=dataset_view.dataset,
+            is_approved=True,
+            is_latest=True,
+            id__in=RawSQL(raw_sql, []),
+            level=0
+        ).values('id').distinct()
+        if ancestors.count() == 0:
+            ancestors = GeographicalEntity.objects.filter(
+                dataset=dataset_view.dataset,
+                is_approved=True,
+                is_latest=True,
+                id__in=RawSQL(raw_sql, []),
+                level__gt=0
+            ).values('ancestor_id').distinct()
+        # get dict of unique_code and unique_code_version
+        root_entities = GeographicalEntity.objects.filter(
+            dataset=dataset_view.dataset,
+            level=0,
+            is_approved=True,
+            is_latest=True,
+            id__in=ancestors
+        ).order_by('revision_number').values(
+            'unique_code', 'unique_code_version', 'label'
+        )
         response_data = (
             DatasetViewDetailSerializer(
                 dataset_view,
                 context={
                     'user': request.user,
                     'request': request,
-                    'user_privacy_level': user_privacy_level
+                    'user_privacy_level': user_privacy_level,
+                    'root_entities': root_entities
                 }
             ).data
         )

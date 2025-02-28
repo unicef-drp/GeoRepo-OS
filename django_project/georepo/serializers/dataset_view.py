@@ -369,6 +369,7 @@ class DatasetViewDetailSerializer(TaggitSerializer,
     possible_id_types = serializers.SerializerMethodField()
     bbox = serializers.SerializerMethodField()
     max_zoom = serializers.SerializerMethodField()
+    countries = serializers.SerializerMethodField()
 
     def get_vector_tiles(self, obj: DatasetView):
         url = None
@@ -515,6 +516,20 @@ class DatasetViewDetailSerializer(TaggitSerializer,
         ).first()
         return resource.max_zoom if resource else None
 
+    def get_countries(self, obj: DatasetView):
+        if 'root_entities' not in self.context:
+            return []
+        results = []
+        for root_entity in self.context['root_entities']:
+            results.append({
+                'ucode': get_unique_code(
+                    root_entity['unique_code'],
+                    root_entity['unique_code_version']
+                ),
+                'name': root_entity['label']
+            })
+        return results
+
     class Meta:
         swagger_schema_fields = {
             'type': openapi.TYPE_OBJECT,
@@ -591,6 +606,23 @@ class DatasetViewDetailSerializer(TaggitSerializer,
                         type=openapi.TYPE_NUMBER
                     )
                 ),
+                'countries': openapi.Schema(
+                    title='Unique countries in the view',
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Items(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'ucode': openapi.Schema(
+                                title='UCode of country',
+                                type=openapi.TYPE_STRING
+                            ),
+                            'name': openapi.Schema(
+                                title='Country Name',
+                                type=openapi.TYPE_STRING
+                            ),
+                        }
+                    )
+                )
             },
             'required': ['uuid'],
             'example': {
@@ -618,7 +650,13 @@ class DatasetViewDetailSerializer(TaggitSerializer,
                     'PCode'
                 ],
                 'bbox': [-121.5, 47.25, -120.4, 47.8],
-                'max_zoom': 8
+                'max_zoom': 8,
+                'countries': [
+                    {
+                        'ucode': 'WFP_SA',
+                        'name': 'South Africa'
+                    }
+                ]
             }
         }
         model = DatasetView
@@ -635,7 +673,8 @@ class DatasetViewDetailSerializer(TaggitSerializer,
             'tags',
             'dataset_levels',
             'possible_id_types',
-            'bbox'
+            'bbox',
+            'countries'
         ]
 
 
