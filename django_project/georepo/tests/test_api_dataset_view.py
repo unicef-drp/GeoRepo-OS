@@ -363,7 +363,7 @@ class TestApiDatasetView(TestCase):
 
     def assert_view_detail(self, item, dataset_view: DatasetView,
                            adm_levels: List[DatasetAdminLevelName],
-                           ext_ids: List[str]):
+                           ext_ids: List[str], check_country = None):
         statuses = dict(DatasetView.DatasetViewStatus.choices)
         self.assertEqual(
             item['status'],
@@ -397,6 +397,10 @@ class TestApiDatasetView(TestCase):
         for id in ext_ids:
             self.assertIn(id, item['possible_id_types'])
         self.assertIn('max_zoom', item)
+        self.assertIn('countries', item)
+        if check_country:
+            self.assertEqual(len(item['countries']), 1)
+            self.assertEqual(item['countries'][0]['name'], check_country)
 
     @mock.patch('django.core.cache.cache.get',
                 mock.Mock(side_effect=mocked_cache_get))
@@ -537,7 +541,31 @@ class TestApiDatasetView(TestCase):
             'TCODE'
         ]
         self.assert_view_detail(response.data, dataset_view,
-                                new_adm_levels, id_types)
+                                new_adm_levels, id_types, 'Pakistan')
+        self.assertEqual(len(response.data['bbox']), 4)
+        # check custom view with adm level 1 only
+        dataset_view2 = DatasetViewF.create(
+            dataset=dataset,
+            last_update=isoparse('2023-01-10T06:16:13Z'),
+            is_static=False,
+            query_string=(
+                'SELECT * FROM georepo_geographicalentity where '
+                f"dataset_id={dataset.id} AND revision_number=1 AND level=1"
+            )
+        )
+        dataset_view2.tags.add('abc')
+        create_sql_view(dataset_view2)
+        self.assertTrue(check_view_exists(str(dataset_view2.uuid)))
+        dataset_view2.default_type = DatasetView.DefaultViewType.IS_LATEST
+        dataset_view2.default_ancestor_code = geo_1.unique_code
+        dataset_view2.save(
+            update_fields=['default_type', 'default_ancestor_code']
+        )
+        generate_view_bbox(dataset_view2)
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assert_view_detail(response.data, dataset_view,
+                                new_adm_levels, id_types, 'Pakistan')
         self.assertEqual(len(response.data['bbox']), 4)
         # check disabled module
         self.check_disabled_module(dataset, view, request, kwargs=kwargs)
