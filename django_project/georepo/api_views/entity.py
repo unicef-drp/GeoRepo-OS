@@ -780,11 +780,11 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
     def _search_entity_names(self, entities, names, search_text):
         """Search using icontains of entity names."""
         if names['idx__max'] is not None:
-            filters = {}
+            query = Q()
             for name_idx in range(names['idx__max'] + 1):
                 field_key = f"name_{name_idx}__name__icontains"
-                filters[field_key] = search_text
-            entities = entities.filter(**filters)
+                query |= Q(**{field_key: search_text})
+            entities = entities.filter(query)
 
         return entities
 
