@@ -6,8 +6,9 @@ API_ORDERS = {
         "search-dataset-list",
         "search-dataset-detail"
     ],
-    "03-search-view": [],
-    "04-search-view-entity": [
+    "03-search-dataset-entity": [],
+    "04-search-view": [],
+    "05-search-view-entity": [
         "search-entity-by-ucode",
         "search-entity-by-concept-ucode",
         "search-view-entity-by-id",
@@ -27,18 +28,18 @@ API_ORDERS = {
         "check-batch-status-search-view-by-id",
         "get-result-batch-search-view-by-id",
     ],
-    "05-operation-view-entity": [
+    "06-operation-view-entity": [
         "operation-view-bbox",
         "operation-view-containment-check",
         "batch-geocoding",
         "check-status-batch-geocoding",
         "get-result-batch-geocoding"
     ],
-    "06-download": [
+    "07-download": [
         "submit-download-job",
         "fetch-download-job-status"
     ],
-    "07-controlled-list": []
+    "08-controlled-list": []
 }
 
 

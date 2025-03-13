@@ -321,6 +321,15 @@ controlled_list_urls = [
 urlpatterns = []
 urlpatterns += module_urls
 urlpatterns += dataset_urls
+# add dataset search by admin level
+urlpatterns += [
+    re_path(
+        r'search/dataset/(?P<uuid>[\da-f-]+)/entity/level/'
+        r'(?P<admin_level>[\d]+)/?$',
+        EntityListByAdminLevel.as_view(),
+        name='search-entity-by-level'
+    )
+]
 if (
     settings.DEBUG or
     'dev' in os.environ['DJANGO_SETTINGS_MODULE'] or

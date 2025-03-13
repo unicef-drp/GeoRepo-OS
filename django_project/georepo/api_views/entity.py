@@ -61,9 +61,16 @@ from georepo.utils.url_helper import get_page_size
 from georepo.api_views.api_collections import (
     SEARCH_ENTITY_TAG,
     OPERATION_ENTITY_TAG,
-    CONTROLLED_LIST_TAG
+    CONTROLLED_LIST_TAG,
+    SEARCH_DATASET_ENTITY_TAG
 )
-from georepo.utils.api_parameters import common_api_params
+from georepo.utils.api_parameters import (
+    common_api_params,
+    sort_param,
+    APISortBase,
+    search_param,
+    search_type_param
+)
 from georepo.utils.entity_query import (
     GeomReturnType,
     do_generate_entity_query
@@ -714,7 +721,7 @@ class EntityContainmentCheck(APIView, DatasetDetailCheckPermission):
         )
 
 
-class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
+class EntitySearchBase(ApiCache, DatasetDetailCheckPermission, APISortBase):
     cache_model = Dataset
     renderer_classes = [JSONRenderer, GeojsonRenderer]
     # [Dataset, View]
@@ -995,6 +1002,9 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission):
                 entities = self.search_query_by_ucode(
                     entities, search_text
                 )
+
+        # sort
+        entities = self.sort_queryset(request, entities)
 
         return self.generate_response(
             entities,
@@ -1685,32 +1695,39 @@ class EntityListByUCode(EntitySearchBase):
     name='get',
     decorator=swagger_auto_schema(
                 operation_id='search-entity-by-level',
-                tags=[SEARCH_ENTITY_TAG],
-                manual_parameters=[openapi.Parameter(
-                    'uuid', openapi.IN_PATH,
-                    description='Dataset UUID', type=openapi.TYPE_STRING
-                ), openapi.Parameter(
-                    'admin_level', openapi.IN_PATH,
-                    description=(
-                        'Admin level of the entity'
+                tags=[SEARCH_ENTITY_TAG, SEARCH_DATASET_ENTITY_TAG],
+                manual_parameters=[
+                    openapi.Parameter(
+                        'uuid', openapi.IN_PATH,
+                        description='Dataset UUID', type=openapi.TYPE_STRING
                     ),
-                    type=openapi.TYPE_INTEGER
-                ), *common_api_params, openapi.Parameter(
-                    'geom', openapi.IN_QUERY,
-                    description=(
-                        'Geometry format: '
-                        '[no_geom, centroid, full_geom]'
+                    openapi.Parameter(
+                        'admin_level', openapi.IN_PATH,
+                        description=(
+                            'Admin level of the entity'
+                        ),
+                        type=openapi.TYPE_INTEGER
                     ),
-                    type=openapi.TYPE_STRING,
-                    default='no_geom',
-                    required=False
-                ), openapi.Parameter(
-                    'format', openapi.IN_QUERY,
-                    description='Output format: [json, geojson]',
-                    type=openapi.TYPE_STRING,
-                    default='json',
-                    required=False
-                )],
+                    *common_api_params, sort_param,
+                    search_param, search_type_param,
+                    openapi.Parameter(
+                        'geom', openapi.IN_QUERY,
+                        description=(
+                            'Geometry format: '
+                            '[no_geom, centroid, full_geom]'
+                        ),
+                        type=openapi.TYPE_STRING,
+                        default='no_geom',
+                        required=False
+                    ),
+                    openapi.Parameter(
+                        'format', openapi.IN_QUERY,
+                        description='Output format: [json, geojson]',
+                        type=openapi.TYPE_STRING,
+                        default='json',
+                        required=False
+                    )
+                ],
                 responses={
                     200: openapi.Schema(
                         title='Entity List',
@@ -1787,6 +1804,14 @@ class EntityListByAdminLevel(EntitySearchBase):
     | parents | All parents in upper level |
     | bbox | Bounding box of this geographical entity |
     """
+    sort_attribute_mapping = {
+        'name': 'label',
+        'ucode': 'unique_code',
+        'start_date': 'start_date',
+        'end_date': 'end_date',
+        'is_latest': 'is_latest'
+    }
+    default_sort = []
 
 
 @method_decorator(
