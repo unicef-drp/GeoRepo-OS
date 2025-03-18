@@ -946,9 +946,12 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission, APISortBase):
             privacy_level__lte=max_privacy_level
         )
         if self.search_source == 'Dataset':
-            entities = entities.filter(
-                is_latest=True
-            )
+            is_latest = request.GET.get('is_latest', 'true')
+            if is_latest.lower() == 'true':
+                entities = entities.filter(
+                    is_latest=True
+                )
+
         if entity_type:
             entities = entities.filter(
                 type=entity_type.id
@@ -1190,7 +1193,7 @@ class EntityFuzzySearch(EntitySearchBase):
             dataset=dataset,
             privacy_level__lte=max_privacy_level
         )
-        is_latest = request.GET.get('latest', None)
+        is_latest = request.GET.get('is_latest', None)
         if is_latest is not None:
             is_latest = is_latest.lower() == 'true'
             entities = entities.filter(
@@ -1397,7 +1400,7 @@ class EntityGeometryFuzzySearch(EntitySearchBase):
         level = request.GET.get('admin_level', None)
         # json or geojson. Default to json
         format = self.request.GET.get('format', 'json')
-        is_latest = request.GET.get('latest', None)
+        is_latest = request.GET.get('is_latest', None)
         if is_latest is not None:
             is_latest = is_latest.lower() == 'true'
         geojson = request.data
@@ -1725,6 +1728,16 @@ class EntityListByUCode(EntitySearchBase):
                         description='Output format: [json, geojson]',
                         type=openapi.TYPE_STRING,
                         default='json',
+                        required=False
+                    ),
+                    openapi.Parameter(
+                        'is_latest', openapi.IN_QUERY,
+                        description=(
+                            'True to search for latest entity only. '
+                            'Default to True.'
+                        ),
+                        type=openapi.TYPE_BOOLEAN,
+                        default=True,
                         required=False
                     )
                 ],
