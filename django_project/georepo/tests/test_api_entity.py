@@ -121,7 +121,9 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             unique_code_version=1,
             internal_code='PAK0',
             start_date=isoparse('2023-01-01T06:16:13Z'),
-            concept_ucode='#PAK0_1'
+            concept_ucode='#PAK0_1',
+            is_approved=True,
+            bbox=self.geographical_entity.bbox
         )
         geo = GeographicalEntityF.create(
             uuid=str(uuid.uuid4()),
@@ -156,6 +158,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
             idx=0
         )
         geo = GeographicalEntity.objects.get(id=geo.id)
+        parent = GeographicalEntity.objects.get(id=parent.id)
         return dataset, geo, parent
 
     def test_get_entity_list(self):
@@ -261,6 +264,111 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         self.check_response(response.data['results'][0], geo,
                             excluded_columns=['geometry'],
                             geom_type='centroid')
+
+    def test_get_entity_list_by_admin_level_with_is_latest(self):
+        dataset, geo, parent = self._create_data_for_entity_list()
+
+        # create version 2
+        geo.is_latest = False
+        geo.save()
+        parent.is_latest = False
+        parent.save()
+        parent_2 = GeographicalEntityF.create(
+            uuid=parent.uuid,
+            type=parent.type,
+            level=0,
+            dataset=dataset,
+            parent=None,
+            internal_code=parent.internal_code,
+            unique_code=parent.unique_code,
+            unique_code_version=2,
+            geometry=parent.geometry,
+            is_approved=True,
+            is_latest=True,
+            revision_number=2,
+            start_date=isoparse('2023-01-10T06:16:13Z'),
+            end_date=None,
+            concept_ucode=parent.concept_ucode,
+            centroid=parent.centroid,
+            bbox=self.geographical_entity.bbox
+        )
+        EntityIdF.create(
+            code=self.pCode,
+            geographical_entity=parent_2,
+            default=True,
+            value=parent_2.internal_code
+        )
+        EntityNameF.create(
+            geographical_entity=parent_2,
+            name=parent_2.label,
+            language=self.enLang,
+            default=True,
+            idx=0
+        )
+        parent_2 = GeographicalEntity.objects.get(id=parent_2.id)
+
+        # is_latest is not set, default to return latest version
+        kwargs = {
+            'uuid': dataset.uuid,
+            'admin_level': 0
+        }
+        scheme = versioning.NamespaceVersioning
+        view = EntityListByAdminLevel.as_view(versioning_class=scheme)
+        request = self.factory.get(
+            reverse('v1:search-entity-by-level', kwargs=kwargs)
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['results']), 1)
+        self.check_response(response.data['results'][0], parent_2,
+                            excluded_columns=['centroid', 'geometry'])
+
+        # is_latest is set to False, default to return all versions
+        kwargs = {
+            'uuid': dataset.uuid,
+            'admin_level': 0
+        }
+        scheme = versioning.NamespaceVersioning
+        view = EntityListByAdminLevel.as_view(versioning_class=scheme)
+        request = self.factory.get(
+            reverse('v1:search-entity-by-level', kwargs=kwargs) +
+            '?is_latest=false'
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['results']), 2)
+        items = [x for x in response.data['results'] if
+                 x['ucode'] == parent.ucode]
+        self.assertEqual(len(items), 1)
+        self.check_response(items[0], parent,
+                            excluded_columns=['centroid', 'geometry'])
+        items = [x for x in response.data['results'] if
+                 x['ucode'] == parent_2.ucode]
+        self.assertEqual(len(items), 1)
+        self.check_response(items[0], parent_2,
+                            excluded_columns=['centroid', 'geometry'])
+        # is_latest is set to True, default to return latest version
+        kwargs = {
+            'uuid': dataset.uuid,
+            'admin_level': 0
+        }
+        scheme = versioning.NamespaceVersioning
+        view = EntityListByAdminLevel.as_view(versioning_class=scheme)
+        request = self.factory.get(
+            reverse('v1:search-entity-by-level', kwargs=kwargs) +
+            '?is_latest=true'
+        )
+        request.resolver_match = FakeResolverMatchV1
+        request.user = self.superuser
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['results']), 1)
+        self.check_response(response.data['results'][0], parent_2,
+                            excluded_columns=['centroid', 'geometry'])
 
     def test_entity_bounding_box(self):
         # found is_approved and is_latest

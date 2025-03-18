@@ -946,15 +946,12 @@ class EntitySearchBase(ApiCache, DatasetDetailCheckPermission, APISortBase):
             privacy_level__lte=max_privacy_level
         )
         if self.search_source == 'Dataset':
-            is_latest = request.GET.get('is_latest', None)
-            if is_latest is None:
+            is_latest = request.GET.get('is_latest', 'true')
+            if is_latest.lower() == 'true':
                 entities = entities.filter(
                     is_latest=True
                 )
-            else:
-                entities = entities.filter(
-                    is_latest=is_latest
-                )
+
         if entity_type:
             entities = entities.filter(
                 type=entity_type.id
@@ -1735,7 +1732,10 @@ class EntityListByUCode(EntitySearchBase):
                     ),
                     openapi.Parameter(
                         'is_latest', openapi.IN_QUERY,
-                        description='True to search for latest entity only',
+                        description=(
+                            'True to search for latest entity only. '
+                            'Default to True.'
+                        ),
                         type=openapi.TYPE_BOOLEAN,
                         default=True,
                         required=False
