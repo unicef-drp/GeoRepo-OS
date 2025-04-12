@@ -1,7 +1,6 @@
 import os
 import io
 import logging
-import traceback
 from azure.storage.blob import (
     BlobServiceClient,
     BlobSasPermissions,
@@ -209,13 +208,17 @@ class DirectoryClient:
 
             # verify blob exists
             if not source_blob.exists():
-                logger.warn(
+                logger.warning(
                     f'Source blob does not exists! {source_path + blob}')
                 warns.append(source_path + blob)
                 continue
 
             # copy file using sas token
-            self.cp_file(source_path, dest_path, blob, source_blob)
+            try:
+                self.cp_file(source_path, dest_path, blob, source_blob)
+            except Exception:
+                # try using manual download and upload
+                self.cp_file_slow(source_path, dest_path, blob, source_blob)
 
             # delete original file if it's not copy op
             if not is_copy:
@@ -246,8 +249,10 @@ class DirectoryClient:
             dest_blob.start_copy_from_url(sas_url, requires_sync=True)
             copy_properties = dest_blob.get_blob_properties().copy
         except Exception as ex:
-            logger.error(f"Unable to copy blob {source_path + blob}")
-            logger.error(traceback.format_exc())
+            logger.error(
+                f"Unable to copy blob {source_path + blob}",
+                exc_info=True
+            )
             raise ex
 
         if copy_properties and copy_properties.status != "success":
@@ -257,6 +262,21 @@ class DirectoryClient:
                 % (source_path + blob, copy_properties.status)
             )
 
+    def cp_file_slow(self, source_path, dest_path, blob, source_blob):
+        try:
+            logger.debug(
+                f"Copying blob (slow) {source_path + blob} "
+                f"to {dest_path + blob}"
+            )
+            data = source_blob.download_blob()
+            # upload to dest_path + blob
+            self.client.upload_blob(name=dest_path + blob, data=data)
+        except Exception as ex:
+            logger.error(
+                f"Unable to copy blob (slow) {source_path + blob}",
+                exc_info=True
+            )
+            raise ex
 
     def dir_size(self, path):
         if not path == '' and not path.endswith('/'):
