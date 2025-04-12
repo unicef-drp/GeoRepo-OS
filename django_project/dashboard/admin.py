@@ -513,16 +513,12 @@ class BlobExportRequestAdmin(admin.ModelAdmin):
 
     def trigger_blob_export(self, request, queryset):
         """Trigger blob export for selected requests."""
+        from dashboard.tasks.maintenance import run_blob_export_request
         for request in queryset:
             # Trigger the blob export task
-            # from georepo.tasks import trigger_blob_export
-            # task = trigger_blob_export.apply_async(
-            #     (request.id,),
-            #     queue='blob_export'
-            # )
-            # request.task_id = task.id
-            # request.save(update_fields=['task_id'])
-            pass
+            task = run_blob_export_request.delay(request.id)
+            request.task_id = task.id
+            request.save(update_fields=['task_id'])
         self.message_user(
             request,
             "Blob export triggered for selected requests.",

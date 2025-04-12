@@ -23,3 +23,7 @@ class BlobExportRequest(BaseTaskRequest):
         null=True,
         blank=True
     )
+
+    def download(self, directory):
+        """Download files in Blob storage path to directory."""
+        pass
