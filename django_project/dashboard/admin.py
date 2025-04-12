@@ -12,7 +12,8 @@ from django.http import (
     HttpResponseRedirect,
     HttpResponse,
     Http404,
-    FileResponse
+    FileResponse,
+    StreamingHttpResponse
 )
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html
@@ -35,11 +36,13 @@ from dashboard.models import (
     LayerUploadSessionActionLog,
     BatchEntityEdit,
     StorageLog,
-    LogFile
+    LogFile,
+    BlobExportRequest
 )
 from georepo.models import TemporaryTilingConfig
 from georepo.utils.layers import fetch_layer_file_metadata
 from georepo.utils.directory_helper import convert_size
+from georepo.utils.azure_blob_storage import StorageContainerClient
 
 
 class OverrideURLFileWidget(AdminFileWidget):
@@ -445,6 +448,89 @@ class LogFileAdmin(admin.ModelAdmin):
     refresh_log_files.short_description = "Refresh log files"
 
 
+class BlobExportRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        'path', 'get_total_size', 'status', 'submitted_on',
+        'download_link'
+    )
+    actions = ['trigger_blob_export']
+    ordering = ['-submitted_on']
+
+    def download_link(self, obj):
+        return format_html(
+            '<a href="{}">Download</a>',
+            reverse('admin:dashboard_download_blob_request_file',
+                    args=[obj.pk])
+        )
+    download_link.short_description = 'Download Output'
+
+    def get_total_size(self, obj):
+        if obj.size is None:
+            return '-'
+        return convert_size(obj.size)
+
+    get_total_size.short_description = 'Size'
+    get_total_size.admin_order_field = 'size'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            re_path(
+                r'^download-blob-request-file/(?P<pk>\d+)$',
+                self.download_request_file,
+                name='dashboard_download_blob_request_file'
+            ),
+        ]
+        return custom_urls + urls
+
+    def download_request_file(self, request, pk):
+        try:
+            request_file = BlobExportRequest.objects.get(id=pk)
+            if settings.USE_AZURE and StorageContainerClient:
+                bc = StorageContainerClient.get_blob_client(
+                    blob=request_file.output_path
+                )
+                download_stream = bc.download_blob(
+                    max_concurrency=2,
+                    validate_content=False
+                )
+                response = StreamingHttpResponse(
+                    download_stream.chunks(),
+                    status=200,
+                    content_type='application/zip'
+                )
+                response['Content-Type'] = 'gzip'
+                response['Content-Length'] = download_stream.size
+                response['Content-Disposition'] = (
+                    f'attachment; filename={str(request_file.uuid)}.zip'
+                )
+                return response
+            else:
+                raise NotImplementedError(
+                    "Azure Storage is not configured."
+                )
+        except BlobExportRequest.DoesNotExist:
+            raise Http404("Output file not found")
+        except Exception as e:
+            return HttpResponse(f"Error: {e}", status=500)
+
+    def trigger_blob_export(self, request, queryset):
+        """Trigger blob export for selected requests."""
+        from dashboard.tasks.maintenance import run_blob_export_request
+        for obj in queryset:
+            # Trigger the blob export task
+            task = run_blob_export_request.delay(obj.id)
+            obj.task_id = task.id
+            obj.save(update_fields=['task_id'])
+        self.message_user(
+            request,
+            "Blob export triggered for selected requests.",
+            level=messages.SUCCESS
+        )
+
+    trigger_blob_export.short_description = "Trigger Export Task"
+
+
 admin.site.register(LayerFile, LayerFileAdmin)
 admin.site.register(LayerUploadSession, LayerUploadSessionAdmin)
 admin.site.register(EntityUploadStatus, EntityUploadAdmin)
@@ -463,3 +549,4 @@ admin.site.register(LayerUploadSessionActionLog,
 admin.site.register(BatchEntityEdit, BatchEntityEditAdmin)
 admin.site.register(StorageLog, StorageLogAdmin)
 admin.site.register(LogFile, LogFileAdmin)
+admin.site.register(BlobExportRequest, BlobExportRequestAdmin)
