@@ -450,10 +450,11 @@ class LogFileAdmin(admin.ModelAdmin):
 
 class BlobExportRequestAdmin(admin.ModelAdmin):
     list_display = (
-        'path', 'total_size', 'status', 'submitted_on',
+        'path', 'get_total_size', 'status', 'submitted_on',
         'download_link'
     )
     actions = ['trigger_blob_export']
+    ordering = ['-submitted_on']
 
     def download_link(self, obj):
         return format_html(
@@ -464,6 +465,8 @@ class BlobExportRequestAdmin(admin.ModelAdmin):
     download_link.short_description = 'Download Output'
 
     def get_total_size(self, obj):
+        if obj.size is None:
+            return '-'
         return convert_size(obj.size)
 
     get_total_size.short_description = 'Size'
@@ -514,11 +517,11 @@ class BlobExportRequestAdmin(admin.ModelAdmin):
     def trigger_blob_export(self, request, queryset):
         """Trigger blob export for selected requests."""
         from dashboard.tasks.maintenance import run_blob_export_request
-        for request in queryset:
+        for obj in queryset:
             # Trigger the blob export task
-            task = run_blob_export_request.delay(request.id)
-            request.task_id = task.id
-            request.save(update_fields=['task_id'])
+            task = run_blob_export_request.delay(obj.id)
+            obj.task_id = task.id
+            obj.save(update_fields=['task_id'])
         self.message_user(
             request,
             "Blob export triggered for selected requests.",

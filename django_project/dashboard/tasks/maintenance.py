@@ -67,18 +67,21 @@ def run_blob_export_request(id):
             shutil.make_archive(
                 base_name=zip_path.replace('.zip', ''),
                 format='zip',
-                root_dir=working_dir
+                root_dir=working_dir,
             )
 
             if not os.path.exists(zip_path):
                 raise FileNotFoundError(f'Zip file not found: {zip_path}')
 
             # upload the zip to blob storage
-            export_request.output_path = f'blob_exports/{export_request.uuid}.zip'
-            StorageContainerClient.upload_blob(
-                zip_path,
-                export_request.output_path
+            export_request.output_path = (
+                f'blob_exports/{export_request.uuid}.zip'
             )
+            with open(zip_path, 'rb') as data:
+                StorageContainerClient.upload_blob(
+                    export_request.output_path,
+                    data=data
+                )
 
             # get size of the zip file
             export_request.size = os.path.getsize(zip_path)
