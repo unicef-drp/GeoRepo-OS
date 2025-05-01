@@ -86,12 +86,12 @@ jobs:
         with:
           coverageFile: coverage.xml
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload coverage to codecov
-        if: ${{ github.event_name == 'push' }}
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+      # - name: Upload coverage to codecov
+      #   if: ${{ github.event_name == 'push' }}
+      #   uses: codecov/codecov-action@v3
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     fail_ci_if_error: true
       - name: Prepare E2E Tests
         run: |
           echo "Running Django in production mode"
