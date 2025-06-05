@@ -2,16 +2,20 @@ import os.path
 import shutil
 import tempfile
 import zipfile
+import json
+from area import area
 
 from django import forms
 from django.conf import settings
 from django.db.models import Q
 from django.contrib import admin, messages
+from django.contrib.gis.admin import OSMGeoAdmin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import (
     UserChangeForm, ReadOnlyPasswordHashField
 )
+from django.contrib.gis.geos import GEOSGeometry
 from django.core.cache import cache
 from django.http import HttpResponse
 from django.utils.html import format_html
@@ -71,6 +75,7 @@ from georepo.utils.directory_helper import (
     get_folder_size
 )
 from georepo.utils.celery_helper import get_task_status
+from georepo.tasks.dataset_view import check_affected_dataset_views
 
 
 User = get_user_model()
@@ -87,7 +92,69 @@ def move_directory(old_directory, new_directory):
     )
 
 
-class GeographicalEntityAdmin(admin.ModelAdmin):
+class GeographicalEntityAdminForm(forms.ModelForm):
+    """Form for GeographicalEntity model with GeoJSON upload support."""
+
+    geojson_upload = forms.FileField(
+        required=False,
+        help_text="Upload a GeoJSON file to update Geometry."
+    )
+
+    class Meta:
+        model = GeographicalEntity
+        fields = '__all__'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        geojson_file = self.files.get('geojson_upload')
+
+        if geojson_file:
+            try:
+                geojson_str = geojson_file.read().decode('utf-8')
+                # Load and check if FeatureCollection or Feature
+                geojson_data = json.loads(geojson_str)
+                # Extract geometry if it's a Feature or FeatureCollection
+                if geojson_data.get('type') == 'Feature':
+                    geom = geojson_data['geometry']
+                elif geojson_data.get('type') == 'FeatureCollection':
+                    features = geojson_data.get('features', [])
+                    if not features:
+                        raise ValueError("Empty FeatureCollection.")
+                    geom = features[0]['geometry']  # Take the first geometry
+                else:
+                    # Assume it's a raw geometry
+                    geom = geojson_data
+
+                geometry = GEOSGeometry(json.dumps(geom))
+                cleaned_data['geometry'] = geometry
+
+                # Extract properties
+                cleaned_data['bbox'] = (
+                    '[' + ','.join(map(str, geometry.extent)) +
+                    ']'
+                )
+                cleaned_data['centroid'] = geometry.point_on_surface.wkt
+                area_km = area(geom) / 1e+6
+                cleaned_data['area'] = area_km
+
+                # trigger check affected views
+                pk = self.instance.pk
+                if pk:
+                    check_affected_dataset_views.delay(
+                        self.instance.dataset.id,
+                        [pk],
+                        [],
+                        False
+                    )
+
+            except Exception as e:
+                raise forms.ValidationError(f"Invalid GeoJSON: {e}")
+
+        return cleaned_data
+
+
+class GeographicalEntityAdmin(OSMGeoAdmin):
+    form = GeographicalEntityAdminForm
     actions = []
     list_display = (
         'label', 'unique_code', 'level', 'type',
