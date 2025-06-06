@@ -144,7 +144,7 @@ class GeographicalEntityAdminForm(forms.ModelForm):
                         self.instance.dataset.id,
                         [pk],
                         [],
-                        False
+                        True
                     )
 
             except Exception as e:
