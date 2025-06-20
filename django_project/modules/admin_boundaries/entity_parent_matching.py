@@ -42,14 +42,14 @@ def do_search_parent_entity_by_geometry(
             output_field=FloatField()
         )
     ).order_by('-overlap_area', 'internal_code')
-    entity = entities.first()
+    entity = entities.values('id', 'internal_code', 'overlap_area').first()
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(
             'do_search_parent_entity_by_geometry',
             end - start
         )
-    return entity, getattr(entity, 'overlap_area', 0) * 100
+    return entity, entity['overlap_area'] * 100
 
 
 def do_search_parent_entity_by_geometry_for_level0(
@@ -72,14 +72,14 @@ def do_search_parent_entity_by_geometry_for_level0(
             output_field=FloatField()
         )
     ).order_by('-overlap_area', 'entity_id')
-    entity = entities.first()
+    entity = entities.values('entity_id', 'overlap_area').first()
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(
             'do_search_parent_entity_by_geometry_for_level0',
             end - start
         )
-    return entity, getattr(entity, 'overlap_area', 0) * 100
+    return entity, entity['overlap_area'] * 100
 
 
 def do_process_layer_files_for_parent_matching(
@@ -119,7 +119,9 @@ def do_process_layer_files_for_parent_matching(
             entity_upload, _ = (
                 EntityUploadStatus.objects.update_or_create(
                     upload_session=upload_session,
-                    original_geographical_entity=matched_parent_entity
+                    original_geographical_entity_id=(
+                        matched_parent_entity['id']
+                    )
                 )
             )
             results.append(entity_upload)
@@ -135,20 +137,20 @@ def do_process_layer_files_for_parent_matching(
                 parent_entity_id=temp_entity.parent_entity_id,
                 is_parent_rematched=(
                     temp_entity.parent_entity_id !=
-                    matched_parent_entity.internal_code
+                    matched_parent_entity['internal_code']
                 ),
                 feature_index=temp_entity.feature_index
             )
             if (
                 temp_entity.parent_entity_id !=
-                matched_parent_entity.internal_code
+                matched_parent_entity['internal_code']
             ):
                 # update EntityTemp level 1 and above
                 temp_entity.parent_entity_id = (
-                    matched_parent_entity.internal_code
+                    matched_parent_entity['internal_code']
                 )
                 temp_entity.ancestor_entity_id = (
-                    matched_parent_entity.internal_code
+                    matched_parent_entity['internal_code']
                 )
                 temp_entity.is_parent_rematched = True
                 temp_entity.overlap_percentage = overlap_percentage
@@ -161,7 +163,7 @@ def do_process_layer_files_for_parent_matching(
                     level__gt=1,
                     ancestor_entity_id=parent_entity_id
                 ).update(
-                    ancestor_entity_id=matched_parent_entity.internal_code
+                    ancestor_entity_id=matched_parent_entity['internal_code']
                 )
         upload_session.progress = (
             'Auto parent matching admin level 1 entities '
@@ -212,6 +214,18 @@ def do_process_layer_files_for_parent_matching_level0(
         f'(0/{total_features})'
     )
     upload_session.save(update_fields=['progress'])
+
+    # prepare uploads
+    upload_dict = [
+        {
+            'id': entity_upload.id,
+            'entity_id': find_entity_id_from_upload(
+                entity_upload.original_geographical_entity_id,
+                entity_upload.revised_entity_id
+            )
+        } for entity_upload in entity_uploads
+    ]
+
     for temp_entity in temp_entities.iterator(chunk_size=1):
         parent_entity_id = temp_entity.parent_entity_id
         # do search
@@ -222,39 +236,39 @@ def do_process_layer_files_for_parent_matching_level0(
                 **kwargs
             )
         )
-        entity_upload = None
+        entity_upload_id = None
         if matched_parent_entity:
             # find matched_parent_entity from entity_uploads
-            entity_upload = find_matched_entity_upload(
-                entity_uploads,
+            entity_upload_id = find_matched_entity_upload(
+                upload_dict,
                 matched_parent_entity
             )
         else:
             # nothing is found from parent matching
             total_no_match = total_no_match + 1
-        if entity_upload:
+        if entity_upload_id:
             EntityUploadChildLv1.objects.create(
-                entity_upload=entity_upload,
+                entity_upload_id=entity_upload_id,
                 entity_id=temp_entity.entity_id,
                 entity_name=temp_entity.entity_name,
                 overlap_percentage=overlap_percentage,
                 parent_entity_id=temp_entity.parent_entity_id,
                 is_parent_rematched=(
                     temp_entity.parent_entity_id !=
-                    matched_parent_entity.entity_id
+                    matched_parent_entity['entity_id']
                 ),
                 feature_index=temp_entity.feature_index
             )
             if (
                 temp_entity.parent_entity_id !=
-                matched_parent_entity.entity_id
+                matched_parent_entity['entity_id']
             ):
                 # update EntityTemp level 1 and above
                 temp_entity.parent_entity_id = (
-                    matched_parent_entity.entity_id
+                    matched_parent_entity['entity_id']
                 )
                 temp_entity.ancestor_entity_id = (
-                    matched_parent_entity.entity_id
+                    matched_parent_entity['entity_id']
                 )
                 temp_entity.is_parent_rematched = True
                 temp_entity.overlap_percentage = overlap_percentage
@@ -267,7 +281,7 @@ def do_process_layer_files_for_parent_matching_level0(
                     level__gt=1,
                     ancestor_entity_id=parent_entity_id
                 ).update(
-                    ancestor_entity_id=matched_parent_entity.entity_id
+                    ancestor_entity_id=matched_parent_entity['entity_id']
                 )
         upload_session.progress = (
             'Auto parent matching admin level 1 entities '
@@ -290,14 +304,22 @@ def do_process_layer_files_for_parent_matching_level0(
         )
 
 
-def find_matched_entity_upload(entity_uploads: List[EntityUploadStatus],
-                               entity: EntityTemp):
-    for upload in entity_uploads:
-        entity_id = (
-            upload.original_geographical_entity.internal_code if
-            upload.original_geographical_entity else
-            upload.revised_entity_id
-        )
-        if entity_id == entity.entity_id:
-            return upload
+def find_entity_id_from_upload(
+    original_geographical_entity_id, revised_entity_id
+):
+    entity_id = revised_entity_id
+    if original_geographical_entity_id:
+        entity = GeographicalEntity.objects.filter(
+            id=original_geographical_entity_id
+        ).values('internal_code').first()
+        if entity:
+            entity_id = entity['internal_code']
+
+    return entity_id
+
+
+def find_matched_entity_upload(upload_dict: List, entity: dict):
+    for upload in upload_dict:
+        if upload['entity_id'] == entity['entity_id']:
+            return upload['id']
     return None

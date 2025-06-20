@@ -121,7 +121,10 @@ def task_prerun_handler(sender=None, task_id=None, task=None,
     task.last_update = timezone.now()
     task.started_at = timezone.now()
     task.status = BackgroundTask.BackgroundTaskStatus.RUNNING
-    task.save(update_fields=['last_update', 'started_at', 'status'])
+    task.calculate_free_memory()
+    task.save(update_fields=[
+        'last_update', 'started_at', 'status', 'resources'
+    ])
     on_task_queued_or_running(task)
 
 

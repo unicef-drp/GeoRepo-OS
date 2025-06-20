@@ -473,7 +473,7 @@ def delete_layer_upload_session(session_id):
     )
     for upload in uploads:
         # delete revised entity level 0
-        upload.revised_geographical_entity.delete()
+        upload.revised_geographical_entity.delete_by_ancestor()
     layer_files = upload_session.layerfile_set.all()
     layer_file: LayerFile
     for layer_file in layer_files:

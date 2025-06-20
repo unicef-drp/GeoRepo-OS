@@ -67,7 +67,7 @@ def prepare_validation(
     for upload in uploads:
         # delete revised entity level 0
         if upload.revised_geographical_entity:
-            upload.revised_geographical_entity.delete()
+            upload.revised_geographical_entity.delete_by_ancestor()
     uploads.delete()
     # set status to PRE_PROCESSING
     upload_session.auto_matched_parent_ready = False
@@ -107,11 +107,11 @@ def prepare_validation(
         upload_session.dataset
     )
     for entity_upload in entity_uploads:
-        if entity_upload.original_geographical_entity:
+        if entity_upload.original_geographical_entity_id:
             entity_upload.admin_level_names = (
                 fetch_dataset_admin_level_names_prev_revision(
                     upload_session.dataset,
-                    entity_upload.original_geographical_entity
+                    entity_upload.original_geographical_entity_id
                 )
             )
         else:

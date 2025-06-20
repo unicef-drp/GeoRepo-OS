@@ -109,7 +109,7 @@ class TestEntityParentMatching(TestCase):
             self.dataset
         )
         self.assertIsNotNone(parent_entity)
-        self.assertEqual(parent_entity.id, self.entity_level0_1.id)
+        self.assertEqual(parent_entity['id'], self.entity_level0_1.id)
         self.assertAlmostEqual(distance, 100, 2)
         test_geom_2 = self.geom_1
         parent_entity, distance = do_search_parent_entity_by_geometry(
@@ -117,7 +117,7 @@ class TestEntityParentMatching(TestCase):
             self.dataset
         )
         self.assertIsNotNone(parent_entity)
-        self.assertEqual(parent_entity.id, self.entity_level0_1.id)
+        self.assertEqual(parent_entity['id'], self.entity_level0_1.id)
         # low overlaps area
         self.assertAlmostEqual(distance, 100, 2)
 

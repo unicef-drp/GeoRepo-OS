@@ -1,6 +1,10 @@
+import logging
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+
+
+logger = logging.getLogger(__name__)
 
 
 class BackgroundTask(models.Model):
@@ -77,6 +81,12 @@ class BackgroundTask(models.Model):
         blank=True
     )
 
+    resources = models.JSONField(
+        default=dict,
+        null=True,
+        blank=True
+    )
+
     def is_possible_interrupted(self, delta = 1800):
         if (
             self.status == BackgroundTask.BackgroundTaskStatus.QUEUED or
@@ -87,6 +97,19 @@ class BackgroundTask(models.Model):
                 diff_seconds = timezone.now() - self.last_update
                 return diff_seconds.total_seconds() >= delta
         return False
+
+    def calculate_free_memory(self):
+        import subprocess
+        try:
+            cmd = ['free', '-m']
+            bytes_arr = subprocess.check_output(cmd)
+            if self.resources is None:
+                self.resources = {}
+            self.resources['memory'] = bytes_arr.decode('utf-8')
+        except Exception as ex:
+            logger.error(
+                f'Failed to calcualte memory {ex}', exc_info=1
+            )
 
     def __str__(self) -> str:
         return self.name
