@@ -73,10 +73,10 @@ def preprocess_layer_file_0(
         level=0,
         is_approved=True,
         is_latest=True
-    ).order_by('uuid').distinct('uuid')
+    ).order_by('uuid').distinct('uuid').defer('geometry')
     results = []
     # merge level_0_data from layer_file with existing level0 data
-    for entity in entities:
+    for entity in entities.iterator(chunk_size=1):
         layer0 = (
             [(layer0, idx) for idx, layer0 in
                 enumerate(level_0_data)
@@ -86,7 +86,7 @@ def preprocess_layer_file_0(
             entity_upload, _ = (
                 EntityUploadStatus.objects.update_or_create(
                     upload_session=upload_session,
-                    original_geographical_entity=entity
+                    original_geographical_entity_id=entity.id
                 )
             )
             results.append(entity_upload)

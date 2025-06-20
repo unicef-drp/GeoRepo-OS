@@ -16,13 +16,18 @@ def fetch_default_dataset_admin_level_names(dataset: Dataset):
 
 def fetch_dataset_admin_level_names_prev_revision(
         dataset: Dataset,
-        prev_ancestor: GeographicalEntity):
+        prev_ancestor_id):
+    prev_ancestor = GeographicalEntity.objects.filter(
+        id=prev_ancestor_id
+    ).values('revision_number').first()
     prev_entities = GeographicalEntity.objects.filter(
         dataset=dataset,
-        revision_number=prev_ancestor.revision_number,
+        revision_number=(
+            prev_ancestor['revision_number'] if prev_ancestor else 1
+        ),
         is_approved=True
     ).filter(
-        Q(ancestor=prev_ancestor) | Q(id=prev_ancestor.id)
+        Q(ancestor_id=prev_ancestor_id) | Q(id=prev_ancestor_id)
     ).exclude(
         Q(admin_level_name__isnull=True) |
         Q(admin_level_name='')
