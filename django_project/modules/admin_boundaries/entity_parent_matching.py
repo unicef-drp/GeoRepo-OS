@@ -8,6 +8,7 @@ from django.db.models import (
     FloatField, ExpressionWrapper
 )
 from georepo.models import GeographicalEntity, Dataset
+from georepo.utils import get_unique_code
 from dashboard.models import (
     LayerUploadSession,
     EntityUploadStatus,
@@ -42,7 +43,13 @@ def do_search_parent_entity_by_geometry(
             output_field=FloatField()
         )
     ).order_by('-overlap_area', 'internal_code')
-    entity = entities.values('id', 'internal_code', 'overlap_area').first()
+    entity = entities.values(
+        'id',
+        'internal_code',
+        'overlap_area',
+        'unique_code',
+        'unique_code_version'
+    ).first()
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(
@@ -129,29 +136,25 @@ def do_process_layer_files_for_parent_matching(
             # nothing is found from parent matching
             total_no_match = total_no_match + 1
         if entity_upload:
+            parent_ucode = get_unique_code(
+                matched_parent_entity['unique_code'],
+                matched_parent_entity['unique_code_version']
+            )
+            is_parent_rematched = temp_entity.parent_entity_id != parent_ucode
+
             EntityUploadChildLv1.objects.create(
                 entity_upload=entity_upload,
                 entity_id=temp_entity.entity_id,
                 entity_name=temp_entity.entity_name,
                 overlap_percentage=overlap_percentage,
                 parent_entity_id=temp_entity.parent_entity_id,
-                is_parent_rematched=(
-                    temp_entity.parent_entity_id !=
-                    matched_parent_entity['internal_code']
-                ),
+                is_parent_rematched=is_parent_rematched,
                 feature_index=temp_entity.feature_index
             )
-            if (
-                temp_entity.parent_entity_id !=
-                matched_parent_entity['internal_code']
-            ):
+            if is_parent_rematched:
                 # update EntityTemp level 1 and above
-                temp_entity.parent_entity_id = (
-                    matched_parent_entity['internal_code']
-                )
-                temp_entity.ancestor_entity_id = (
-                    matched_parent_entity['internal_code']
-                )
+                temp_entity.parent_entity_id = parent_ucode
+                temp_entity.ancestor_entity_id = parent_ucode
                 temp_entity.is_parent_rematched = True
                 temp_entity.overlap_percentage = overlap_percentage
                 temp_entity.save(update_fields=['parent_entity_id',
@@ -163,7 +166,7 @@ def do_process_layer_files_for_parent_matching(
                     level__gt=1,
                     ancestor_entity_id=parent_entity_id
                 ).update(
-                    ancestor_entity_id=matched_parent_entity['internal_code']
+                    ancestor_entity_id=parent_ucode
                 )
         upload_session.progress = (
             'Auto parent matching admin level 1 entities '
