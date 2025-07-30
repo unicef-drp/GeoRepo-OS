@@ -1,4 +1,4 @@
-FROM python:3.10.4-buster AS prod
+FROM python:3.10.4-bullseye AS prod
 
 # Enable postgresql-client-14
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bookworm-pgdg main" | tee /etc/apt/sources.list.d/pgdg.list
