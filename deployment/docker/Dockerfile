@@ -1,4 +1,4 @@
-FROM python:3.10.4-buster AS prod
+FROM python:3.10.18-bookworm AS prod
 
 # Enable postgresql-client-14
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bookworm-pgdg main" | tee /etc/apt/sources.list.d/pgdg.list
@@ -7,27 +7,15 @@ RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-k
 
 RUN apt-get update -y && apt-get upgrade -y
 
-# WORKAROUND fix for missing libcrypt.so.1
-# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=993755#27
-RUN apt-get install -y --no-install-recommends libcrypt1; exit 0
-
-RUN mkdir /home/tmp_workaround
-WORKDIR /home/tmp_workaround
-RUN apt -y download libcrypt1
-RUN dpkg-deb -x libcrypt1_*.deb .
-RUN cp -av lib/x86_64-linux-gnu/* /lib/x86_64-linux-gnu/
-RUN apt -y --fix-broken install
-RUN apt-get update -y --allow-releaseinfo-change --fix-missing
-
 WORKDIR /home/web/
 
 RUN apt-get install -y --no-install-recommends \
     gcc gettext geoip-bin cron \
-    postgresql-client-14 \
+    postgresql-client-14 libpq-dev \
     spatialite-bin libsqlite3-mod-spatialite \
-    python3-dev python3-gdal python3-psycopg2 python3-ldap \
+    python3-dev python3-gdal python3-ldap \
     python3-pip python3-pil python3-lxml python3-pylibmc \
-    uwsgi uwsgi-plugin-python3 libz-dev libjpeg-dev libfreetype6-dev python-dev \
+    uwsgi uwsgi-plugin-python3 libz-dev libjpeg-dev libfreetype6-dev \
     libssl-dev libffi-dev
 
 # Install pip packages
@@ -86,7 +74,7 @@ FROM prod as dev
 # https://docs.docker.com/examples/running_ssh_service/
 # Sudo is needed by pycharm when it tries to pip install packages
 RUN apt-get update && apt-get install -y openssh-server sudo
-RUN mkdir /var/run/sshd
+RUN mkdir -p /var/run/sshd
 RUN echo 'root:docker' | chpasswd
 RUN sed -i 's/^PermitRootLogin */#PermitRootLogin /' /etc/ssh/sshd_config
 RUN echo "PermitRootLogin yes" >> /etc/ssh/sshd_config

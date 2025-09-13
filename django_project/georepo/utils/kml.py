@@ -27,7 +27,6 @@ class KmlViewExporter(GeojsonBasedExporter):
                 '-overwrite',
                 '-gt',
                 '200',
-                '-skipfailures',
                 kml_file,
                 geojson_file
             ]
