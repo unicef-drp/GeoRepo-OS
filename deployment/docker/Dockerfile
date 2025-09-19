@@ -16,7 +16,7 @@ RUN apt-get install -y --no-install-recommends \
     python3-dev python3-gdal python3-ldap \
     python3-pip python3-pil python3-lxml python3-pylibmc \
     uwsgi uwsgi-plugin-python3 libz-dev libjpeg-dev libfreetype6-dev \
-    libssl-dev libffi-dev
+    libssl-dev libffi-dev supervisor
 
 # Install pip packages
 ADD deployment/docker/requirements.txt /requirements.txt
@@ -58,6 +58,9 @@ EXPOSE 8080
 
 ADD deployment/docker/uwsgi.conf /uwsgi.conf
 ADD deployment/docker/uwsgi_auth.conf /uwsgi_auth.conf
+
+# Add supervisord config for worker
+ADD deployment/docker/supervisord.conf /supervisord.conf
 
 # Build front end
 WORKDIR /home/web/django_project/dashboard
