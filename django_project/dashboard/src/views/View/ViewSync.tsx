@@ -55,6 +55,8 @@ export default function ViewSync(props: ViewResourceInterface) {
     const navigate = useNavigate()
     const dispatch = useAppDispatch()
     const [allFinished, setAllFinished] = useState(true)
+    const [vectorTileFinished, setVectorTileFinished] = useState(true)
+    const [centroidFinished, setCentroidFinished] = useState(true)
     const [currentInterval, setCurrentInterval] = useState<any>(null)
     const [columns, setColumns] = useState<any>([])
     const [confirmMessage, setConfirmMessage] = useState<string>('')
@@ -143,6 +145,8 @@ export default function ViewSync(props: ViewResourceInterface) {
         setLoading(false)
         setData(response.data)
         let allStatus: string[] = []
+        let vectorTileStatus: string[] = []
+        let centroidStatus: string[] = []
         let products: string[] = ['vector_tile', 'centroid']
         //@ts-ignore
         products.forEach(function(product: string, idx: number){
@@ -150,12 +154,28 @@ export default function ViewSync(props: ViewResourceInterface) {
             if (!allStatus.includes(row[`${product}_sync_status`])) {
               allStatus.push(row[`${product}_sync_status`])
             }
+            if (!vectorTileStatus.includes(row['vector_tile_sync_status'])) {
+              vectorTileStatus.push(row['vector_tile_sync_status'])
+            }
+            if (!centroidStatus.includes(row['centroid_sync_status'])) {
+              centroidStatus.push(row['centroid_sync_status'])
+            }
           })
         });
         if (!allStatus.includes('syncing') && !allStatus.includes('Running')  && !allStatus.includes('Queued')) {
           setAllFinished(true)
         } else {
           setAllFinished(false)
+        }
+        if (!vectorTileStatus.includes('syncing') && !vectorTileStatus.includes('Running')  && !vectorTileStatus.includes('Queued')) {
+          setVectorTileFinished(true)
+        } else {
+          setVectorTileFinished(false)
+        }
+        if (!centroidStatus.includes('syncing') && !centroidStatus.includes('Running')  && !centroidStatus.includes('Queued')) {
+          setCentroidFinished(true)
+        } else {
+          setCentroidFinished(false)
         }
       }).catch(error => {
         if (!axios.isCancel(error)) {
@@ -270,7 +290,7 @@ export default function ViewSync(props: ViewResourceInterface) {
                           onClick={regenerateVectorTiles}
                           title={'Regenerate Vector Tiles'}
                           disabledTitle='Please trigger simplification before regenerate vector tiles!'
-                          disabled={simplificationStatus.status !== SyncStatus.Synced}
+                          disabled={simplificationStatus.status !== SyncStatus.Synced || vectorTileFinished === false}
                           icon={null}
                         />
                       </Grid>
@@ -279,6 +299,7 @@ export default function ViewSync(props: ViewResourceInterface) {
                           variant={'secondary'}
                           onClick={regenerateCentroidFiles}
                           title={'Regenerate Centroid'}
+                          disabled={centroidFinished === false}
                           icon={null}
                         />
                       </Grid>
