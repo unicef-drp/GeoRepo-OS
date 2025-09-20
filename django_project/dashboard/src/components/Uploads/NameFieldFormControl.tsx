@@ -50,9 +50,6 @@ interface NameFieldFormControlProps {
               onChange={val => props.handleNameLanguageChange(props.nameField.id, null, null, val.target.value, 'label')}
               disabled={props.isReadOnly}
               error={props.nameField.duplicateError}
-              inputProps={{
-                'maxLength': 10
-              }}
               style={{width: '100%'}}
             />
           </Grid>
