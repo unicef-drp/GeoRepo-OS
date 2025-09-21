@@ -46,7 +46,8 @@ class TestEntityParentMatching(TestCase):
                 geometry=GEOSGeometry(geom_str),
                 internal_code='PAK',
                 unique_code='PAK',
-                revision_number=1
+                revision_number=1,
+                unique_code_version=1
             )
         self.geojson_1 = absolute_path(
             'dashboard', 'tests',
@@ -72,7 +73,8 @@ class TestEntityParentMatching(TestCase):
                 geometry=GEOSGeometry(geom_str),
                 internal_code='TEST1',
                 unique_code='TEST1',
-                revision_number=1
+                revision_number=1,
+                unique_code_version=1
             )
         self.upload_session = LayerUploadSessionF.create(
             dataset=self.dataset
@@ -110,6 +112,14 @@ class TestEntityParentMatching(TestCase):
         )
         self.assertIsNotNone(parent_entity)
         self.assertEqual(parent_entity['id'], self.entity_level0_1.id)
+        self.assertEqual(
+            parent_entity['unique_code'],
+            self.entity_level0_1.unique_code
+        )
+        self.assertEqual(
+            parent_entity['unique_code_version'],
+            self.entity_level0_1.unique_code_version
+        )
         self.assertAlmostEqual(distance, 100, 2)
         test_geom_2 = self.geom_1
         parent_entity, distance = do_search_parent_entity_by_geometry(
@@ -118,6 +128,14 @@ class TestEntityParentMatching(TestCase):
         )
         self.assertIsNotNone(parent_entity)
         self.assertEqual(parent_entity['id'], self.entity_level0_1.id)
+        self.assertEqual(
+            parent_entity['unique_code'],
+            self.entity_level0_1.unique_code
+        )
+        self.assertEqual(
+            parent_entity['unique_code_version'],
+            self.entity_level0_1.unique_code_version
+        )
         # low overlaps area
         self.assertAlmostEqual(distance, 100, 2)
 
@@ -145,7 +163,7 @@ class TestEntityParentMatching(TestCase):
             layer_file=self.layer_file
         ).first()
         self.assertTrue(entity_level1)
-        self.assertEqual(entity_level1.parent_entity_id, 'PAK')
+        self.assertEqual(entity_level1.parent_entity_id, 'PAK_V1')
 
     @override_settings(MEDIA_ROOT='/home/web/django_project/dashboard')
     def test_do_process_layer_files_for_parent_matching_level0(self):

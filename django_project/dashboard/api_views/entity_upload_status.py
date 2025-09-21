@@ -23,6 +23,7 @@ from georepo.utils.module_import import module_function
 from dashboard.api_views.common import EntityUploadStatusReadPermission
 from georepo.utils.celery_helper import cancel_task
 from georepo.tasks import validate_ready_uploads
+from georepo.utils.unique_code import get_unique_code
 
 
 class EntityUploadStatusDetail(AzureAuthRequiredMixin,
@@ -329,9 +330,15 @@ class Level1UploadSerializer(serializers.ModelSerializer):
     def get_new_parent(self, obj: EntityUploadChildLv1):
         if 'upload' in self.context:
             entity_upload = self.context['upload']
+            is_level0_upload = self.context.get('is_level0_upload', False)
             if entity_upload.original_geographical_entity:
                 return (
-                    entity_upload.original_geographical_entity.internal_code
+                    entity_upload.original_geographical_entity.internal_code if
+                    is_level0_upload else get_unique_code(
+                        entity_upload.original_geographical_entity.unique_code,
+                        entity_upload.original_geographical_entity.
+                        unique_code_version
+                    )
                 )
             return entity_upload.revised_entity_id
         return '-'
@@ -363,9 +370,17 @@ class Level1UploadSerializer(serializers.ModelSerializer):
 class EntityUploadLevel1List(AzureAuthRequiredMixin, APIView):
     def get(self, request, *args, **kwargs):
         entity_upload_id = request.GET.get('id', None)
-        entity_upload = EntityUploadStatus.objects.get(
+        entity_upload = EntityUploadStatus.objects.select_related(
+            'original_geographical_entity',
+            'upload_session'
+        ).defer(
+            'original_geographical_entity__geometry'
+        ).get(
             id=entity_upload_id
         )
+        is_level0_upload = entity_upload.upload_session.layerfile_set.filter(
+            level=0
+        ).exists()
         level1 = EntityUploadChildLv1.objects.filter(
             entity_upload=entity_upload
         ).order_by('overlap_percentage')
@@ -375,7 +390,8 @@ class EntityUploadLevel1List(AzureAuthRequiredMixin, APIView):
                 level1,
                 many=True,
                 context={
-                    'upload': entity_upload
+                    'upload': entity_upload,
+                    'is_level0_upload': is_level0_upload
                 }
             ).data
         )

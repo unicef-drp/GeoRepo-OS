@@ -48,6 +48,7 @@ from dashboard.serializers.dataset import (
 from dashboard.serializers.entity import (
     DasboardDatasetEntityListSerializer
 )
+from georepo.utils.unique_code import get_unique_code
 from georepo.utils.tile_configs import populate_tile_configs
 from georepo.validation.layer_validation import retrieve_layer0_default_codes
 from dashboard.tools.dataset_styles import (
@@ -672,6 +673,9 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                 'original_geographical_entity__approved_by',
                 'revised_geographical_entity',
                 'revised_geographical_entity__approved_by',
+            ).defer(
+                'original_geographical_entity__geometry',
+                'revised_geographical_entity__geometry'
             ).filter(
                 upload_session=self.upload_session
             ).order_by('id')
@@ -718,7 +722,10 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                     'updated_by': updated_by,
                     'upload_id': entity_upload.id,
                     'has_rematched': has_rematched,
-                    'ucode': entity.unique_code,
+                    'ucode': get_unique_code(
+                        entity.unique_code,
+                        entity.unique_code_version
+                    ),
                     'total_level1_children': total_level1_children,
                     'total_rematched_count': total_rematched_count,
                     'is_selected': (
@@ -782,6 +789,8 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
             EntityUploadStatus.objects.select_related(
                 'original_geographical_entity',
                 'original_geographical_entity__approved_by'
+            ).defer(
+                'original_geographical_entity__geometry'
             ).filter(
                 upload_session=self.upload_session
             ).order_by('id')
@@ -848,7 +857,10 @@ class DatasetEntityList(AzureAuthRequiredMixin, APIView):
                     'updated_by': updated_by,
                     'upload_id': entity_upload.id,
                     'has_rematched': has_rematched,
-                    'ucode': entity.unique_code,
+                    'ucode': get_unique_code(
+                        entity.unique_code,
+                        entity.unique_code_version
+                    ),
                     'total_level1_children': total_level1_children,
                     'total_rematched_count': total_rematched_count,
                     'is_selected': is_selected,

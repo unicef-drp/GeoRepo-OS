@@ -32,6 +32,7 @@ import NameFieldFormControl from "../../components/Uploads/NameFieldFormControl"
 import IdFieldFormControl from "../../components/Uploads/IdFieldFormControl";
 import AddIdType, {NewIdTypeInterface} from "../../components/Uploads/AddIdType";
 import PrivacyLevel from "../../models/privacy";
+import HtmlTooltip from "../../components/HtmlTooltip";
 
 const LOAD_ID_TYPE_LIST_URL = '/api/id-type/list/'
 const LOAD_ENTITY_TYPE_LIST_URL = '/api/entity-type/list/'
@@ -544,7 +545,16 @@ function Step2LevelUpload(props: LevelUploadInterface) {
                               { parseInt(props.uploadData.level) > 0 ?
                               <Grid container className='field-container' columnSpacing={1}>
                                     <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                        <Grid container flexDirection={'row'} alignItems={'center'}>
+                                          <Grid item>
                                         <Typography variant={'subtitle1'}>Parent Id Field</Typography>
+                                          </Grid>
+                                          <Grid item>
+                                            <HtmlTooltip tooltipTitle='Parent Id Field'
+                                                tooltipDescription={<p>The value of parent ID should be ucode when uploading a new revision without level 0.</p>}
+                                            />            
+                                          </Grid>
+                                        </Grid>
                                     </Grid>
                                     <Grid item md={8} xl={8} xs={12}>
                                       <Grid container>
