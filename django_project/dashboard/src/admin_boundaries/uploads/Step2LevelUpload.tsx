@@ -739,6 +739,7 @@ function Step2LevelUpload(props: LevelUploadInterface) {
                                 <Grid container direction="row"
                                     justifyContent="flex-end"
                                     alignItems="center"
+                                    sx={{ marginTop: 0}}
                                     spacing={2}>
                                 <Grid item>
                                   <Button variant="contained" onClick={showSaveConfigModal}>Save Config</Button>
