@@ -1,5 +1,6 @@
 import logging
 import time
+from django.db.models import Q
 from dashboard.models.layer_upload_session import (
     LayerUploadSession
 )
@@ -56,10 +57,17 @@ def find_country_max_level(
             if upload.original_geographical_entity
             else upload.revised_entity_id
         )
+        parent_ucode = (
+            upload.original_geographical_entity.ucode
+            if upload.original_geographical_entity
+            else ''
+        )
         level_found = -1
         temp_entity = EntityTemp.objects.filter(
-            upload_session=upload_session,
-            ancestor_entity_id=parent_code
+            upload_session=upload_session
+        ).filter(
+            Q(ancestor_entity_id=parent_code) |
+            Q(ancestor_entity_id=parent_ucode)
         ).values('level').order_by('level').distinct().last()
         if temp_entity:
             level_found = temp_entity['level']

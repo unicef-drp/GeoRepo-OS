@@ -9,7 +9,7 @@ import time
 from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from django.core.files.base import ContentFile
 from django.db import IntegrityError
-from django.db.models import IntegerField, Max
+from django.db.models import IntegerField, Max, Q
 from django.db.models.functions import Cast
 
 from dashboard.models import LayerFile, ERROR
@@ -45,6 +45,7 @@ from modules.admin_boundaries.geometry_checker import (
 )
 from georepo.utils.mapshaper import simplify_for_dataset
 from georepo.utils.celery_helper import cancel_task
+from georepo.utils.unique_code import get_unique_code
 
 logger = logging.getLogger(__name__)
 
@@ -356,13 +357,15 @@ def do_valid_nodes_check(geom: GEOSGeometry,
 
 
 def get_temp_entity_count(upload_session: LayerUploadSession, level: int,
-                          ancestor_id: str):
+                          ancestor_id: str, ancestor_ucode: str):
     if level == 0:
         return 1
     return EntityTemp.objects.filter(
         upload_session=upload_session,
-        level=level,
-        ancestor_entity_id=ancestor_id
+        level=level
+    ).filter(
+        Q(ancestor_entity_id=ancestor_id) |
+        Q(ancestor_entity_id=ancestor_ucode)
     ).count()
 
 
@@ -537,7 +540,11 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
             total_features = get_temp_entity_count(
                 entity_upload.upload_session,
                 level,
-                ancestor.internal_code
+                ancestor.internal_code,
+                get_unique_code(
+                    ancestor.unique_code,
+                    revision - 1
+                )
             )
         if parent_entities:
             parent_entities_codes = parent_entities.values_list(
