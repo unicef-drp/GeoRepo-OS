@@ -676,6 +676,14 @@ class AdminBoundaryMatching(object):
                     is_approved=True,
                     unique_code_version=prev_unique_code_version
                 )
+                if level == 0:
+                    prev_entities = prev_entities.filter(
+                        id=original_geographical.id
+                    )
+                else:
+                    prev_entities = prev_entities.filter(
+                        ancestor=original_geographical
+                    )
                 old_entity_count = prev_entities.count()
                 for prev_entity in prev_entities.iterator(chunk_size=1):
                     if prev_entity.area:
