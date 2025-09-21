@@ -87,7 +87,7 @@ export default function Step2(props: WizardStepInterface) {
       <Grid container className='Step2' flexDirection='column' flex={1}>
         <Grid item>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={props.initChildTab}
+            <Tabs className='Step2Tabs' value={props.initChildTab}
                   onChange={handleTabOnChange}
                   aria-label="basic tabs example">
               { uploads.map( (upload, index) =>
@@ -103,14 +103,14 @@ export default function Step2(props: WizardStepInterface) {
         </Grid>
         <Grid item className="Step2Content">
           { uploads.map( (upload, index) => (
-            <TabPanel value={props.initChildTab} index={index} key={index}>
+            <TabPanel value={props.initChildTab} index={index} key={index} padding={'0px 24px 8px 24px'}>
               <Step2LevelUpload languageOptions={languageOptions} uploadData={upload} updateLeveData={updateLevelData}
                  onBackClicked={props.onBackClicked} setFormIsDirty={props.setFormIsDirty} isReadOnly={props.isReadOnly}
                  canResetProgress={props.canResetProgress} onResetProgress={props.onResetProgress}  isUpdatingStep={props.isUpdatingStep} />
             </TabPanel>
             )
           )}
-          <TabPanel value={props.initChildTab} index={uploads.length}>
+          <TabPanel value={props.initChildTab} index={uploads.length} padding={'0px 24px 8px 24px'}>
             <Step2Summary uploads={uploads} onBackClicked={props.onBackClicked}
               onClickNext={props.onClickNext} isReadOnly={props.isReadOnly} isUpdatingStep={props.isUpdatingStep} />
           </TabPanel>

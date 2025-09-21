@@ -22,7 +22,8 @@ export default function UploadWizardWrapper() {
       },
       {
         title: 'Step 3',
-        element: Step2
+        element: Step2,
+        customPadding: '0px 24px 8px 24px'
       },
       {
         title: 'Step 4',

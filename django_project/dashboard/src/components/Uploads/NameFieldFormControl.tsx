@@ -36,7 +36,7 @@ interface NameFieldFormControlProps {
     }
     return (
       <Grid container flexDirection={'column'}>
-        <Grid container columnSpacing={1} className='field-container'>
+        <Grid container columnSpacing={1}>
           {!props.hideCheckbox && 
             <Grid item md={1} xs={12}>
               <FormControlLabel value={props.nameField.id} checked={checked} label='' disableTypography control={<Radio />} />

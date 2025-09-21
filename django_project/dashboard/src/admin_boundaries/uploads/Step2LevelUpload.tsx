@@ -467,24 +467,18 @@ function Step2LevelUpload(props: LevelUploadInterface) {
 
     return (
         <Scrollable>
-            <div className='FormContainer'>
+            <div className='FormContainer Step2LevelUpload'>
             {
                 !formLoading ? (
                   <FormControl className='FormContent' disabled={props.isReadOnly}>
                       <Grid container columnSpacing={2}>
                           <Grid item xl={9} md={9} xs={12}>
-                              <Grid container columnSpacing={1}>
-                                <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
-                                </Grid>
-                                <Grid item md={8} xl={8} xs={12} textAlign="left">
-                                  <FormLabel className='form-sublabel'>Default</FormLabel>
-                                </Grid>
-                            </Grid>
-                              <Grid container className='field-container align-start' columnSpacing={1}>
-                                  <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
+                              <Grid container className='field-container' columnSpacing={1}>
+                                  <Grid item className={'form-label'} md={4} xl={4} xs={12}>
                                       <Typography variant={'subtitle1'}>Name Fields</Typography>
                                   </Grid>
                                   <Grid item md={8} xl={8} xs={12}>
+                                      <FormLabel id="privacy-level-radio-buttons-group-label" className='form-sublabel' sx={{display: 'flex'}}>Default</FormLabel>
                                       <RadioGroup
                                         row
                                         aria-labelledby="name-field-radio-buttons-group-label"
@@ -507,18 +501,12 @@ function Step2LevelUpload(props: LevelUploadInterface) {
                                     </RadioGroup>
                                   </Grid>
                               </Grid>
-                              <Grid container columnSpacing={1}>
-                                <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
-                                </Grid>
-                                <Grid item md={8} xl={8} xs={12} textAlign="left">
-                                  <FormLabel className='form-sublabel'>Default</FormLabel>
-                                </Grid>
-                              </Grid>
-                              <Grid container className='field-container align-start' columnSpacing={1}>
-                                <Grid item className={'form-label multi-inputs'} md={4} xl={4} xs={12}>
+                              <Grid container className='field-container' columnSpacing={1}>
+                                <Grid item className={'form-label'} md={4} xl={4} xs={12}>
                                     <Typography variant={'subtitle1'}>Id Fields</Typography>
                                 </Grid>
                                 <Grid item md={8} xl={8} xs={12}>
+                                  <FormLabel id="privacy-level-radio-buttons-group-label" className='form-sublabel' sx={{display: 'flex'}}>Default</FormLabel>
                                   <RadioGroup
                                     row
                                     aria-labelledby="id-field-radio-buttons-group-label"
@@ -751,6 +739,7 @@ function Step2LevelUpload(props: LevelUploadInterface) {
                                 <Grid container direction="row"
                                     justifyContent="flex-end"
                                     alignItems="center"
+                                    sx={{ marginTop: 0}}
                                     spacing={2}>
                                 <Grid item>
                                   <Button variant="contained" onClick={showSaveConfigModal}>Save Config</Button>
