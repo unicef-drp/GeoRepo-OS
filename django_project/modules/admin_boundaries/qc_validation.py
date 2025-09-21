@@ -865,17 +865,23 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
             #     ] += 1
 
             # Check duplicate nodes
-            is_valid_duplicate_nodes = do_duplicate_nodes_check(
-                geom, internal_code, entity_upload, **kwargs
-            )
-            layer_error[ErrorType.DUPLICATE_NODES.value] = (
-                ERROR_CHECK if not is_valid_duplicate_nodes else ''
-            )
-            if layer_error[ErrorType.DUPLICATE_NODES.value]:
-                error_found = True
-                level_error_report[
+            is_disabled_duplicate_nodes_check = (
+                entity_upload.upload_session.is_validation_disabled(
                     ErrorType.DUPLICATE_NODES.value
-                ] += 1
+                )
+            )
+            if not is_disabled_duplicate_nodes_check:
+                is_valid_duplicate_nodes = do_duplicate_nodes_check(
+                    geom, internal_code, entity_upload, **kwargs
+                )
+                layer_error[ErrorType.DUPLICATE_NODES.value] = (
+                    ERROR_CHECK if not is_valid_duplicate_nodes else ''
+                )
+                if layer_error[ErrorType.DUPLICATE_NODES.value]:
+                    error_found = True
+                    level_error_report[
+                        ErrorType.DUPLICATE_NODES.value
+                    ] += 1
 
             # GEOMETRY TOPOLOGY CHECKS
             # Check duplicate geometry

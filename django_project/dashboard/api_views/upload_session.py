@@ -94,6 +94,9 @@ class UpdateUploadSession(AzureAuthRequiredMixin, APIView):
         tolerance = request.data.get('tolerance', None)
         overlaps_threshold = request.data.get('overlaps_threshold', None)
         gaps_threshold = request.data.get('gaps_threshold', None)
+        disable_duplicate_nodes_check = request.data.get(
+            'disable_duplicate_nodes_check', False
+        )
 
         upload_session = LayerUploadSession.objects.get(
             id=session
@@ -114,6 +117,12 @@ class UpdateUploadSession(AzureAuthRequiredMixin, APIView):
                 upload_session.overlaps_threshold = overlaps_threshold
             if gaps_threshold is not None:
                 upload_session.gaps_threshold = gaps_threshold
+            if disable_duplicate_nodes_check:
+                upload_session.disabled_validation = [
+                    'Duplicate Nodes'
+                ]
+            else:
+                upload_session.disabled_validation = []
             upload_session.save()
 
         return Response(data={
