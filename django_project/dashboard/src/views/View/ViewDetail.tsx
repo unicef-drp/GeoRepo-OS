@@ -214,7 +214,7 @@ export default function ViewDetail() {
                     <Tooltip title='Download view with filters from the preview'>
                         <Button disabled={!previewSession}
                             id='download-as-button'
-                            className={'ThemeButton MuiButton-secondary'}
+                            className={'ThemeButton MuiButton-secondary ViewRightButton'}
                             onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
                                 let _navigate_to = `/view_edit?id=${view.id}&tab=2&filterSession=${previewSession}`
                                 navigate(_navigate_to)

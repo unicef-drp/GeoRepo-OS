@@ -104,14 +104,17 @@ main {
     color: $primary-color;
     display: flex;
     margin: 0 0 0 0;
-    padding: 8px;
+    padding: 4px 8px 4px 8px;
     border-bottom: 1px solid;
     border-color: rgba(0, 0, 0, 0.12);
 
     .AdminContentHeader-Left {
-      text-align: left;
+      min-height: 36px;
       flex-grow: 1;
-      padding: 0.5rem 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
 
       span, a {
         color: $primary-color;
@@ -123,6 +126,8 @@ main {
     .AdminContentHeader-Right {
       button {
         margin-left: 0.5rem;
+        max-height: 36px;
+        padding: 6px 16px !important;
       }
       .AdminContentText {
         padding: 0.5rem 0;
@@ -209,7 +214,7 @@ main {
 }
 
 .FormContainer {
-  padding: 20px;
+  padding: 8px 16px;
   max-height: 100%;
   overflow-y: auto;
 
@@ -228,8 +233,25 @@ main {
     }
   }
 
+  // Overrides for Step2LevelUpload
+  &.Step2LevelUpload {
+    .FormContent {
+      .MuiGrid-item {
+        padding-top: 0px;
+      }
+      .field-container {
+        padding-top: 8px !important;
+      }
+    }
+  }
+
   .FormContent {
     width: 100%;
+
+    .MuiGrid-item {
+      padding-top: 8px;
+    }
+
     input {
       width: 100%;
     }
@@ -245,7 +267,7 @@ main {
       padding-bottom: 1em;
     }
     .field-container.MuiGrid-container {
-      padding-bottom: 1em;
+      padding-bottom: 0;
       align-items: center;
     }
     .field-container.align-start.MuiGrid-container {
@@ -361,11 +383,14 @@ main {
   }
 }
 
-.DatasetTabs, .WizardTabs {
+.DatasetTabs, .WizardTabs, .Step2Tabs {
   &.MuiTabs-root {
+    min-height: 36px;
+
     .MuiTab-root {
-      min-height: 48px;
+      min-height: 36px;
       line-height: normal;
+      padding: 8px 16px;
     }
   }
 }
@@ -395,3 +420,8 @@ p {
   color: var(--primary-color-transparent);
 }
 
+.ViewRightButton {
+    margin-left: 0.5rem;
+    max-height: 36px;
+    padding: 6px 16px !important;
+}

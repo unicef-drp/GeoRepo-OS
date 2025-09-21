@@ -91,7 +91,8 @@ export interface WizardStepInterface {
 
 export interface WizardStepElementInterface {
     title: string,
-    element: React.ElementType
+    element: React.ElementType,
+    customPadding?: string
 }
 
 

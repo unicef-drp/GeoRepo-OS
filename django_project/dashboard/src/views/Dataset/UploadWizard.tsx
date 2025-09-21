@@ -282,7 +282,7 @@ export default function UploadWizard (props: UploadWizardInterface) {
           {loading ? <Loading/> : <div className={`UploadWizardContent ${tabSelected !== 2 ? "scrollable":""}`}>
               {
                 props.steps.map((step, index) => {
-                  return <TabPanel key={index} value={tabSelected} index={index}>
+                  return <TabPanel key={index} value={tabSelected} index={index} padding={step.customPadding}>
                     {WizardStep(step.element, {
                       datasetId: currentDatasetId,
                       uploadSession: uploadSession,

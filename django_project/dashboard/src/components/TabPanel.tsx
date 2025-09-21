@@ -5,7 +5,7 @@ interface TabPanelProps {
     children?: React.ReactNode;
     index: number;
     value: number;
-    padding?: number;
+    padding?: number | string;
     noPadding?: boolean;
 }
   
@@ -13,7 +13,7 @@ interface TabPanelProps {
 export default function TabPanel(props: TabPanelProps) {
     const { children, value, index, padding, noPadding, ...other } = props;
 
-    let _box_padding = padding ? padding : 3;
+    let _box_padding = padding ? padding : '8px 24px';
     if (noPadding) {
         _box_padding = 0
     }
