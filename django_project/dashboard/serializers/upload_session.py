@@ -113,6 +113,7 @@ class DetailUploadSessionSerializer(serializers.ModelSerializer):
     revision_number = serializers.SerializerMethodField()
     dataset_name = serializers.SerializerMethodField()
     module_name = serializers.SerializerMethodField()
+    disable_duplicate_nodes_check = serializers.SerializerMethodField()
 
     def get_first_upload(self, obj: LayerUploadSession):
         return (
@@ -200,6 +201,14 @@ class DetailUploadSessionSerializer(serializers.ModelSerializer):
     def get_module_name(self, obj: LayerUploadSession):
         return obj.dataset.module.name
 
+    def get_disable_duplicate_nodes_check(self, obj: LayerUploadSession):
+        if (
+            obj.disabled_validation and
+            'Duplicate Nodes' in obj.disabled_validation
+        ):
+            return True
+        return False
+
     class Meta:
         model = LayerUploadSession
         fields = [
@@ -228,7 +237,8 @@ class DetailUploadSessionSerializer(serializers.ModelSerializer):
             'overlaps_threshold',
             'gaps_threshold',
             'dataset_name',
-            'module_name'
+            'module_name',
+            'disable_duplicate_nodes_check'
         ]
 
 

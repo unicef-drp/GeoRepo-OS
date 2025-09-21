@@ -36,6 +36,7 @@ export default function (props: WizardStepInterface) {
   const [tolerance, setTolerance] = useState<number>(1e-4)
   const [overlapsThreshold, setOverlapsThreshold] = useState<number>(0.01)
   const [gapsThreshold, setGapsThreshold] = useState<number>(0.01)
+  const [disableDuplicateNodesCheck, setDisableDuplicateNodesCheck] = useState<boolean>(false)
 
   useEffect(() => {
     const uploadSession = searchParams.get('session')
@@ -51,6 +52,7 @@ export default function (props: WizardStepInterface) {
           setTolerance(response.data.tolerance)
           setOverlapsThreshold(response.data.overlaps_threshold)
           setGapsThreshold(response.data.gaps_threshold)
+          setDisableDuplicateNodesCheck(response.data.disable_duplicate_nodes_check)
         }, error => {
           console.log(error)
         })
@@ -68,7 +70,8 @@ export default function (props: WizardStepInterface) {
       'historical_end_date': endDate,
       'tolerance': tolerance,
       'overlaps_threshold': overlapsThreshold,
-      'gaps_threshold': gapsThreshold
+      'gaps_threshold': gapsThreshold,
+      'disable_duplicate_nodes_check': disableDuplicateNodesCheck,
     }).then( response => {
       if (response.data.session_id) {
         props.onClickNext()
@@ -219,6 +222,12 @@ export default function (props: WizardStepInterface) {
               sx={{ width: '100%' }}
               inputProps={{ max: 999999999, min: 0}}
             />
+          </Grid>
+          <Grid item md={10} xs={12} sx={{ display: 'flex' }}>
+            <FormControlLabel control={<Checkbox value={disableDuplicateNodesCheck} checked={disableDuplicateNodesCheck}
+                                disabled={loading || props.isReadOnly}
+                                onChange={(val) => setDisableDuplicateNodesCheck(val.target.checked)}/>}
+              label="Disable Duplicate Nodes Check" />
           </Grid>
         </Grid>
         <Box sx={{ textAlign: 'right' }}>

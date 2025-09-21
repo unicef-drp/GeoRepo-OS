@@ -184,6 +184,13 @@ class LayerUploadSession(models.Model):
         null=True
     )
 
+    disabled_validation = models.JSONField(
+        help_text='List of disabled validation checks',
+        default=list,
+        blank=True,
+        null=True
+    )
+
     def __str__(self):
         return f'{self.source} - {self.status}'
 
@@ -221,6 +228,11 @@ class LayerUploadSession(models.Model):
             'is_in_progress': self.is_in_progress(),
             'has_any_result': self.has_any_result()
         }
+
+    def is_validation_disabled(self, check_name):
+        if not self.disabled_validation:
+            return False
+        return check_name in self.disabled_validation
 
     @classmethod
     def get_upload_session_for_user(self, user):
