@@ -5,7 +5,7 @@ import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import LinearProgress from "@mui/material/LinearProgress";
+import LinearProgressWithLabel from "../../components/LinearProgressWithLabel";
 import Button from "@mui/material/Button";
 import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp';
 import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown';
@@ -74,7 +74,9 @@ export default function UploadComponent(props: UploadComponentInterface)  {
                       <Typography sx={{ marginRight: 1 }} textAlign={'right'}>Level {props.level}</Typography>
                   </Grid>
                 </Grid>
-                <LinearProgress variant="determinate" value={meta.percent} sx={{ marginTop: 2 }} />
+                <Grid item>
+                  <LinearProgressWithLabel variant="determinate" value={meta.percent} maxBarWidth={'90%'} />
+                </Grid>
               </Grid>
             </Grid>
             <Grid item padding={'20px'}>
