@@ -2,7 +2,7 @@ import React from "react";
 import loadable from '@loadable/component';
 import {Typography} from "@mui/material";
 
-const CircularProgress = loadable(
+export const CircularProgress = loadable(
     () => import("@mui/material/CircularProgress" /* webpackChunkName: "loading" */), {
         fallback: <div>&nbsp;</div>
     }

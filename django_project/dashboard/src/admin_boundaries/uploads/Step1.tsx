@@ -26,6 +26,7 @@ const LAYER_FILE_DOWNLOAD_URL = '/api/layer-file-download/'
 
 export default function Step1(props: WizardStepInterface) {
   const [levels, setLevels] = useState<Level | {}>({})
+  const [fileErrors, setFileErrors] = useState<{ [key: string]: string }>({})
   const [loading, setLoading] = useState(true)
   const [alertMessage, setAlertMessage] = useState('')
   const [isError, setIsError] = useState(false)
@@ -210,10 +211,10 @@ export default function Step1(props: WizardStepInterface) {
     }
     if (status === 'error_upload') {
       setTimeout(() => {
-        file.remove()
         let response = JSON.parse(xhr.response)
         setIsError(true)
         setAlertMessage(response.detail)
+        setFileErrors({...fileErrors, [meta.id]: response.detail})
       }, 300)
     }
     if (status === 'aborted') {
@@ -223,7 +224,6 @@ export default function Step1(props: WizardStepInterface) {
     }
     if (status === 'error_file_size') {
       setTimeout(() => {
-        file.remove()
         setIsError(true)
         setAlertMessage('Unable to upload file with more than 600MB!')
       }, 300)
@@ -418,7 +418,7 @@ export default function Step1(props: WizardStepInterface) {
       <Scrollable>
         <div className='Step1'>
           { alertMessage ?
-            <Alert style={{ width: '750px', textAlign: 'left' }} severity={ isError ? 'error' : 'success' }>
+            <Alert style={{ width: '750px', textAlign: 'left' }} severity={ isError ? 'error' : 'success' } onClose={() => { setAlertMessage(''); setIsError(false); }}>
               <AlertTitle>{ isError ? 'Error' : 'Success' }</AlertTitle>
               <p className="display-linebreak">
                 { alertMessage }
@@ -439,6 +439,7 @@ export default function Step1(props: WizardStepInterface) {
                 uploadLevel0={uploadLevel0}
                 isReadOnly={props.isReadOnly}
                 initialFiles={initialFiles}
+                fileErrors={fileErrors}
                 />
               }
               getUploadParams={getUploadParams}

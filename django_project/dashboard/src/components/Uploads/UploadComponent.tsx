@@ -9,6 +9,8 @@ import LinearProgressWithLabel from "../../components/LinearProgressWithLabel";
 import Button from "@mui/material/Button";
 import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp';
 import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown';
+import ErrorIcon from '@mui/icons-material/Error';
+import {CircularProgress} from "../../components/Loading";
 
 
 export const isFirstLevel = (level: string, isUploadLevel0: boolean): boolean => {
@@ -33,7 +35,8 @@ interface UploadComponentInterface {
     initialFiles?: File[],
     moveLevelUp?: (layerId: string) => void,
     moveLevelDown?: (layerId: string) => void,
-    downloadLayerFile?: (layerId: string) => void
+    downloadLayerFile?: (layerId: string) => void,
+    fileErrors?: { [key: string]: string }
 }
 
 export default function UploadComponent(props: UploadComponentInterface)  {
@@ -76,6 +79,20 @@ export default function UploadComponent(props: UploadComponentInterface)  {
                 </Grid>
                 <Grid item>
                   <LinearProgressWithLabel variant="determinate" value={meta.percent} maxBarWidth={'90%'} />
+                </Grid>
+                <Grid item display={'flex'} sx={{paddingBottom: '10px', minHeight: '24px'}}>
+                  <Grid container display={meta.percent > 99 && meta.status === 'uploading' ? 'flex' : 'none'} alignItems='center' justifyContent='flex-start' flexDirection={'row'}>
+                    <CircularProgress size={20} />
+                    <Typography sx={{marginLeft: '5px'}}>Finalizing upload</Typography>
+                  </Grid>
+                  <Grid container display={meta.status === 'error_file_size' ? 'flex' : 'none'} alignItems='center' justifyContent='flex-start' flexDirection={'row'}>
+                    <ErrorIcon fontSize="small" color="error" />
+                    <Typography color="error" sx={{marginLeft: '5px'}}>File size exceeds limit (600MB)</Typography>
+                  </Grid>
+                  <Grid container display={meta.status === 'error_upload' && props.fileErrors[meta.id] ? 'flex' : 'none'} alignItems='center' justifyContent='flex-start' flexDirection={'row'}>
+                    <ErrorIcon fontSize="small" color="error" />
+                    <Typography color="error" sx={{marginLeft: '5px'}}>{props.fileErrors[meta.id]}</Typography>
+                  </Grid>
                 </Grid>
               </Grid>
             </Grid>
