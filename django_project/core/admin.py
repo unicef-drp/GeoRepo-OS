@@ -2,11 +2,17 @@
 from django.contrib import admin
 from rest_framework.authtoken.models import TokenProxy
 from knox.models import AuthToken
+from rest_framework_tracking.admin import APIRequestLogAdmin
+from rest_framework_tracking.models import APIRequestLog as BaseAPIRequestLog
 from core.models import (
     SitePreferences,
     SitePreferencesImage,
-    ApiKey
+    ApiKey,
+    APIRequestLog
 )
+
+# Unregister the default APIRequestLog admin
+admin.site.unregister(BaseAPIRequestLog)
 
 
 class SitePreferencesImageInline(admin.TabularInline):
@@ -135,7 +141,24 @@ class APIKeyAdmin(admin.ModelAdmin):
         return False
 
 
+class APIRequestLogAdmin(APIRequestLogAdmin):
+    """Admin class for APIRequestLog model."""
+
+    list_display = (
+        "id",
+        "requested_at",
+        "response_ms",
+        "status_code",
+        "user",
+        "view_method",
+        "path"
+    )
+    list_filter = ("user", "status_code", "requested_at", "view_method")
+    search_fields = ("user", "path")
+
+
 admin.site.register(SitePreferences, SitePreferencesAdmin)
 admin.site.unregister(TokenProxy)
 admin.site.unregister(AuthToken)
 admin.site.register(ApiKey, APIKeyAdmin)
+admin.site.register(APIRequestLog, APIRequestLogAdmin)
