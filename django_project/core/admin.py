@@ -128,9 +128,13 @@ class APIKeyInline(admin.StackedInline):
 
 
 class APIKeyAdmin(admin.ModelAdmin):
-    list_display = ('get_user', 'platform', 'owner', 'contact',
-                    'get_created', 'is_active')
+    list_display = (
+        'get_user', 'platform', 'owner', 'contact',
+        'get_created', 'is_active', 'get_total_usage',
+        'get_last_usage'
+    )
     fields = ('platform', 'owner', 'contact', 'is_active')
+    list_per_page = 20
 
     @admin.display(ordering='token__user__username', description='User')
     def get_user(self, obj):
@@ -143,6 +147,19 @@ class APIKeyAdmin(admin.ModelAdmin):
     def has_add_permission(self, request, obj=None):
         # creation of API key is from FrontEnd
         return False
+
+    @admin.display(description='Total Usage')
+    def get_total_usage(self, obj):
+        return APIRequestLog.objects.filter(
+            user=obj.token.user
+        ).count()
+
+    @admin.display(description='Last Usage')
+    def get_last_usage(self, obj):
+        last_log = APIRequestLog.objects.filter(
+            user=obj.token.user
+        ).order_by('-requested_at').first()
+        return last_log.requested_at if last_log else None
 
 
 class APIRequestLogAdmin(BaseAPIRequestLogAdmin):
