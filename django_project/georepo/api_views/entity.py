@@ -26,6 +26,7 @@ from georepo.utils.permission import (
     get_view_permission_privacy_level
 )
 
+from core.mixins import APILoggingMixin
 from georepo.api_views.api_cache import ApiCache
 from georepo.models import (
     Dataset,
@@ -130,7 +131,7 @@ class DatasetDetailCheckPermission(object):
                 }
             )
 )
-class EntityIdList(APIView):
+class EntityIdList(APILoggingMixin, APIView):
     """
     Get entity id types
 
@@ -148,7 +149,7 @@ class EntityIdList(APIView):
         return Response(status=200, data=result)
 
 
-class EntityBoundingBox(APIView, DatasetDetailCheckPermission):
+class EntityBoundingBox(APILoggingMixin, APIView, DatasetDetailCheckPermission):
     """
     Find bounding box of geographical entity
 
@@ -288,7 +289,7 @@ class EntityBoundingBox(APIView, DatasetDetailCheckPermission):
                 }
             )
 )
-class EntityTypeList(APIView):
+class EntityTypeList(APILoggingMixin, APIView):
     """
     Get admin level types
 
@@ -311,7 +312,7 @@ class EntityTypeList(APIView):
         return Response(status=200, data=types)
 
 
-class EntityContainmentCheck(APIView, DatasetDetailCheckPermission):
+class EntityContainmentCheck(APILoggingMixin, APIView, DatasetDetailCheckPermission):
     """
     Find geographical entity using spatial query
 
