@@ -1,8 +1,12 @@
 """Core admin."""
 from django.contrib import admin
+from django.db.models import Count
+from django.db.models.functions import TruncDay
 from rest_framework.authtoken.models import TokenProxy
 from knox.models import AuthToken
-from rest_framework_tracking.admin import APIRequestLogAdmin
+from rest_framework_tracking.admin import (
+    APIRequestLogAdmin as BaseAPIRequestLogAdmin
+)
 from rest_framework_tracking.models import APIRequestLog as BaseAPIRequestLog
 from core.models import (
     SitePreferences,
@@ -141,7 +145,7 @@ class APIKeyAdmin(admin.ModelAdmin):
         return False
 
 
-class APIRequestLogAdmin(APIRequestLogAdmin):
+class APIRequestLogAdmin(BaseAPIRequestLogAdmin):
     """Admin class for APIRequestLog model."""
 
     list_display = (
@@ -154,7 +158,31 @@ class APIRequestLogAdmin(APIRequestLogAdmin):
         "path"
     )
     list_filter = ("user", "status_code", "requested_at", "view_method")
-    search_fields = ("user", "path")
+
+    def changelist_view(self, request, extra_context=None):
+        # Aggregate api logs per day
+        chart_data = (
+            APIRequestLog.objects.annotate(date=TruncDay("requested_at"))
+            .values("date")
+            .annotate(y=Count("id"))
+            .order_by("-date")
+        )
+
+        extra_context = extra_context or {"chart_data": list(chart_data)}
+
+        # Call the superclass changelist_view to render the page
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def chart_data(self, start_date, end_date):
+        return (
+            APIRequestLog.objects.filter(
+                requested_at__date__gte=start_date, requested_at__date__lte=end_date
+            )
+            .annotate(date=TruncDay("requested_at"))
+            .values("date")
+            .annotate(y=Count("id"))
+            .order_by("-date")
+        )
 
 
 admin.site.register(SitePreferences, SitePreferencesAdmin)
