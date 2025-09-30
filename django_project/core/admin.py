@@ -193,7 +193,8 @@ class APIRequestLogAdmin(BaseAPIRequestLogAdmin):
     def chart_data(self, start_date, end_date):
         return (
             APIRequestLog.objects.filter(
-                requested_at__date__gte=start_date, requested_at__date__lte=end_date
+                requested_at__date__gte=start_date,
+                requested_at__date__lte=end_date
             )
             .annotate(date=TruncDay("requested_at"))
             .values("date")

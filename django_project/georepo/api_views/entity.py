@@ -149,7 +149,9 @@ class EntityIdList(APILoggingMixin, APIView):
         return Response(status=200, data=result)
 
 
-class EntityBoundingBox(APILoggingMixin, APIView, DatasetDetailCheckPermission):
+class EntityBoundingBox(
+    APILoggingMixin, APIView, DatasetDetailCheckPermission
+):
     """
     Find bounding box of geographical entity
 
@@ -312,7 +314,9 @@ class EntityTypeList(APILoggingMixin, APIView):
         return Response(status=200, data=types)
 
 
-class EntityContainmentCheck(APILoggingMixin, APIView, DatasetDetailCheckPermission):
+class EntityContainmentCheck(
+    APILoggingMixin, APIView, DatasetDetailCheckPermission
+):
     """
     Find geographical entity using spatial query
 

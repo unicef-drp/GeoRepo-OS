@@ -902,7 +902,9 @@ class DatasetViewDownloader(APILoggingMixin, APIView, DatasetViewFetchResource,
         )
 
 
-class DatasetViewDownloaderStatus(APILoggingMixin, APIView, DatasetViewFetchResource):
+class DatasetViewDownloaderStatus(
+    APILoggingMixin, APIView, DatasetViewFetchResource
+):
     """
     Fetch the download view job status.
     """
