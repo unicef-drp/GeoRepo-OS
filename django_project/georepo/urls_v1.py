@@ -1,6 +1,4 @@
-import os
 from django.urls import path, re_path
-from django.conf import settings
 from georepo.api_views.module import (
     ModuleList
 )
@@ -330,13 +328,8 @@ urlpatterns += [
         name='search-entity-by-level'
     )
 ]
-if (
-    settings.DEBUG or
-    'dev' in os.environ['DJANGO_SETTINGS_MODULE'] or
-    'test' in os.environ['DJANGO_SETTINGS_MODULE']
-):
-    urlpatterns += entity_urls
-    urlpatterns += operation_entity_urls
+urlpatterns += entity_urls
+urlpatterns += operation_entity_urls
 urlpatterns += view_entity_urls
 urlpatterns += operation_view_entity_urls
 urlpatterns += download_urls
