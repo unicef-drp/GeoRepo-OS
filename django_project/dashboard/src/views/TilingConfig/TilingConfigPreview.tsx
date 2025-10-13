@@ -7,10 +7,14 @@ import { usePrevious } from '../../utils/Helpers';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
+import Checkbox from '@mui/material/Checkbox';
+import ListItemText from '@mui/material/ListItemText';
 import Dataset from '../../models/dataset';
 import View from '../../models/view';
 import { TilingConfig, ZOOM_LEVELS, MAX_ZOOM } from '../../models/tiling';
 import HtmlTooltip from '../../components/HtmlTooltip';
+import CustomControl from '../../utils/CustomControl';
+
 
 const TILING_CONFIGS_TEMP_DETAIL_URL = '/api/tiling-configs/preview/country/list/'
 const PREVIEW_GEOJSON_URL = '/api/tiling-configs/temporary/geojson/'
@@ -29,6 +33,15 @@ const VECTOR_LINE_COLORS = [
     '#fc5e63',
     '#fc5e63',
     '#fc5e63'
+]
+const ADMIN_LEVELS = [
+    'Admin Level 0',
+    'Admin Level 1',
+    'Admin Level 2',
+    'Admin Level 3',
+    'Admin Level 4',
+    'Admin Level 5',
+    'Admin Level 6'
 ]
 
 interface AdminLevelSimplifyFactor {
@@ -62,6 +75,40 @@ interface TilingConfigPreviewInterface {
 }
 
 
+/** Preview Title Label control class */
+class MapLabelControl extends CustomControl {
+  private ref: React.LegacyRef<unknown> | undefined;
+
+  constructor(ref: React.LegacyRef<unknown>) {
+    super();
+    this.ref = ref;
+  }
+
+  className(): string {
+    return 'maplibre-legend-control'
+  }
+
+  onRender(): React.ReactNode {
+    return <Grid container flexDirection={'row'} alignItems={'center'} style={{padding: '1px 5px', backgroundColor: 'white', borderRadius: '4px', pointerEvents: 'auto'}}>
+        <Grid item>
+            <h4 style={{marginBlockStart: '5px', marginBlockEnd: '5px'}}>Live Preview</h4>
+        </Grid>
+        <Grid item>
+            <HtmlTooltip tooltipTitle='Live Preview'
+                tooltipDescription={
+                    <p>
+                        This is a live preview. The tiles you see in the map are being dynamically generated. 
+                        After you click save, the view will be marked as inconsistent - you should visit the sync status tab to trigger the generation of cached tiles.
+                    </p>
+                }
+            />
+        </Grid>
+    </Grid>
+  }
+}
+
+
+
 export default function TilingConfigPreview(props: TilingConfigPreviewInterface) {
     const mapContainer = useRef(null);
     const map = useRef(null);
@@ -79,6 +126,7 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
     const prevSelectedAdm0Id = usePrevious(selectedAdm0Id)
     const [datasetRefs, setDatasetRefs] = useState<GeoJSONFile>({})
     const [availableLevels, setAvailableLevels] = useState<number[]>([])
+    const [selectedAdminLevels, setSelectedAdminLevels] = useState<string[]>([...ADMIN_LEVELS])
 
     const mapFitBounds = () => {
         if (bbox && map.current) {
@@ -187,6 +235,7 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
             maxZoom: MAX_ZOOM
         });
         map.current.addControl(new AttributionControl(), 'bottom-left');
+        map.current.addControl(new MapLabelControl(null), 'top-left');
         map.current.on('load', () => {
             setMapLoaded(true)
             mapFitBounds()
@@ -242,8 +291,19 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
         if (files.length === 0) return;
         if (selectedAdm0Id === 0) return;
         if (Object.keys(datasetRefs).length === 0) return;
-        drawLayers(datasetRefs, files, zoom)
-    }, [zoom])
+
+        let _newFiles = [...files]
+        for (let i=0;i<_newFiles.length;++i) {
+            let _adminLevelLabel = `Admin Level ${_newFiles[i].level}`
+            if (selectedAdminLevels.includes(_adminLevelLabel)) {
+                _newFiles[i].isHidden = false
+            } else {
+                _newFiles[i].isHidden = true
+            }
+        }
+        setFiles(_newFiles)
+
+    }, [zoom, selectedAdminLevels])
 
     const fetchGeoJson = (adm0Id: number, level: number) => {
         let _fetch_url = `${PREVIEW_GEOJSON_URL}?adm0_id=${adm0Id}&level=${level}`
@@ -316,6 +376,8 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
                 // remove from map only if the current zoom is lower than max zoom
                 if (currentZoom <= maxZoom) {
                     toggleLayer(_level, false)
+                } else if (_file.isHidden) {
+                    toggleLayer(_level, false)
                 }
             } else {
                 // do simplification if needed
@@ -384,6 +446,26 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
         }
     }, [selectedAdm0Id])
 
+    const handleAdminLevelChange = (event: SelectChangeEvent<typeof selectedAdminLevels>) => {
+        const {
+            target: { value },
+        } = event;
+        let _selectedLevels = typeof value === 'string' ? value.split(',') : value;
+        setSelectedAdminLevels(_selectedLevels);
+    }
+
+    const renderSelectedAdminLevels = (selecteds: string[]) => {
+        // remove 'Admin Level ' prefix
+        selecteds = selecteds.map(level => level.replace('Admin Level ', ''))
+        // sort numerically
+        selecteds.sort((a, b) => parseInt(a) - parseInt(b))
+        let joined = selecteds.join(', ')
+        if (joined.length > 15) {
+            return joined.substring(0, 15) + '...'
+        }
+        return joined
+    }
+
     return (
         <div style={{display:'flex', flex: 1, flexDirection: 'column'}}>
             <div style={{display:'flex', flex: 1, flexDirection: 'column'}}>
@@ -393,23 +475,6 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
             </div>
             <div className="button-container" style={{marginLeft:0, width: '100%', paddingTop: '10px'}}>
                 <Grid container direction='row' justifyContent='space-between'>
-                    <Grid item>
-                        <Grid container flexDirection={'row'} alignItems={'center'}>
-                            <Grid item>
-                                <h4>Live Preview</h4>
-                            </Grid>
-                            <Grid item>
-                                <HtmlTooltip tooltipTitle='Live Preview'
-                                    tooltipDescription={
-                                        <p>
-                                            This is a live preview. The tiles you see in the map are being dynamically generated. 
-                                            After you click save, the view will be marked as inconsistent - you should visit the sync status tab to trigger the generation of cached tiles.
-                                        </p>
-                                    }
-                                />
-                            </Grid>
-                        </Grid>
-                    </Grid>
                     <Grid item>
                         {mapLoaded && 
                             <FormControl sx={{minWidth: '180px'}} disabled={loading || props.disabled}>
@@ -456,6 +521,27 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
                                 </Select>
                             </FormControl>
                         }
+                    </Grid>
+                    <Grid item>
+                        <FormControl sx={{minWidth: '180px'}} disabled={loading || props.disabled}>
+                            <InputLabel id="admin-level-select-label">Admin Levels</InputLabel>
+                            <Select
+                                labelId="admin-level-select-label"
+                                id="admin-level-select"
+                                label="Admin Levels"
+                                multiple={true}
+                                value={selectedAdminLevels}
+                                renderValue={(selected) => renderSelectedAdminLevels(selected)}
+                                onChange={handleAdminLevelChange}
+                            >
+                                { ADMIN_LEVELS.map((value, index) => {
+                                    return <MenuItem key={index} value={value}>
+                                        <Checkbox checked={selectedAdminLevels.includes(value)} />
+                                        <ListItemText primary={value} />
+                                    </MenuItem>
+                                })}
+                            </Select>
+                        </FormControl>                        
                     </Grid>
                 </Grid>
             </div>
