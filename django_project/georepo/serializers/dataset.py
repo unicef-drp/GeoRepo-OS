@@ -4,7 +4,6 @@ from django.urls.exceptions import NoReverseMatch
 from rest_framework import serializers
 from drf_yasg import openapi
 from rest_framework.reverse import reverse
-from django.contrib.gis.db.models import Extent
 from georepo.serializers.common import APIResponseModelSerializer
 from georepo.models import (
     Dataset,
@@ -349,17 +348,7 @@ class DetailedDatasetSerializer(APIResponseModelSerializer):
         return results
 
     def get_bbox(self, obj: Dataset):
-        entities = GeographicalEntity.objects.filter(
-            dataset=obj,
-            is_approved=True,
-            geometry__isnull=False,
-            level=0
-        )
-        if not entities.exists():
-            return []
-        # get the union of all geometries' bbox
-        geom_qs = entities.aggregate(Extent('geometry'))
-        return list(geom_qs['geometry__extent'])
+        return obj.bbox
 
     def get_max_zoom(self, obj: Dataset):
         tiling_configs = DatasetTilingConfig.objects.filter(

@@ -40,7 +40,7 @@ class ExportRequestStatusText(str, Enum):
         return self.value
 
 
-class ExportRequest(BaseTaskRequest):
+class ExportRequestBase(BaseTaskRequest):
 
     FORMAT_CHOICES = (
         (GEOJSON_EXPORT_TYPE, GEOJSON_EXPORT_TYPE),
@@ -48,11 +48,6 @@ class ExportRequest(BaseTaskRequest):
         (KML_EXPORT_TYPE, KML_EXPORT_TYPE),
         (TOPOJSON_EXPORT_TYPE, TOPOJSON_EXPORT_TYPE),
         (GEOPACKAGE_EXPORT_TYPE, GEOPACKAGE_EXPORT_TYPE)
-    )
-
-    dataset_view = models.ForeignKey(
-        'georepo.DatasetView',
-        on_delete=models.CASCADE
     )
 
     format = models.CharField(
@@ -126,3 +121,25 @@ class ExportRequest(BaseTaskRequest):
         return human_readable.precise_delta(
             delta, suppress=["days"], minimum_unit='minutes',
             formatting='.0f')
+
+    class Meta:
+        """Meta class for abstract base task request."""
+        abstract = True
+
+
+class ExportRequest(ExportRequestBase):
+    """Export request model for DatasetView."""
+
+    dataset_view = models.ForeignKey(
+        'georepo.DatasetView',
+        on_delete=models.CASCADE
+    )
+   
+
+class DatasetExportRequest(ExportRequestBase):
+    """Export request model for Dataset."""
+
+    dataset = models.ForeignKey(
+        'georepo.Dataset',
+        on_delete=models.CASCADE
+    )

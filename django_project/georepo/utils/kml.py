@@ -1,13 +1,14 @@
 import logging
 import os
 from georepo.utils.geojson import (
-    GeojsonBasedExporter
+    GeojsonBasedExporter,
+    GeojsonDatasetBasedExporter
 )
 
 logger = logging.getLogger(__name__)
 
 
-class KmlViewExporter(GeojsonBasedExporter):
+class KmlBaseExporter:
 
     def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
@@ -33,3 +34,15 @@ class KmlViewExporter(GeojsonBasedExporter):
         )
         self.do_conversion(command_list)
         return kml_file
+
+
+class KmlViewExporter(GeojsonBasedExporter, KmlBaseExporter):
+
+    pass
+
+
+class KmlDatasetExporter(
+    GeojsonDatasetBasedExporter, KmlBaseExporter
+):
+
+    pass

@@ -3,7 +3,8 @@ import os
 import logging
 from georepo.serializers.entity import ExportShapefileSerializer
 from georepo.utils.geojson import (
-    GeojsonBasedExporter
+    GeojsonBasedExporter,
+    GeojsonDatasetBasedExporter
 )
 from georepo.utils.fiona_utils import (
     list_layers_shapefile,
@@ -100,7 +101,7 @@ def validate_shapefile_zip(layer_file_path: any):
     return is_valid, error
 
 
-class ShapefileViewExporter(GeojsonBasedExporter):
+class ShapefileBaseExporter:
 
     def get_serializer(self):
         return ExportShapefileSerializer
@@ -156,3 +157,15 @@ class ShapefileViewExporter(GeojsonBasedExporter):
             )
             os.remove(tmp_metadata_file)
         return zip_file_path
+
+
+class ShapefileViewExporter(GeojsonBasedExporter, ShapefileBaseExporter):
+
+    pass
+
+
+class ShapefileDatasetExproter(
+    GeojsonDatasetBasedExporter, ShapefileBaseExporter
+):
+
+    pass

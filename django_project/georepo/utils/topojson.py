@@ -1,12 +1,15 @@
 import logging
 import os
-from georepo.utils.geojson import GeojsonBasedExporter
+from georepo.utils.geojson import (
+    GeojsonBasedExporter,
+    GeojsonDatasetBasedExporter
+)
 
 
 logger = logging.getLogger(__name__)
 
 
-class TopojsonViewExporter(GeojsonBasedExporter):
+class TopojsonBaseExporter:
 
     def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
@@ -28,3 +31,15 @@ class TopojsonViewExporter(GeojsonBasedExporter):
         )
         self.do_conversion(command_list)
         return topojson_file
+
+
+class TopojsonViewExporter(GeojsonBasedExporter, TopojsonBaseExporter):
+
+    pass
+
+
+class TopojsonDatasetExporter(
+    GeojsonDatasetBasedExporter, TopojsonBaseExporter
+):
+
+    pass
