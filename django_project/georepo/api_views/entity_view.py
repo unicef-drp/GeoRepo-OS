@@ -20,6 +20,8 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from rest_framework.parsers import MultiPartParser
 from rest_framework.renderers import JSONRenderer
+
+from core.mixins import APILoggingMixin
 from core.models.preferences import SitePreferences
 from georepo.utils.permission import (
     DatasetViewDetailAccessPermission,
@@ -1212,7 +1214,9 @@ class ViewFindEntityVersionsByUCode(
         )
 
 
-class ViewFindEntityFuzzySearch(APIView, DatasetViewDetailCheckPermission):
+class ViewFindEntityFuzzySearch(
+    APILoggingMixin, APIView, DatasetViewDetailCheckPermission
+):
     """
     Find geographical entities by name
 
@@ -1538,7 +1542,9 @@ class ViewFindEntityGeometryFuzzySearch(
         )
 
 
-class ViewEntityBoundingBox(APIView, DatasetViewDetailCheckPermission):
+class ViewEntityBoundingBox(
+    APILoggingMixin, APIView, DatasetViewDetailCheckPermission
+):
     """
     Find bounding box of geographical entity
 
@@ -2380,7 +2386,9 @@ class ViewEntityTraverseChildrenHierarchyByUCode(
         )
 
 
-class ViewEntityBatchSearchId(APIView, DatasetViewDetailCheckPermission):
+class ViewEntityBatchSearchId(
+    APILoggingMixin, APIView, DatasetViewDetailCheckPermission
+):
     """
     Batch search to find geographical entities in view by one of ID
 
@@ -2756,7 +2764,9 @@ class ViewEntityBatchGeocoding(ViewEntityContainmentCheck,
         )
 
 
-class ViewEntityBatchSearchIdStatus(APIView, DatasetViewDetailCheckPermission):
+class ViewEntityBatchSearchIdStatus(
+    APILoggingMixin, APIView, DatasetViewDetailCheckPermission
+):
     """
     Check status of batch search by id
 
@@ -2862,8 +2872,9 @@ class ViewEntityBatchSearchIdStatus(APIView, DatasetViewDetailCheckPermission):
         )
 
 
-class ViewEntityBatchSearchIdResult(APIView,
-                                    DatasetViewDetailCheckPermission):
+class ViewEntityBatchSearchIdResult(
+    APILoggingMixin, APIView, DatasetViewDetailCheckPermission
+):
     """
     Fetch output results of batch search by id
 
@@ -2949,8 +2960,9 @@ class ViewEntityBatchSearchIdResult(APIView,
         )
 
 
-class ViewEntityBatchGeocodingStatus(APIView,
-                                     DatasetViewDetailCheckPermission):
+class ViewEntityBatchGeocodingStatus(
+    APILoggingMixin, APIView, DatasetViewDetailCheckPermission
+):
     """
     Check status of batch geocoding
 
@@ -3055,8 +3067,9 @@ class ViewEntityBatchGeocodingStatus(APIView,
         )
 
 
-class ViewEntityBatchGeocodingResult(APIView,
-                                     DatasetViewDetailCheckPermission):
+class ViewEntityBatchGeocodingResult(
+    APILoggingMixin, APIView, DatasetViewDetailCheckPermission
+):
     """
     Fetch geojson output of batch geocoding
 
@@ -3112,7 +3125,7 @@ class ViewEntityBatchGeocodingResult(APIView,
         )
 
 
-class FindEntityByUCode(APIView):
+class FindEntityByUCode(APILoggingMixin, APIView):
     """
     Find entity by ucode.
 

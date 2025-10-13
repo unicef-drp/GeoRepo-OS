@@ -5,8 +5,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from core.mixins import APILoggingMixin
 
-class ApiCache(APIView, LimitOffsetPagination):
+
+class ApiCache(APILoggingMixin, APIView, LimitOffsetPagination):
     permission_classes = [IsAuthenticated]
     cache_model = None
     use_cache = True

@@ -20,7 +20,8 @@ INSTALLED_APPS = INSTALLED_APPS + (
     'taggit',
     'captcha',
     'easyaudit',
-    'revproxy'
+    'revproxy',
+    'rest_framework_tracking',
 )
 
 MIDDLEWARE = MIDDLEWARE + ['easyaudit.middleware.easyaudit.EasyAuditMiddleware']

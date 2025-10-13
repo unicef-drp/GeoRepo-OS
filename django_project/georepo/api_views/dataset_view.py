@@ -17,6 +17,7 @@ from django.contrib.sites.models import Site
 from django.utils import timezone
 from rest_framework.response import Response
 
+from core.mixins import APILoggingMixin
 from georepo.utils.permission import (
     DatasetDetailAccessPermission,
     DatasetViewDetailAccessPermission,
@@ -757,7 +758,7 @@ class DatasetViewExportBase(object):
         return export_request
 
 
-class DatasetViewDownloader(APIView, DatasetViewFetchResource,
+class DatasetViewDownloader(APILoggingMixin, APIView, DatasetViewFetchResource,
                             DatasetViewExportBase):
     """
     Download dataset view to several formats.
@@ -901,7 +902,9 @@ class DatasetViewDownloader(APIView, DatasetViewFetchResource,
         )
 
 
-class DatasetViewDownloaderStatus(APIView, DatasetViewFetchResource):
+class DatasetViewDownloaderStatus(
+    APILoggingMixin, APIView, DatasetViewFetchResource
+):
     """
     Fetch the download view job status.
     """

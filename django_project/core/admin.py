@@ -1,12 +1,22 @@
 """Core admin."""
 from django.contrib import admin
+from django.db.models import Count
+from django.db.models.functions import TruncDay
 from rest_framework.authtoken.models import TokenProxy
 from knox.models import AuthToken
+from rest_framework_tracking.admin import (
+    APIRequestLogAdmin as BaseAPIRequestLogAdmin
+)
+from rest_framework_tracking.models import APIRequestLog as BaseAPIRequestLog
 from core.models import (
     SitePreferences,
     SitePreferencesImage,
-    ApiKey
+    ApiKey,
+    APIRequestLog
 )
+
+# Unregister the default APIRequestLog admin
+admin.site.unregister(BaseAPIRequestLog)
 
 
 class SitePreferencesImageInline(admin.TabularInline):
@@ -118,9 +128,13 @@ class APIKeyInline(admin.StackedInline):
 
 
 class APIKeyAdmin(admin.ModelAdmin):
-    list_display = ('get_user', 'platform', 'owner', 'contact',
-                    'get_created', 'is_active')
+    list_display = (
+        'get_user', 'platform', 'owner', 'contact',
+        'get_created', 'is_active', 'get_total_usage',
+        'get_last_usage'
+    )
     fields = ('platform', 'owner', 'contact', 'is_active')
+    list_per_page = 20
 
     @admin.display(ordering='token__user__username', description='User')
     def get_user(self, obj):
@@ -134,8 +148,63 @@ class APIKeyAdmin(admin.ModelAdmin):
         # creation of API key is from FrontEnd
         return False
 
+    @admin.display(description='Total Usage')
+    def get_total_usage(self, obj):
+        return APIRequestLog.objects.filter(
+            user=obj.token.user
+        ).count()
+
+    @admin.display(description='Last Usage')
+    def get_last_usage(self, obj):
+        last_log = APIRequestLog.objects.filter(
+            user=obj.token.user
+        ).order_by('-requested_at').first()
+        return last_log.requested_at if last_log else None
+
+
+class APIRequestLogAdmin(BaseAPIRequestLogAdmin):
+    """Admin class for APIRequestLog model."""
+
+    list_display = (
+        "id",
+        "requested_at",
+        "response_ms",
+        "status_code",
+        "user",
+        "view_method",
+        "path"
+    )
+    list_filter = ("user", "status_code", "requested_at", "view_method")
+
+    def changelist_view(self, request, extra_context=None):
+        # Aggregate api logs per day
+        chart_data = (
+            APIRequestLog.objects.annotate(date=TruncDay("requested_at"))
+            .values("date")
+            .annotate(y=Count("id"))
+            .order_by("-date")
+        )
+
+        extra_context = extra_context or {"chart_data": list(chart_data)}
+
+        # Call the superclass changelist_view to render the page
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def chart_data(self, start_date, end_date):
+        return (
+            APIRequestLog.objects.filter(
+                requested_at__date__gte=start_date,
+                requested_at__date__lte=end_date
+            )
+            .annotate(date=TruncDay("requested_at"))
+            .values("date")
+            .annotate(y=Count("id"))
+            .order_by("-date")
+        )
+
 
 admin.site.register(SitePreferences, SitePreferencesAdmin)
 admin.site.unregister(TokenProxy)
 admin.site.unregister(AuthToken)
 admin.site.register(ApiKey, APIKeyAdmin)
+admin.site.register(APIRequestLog, APIRequestLogAdmin)

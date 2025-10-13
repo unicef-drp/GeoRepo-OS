@@ -6,6 +6,8 @@ from drf_yasg import openapi
 from django.core.paginator import Paginator
 from drf_yasg.utils import swagger_auto_schema
 from django.utils.decorators import method_decorator
+
+from core.mixins import APILoggingMixin
 from georepo.serializers.module import ModuleSerializer
 from georepo.models.module import Module
 from georepo.utils.url_helper import get_page_size
@@ -68,7 +70,7 @@ from georepo.utils.api_parameters import common_api_params
                 }
             )
 )
-class ModuleList(APIView):
+class ModuleList(APILoggingMixin, APIView):
     """
     Get modules
 
