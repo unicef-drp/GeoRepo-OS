@@ -4,6 +4,7 @@ from django.urls.exceptions import NoReverseMatch
 from rest_framework import serializers
 from drf_yasg import openapi
 from rest_framework.reverse import reverse
+from django.contrib.gis.db.models import Extent
 from georepo.serializers.common import APIResponseModelSerializer
 from georepo.models import (
     Dataset,
@@ -12,7 +13,8 @@ from georepo.models import (
     DatasetAdminLevelName,
     BoundaryType,
     EntityType,
-    EntityId
+    EntityId,
+    DatasetTilingConfig
 )
 
 
@@ -192,6 +194,8 @@ class DetailedDatasetSerializer(APIResponseModelSerializer):
     is_favorite = serializers.SerializerMethodField()
     dataset_levels = serializers.SerializerMethodField()
     possible_id_types = serializers.SerializerMethodField()
+    bbox = serializers.SerializerMethodField()
+    max_zoom = serializers.SerializerMethodField()
 
     class Meta:
         swagger_schema_fields = {
@@ -244,6 +248,17 @@ class DetailedDatasetSerializer(APIResponseModelSerializer):
                         type=openapi.TYPE_STRING
                     )
                 ),
+                'bbox': openapi.Schema(
+                    title='Bounding Box of the dataset',
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Items(
+                        type=openapi.TYPE_NUMBER
+                    )
+                ),
+                'max_zoom': openapi.Schema(
+                    title='Maximum zoom level for the dataset',
+                    type=openapi.TYPE_INTEGER
+                )
             },
             'required': [
                 'name', 'uuid', 'type',
@@ -281,7 +296,9 @@ class DetailedDatasetSerializer(APIResponseModelSerializer):
             'description',
             'last_update',
             'dataset_levels',
-            'possible_id_types'
+            'possible_id_types',
+            'bbox',
+            'max_zoom'
         ]
 
     def get_name(self, obj: Dataset):
@@ -330,6 +347,29 @@ class DetailedDatasetSerializer(APIResponseModelSerializer):
         ]
         results.extend(ids.all())
         return results
+
+    def get_bbox(self, obj: Dataset):
+        entities = GeographicalEntity.objects.filter(
+            dataset=obj,
+            is_approved=True,
+            geometry__isnull=False,
+            level=0
+        )
+        if not entities.exists():
+            return []
+        # get the union of all geometries' bbox
+        geom_qs = entities.aggregate(Extent('geometry'))
+        return list(geom_qs['geometry__extent'])
+
+    def get_max_zoom(self, obj: Dataset):
+        tiling_configs = DatasetTilingConfig.objects.filter(
+            dataset=obj
+        ).order_by('-zoom_level')
+        if tiling_configs.exists():
+            return tiling_configs.first().zoom_level
+
+        # default to 8
+        return 8
 
 
 class DatasetAdminLevelNameListSerializer(serializers.ListSerializer):
