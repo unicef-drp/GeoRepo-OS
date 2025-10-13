@@ -14,22 +14,32 @@ from georepo.models.entity import GeographicalEntity
 
 from georepo.models import (
     DatasetView, DatasetViewResource,
+    ExportRequestBase,
     ExportRequest, GEOJSON_EXPORT_TYPE,
     KML_EXPORT_TYPE, TOPOJSON_EXPORT_TYPE,
     SHAPEFILE_EXPORT_TYPE, ExportRequestStatusText,
-    GEOPACKAGE_EXPORT_TYPE
+    GEOPACKAGE_EXPORT_TYPE, DatasetExportRequest
 )
 from georepo.models.base_task_request import ERROR, DONE
 from georepo.utils.celery_helper import cancel_task
 from georepo.utils.exporter_base import DatasetViewExporterBase
-from georepo.utils.geojson import GeojsonViewExporter
-from georepo.utils.shapefile import ShapefileViewExporter
-from georepo.utils.kml import KmlViewExporter
-from georepo.utils.topojson import TopojsonViewExporter
-from georepo.utils.gpkg_file import GPKGViewExporter
+from georepo.utils.geojson import GeojsonViewExporter, GeojsonDatasetExporter
+from georepo.utils.shapefile import (
+    ShapefileViewExporter, ShapefileDatasetExporter
+)
+from georepo.utils.kml import (
+    KmlViewExporter, KmlDatasetExporter
+)
+from georepo.utils.topojson import (
+    TopojsonViewExporter, TopojsonDatasetExporter
+)
+from georepo.utils.gpkg_file import (
+    GPKGViewExporter, GPKGDatasetExporter
+)
 from dashboard.models.notification import (
     Notification,
-    NOTIF_TYPE_DATASET_VIEW_EXPORTER
+    NOTIF_TYPE_DATASET_VIEW_EXPORTER,
+    NOTIF_TYPE_DATASET_EXPORTER
 )
 from georepo.utils.centroid_exporter import CentroidExporter
 from georepo.utils.dataset_view import (
@@ -179,6 +189,64 @@ def try_clear_temp_resource_on_error(exporter: DatasetViewExporterBase):
         pass
 
 
+def _run_exporter(request, exporter):
+    """Run exporter for Dataset or DatasetView."""
+    if exporter is None:
+        request.errors = f'Unknown export format: {request.format}'
+        request.status = ERROR
+        request.status_text = str(ExportRequestStatusText.ABORTED)
+        request.save(update_fields=['errors', 'status', 'status_text'])
+        return
+    try:
+        exporter.init_exporter()
+        exporter.run()
+    except Exception as ex:
+        logger.error('Failed Process Exporter!')
+        logger.error(ex, exc_info=True)
+        request.status = ERROR
+        request.errors = str(ex)
+        request.task_id = None
+        request.status_text = str(ExportRequestStatusText.ABORTED)
+        request.save(update_fields=[
+            'status', 'errors', 'task_id', 'status_text']
+        )
+        try_clear_temp_resource_on_error(exporter)
+    finally:
+        request.refresh_from_db()
+        is_success = True if request.status == DONE else ERROR
+        if request.source == 'dashboard':
+            # send notification via dashboard
+            message = (
+                'Your download request for '
+                f'{request.name}'
+                ' is ready! Click here to view!'
+            ) if is_success else (
+                'Your download request for '
+                f'{request.name}'
+                ' is finished with error! Click here to view!'
+            )
+            payload = {
+                'request_id': request.id,
+                'severity': 'success' if is_success else 'error',
+            }
+            if isinstance(request, ExportRequest):
+                payload['view_id'] = request.resource_id
+            else:
+                payload['dataset_id'] = request.resource_id
+            Notification.objects.create(
+                type=(
+                    NOTIF_TYPE_DATASET_VIEW_EXPORTER if
+                    isinstance(request, ExportRequest) else
+                    NOTIF_TYPE_DATASET_EXPORTER
+                ),
+                message=message,
+                recipient=request.submitted_by,
+                payload=payload
+            )
+        # send email notification with download link
+        notify_requester_exporter_finished(request)
+
+
 @shared_task(name="dataset_view_exporter")
 def dataset_view_exporter(request_id):
     request = ExportRequest.objects.get(id=request_id)
@@ -193,69 +261,43 @@ def dataset_view_exporter(request_id):
         exporter = TopojsonViewExporter(request)
     elif request.format == GEOPACKAGE_EXPORT_TYPE:
         exporter = GPKGViewExporter(request)
-    if exporter is None:
-        request.errors = f'Unknown export format: {request.format}'
-        request.status = ERROR
-        request.status_text = str(ExportRequestStatusText.ABORTED)
-        request.save(update_fields=['errors', 'status', 'status_text'])
-        return
-    try:
-        exporter.init_exporter()
-        exporter.run()
-    except Exception as ex:
-        logger.error('Failed Process DatasetView Exporter!')
-        logger.error(ex)
-        logger.error(traceback.format_exc())
-        request.status = ERROR
-        request.errors = str(ex)
-        request.task_id = None
-        request.status_text = str(ExportRequestStatusText.ABORTED)
-        request.save(update_fields=[
-            'status', 'errors', 'task_id', 'status_text'])
-        try_clear_temp_resource_on_error(exporter)
-    finally:
-        request.refresh_from_db()
-        dataset_view = request.dataset_view
-        is_success = True if request.status == DONE else ERROR
-        if request.source == 'dashboard':
-            # send notification via dashboard
-            message = (
-                'Your download request for '
-                f'{dataset_view.name}'
-                ' is ready! Click here to view!'
-            ) if is_success else (
-                'Your download request for '
-                f'{dataset_view.name}'
-                ' is finished with error! Click here to view!'
-            )
-            payload = {
-                'view_id': dataset_view.id,
-                'request_id': request.id,
-                'severity': 'success' if is_success else 'error',
-            }
-            Notification.objects.create(
-                type=NOTIF_TYPE_DATASET_VIEW_EXPORTER,
-                message=message,
-                recipient=request.submitted_by,
-                payload=payload
-            )
-        # send email notification with download link
-        notify_requester_exporter_finished(request)
+
+    _run_exporter(request, exporter)
 
 
-def notify_requester_exporter_finished(request: ExportRequest):
-    dataset_view = request.dataset_view
+@shared_task(name="dataset_exporter")
+def dataset_exporter(request_id):
+    request = DatasetExportRequest.objects.get(id=request_id)
+    exporter = None
+    if request.format == GEOJSON_EXPORT_TYPE:
+        exporter = GeojsonDatasetExporter(request)
+    elif request.format == SHAPEFILE_EXPORT_TYPE:
+        exporter = ShapefileDatasetExporter(request)
+    elif request.format == KML_EXPORT_TYPE:
+        exporter = KmlDatasetExporter(request)
+    elif request.format == TOPOJSON_EXPORT_TYPE:
+        exporter = TopojsonDatasetExporter(request)
+    elif request.format == GEOPACKAGE_EXPORT_TYPE:
+        exporter = GPKGDatasetExporter(request)
+
+    _run_exporter(request, exporter)
+
+
+def notify_requester_exporter_finished(request: ExportRequestBase):
     current_site = Site.objects.get_current()
     scheme = 'https://'
     domain = current_site.domain
     if not domain.endswith('/'):
         domain = domain + '/'
     error_link = (
-        f'{scheme}{domain}view_edit?id={dataset_view.id}&tab=5'
+        f'{scheme}{domain}view_edit?id={request.resource_id}&tab=5'
+    ) if isinstance(request, ExportRequest) else (
+        f'{scheme}{domain}admin_boundaries/dataset_entities?'
+        f'id={request.resource_id}&tab=10'
     )
     context = {
         'is_success': request.status == DONE,
-        'view_name': dataset_view.name,
+        'view_name': request.name,
         'request_from': request.requester_name,
         'expiry_download_link': (
             f'{settings.EXPORT_DATA_EXPIRY_IN_HOURS} hours'
@@ -265,10 +307,10 @@ def notify_requester_exporter_finished(request: ExportRequest):
     }
     subject = ''
     if request.status == DONE:
-        subject = f'Your download for {dataset_view.name} is ready'
+        subject = f'Your download for {request.name} is ready'
     else:
         subject = (
-            f'Error! Your download for {dataset_view.name} '
+            f'Error! Your download for {request.name} '
             'is finished with errors'
         )
     try:
@@ -285,7 +327,7 @@ def notify_requester_exporter_finished(request: ExportRequest):
             fail_silently=False
         )
     except Exception as ex:
-        logger.error('Failed Sending Email in DatasetView Exporter!')
+        logger.error('Failed Sending Email in Exporter!')
         logger.error(ex)
         logger.error(traceback.format_exc())
 
@@ -297,9 +339,9 @@ def try_delete_uploaded_file(file: FieldFile):
         logger.error('Failed to delete file!')
 
 
-@shared_task(name="expire_export_request")
-def expire_export_request():
-    requests = ExportRequest.objects.filter(
+def _do_expire_export_request(cls):
+    """Expire old export request (View/Dataset)."""
+    requests = cls.objects.filter(
         download_link_expired_on__lte=timezone.now(),
         status_text=str(ExportRequestStatusText.READY)
     )
@@ -313,6 +355,13 @@ def expire_export_request():
         request.save(update_fields=[
             'status_text', 'download_link', 'output_file'
         ])
+
+
+@shared_task(name="expire_export_request")
+def expire_export_request():
+    cls_list = [ExportRequest, DatasetExportRequest]
+    for cls in cls_list:
+        _do_expire_export_request(cls)
 
 
 @shared_task(name="patch_centroid_files_all_resources")

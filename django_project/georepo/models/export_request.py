@@ -109,6 +109,14 @@ class ExportRequestBase(BaseTaskRequest):
         return str(self.uuid)
 
     @property
+    def name(self):
+        raise NotImplementedError('ExportRequest.name')
+
+    @property
+    def resource_id(self):
+        raise NotImplementedError('ExportRequest.resource_id')
+
+    @property
     def download_time_remaining(self):
         if (
             self.status_text == ExportRequestStatusText.EXPIRED or
@@ -134,7 +142,15 @@ class ExportRequest(ExportRequestBase):
         'georepo.DatasetView',
         on_delete=models.CASCADE
     )
-   
+
+    @property
+    def name(self):
+        return self.dataset_view.name
+
+    @property
+    def resource_id(self):
+        return self.dataset_view.id
+
 
 class DatasetExportRequest(ExportRequestBase):
     """Export request model for Dataset."""
@@ -143,3 +159,11 @@ class DatasetExportRequest(ExportRequestBase):
         'georepo.Dataset',
         on_delete=models.CASCADE
     )
+
+    @property
+    def name(self):
+        return self.dataset.label
+
+    @property
+    def resource_id(self):
+        return self.dataset.id

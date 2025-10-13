@@ -164,7 +164,7 @@ class ShapefileViewExporter(GeojsonBasedExporter, ShapefileBaseExporter):
     pass
 
 
-class ShapefileDatasetExproter(
+class ShapefileDatasetExporter(
     GeojsonDatasetBasedExporter, ShapefileBaseExporter
 ):
 
