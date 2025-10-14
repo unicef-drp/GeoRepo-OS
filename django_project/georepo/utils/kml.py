@@ -36,13 +36,13 @@ class KmlBaseExporter:
         return kml_file
 
 
-class KmlViewExporter(GeojsonBasedExporter, KmlBaseExporter):
+class KmlViewExporter(KmlBaseExporter, GeojsonBasedExporter):
 
     pass
 
 
 class KmlDatasetExporter(
-    GeojsonDatasetBasedExporter, KmlBaseExporter
+    KmlBaseExporter, GeojsonDatasetBasedExporter
 ):
 
     pass

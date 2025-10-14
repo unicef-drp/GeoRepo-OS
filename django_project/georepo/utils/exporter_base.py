@@ -109,7 +109,7 @@ class ResourceExporterBase(object):
         )
         self.dataset_view = (
             request.dataset_view if
-            isinstance(request, DatasetViewExporterBase) else
+            isinstance(request, ExportRequest) else
             None
         )
         self.total_progress = 0
@@ -133,7 +133,7 @@ class ResourceExporterBase(object):
         """Return Dataset or DatasetView."""
         return (
             self.request.dataset_view if
-            isinstance(self.request, DatasetViewExporterBase) else
+            isinstance(self.request, ExportRequest) else
             self.request.dataset
         )
 

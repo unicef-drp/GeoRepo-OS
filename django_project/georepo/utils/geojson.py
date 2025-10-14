@@ -104,11 +104,11 @@ class GeojsonExporterWriter:
         return geojson_file_path
 
 
-class GeojsonViewExporter(DatasetViewExporterBase, GeojsonExporterWriter):
+class GeojsonViewExporter(GeojsonExporterWriter, DatasetViewExporterBase):
     pass
 
 
-class GeojsonDatasetExporter(DatasetExporterBase, GeojsonExporterWriter):
+class GeojsonDatasetExporter(GeojsonExporterWriter, DatasetExporterBase):
     pass
 
 
@@ -180,15 +180,15 @@ class GeojsonResourceBasedExporter:
 
 
 class GeojsonBasedExporter(
-    DatasetViewExporterBase,
-    GeojsonResourceBasedExporter
+    GeojsonResourceBasedExporter,
+    DatasetViewExporterBase
 ):
     pass
 
 
 class GeojsonDatasetBasedExporter(
-    DatasetExporterBase,
-    GeojsonResourceBasedExporter
+    GeojsonResourceBasedExporter,
+    DatasetExporterBase
 ):
     pass
 

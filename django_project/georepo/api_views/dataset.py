@@ -194,6 +194,8 @@ class DatasetDetail(ApiCache):
     - last_update
     - List of admin levels
     - Other external code types in dataset
+    - bbox
+    - max_zoom
 
     Requires Dataset UUID, can be retrieved from API search-dataset-list
     """

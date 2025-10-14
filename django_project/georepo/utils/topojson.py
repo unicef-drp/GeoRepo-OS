@@ -33,13 +33,13 @@ class TopojsonBaseExporter:
         return topojson_file
 
 
-class TopojsonViewExporter(GeojsonBasedExporter, TopojsonBaseExporter):
+class TopojsonViewExporter(TopojsonBaseExporter, GeojsonBasedExporter):
 
     pass
 
 
 class TopojsonDatasetExporter(
-    GeojsonDatasetBasedExporter, TopojsonBaseExporter
+    TopojsonBaseExporter, GeojsonDatasetBasedExporter
 ):
 
     pass

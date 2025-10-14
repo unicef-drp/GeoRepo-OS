@@ -159,13 +159,13 @@ class ShapefileBaseExporter:
         return zip_file_path
 
 
-class ShapefileViewExporter(GeojsonBasedExporter, ShapefileBaseExporter):
+class ShapefileViewExporter(ShapefileBaseExporter, GeojsonBasedExporter):
 
     pass
 
 
 class ShapefileDatasetExporter(
-    GeojsonDatasetBasedExporter, ShapefileBaseExporter
+    ShapefileBaseExporter, GeojsonDatasetBasedExporter
 ):
 
     pass

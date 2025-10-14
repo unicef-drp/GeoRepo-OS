@@ -80,13 +80,13 @@ class GPKGBaseExporter:
         return gpkg_file
 
 
-class GPKGViewExporter(GeojsonBasedExporter, GPKGBaseExporter):
+class GPKGViewExporter(GPKGBaseExporter, GeojsonBasedExporter):
 
     pass
 
 
 class GPKGDatasetExporter(
-    GeojsonDatasetBasedExporter, GPKGBaseExporter
+    GPKGBaseExporter, GeojsonDatasetBasedExporter
 ):
 
     pass
