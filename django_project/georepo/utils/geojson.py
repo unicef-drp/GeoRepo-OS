@@ -114,10 +114,14 @@ class GeojsonDatasetExporter(GeojsonExporterWriter, DatasetExporterBase):
 
 class GeojsonResourceBasedExporter:
 
+    cls_exporter = None
+
     def init_exporter(self):
         super().init_exporter()
+        if self.cls_exporter is None:
+            raise RuntimeError('cls_exporter is not defined!')
         # create geojson exporter
-        self.geojson_exporter = GeojsonViewExporter(
+        self.geojson_exporter = self.cls_exporter(
             self.request, True, self
         )
         self.geojson_exporter.init_exporter()
@@ -183,14 +187,14 @@ class GeojsonBasedExporter(
     GeojsonResourceBasedExporter,
     DatasetViewExporterBase
 ):
-    pass
+    cls_exporter = GeojsonViewExporter
 
 
 class GeojsonDatasetBasedExporter(
     GeojsonResourceBasedExporter,
     DatasetExporterBase
 ):
-    pass
+    cls_exporter = GeojsonDatasetExporter
 
 
 def validate_geojson(geojson: dict) -> bool:

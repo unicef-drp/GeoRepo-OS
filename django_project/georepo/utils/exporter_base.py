@@ -921,7 +921,7 @@ class DatasetExporterBase(ResourceExporterBase):
     """Exporter for Dataset."""
 
     def find_bbox(self):
-        return self.dataset.bbox
+        return [str(round(coord, 5)) for coord in self.dataset.bbox]
 
     def export_metadata(self, tmp_output_dir: str):
         logger.info('Generating metadata file')

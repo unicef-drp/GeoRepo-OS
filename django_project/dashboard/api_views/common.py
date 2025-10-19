@@ -66,6 +66,20 @@ class DatasetReadPermission(UserPassesTestMixin):
         privacy_level = self.get_dataset_privacy_level(dataset, dataset_view)
         return privacy_level > 0
 
+    def get_dataset(self):
+        id = self.kwargs.get('id')
+        if id.isnumeric():
+            dataset = get_object_or_404(
+                Dataset,
+                id=id
+            )
+        else:
+            dataset = get_object_or_404(
+                Dataset,
+                uuid=id
+            )
+        return dataset
+
 
 class DatasetManagePermission(UserPassesTestMixin):
 
