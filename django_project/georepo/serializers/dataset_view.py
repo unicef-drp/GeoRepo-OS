@@ -180,7 +180,6 @@ class DatasetViewItemSerializer(TaggitSerializer, APIResponseModelSerializer):
                     dataset=obj.dataset,
                     level=0,
                     is_approved=True,
-                    is_latest=True,
                     unique_code=obj.default_ancestor_code
                 ).order_by('revision_number').values(
                     'unique_code', 'unique_code_version'

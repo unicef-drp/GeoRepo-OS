@@ -278,8 +278,7 @@ class DatasetViewList(ApiCache, APISortBase):
         root_entities = GeographicalEntity.objects.filter(
             dataset=dataset,
             level=0,
-            is_approved=True,
-            is_latest=True
+            is_approved=True
         ).order_by('revision_number').values(
             'unique_code', 'unique_code_version'
         )
@@ -502,7 +501,6 @@ class DatasetViewDetail(ApiCache, DatasetViewFetchResource):
         ancestors = GeographicalEntity.objects.filter(
             dataset=dataset_view.dataset,
             is_approved=True,
-            is_latest=True,
             id__in=RawSQL(raw_sql, []),
             level=0
         ).values('id').distinct()
@@ -510,7 +508,6 @@ class DatasetViewDetail(ApiCache, DatasetViewFetchResource):
             ancestors = GeographicalEntity.objects.filter(
                 dataset=dataset_view.dataset,
                 is_approved=True,
-                is_latest=True,
                 id__in=RawSQL(raw_sql, []),
                 level__gt=0
             ).values('ancestor_id').distinct()
@@ -519,7 +516,6 @@ class DatasetViewDetail(ApiCache, DatasetViewFetchResource):
             dataset=dataset_view.dataset,
             level=0,
             is_approved=True,
-            is_latest=True,
             id__in=ancestors
         ).order_by('revision_number').values(
             'unique_code', 'unique_code_version', 'label'
