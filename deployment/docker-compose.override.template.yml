@@ -9,10 +9,9 @@ services:
 
   redis:
     volumes:
-      # fix redis permission issue because it's using user redis (1001)
-      # sudo chown -R 1001:1001 ./volumes/tmp_data/redis
+      # fix redis permission issue because it's using user redis (999)
+      # sudo chown -R 999:999 ./volumes/tmp_data/redis
       - ./volumes/tmp_data/redis:/tmp
-      - ./redis/redis.conf:/opt/bitnami/redis/mounted-etc/overrides.conf
 
   dbbackups:
     volumes:
