@@ -79,13 +79,19 @@ x-common-django:
 
 services:
   redis:
-    image: bitnamilegacy/redis:7.0.2
+    image: redis:8.0.4-alpine
+    command: [
+      "redis-server",
+      "--appendonly", "yes",
+      "--appendfilename", "appendonly.aof",
+      "--requirepass", "${REDIS_PASSWORD:-redis_password}",
+      "--logfile", "/tmp/redis.log"
+    ]
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
     volumes:
-      - redis-data:/bitnami/redis/data
+      - redis-data:/data
       - tmp-data:/tmp
-      - redis-conf:/opt/bitnami/redis/mounted-etc/overrides.conf
 
   db:
     image: kartoza/postgis:14-3.2
