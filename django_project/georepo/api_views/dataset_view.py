@@ -519,7 +519,7 @@ class DatasetViewDetail(ApiCache, DatasetViewFetchResource):
             id__in=ancestors
         ).order_by('revision_number').values(
             'unique_code', 'unique_code_version', 'label',
-            'concept_uuid'
+            'uuid'
         )
         response_data = (
             DatasetViewDetailSerializer(

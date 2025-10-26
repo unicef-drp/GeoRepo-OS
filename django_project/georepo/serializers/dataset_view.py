@@ -526,7 +526,7 @@ class DatasetViewDetailSerializer(TaggitSerializer,
                     root_entity['unique_code_version']
                 ),
                 'name': root_entity['label'],
-                'concept_uuid': root_entity['concept_uuid']
+                'concept_uuid': root_entity['uuid']
             })
         return results
 
