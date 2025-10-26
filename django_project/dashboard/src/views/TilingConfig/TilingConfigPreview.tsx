@@ -373,7 +373,7 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
             let _searchIdx = files.findIndex((file) => file.level === _level)
             if (_searchIdx === -1) continue
             let _file = files[_searchIdx]
-            const filteredZoom = Math.min(currentZoom, maxZoom)
+            const filteredZoom = _file.factors.length > 0 ? Math.min(currentZoom, _file.factors[_file.factors.length -1].zoom_level) : currentZoom
             let _searchFactorIdx = _file.factors.findIndex((factor) => factor.zoom_level == filteredZoom)
             if (_searchFactorIdx === -1) {
                 // remove from map only if the current zoom is lower than max zoom
