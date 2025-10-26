@@ -525,7 +525,8 @@ class DatasetViewDetailSerializer(TaggitSerializer,
                     root_entity['unique_code'],
                     root_entity['unique_code_version']
                 ),
-                'name': root_entity['label']
+                'name': root_entity['label'],
+                'concept_uuid': root_entity['concept_uuid']
             })
         return results
 
@@ -619,6 +620,10 @@ class DatasetViewDetailSerializer(TaggitSerializer,
                                 title='Country Name',
                                 type=openapi.TYPE_STRING
                             ),
+                            'concept_uuid': openapi.Schema(
+                                title='Concept UUID of country',
+                                type=openapi.TYPE_STRING
+                            ),
                         }
                     )
                 )
@@ -653,7 +658,8 @@ class DatasetViewDetailSerializer(TaggitSerializer,
                 'countries': [
                     {
                         'ucode': 'WFP_SA',
-                        'name': 'South Africa'
+                        'name': 'South Africa',
+                        'concept_uuid': '123e4567-e89b-12d3-a456-426614174000'
                     }
                 ]
             }
