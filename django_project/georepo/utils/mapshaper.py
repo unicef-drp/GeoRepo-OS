@@ -10,6 +10,7 @@ from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon
 from django.contrib.gis.db.models.functions import AsGeoJSON
 from django.core.files.temp import NamedTemporaryFile
 from django.conf import settings
+from core.models.preferences import SitePreferences
 from georepo.models import (
     Dataset,
     GeographicalEntity,
@@ -45,16 +46,26 @@ def filter_entities_view(view: DatasetView, level: int, entities):
     )
 
 
-def mapshaper_commands(input_path: str, output_path: str,
-                       simplify: float,
-                       simplify_algo: str = SIMPLIFICATION_DOUGLAS_PEUCKER,
-                       keep_shapes = True):
+def mapshaper_commands(
+    input_path: str, output_path: str, simplify: float,
+    simplify_algo: str = SIMPLIFICATION_DOUGLAS_PEUCKER,
+    keep_shapes: bool = True, heap_size: str = None
+):
     command_list = [
         'mapshaper-xl',
+    ]
+
+    if heap_size:
+        # heap_size example: '2gb', '4gb', '8gb'
+        # default to '8gb' if not provided
+        command_list.append(heap_size)
+
+    command_list.extend([
         input_path,
         '-simplify',
         str(simplify)
-    ]
+    ])
+
     if simplify_algo == SIMPLIFICATION_DOUGLAS_PEUCKER:
         command_list.append('dp')
     elif simplify_algo == SIMPLIFICATION_VISVALINGAM:
@@ -112,10 +123,26 @@ def do_simplify(input_file_path, tolerance, level):
         suffix='.geojson',
         dir=getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None)
     )
+    preferences = SitePreferences.preferences()
+    simplify_algo = preferences.mapshaper_config.get(
+        'simplify_algorithm',
+        SIMPLIFICATION_DOUGLAS_PEUCKER
+    )
+    keep_shapes = preferences.mapshaper_config.get(
+        'keep_shapes',
+        True
+    )
+    heap_size = preferences.mapshaper_config.get(
+        'heap_size',
+        None
+    )
     commands = mapshaper_commands(
         input_file_path,
         output_file.name,
-        tolerance
+        tolerance,
+        simplify_algo=simplify_algo,
+        keep_shapes=keep_shapes,
+        heap_size=heap_size
     )
     logger.info('Mapshaper commands:')
     logger.info(commands)
@@ -360,7 +387,7 @@ def simplify_for_dataset(
                             os.remove(output_file_path)
         except Exception:
             logger.error(f'Failed to simplify dataset {dataset} '
-                         f'level {level}!')
+                         f'level {level}!', exc_info=True)
         finally:
             if input_file and os.path.exists(input_file.name):
                 os.remove(input_file.name)
@@ -533,7 +560,7 @@ def simplify_for_dataset_view(
                             os.remove(output_file_path)
         except Exception:
             logger.error(f'Failed to simplify view {view} '
-                         f'level {level}!')
+                         f'level {level}!', exc_info=True)
         finally:
             if input_file and os.path.exists(input_file.name):
                 os.remove(input_file.name)
