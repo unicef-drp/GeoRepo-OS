@@ -2427,3 +2427,133 @@ class FindEntityVersionsByUCode(FindEntityVersionsByConceptUCode):
         return super(FindEntityVersionsByUCode, self).get(
             request, *args, **kwargs
         )
+
+
+class EntityListByAdminLevel0(EntityListByAdminLevel):
+    """
+    List all entities at level 0 if the dataset is heirachical, \
+        otherwise all entities
+
+    List all entities at level 0 if the dataset is heirachical, \
+        otherwise all entities
+
+    For every entity, return below details:
+    | Field | Description |
+    |---|---|
+    | name | Geographical entity name |
+    | ucode | Unicef code |
+    | concept_ucode | Concept Unicef code |
+    | uuid | UUID revision |
+    | concept_uuid | UUID that persist between revision |
+    | admin_level | Admin level of geographical entity |
+    | level_name | Admin level name |
+    | type | Name of entity type |
+    | start_date | Start date of this geographical entity revision |
+    | end_date | End date of this geographical entity revision |
+    | ext_codes | Other external codes |
+    | names | Other names with ISO2 language code |
+    | is_latest | True if this is latest revision |
+    | parents | All parents in upper level |
+    | bbox | Bounding box of this geographical entity |
+    """
+
+    @method_decorator(
+        name='get',
+        decorator=swagger_auto_schema(
+            operation_id='search-entity-by-level-0',
+            tags=[SEARCH_ENTITY_TAG, SEARCH_DATASET_ENTITY_TAG],
+            manual_parameters=[
+                openapi.Parameter(
+                    'uuid', openapi.IN_PATH,
+                    description='Dataset UUID', type=openapi.TYPE_STRING
+                ),
+                *common_api_params, sort_param,
+                search_param, search_type_param,
+                openapi.Parameter(
+                    'geom', openapi.IN_QUERY,
+                    description=(
+                        'Geometry format: '
+                        '[no_geom, centroid, full_geom]'
+                    ),
+                    type=openapi.TYPE_STRING,
+                    default='no_geom',
+                    required=False
+                ),
+                openapi.Parameter(
+                    'format', openapi.IN_QUERY,
+                    description='Output format: [json, geojson]',
+                    type=openapi.TYPE_STRING,
+                    default='json',
+                    required=False
+                ),
+                openapi.Parameter(
+                    'is_latest', openapi.IN_QUERY,
+                    description=(
+                        'True to search for latest entity only. '
+                        'Default to True.'
+                    ),
+                    type=openapi.TYPE_BOOLEAN,
+                    default=True,
+                    required=False
+                )
+            ],
+            responses={
+                200: openapi.Schema(
+                    title='Entity List',
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'page': openapi.Schema(
+                            title='Page Number',
+                            type=openapi.TYPE_INTEGER
+                        ),
+                        'total_page': openapi.Schema(
+                            title='Total Page',
+                            type=openapi.TYPE_INTEGER
+                        ),
+                        'page_size': openapi.Schema(
+                            title='Total item in 1 page',
+                            type=openapi.TYPE_INTEGER
+                        ),
+                        'count': openapi.Schema(
+                            title='Total Count',
+                            type=openapi.TYPE_INTEGER
+                        ),
+                        'results': openapi.Schema(
+                            title='List of geographical entity',
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Items(
+                                type=openapi.TYPE_OBJECT,
+                                properties=(
+                                    GeographicalEntitySerializer.Meta.
+                                    swagger_schema_fields['properties']
+                                )
+                            ),
+                        )
+                    },
+                    example={
+                        'page': 1,
+                        'total_page': 10,
+                        'page_size': 10,
+                        'count': 1,
+                        'results': [
+                            (
+                                GeographicalEntitySerializer.Meta.
+                                swagger_schema_fields['example']
+                            )
+                        ]
+                    }
+                ),
+                404: APIErrorSerializer
+            }
+        )
+    )
+    def get(self, request, *args, **kwargs):
+        return super(EntityListByAdminLevel0, self).get(
+            request, *args, **kwargs
+        )
+
+    def get_response_data(self, request, *args, **kwargs):
+        kwargs['admin_level'] = 0
+        return super(EntityListByAdminLevel0, self).get_response_data(
+            request, *args, **kwargs
+        )
