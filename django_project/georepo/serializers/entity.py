@@ -831,6 +831,8 @@ class SearchGeometrySerializer(GeographicalEntitySerializer):
 
 
 class FindEntityByUCodeSerializer(GeographicalEntitySerializer):
+    dataset_name = serializers.SerializerMethodField()
+    dataset_uuid = serializers.SerializerMethodField()
     views = serializers.SerializerMethodField()
 
     class Meta:
@@ -840,27 +842,37 @@ class FindEntityByUCodeSerializer(GeographicalEntitySerializer):
             'properties': {
                 **GeographicalEntitySerializer.Meta.
                 swagger_schema_fields['properties'],
+                'dataset_name': openapi.Schema(
+                    title='Dataset name',
+                    type=openapi.TYPE_STRING
+                ),
+                'dataset_uuid': openapi.Schema(
+                    title='Dataset UUID',
+                    type=openapi.TYPE_STRING
+                ),
                 'views': openapi.Schema(
-                                title='Views that the entity belongs to',
-                                type=openapi.TYPE_ARRAY,
-                                items=openapi.Items(
-                                    type=openapi.TYPE_OBJECT,
-                                    properties={
-                                        'name': openapi.Schema(
-                                            title='View name',
-                                            type=openapi.TYPE_STRING
-                                        ),
-                                        'uuid': openapi.Schema(
-                                            title='View UUID',
-                                            type=openapi.TYPE_STRING
-                                        )
-                                    }
-                                )
+                    title='Views that the entity belongs to',
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Items(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'name': openapi.Schema(
+                                title='View name',
+                                type=openapi.TYPE_STRING
+                            ),
+                            'uuid': openapi.Schema(
+                                title='View UUID',
+                                type=openapi.TYPE_STRING
                             )
+                        }
+                    )
+                )
             },
             'example': {
                 **GeographicalEntitySerializer.Meta.
                 swagger_schema_fields['example'],
+                'dataset_name': 'World Boundaries',
+                'dataset_uuid': '7b3849ee-7a5b-40e0-8d47-d0eeb2434a42',
                 'views': [
                     {
                         'name': 'World Boundaries (Latest)',
@@ -889,8 +901,16 @@ class FindEntityByUCodeSerializer(GeographicalEntitySerializer):
             'centroid',
             'geometry',
             'bbox',
+            'dataset_name',
+            'dataset_uuid',
             'views'
         ]
+
+    def get_dataset_name(self, obj):
+        return self.context.get('dataset_name', None)
+
+    def get_dataset_uuid(self, obj):
+        return self.context.get('dataset_uuid', None)
 
     def get_views(self, obj):
         view_dict = self.context.get('view_dict', {})
@@ -908,6 +928,8 @@ class FindEntityByUcodeGeojsonSerializer(
         GeographicalEntitySerializer,
         GeoFeatureModelSerializer):
     output_format = 'geojson'
+    dataset_name = serializers.SerializerMethodField()
+    dataset_uuid = serializers.SerializerMethodField()
     views = serializers.SerializerMethodField()
 
     class Meta:
@@ -928,8 +950,16 @@ class FindEntityByUcodeGeojsonSerializer(
             'ext_codes',
             'names',
             'parents',
+            'dataset_name',
+            'dataset_uuid',
             'views'
         ]
+
+    def get_dataset_name(self, obj):
+        return self.context.get('dataset_name', None)
+
+    def get_dataset_uuid(self, obj):
+        return self.context.get('dataset_uuid', None)
 
     def get_views(self, obj):
         view_dict = self.context.get('view_dict', {})

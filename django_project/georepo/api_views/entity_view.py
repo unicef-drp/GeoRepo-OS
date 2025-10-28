@@ -3303,6 +3303,8 @@ class FindEntityByUCode(APILoggingMixin, APIView):
         response_data, response_headers = self.generate_response(
             entities,
             {
+                'dataset_name': dataset.label,
+                'dataset_uuid': dataset.uuid,
                 'view_dict': view_dict,
                 'max_level': max_level,
                 'ids': ids,
