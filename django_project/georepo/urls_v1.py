@@ -53,7 +53,10 @@ from georepo.api_views.entity import (
     EntityListByAdminLevelAndUCode,
     FindEntityById,
     FindEntityVersionsByConceptUCode,
-    FindEntityVersionsByUCode
+    FindEntityVersionsByUCode,
+    EntityListByAdminLevel0,
+    EntityTraverseHierarchyByUCode,
+    EntityTraverseChildrenHierarchyByUCode
 )
 module_urls = [
     path(
@@ -96,6 +99,10 @@ entity_urls = [
         r'(?P<admin_level>[\d]+)/?$',
         EntityListByAdminLevel.as_view(),
         name='search-entity-by-level'),
+    re_path(
+        r'search/dataset/(?P<uuid>[\da-f-]+)/entity/list/?$',
+        EntityListByAdminLevel0.as_view(),
+        name='search-entity-by-level-0'),
     path(
         'search/dataset/<uuid:uuid>/entity/level/'
         '<int:admin_level>/<path:ucode>/',
@@ -127,6 +134,16 @@ entity_urls = [
         EntityFuzzySearch.as_view(),
         name='entity-fuzzy-search-by-name'
     ),
+    path(
+        'search/dataset/<uuid:uuid>/entity/'
+        '<path:ucode>/parent/',
+        EntityTraverseHierarchyByUCode.as_view(),
+        name='search-entity-parent-by-ucode'),
+    path(
+        'search/dataset/<uuid:uuid>/entity/'
+        '<path:ucode>/children/',
+        EntityTraverseChildrenHierarchyByUCode.as_view(),
+        name='search-entity-children-by-ucode'),
 ]
 
 operation_entity_urls = [
@@ -319,15 +336,15 @@ controlled_list_urls = [
 urlpatterns = []
 urlpatterns += module_urls
 urlpatterns += dataset_urls
-# add dataset search by admin level
-urlpatterns += [
-    re_path(
-        r'search/dataset/(?P<uuid>[\da-f-]+)/entity/level/'
-        r'(?P<admin_level>[\d]+)/?$',
-        EntityListByAdminLevel.as_view(),
-        name='search-entity-by-level'
-    )
-]
+# # add dataset search by admin level
+# urlpatterns += [
+#     re_path(
+#         r'search/dataset/(?P<uuid>[\da-f-]+)/entity/level/'
+#         r'(?P<admin_level>[\d]+)/?$',
+#         EntityListByAdminLevel.as_view(),
+#         name='search-entity-by-level'
+#     )
+# ]
 urlpatterns += entity_urls
 urlpatterns += operation_entity_urls
 urlpatterns += view_entity_urls
