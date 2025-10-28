@@ -2557,3 +2557,302 @@ class EntityListByAdminLevel0(EntityListByAdminLevel):
         return super(EntityListByAdminLevel0, self).get_response_data(
             request, *args, **kwargs
         )
+
+
+class EntityTraverseHierarchyByUCode(EntitySearchBase):
+    """
+    Find parent from geographical entity with UCode
+
+    Retrieve parent from Geographical Entity with {ucode} \
+    in dataset
+
+    For every entity, return below details:
+    | Field | Description |
+    |---|---|
+    | name | Geographical entity name |
+    | ucode | Unicef code |
+    | concept_ucode | Concept Unicef code |
+    | uuid | UUID revision |
+    | concept_uuid | UUID that persist between revision |
+    | admin_level | Admin level of geographical entity |
+    | level_name | Admin level name |
+    | type | Name of entity type |
+    | start_date | Start date of this geographical entity revision |
+    | end_date | End date of this geographical entity revision |
+    | ext_codes | Other external codes |
+    | names | Other names with ISO2 language code |
+    | is_latest | True if this is latest revision |
+    | parents | All parents in upper level |
+    | bbox | Bounding box of this geographical entity |
+    """
+    enable_search_text = False
+    traverse_direction = 'up'
+
+    def find_child(self, kwargs, dataset, ucode, version, max_privacy_level):
+        child = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            unique_code=ucode,
+            unique_code_version=version,
+            privacy_level__lte=max_privacy_level
+        )
+        return child.values('parent__id', 'parent__level').first()
+
+    def find_parent(self, kwargs, dataset, ucode, version, max_privacy_level):
+        parent = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            unique_code=ucode,
+            unique_code_version=version,
+            privacy_level__lte=max_privacy_level
+        ).first()
+        return parent
+
+    def get_response_data(self, request, *args, **kwargs):
+        # get dataset by uuid
+        dataset, max_privacy_level = self.get_dataset_obj(
+            request, kwargs, self.search_source
+        )
+        # ucode
+        ucode = kwargs.get('ucode', None)
+        if ucode:
+            try:
+                ucode, version = parse_unique_code(ucode)
+            except ValueError:
+                return self.generate_response(None)
+        else:
+            return self.generate_response(None)
+        admin_level = None
+        entities = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            privacy_level__lte=max_privacy_level
+        )
+        if self.traverse_direction == 'up':
+            # find parent
+            child = self.find_child(
+                kwargs, dataset, ucode, version, max_privacy_level
+            )
+            if child:
+                entities = entities.filter(
+                    id=child['parent__id']
+                )
+                admin_level = child['parent__level']
+            else:
+                return self.generate_response(None)
+        else:
+            # find children
+            parent = self.find_parent(
+                kwargs, dataset, ucode, version, max_privacy_level
+            )
+            if parent:
+                entities = entities.filter(
+                    parent=parent
+                )
+                admin_level = parent.level + 1
+            else:
+                return self.generate_response(None)
+        entities, max_level, ids, names = self.generate_entity_query(
+            entities,
+            dataset.id,
+            admin_level=admin_level
+        )
+        return self.generate_response(
+            entities,
+            context={
+                'max_level': max_level,
+                'ids': ids,
+                'names': names
+            }
+        )
+
+    @swagger_auto_schema(
+        operation_id='search-entity-parents-by-ucode',
+        tags=[SEARCH_ENTITY_TAG],
+        manual_parameters=[openapi.Parameter(
+            'uuid', openapi.IN_PATH,
+            description='Dataset UUID', type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'ucode', openapi.IN_PATH,
+            description='Entity UCode',
+            type=openapi.TYPE_STRING
+        ), *common_api_params, openapi.Parameter(
+            'geom', openapi.IN_QUERY,
+            description=(
+                'Geometry format: '
+                '[no_geom, centroid, full_geom]'
+            ),
+            type=openapi.TYPE_STRING,
+            default='no_geom',
+            required=False
+        ), openapi.Parameter(
+            'format', openapi.IN_QUERY,
+            description='Output format: [json, geojson]',
+            type=openapi.TYPE_STRING,
+            default='json',
+            required=False
+        )],
+        responses={
+            200: openapi.Schema(
+                title='Entity List',
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'page': openapi.Schema(
+                        title='Page Number',
+                        type=openapi.TYPE_INTEGER
+                    ),
+                    'total_page': openapi.Schema(
+                        title='Total Page',
+                        type=openapi.TYPE_INTEGER
+                    ),
+                    'page_size': openapi.Schema(
+                        title='Total item in 1 page',
+                        type=openapi.TYPE_INTEGER
+                    ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
+                    'results': openapi.Schema(
+                        title='List of geographical entity',
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Items(
+                            type=openapi.TYPE_OBJECT,
+                            properties=(
+                                GeographicalEntitySerializer.Meta.
+                                swagger_schema_fields['properties']
+                            )
+                        ),
+                    )
+                },
+                example={
+                    'page': 1,
+                    'total_page': 10,
+                    'page_size': 10,
+                    'count': 1,
+                    'results': [
+                        (
+                            GeographicalEntitySerializer.Meta.
+                            swagger_schema_fields['example']
+                        )
+                    ]
+                }
+            ),
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        return super(EntityTraverseHierarchyByUCode, self).get(
+            request, *args, **kwargs
+        )
+
+
+class EntityTraverseChildrenHierarchyByUCode(
+    EntityTraverseHierarchyByUCode
+):
+    """
+    Find children from geographical entity with UCode
+
+    Retrieve children from geographical entity with {ucode} \
+    in dataset
+
+    For every entity, return below details:
+    | Field | Description |
+    |---|---|
+    | name | Geographical entity name |
+    | ucode | Unicef code |
+    | concept_ucode | Concept Unicef code |
+    | uuid | UUID revision |
+    | concept_uuid | UUID that persist between revision |
+    | admin_level | Admin level of geographical entity |
+    | level_name | Admin level name |
+    | type | Name of entity type |
+    | start_date | Start date of this geographical entity revision |
+    | end_date | End date of this geographical entity revision |
+    | ext_codes | Other external codes |
+    | names | Other names with ISO2 language code |
+    | is_latest | True if this is latest revision |
+    | parents | All parents in upper level |
+    | bbox | Bounding box of this geographical entity |
+    """
+    traverse_direction = 'down'
+
+    @swagger_auto_schema(
+        operation_id='search-entity-children-by-ucode',
+        tags=[SEARCH_ENTITY_TAG],
+        manual_parameters=[openapi.Parameter(
+            'uuid', openapi.IN_PATH,
+            description='Dataset UUID', type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'ucode', openapi.IN_PATH,
+            description='Entity UCode',
+            type=openapi.TYPE_STRING
+        ), *common_api_params, openapi.Parameter(
+            'geom', openapi.IN_QUERY,
+            description=(
+                'Geometry format: '
+                '[no_geom, centroid, full_geom]'
+            ),
+            type=openapi.TYPE_STRING,
+            default='no_geom',
+            required=False
+        ), openapi.Parameter(
+            'format', openapi.IN_QUERY,
+            description='Output format: [json, geojson]',
+            type=openapi.TYPE_STRING,
+            default='json',
+            required=False
+        )],
+        responses={
+            200: openapi.Schema(
+                title='Entity List',
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'page': openapi.Schema(
+                        title='Page Number',
+                        type=openapi.TYPE_INTEGER
+                    ),
+                    'total_page': openapi.Schema(
+                        title='Total Page',
+                        type=openapi.TYPE_INTEGER
+                    ),
+                    'page_size': openapi.Schema(
+                        title='Total item in 1 page',
+                        type=openapi.TYPE_INTEGER
+                    ),
+                    'count': openapi.Schema(
+                        title='Total Count',
+                        type=openapi.TYPE_INTEGER
+                    ),
+                    'results': openapi.Schema(
+                        title='List of geographical entity',
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Items(
+                            type=openapi.TYPE_OBJECT,
+                            properties=(
+                                GeographicalEntitySerializer.Meta.
+                                swagger_schema_fields['properties']
+                            )
+                        ),
+                    )
+                },
+                example={
+                    'page': 1,
+                    'total_page': 10,
+                    'page_size': 10,
+                    'count': 1,
+                    'results': [
+                        (
+                            GeographicalEntitySerializer.Meta.
+                            swagger_schema_fields['example']
+                        )
+                    ]
+                }
+            ),
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        return super(EntityTraverseChildrenHierarchyByUCode, self).get(
+            request, *args, **kwargs
+        )

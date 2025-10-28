@@ -54,7 +54,9 @@ from georepo.api_views.entity import (
     FindEntityById,
     FindEntityVersionsByConceptUCode,
     FindEntityVersionsByUCode,
-    EntityListByAdminLevel0
+    EntityListByAdminLevel0,
+    EntityTraverseHierarchyByUCode,
+    EntityTraverseChildrenHierarchyByUCode
 )
 module_urls = [
     path(
@@ -132,6 +134,16 @@ entity_urls = [
         EntityFuzzySearch.as_view(),
         name='entity-fuzzy-search-by-name'
     ),
+    path(
+        'search/dataset/<uuid:uuid>/entity/'
+        '<path:ucode>/parent/',
+        EntityTraverseHierarchyByUCode.as_view(),
+        name='search-entity-parent-by-ucode'),
+    path(
+        'search/dataset/<uuid:uuid>/entity/'
+        '<path:ucode>/children/',
+        EntityTraverseChildrenHierarchyByUCode.as_view(),
+        name='search-entity-children-by-ucode'),
 ]
 
 operation_entity_urls = [
