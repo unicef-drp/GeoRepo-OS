@@ -114,6 +114,11 @@ class SitePreferencesAdmin(admin.ModelAdmin):
             'fields': (
                 'ephemeral_paths', 'storage_checker_config',
             )
+        }),
+        ('Mapshaper', {
+            'fields': (
+                'mapshaper_config',
+            )
         })
     )
     inlines = (SitePreferencesImageInline,)

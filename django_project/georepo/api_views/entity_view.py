@@ -37,7 +37,7 @@ from georepo.api_views.entity import (
     FindEntityVersionsByUCode,
     EntityGeometryFuzzySearch,
     EntityContainmentCheck,
-    EntitySearchBase
+    EntityTraverseHierarchyByUCode
 )
 from georepo.models.dataset import Dataset
 from georepo.models.entity import (
@@ -2090,7 +2090,7 @@ class ViewEntityContainmentCheck(EntityContainmentCheck,
 
 class ViewEntityTraverseHierarchyByUCode(
         DatasetViewSearchBase,
-        EntitySearchBase,
+        EntityTraverseHierarchyByUCode,
         DatasetViewDetailCheckPermission):
     """
         Find parent from geographical entity with UCode
@@ -2120,80 +2120,39 @@ class ViewEntityTraverseHierarchyByUCode(
     enable_search_text = False
     traverse_direction = 'up'
 
-    def get_response_data(self, request, *args, **kwargs):
-        dataset_view, max_privacy_level = self.get_dataset_view_obj(
-            request, kwargs.get('uuid', None)
-        )
-        # ucode
-        ucode = kwargs.get('ucode', None)
-        if ucode:
-            try:
-                ucode, version = parse_unique_code(ucode)
-            except ValueError:
-                return self.generate_response(None)
-        else:
-            return self.generate_response(None)
-        admin_level = None
-        entities = GeographicalEntity.objects.filter(
-            dataset=dataset_view.dataset,
-            is_approved=True,
-            privacy_level__lte=max_privacy_level
-        )
+    def find_child(self, kwargs, dataset, ucode, version, max_privacy_level):
         # raw_sql to view to select id
+        dataset_view_uuid = kwargs.get('view_uuid', None)
         raw_sql = (
             'SELECT id from "{}"'
-        ).format(str(dataset_view.uuid))
-        if self.traverse_direction == 'up':
-            # find parent
-            child = GeographicalEntity.objects.filter(
-                dataset=dataset_view.dataset,
-                is_approved=True,
-                unique_code=ucode,
-                unique_code_version=version,
-                privacy_level__lte=max_privacy_level
-            )
-            child = child.filter(
-                id__in=RawSQL(raw_sql, [])
-            ).values('parent__id', 'parent__level').first()
-            if child:
-                entities = entities.filter(
-                    id=child['parent__id']
-                )
-                admin_level = child['parent__level']
-            else:
-                return self.generate_response(None)
-        else:
-            # find children
-            parent = GeographicalEntity.objects.filter(
-                dataset=dataset_view.dataset,
-                is_approved=True,
-                unique_code=ucode,
-                unique_code_version=version,
-                privacy_level__lte=max_privacy_level
-            )
-            parent = parent.filter(
-                id__in=RawSQL(raw_sql, [])
-            ).first()
-            if parent:
-                entities = entities.filter(
-                    parent=parent
-                )
-                admin_level = parent.level + 1
-            else:
-                return self.generate_response(None)
-        entities, max_level, ids, names = self.generate_entity_query(
-            entities,
-            dataset_view.dataset.id,
-            admin_level=admin_level
+        ).format(str(dataset_view_uuid))
+        child = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            unique_code=ucode,
+            unique_code_version=version,
+            privacy_level__lte=max_privacy_level
+        ).filter(
+            id__in=RawSQL(raw_sql, [])
         )
-        return self.generate_response(
-            entities,
-            context={
-                'max_level': max_level,
-                'ids': ids,
-                'names': names
-            }
-        )
+        return child.values('parent__id', 'parent__level').first()
+
+    def find_parent(self, kwargs, dataset, ucode, version, max_privacy_level):
+        # raw_sql to view to select id
+        dataset_view_uuid = kwargs.get('view_uuid', None)
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(dataset_view_uuid))
+        parent = GeographicalEntity.objects.filter(
+            dataset=dataset,
+            is_approved=True,
+            unique_code=ucode,
+            unique_code_version=version,
+            privacy_level__lte=max_privacy_level
+        ).filter(
+            id__in=RawSQL(raw_sql, [])
+        ).first()
+        return parent
 
     @swagger_auto_schema(
         operation_id='search-view-entity-parents-by-ucode',
@@ -3344,6 +3303,8 @@ class FindEntityByUCode(APILoggingMixin, APIView):
         response_data, response_headers = self.generate_response(
             entities,
             {
+                'dataset_name': dataset.label,
+                'dataset_uuid': dataset.uuid,
                 'view_dict': view_dict,
                 'max_level': max_level,
                 'ids': ids,

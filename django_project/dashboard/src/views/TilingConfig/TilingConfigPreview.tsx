@@ -195,10 +195,12 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
             for (let j=0;j<_configs.length;++j) {
                 let _config = _configs[j]
                 if (!(_config.level in _fileMetas)) {
+                    let _existingFileMeta = files.find((file) => file.level === _config.level)
                     _fileMetas[_config.level] = {
                         level: _config.level,
                         factors: [],
-                        has_data: availableLevels.includes(_config.level)
+                        has_data: availableLevels.includes(_config.level),
+                        isHidden: _existingFileMeta ? _existingFileMeta.isHidden : false
                     }
                 }
                 _fileMetas[_config.level]['factors'].push({
@@ -371,7 +373,8 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
             let _searchIdx = files.findIndex((file) => file.level === _level)
             if (_searchIdx === -1) continue
             let _file = files[_searchIdx]
-            let _searchFactorIdx = _file.factors.findIndex((factor) => factor.zoom_level == currentZoom)
+            const filteredZoom = _file.factors.length > 0 ? Math.min(currentZoom, _file.factors[_file.factors.length -1].zoom_level) : currentZoom
+            let _searchFactorIdx = _file.factors.findIndex((factor) => factor.zoom_level == filteredZoom)
             if (_searchFactorIdx === -1) {
                 // remove from map only if the current zoom is lower than max zoom
                 if (currentZoom <= maxZoom) {
@@ -425,6 +428,9 @@ export default function TilingConfigPreview(props: TilingConfigPreviewInterface)
                             "line-width": 1
                         }
                     });
+                    if (_file.isHidden) {
+                        toggleLayer(_level, false)
+                    }
                 }
             }
         }

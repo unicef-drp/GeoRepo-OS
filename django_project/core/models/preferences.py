@@ -308,6 +308,15 @@ class SitePreferences(SingletonModel):
         )
     )
 
+    mapshaper_config = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text=(
+            'Config for mapshaper simplification.'
+        )
+    )
+
     class Meta:  # noqa: D106
         verbose_name_plural = "site preferences"
 
