@@ -37,7 +37,6 @@ from georepo.api_views.entity import (
     FindEntityVersionsByUCode,
     EntityGeometryFuzzySearch,
     EntityContainmentCheck,
-    EntitySearchBase,
     EntityTraverseHierarchyByUCode
 )
 from georepo.models.dataset import Dataset
