@@ -393,6 +393,7 @@ class DatasetExportFilters(object):
             return None, error
         return output_filters, None
 
+
 class DatasetExportBase(DatasetExportFilters):
 
     def check_zoom_level(self, dataset: Dataset, zoom_level: int):
@@ -603,7 +604,7 @@ class DatasetDownloaderStatus(APILoggingMixin, APIView):
         uuid = kwargs.get('uuid', None)
         dataset = get_object_or_404(
             Dataset, uuid=uuid, module__is_active=True
-        )        
+        )
         job_uuid = self.request.GET.get('job_uuid')
         export_request = DatasetExportRequest.objects.filter(
             dataset=dataset,

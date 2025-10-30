@@ -69,7 +69,6 @@ from georepo.models.export_request import (
     ExportRequestStatusText
 )
 from georepo.tasks.dataset_view import dataset_view_exporter
-from georepo.utils.entity_query import validate_datetime
 from georepo.serializers.common import APIErrorSerializer
 
 

@@ -27,7 +27,7 @@ from django.conf import settings
 from django.utils import timezone
 from georepo.models import (
     EntityId, EntityName, GeographicalEntity,
-    DatasetView, DatasetViewResource, Dataset
+    DatasetView, Dataset
 )
 from georepo.utils.custom_geo_functions import ForcePolygonCCW
 from core.settings.utils import absolute_path
@@ -567,7 +567,7 @@ class ResourceExporterBase(object):
                 f'View UUID: {self.dataset_view.uuid}',
                 f'View Query: {self.dataset_view.query_string}',
             ]
-        
+
         lines = lines + [
             '',
             f'Is Simplified Entities: {self.request.is_simplified_entities}',

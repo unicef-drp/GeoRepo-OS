@@ -14,7 +14,7 @@ from georepo.models.entity import GeographicalEntity, EntityId
 from georepo.models.dataset_view import DatasetView, DatasetViewResource
 from georepo.models.dataset import DatasetAdminLevelName
 from georepo.models.export_request import (
-    ExportRequest, ExportRequestStatusText
+    ExportRequest
 )
 from georepo.serializers.dataset import ExportRequestBaseStatusSerializer
 from georepo.utils.dataset_view import (

@@ -239,7 +239,7 @@ class ExportRequestDatasetMetadata(
         tiling_configs = DatasetTilingConfig.objects.filter(
             dataset=dataset
         ).order_by('zoom_level')
-        
+
         return Response(
             status=200,
             data={
