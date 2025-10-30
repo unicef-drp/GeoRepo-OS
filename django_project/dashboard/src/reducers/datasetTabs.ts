@@ -4,6 +4,7 @@ import { SyncStatus, StatusAndProgress, StatusUpdate } from "../models/syncStatu
 export interface DatasetTabsState {
     objSyncStatus: SyncStatus;
     simplificationStatus: StatusAndProgress;
+    previewSession?: string | null;
 }
 
 const initialState: DatasetTabsState = {
@@ -11,7 +12,8 @@ const initialState: DatasetTabsState = {
     simplificationStatus: {
         progress: '',
         status: ''
-    }
+    },
+    previewSession: null
 }
 
 const DONE_STATUS_LIST = ['Done', 'Error']
@@ -31,12 +33,16 @@ export const datasetTabsSlice = createSlice({
                 progress: '',
                 status: ''
             }
+        },
+        setPreviewSession: (state, action: PayloadAction<string | null>) => {
+            state.previewSession = action.payload
         }
     }
 })
 
 export const {
     updateDatasetTabStatuses,
-    resetDatasetTabStatuses
+    resetDatasetTabStatuses,
+    setPreviewSession
 } = datasetTabsSlice.actions
 export default datasetTabsSlice.reducer;

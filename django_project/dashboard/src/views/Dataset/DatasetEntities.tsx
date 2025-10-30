@@ -19,6 +19,7 @@ import {updateMenu, changeCurrentDataset} from "../../reducers/breadcrumbMenu";
 import {setModule} from "../../reducers/module";
 import toLower from "lodash/toLower";
 import Dataset from '../../models/dataset';
+import {setPreviewSession} from "../../reducers/datasetTabs";
 
 const FILTER_API_URL = '/api/dashboard-dataset-filter/'
 const GEOM_API_URL = '/api/dashboard-dataset/detail/'
@@ -104,6 +105,9 @@ export default function DatasetEntities(props: DatasetEntitiesInterface) {
             ).then(response => {
                 if (session !== response.data['session']) {
                     setSession(response.data['session'])
+                    if (!props.session) {
+                        dispatch(setPreviewSession(response.data['session']))
+                    }
                 }
                 const filters = response.data['filters']
                 filters['updated_at'] = new Date()

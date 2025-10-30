@@ -156,7 +156,10 @@ from dashboard.api_views.task_status import CheckTaskStatus
 from dashboard.api_views.exporter import (
     ExportHistoryList,
     ExportRequestDetail,
-    ExportRequestMetadata
+    ExportRequestMetadata,
+    DatasetExportHistoryList,
+    DatasetExportRequestDetail,
+    ExportRequestDatasetMetadata
 )
 from dashboard.api_views.map import (
     DatasetBbox,
@@ -661,6 +664,15 @@ urlpatterns = [
     re_path(r'api/exporter/datasetview/(?P<id>[\da-f-]+)/metadata/?$',
             ExportRequestMetadata.as_view(),
             name='exporter-request-metadata'),
+    re_path(r'api/exporter/dataset/(?P<id>[\da-f-]+)/list/?$',
+            DatasetExportHistoryList.as_view(),
+            name='exporter-dataset-history-list'),
+    re_path(r'api/exporter/dataset/(?P<id>[\da-f-]+)/detail/?$',
+            DatasetExportRequestDetail.as_view(),
+            name='exporter-dataset-request-detail'),
+    re_path(r'api/exporter/dataset/(?P<id>[\da-f-]+)/metadata/?$',
+            ExportRequestDatasetMetadata.as_view(),
+            name='exporter-dataset-request-metadata'),
     re_path(r'api/delete-view/(?P<id>[\da-f-]+)?$',
             DeleteView.as_view(),
             name='delete-view'),

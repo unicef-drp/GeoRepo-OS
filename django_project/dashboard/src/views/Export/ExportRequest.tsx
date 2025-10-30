@@ -3,6 +3,7 @@ import Grid from '@mui/material/Grid';
 import Box from "@mui/material/Box";
 import Alert, { AlertColor } from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
+import Dataset from "../../models/dataset";
 import View from "../../models/view";
 import axios from "axios";
 import {useNavigate, useSearchParams} from "react-router-dom";
@@ -69,9 +70,29 @@ interface ExportRequestDetailInterface {
     download_time_remaining?: string;
 }
 
+interface ExportRequestDetailPropsInterface {
+    requestObject: View | Dataset;
+    requestId: number;
+    filterSession: string | null;
+    is_view?: boolean;
+}
+
+interface ExportRequestListPropsInterface {
+    requestObject: View | Dataset;
+    is_view?: boolean;
+}
+
 const EXCLUDED_FILTER_KEYS = [
     'updated_at', 'points'
 ]
+
+const getNavigateUrl = (is_view: boolean, objectId: number, requestId?: number) => {
+    if (is_view) {
+        return requestId ? `/view_edit?id=${objectId}&tab=2&requestId=${requestId}` : `/view_edit?id=${objectId}&tab=2`
+    } else {
+        return requestId ? `/admin_boundaries/dataset_entities?id=${objectId}&tab=1&requestId=${requestId}` : `/admin_boundaries/dataset_entities?id=${objectId}&tab=1`
+    }
+}
 
 const displayFilter = (key: string, filters: any) => {
     if (key === 'valid_from') {
@@ -182,8 +203,9 @@ function TilingConfigDisplay(props: {tiling_configs: TilingConfig[], selected_zo
     )
 }
 
-function ExportViewDetail(props: any) {
-    const {view, requestId, filterSession} = props
+function ExportRequestDetail(props: ExportRequestDetailPropsInterface) {
+    const {requestObject, requestId, filterSession, is_view} = props
+    const apiPrefix = is_view ? 'datasetview/' : 'dataset/'
     const [loading, setLoading] = useState(true)
     const navigate = useNavigate()
     const [metadata, setMetadata] = useState<MetadataInterface>(null)
@@ -206,7 +228,7 @@ function ExportViewDetail(props: any) {
     ]
 
     const fetchMetadata = () => {
-        let _url = EXPORTER_URL + `${view.id}/metadata/`
+        let _url = EXPORTER_URL + apiPrefix + `${requestObject.id}/metadata/`
         if (filterSession) {
             _url = _url + `?session=${filterSession}`
         }
@@ -234,7 +256,7 @@ function ExportViewDetail(props: any) {
         }).catch(error => {
             console.log(error)
             setLoading(false)
-            let _message = 'Unable to fetch export view metadata, Please try again or contact the administrator!'
+            let _message = 'Unable to fetch export metadata, Please try again or contact the administrator!'
             if (error.response) {
                 if ('detail' in error.response.data) {
                     _message = error.response.data.detail
@@ -248,7 +270,7 @@ function ExportViewDetail(props: any) {
         if (!isInterval) {
             setLoading(true)
         }
-        axios.get(EXPORTER_URL + `${view.id}/detail/?request_id=${requestId}`).then(response => {
+        axios.get(EXPORTER_URL + apiPrefix + `${requestObject.id}/detail/?request_id=${requestId}`).then(response => {
             if (response.data) {
                 let _data = response.data as ExportRequestDetailInterface
                 setData(_data)
@@ -290,7 +312,7 @@ function ExportViewDetail(props: any) {
     useEffect(() => {
         setLoading(true)
         fetchMetadata()
-    }, [view, requestId, filterSession])
+    }, [requestObject, requestId, filterSession])
 
     useEffect(() => {
         if (data && ONGOING_STATUS_LIST.includes(data.status)) {
@@ -314,11 +336,11 @@ function ExportViewDetail(props: any) {
             'simplification_zoom_level': data.simplification_zoom_level,
             'format': data.format
         }
-        postData(EXPORTER_URL + `${view.id}/detail/`, _data).then(
+        postData(EXPORTER_URL + apiPrefix + `${requestObject.id}/detail/`, _data).then(
             response => {
                 // trigger fetch request detail
                 let _requestId = response.data['id']
-                let _navigate_to = `/view_edit?id=${view.id}&tab=2&requestId=${_requestId}`
+                let _navigate_to = getNavigateUrl(is_view, requestObject.id, _requestId)
                 navigate(_navigate_to)
                 setToastMessage('Successfully submitting download request. Your request will be processed in the background.')
                 // trigger to fetch notification frequently
@@ -511,7 +533,7 @@ function ExportViewDetail(props: any) {
                     <Grid container flexDirection={'row'} justifyContent={'space-between'} className='RowItemContainer'>
                         <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>}
                             onClick={() => {
-                                let _navigate_to = `/view_edit?id=${view.id}&tab=2`
+                                let _navigate_to = getNavigateUrl(is_view, requestObject.id)
                                 navigate(_navigate_to)
                             }} variant="outlined">
                             Back
@@ -523,7 +545,7 @@ function ExportViewDetail(props: any) {
                         <Grid item>
                             <LoadingButton loading={loading} loadingPosition="start" startIcon={<div style={{width: 0}}/>}
                                 onClick={() => {
-                                    let _navigate_to = `/view_edit?id=${view.id}&tab=1`
+                                    let _navigate_to = getNavigateUrl(is_view, requestObject.id)
                                     navigate(_navigate_to)
                                 }} variant="outlined">
                                 Back
@@ -543,8 +565,9 @@ function ExportViewDetail(props: any) {
 }
 
 
-function ExportViewList(props: any) {
-    const {view} = props
+function ExportRequestList(props: ExportRequestListPropsInterface) {
+    const {requestObject, is_view} = props
+    const apiPrefix = is_view ? 'datasetview/' : 'dataset/'
     const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
     const [data, setData] = useState<any[]>([])
@@ -561,7 +584,7 @@ function ExportViewList(props: any) {
                 let rowData = tableMeta.rowData
                 const handleClick = (e: any) => {
                     e.preventDefault()
-                    let _navigate_to = `/view_edit?id=${view.id}&tab=2&requestId=${rowData[0]}`
+                    let _navigate_to = getNavigateUrl(is_view, requestObject.id, rowData[0])
                     navigate(_navigate_to)
                 };
                 return (
@@ -613,7 +636,7 @@ function ExportViewList(props: any) {
         if (!isInterval) {
             setLoading(true)
         }
-        axios.get(EXPORTER_URL + `${view.id}/list/`).then(response => {
+        axios.get(EXPORTER_URL + apiPrefix + `${requestObject.id}/list/`).then(response => {
             if (response.data) {
                 setData(response.data['results'])
                 setAllFinished(!response.data['is_processing'])
@@ -627,7 +650,7 @@ function ExportViewList(props: any) {
             console.log(error)
             if (!isInterval) {
                 setLoading(false)
-                let _message = 'Unable to fetch export view history, Please try again or contact the administrator!'
+                let _message = 'Unable to fetch export request history, Please try again or contact the administrator!'
                 if (error.response) {
                     if ('detail' in error.response.data) {
                         _message = error.response.data.detail
@@ -640,7 +663,7 @@ function ExportViewList(props: any) {
 
     useEffect(() => {
         fetchData()
-    }, [view])
+    }, [requestObject])
 
     useEffect(() => {
         if (!allFinished) {
@@ -679,12 +702,14 @@ function ExportViewList(props: any) {
     )
 }
 
-interface ViewDownloadInterface {
-    view: View
+interface RequestDownloadInterface {
+    requestObject: View | Dataset;
+    is_view?: boolean;
 }
 
 
-export default function ViewDownload(props: ViewDownloadInterface) {
+export default function RequestDownload(props: RequestDownloadInterface) {
+    const {requestObject, is_view} = props
     const dispatch = useAppDispatch()
     const [searchParams, setSearchParams] = useSearchParams()
     const [requestId, setRequestId] = useState(null)
@@ -713,9 +738,9 @@ export default function ViewDownload(props: ViewDownloadInterface) {
     return (
         <Scrollable>
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
-                {props.view?.id && <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                {requestId || filterSession ? <ExportViewDetail view={props.view} requestId={requestId} filterSession={filterSession} />
-                : <ExportViewList view={props.view} />}
+                {requestObject?.id && <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                {requestId || filterSession ? <ExportRequestDetail requestObject={requestObject} is_view={is_view} requestId={requestId} filterSession={filterSession} />
+                : <ExportRequestList requestObject={requestObject} is_view={is_view} />}
                 </Box>}
             </Box>
         </Scrollable>

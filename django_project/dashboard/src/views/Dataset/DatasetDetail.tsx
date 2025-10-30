@@ -10,6 +10,8 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
+import Tooltip from '@mui/material/Tooltip';
+import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import SyncProblemIcon from '@mui/icons-material/SyncProblem';
 import ErrorIcon from '@mui/icons-material/Error';
@@ -41,6 +43,7 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
     const [tabSelected, setTabSelected] = useState(0)
     let currentDatasetId = useAppSelector(currentDataset)
     const [filteredTabs, setFilteredTabs] = useState<DatasetTabElementInterface[]>([])
+    const previewSession = useAppSelector((state: RootState) => state.datasetTabs.previewSession)
 
     const fetchTilingStatus = () => {
       if (dataset === null) return
@@ -125,9 +128,9 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
   }, [])
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-      if (newValue == 6) {
+      if (newValue == 7) {
         navigate(`/upload_list?dataset=${dataset.dataset}`)
-      } else if (newValue == 7) {
+      } else if (newValue == 8) {
         navigate(`/views?dataset=${dataset.dataset}`)
       } else {
         navigate(`/${props.moduleName}/dataset_entities?id=${currentDatasetId ? currentDatasetId : searchParams.get('id')}&tab=${newValue}`)
@@ -136,7 +139,7 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
 
     return (
         <div style={{display:'flex', flex: 1, flexDirection: 'column'}}>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Box display={'flex'} flexDirection={'row'} justifyContent={'space-between'} sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs className='DatasetTabs' value={tabSelected} onChange={handleChange} aria-label="Dataset Tab">
                   {
                     filteredTabs.map((tab, index) => {
@@ -165,6 +168,22 @@ export default function DatasetDetail(props: DatasetDetailInterface) {
                     })
                   }
                 </Tabs>
+
+                { dataset && tabSelected === 0 && props.moduleName === 'admin_boundaries' && <Box flexDirection={'column'} justifyContent={'center'} display={'flex'} sx={{marginRight: '8px'}}>
+                    <Tooltip title='Download dataset with filters from the preview'>
+                        <Button disabled={!previewSession}
+                            id='download-as-button'
+                            className={'ThemeButton MuiButton-secondary ViewRightButton'}
+                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                                let _navigate_to = `/admin_boundaries/dataset_entities?id=${dataset.id}&tab=1&filterSession=${previewSession}`
+                                navigate(_navigate_to)
+                            }}
+                        >
+                            Download
+                        </Button>
+                    </Tooltip>
+                </Box>
+                }
             </Box>
             { loading && <Skeleton variant="rectangular" height={'100%'} width={'100%'}/> }
             { !loading && (

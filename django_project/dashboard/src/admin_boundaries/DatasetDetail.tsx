@@ -9,6 +9,7 @@ import DatasetEntities from "../views/Dataset/DatasetEntities";
 import ViewSyncList from "../views/SyncStatus/List";
 import TilingConfiguration from "../views/TilingConfig/TilingConfigRevamp";
 import EntityEditHistory from "./EntityEditHistory";
+import DatasetExportRequest from "./DatasetExportRequest";
 
 
 export function NavigateComponent() {
@@ -21,6 +22,11 @@ export default function DatasetDetailWrapper() {
         {
             title: 'PREVIEW',
             element: DatasetEntities,
+            permissions: ['Read']
+        },
+        {
+            title: 'DOWNLOAD HISTORY',
+            element: DatasetExportRequest,
             permissions: ['Read']
         },
         {
