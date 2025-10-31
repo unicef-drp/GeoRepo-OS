@@ -46,6 +46,7 @@ from georepo.api_views.api_collections import (
     SEARCH_VIEW_TAG,
     DOWNLOAD_DATA_TAG
 )
+from georepo.api_views.dataset import DatasetExportFilters
 from georepo.utils.api_parameters import (
     common_api_params,
     search_param,
@@ -68,7 +69,6 @@ from georepo.models.export_request import (
     ExportRequestStatusText
 )
 from georepo.tasks.dataset_view import dataset_view_exporter
-from georepo.utils.entity_query import validate_datetime
 from georepo.serializers.common import APIErrorSerializer
 
 
@@ -675,7 +675,7 @@ class DatasetViewCentroid(ApiCache, DatasetViewFetchResource):
         return response_data, None
 
 
-class DatasetViewExportBase(object):
+class DatasetViewExportBase(DatasetExportFilters):
 
     def check_zoom_level(self, dataset_view: DatasetView, zoom_level: int):
         if dataset_view.is_tiling_config_match:
@@ -755,8 +755,10 @@ class DatasetViewExportBase(object):
         return export_request
 
 
-class DatasetViewDownloader(APILoggingMixin, APIView, DatasetViewFetchResource,
-                            DatasetViewExportBase):
+class DatasetViewDownloader(
+    APILoggingMixin, APIView, DatasetViewFetchResource,
+    DatasetViewExportBase
+):
     """
     Download dataset view to several formats.
 
@@ -783,49 +785,9 @@ class DatasetViewDownloader(APILoggingMixin, APIView, DatasetViewFetchResource,
     - search_text
     """
     permission_classes = [DatasetViewDetailAccessPermission]
-    map_filter_attributes = {
-        'countries': 'country',
-        'entity_types': 'type',
-        'names': 'name',
-        'ucodes': 'ucode',
-        'revisions': 'revision',
-        'levels': 'level',
-        'valid_on': 'valid_from',
-        'admin_level_names': 'admin_level_name',
-        'sources': 'source',
-        'privacy_levels': 'privacy_level',
-        'search_text': 'search_text'
-    }
-
-    def get_filters(self):
-        input_filters = self.request.data.get('filters', {})
-        output_filters = {}
-        error = None
-        for attrib in self.map_filter_attributes:
-            if attrib not in input_filters:
-                continue
-            output_filter_key = self.map_filter_attributes[attrib]
-            filter_values = input_filters[attrib]
-            if attrib == 'valid_on':
-                # validate valid datetime format
-                if filter_values:
-                    dt_result = validate_datetime(filter_values)
-                    if dt_result is not None:
-                        output_filters[output_filter_key] = filter_values
-                    else:
-                        error = (
-                            f'Invalid ISO datetime format: {filter_values}'
-                        )
-                        break
-            elif filter_values and len(filter_values) > 0:
-                output_filters[output_filter_key] = filter_values
-        if error:
-            return None, error
-        return output_filters, None
-
 
     @swagger_auto_schema(
-        operation_id='submit-download-job',
+        operation_id='submit-download-view-job',
         tags=[DOWNLOAD_DATA_TAG],
         manual_parameters=[openapi.Parameter(
             'uuid', openapi.IN_PATH,
@@ -867,7 +829,7 @@ class DatasetViewDownloader(APILoggingMixin, APIView, DatasetViewFetchResource,
     )
     def post(self, request, *args, **kwargs):
         dataset_view = self.get_dataset_view()
-        filters, error = self.get_filters()
+        filters, error = self.get_filters(request)
         if error:
             return Response(
                 status=400,
@@ -908,7 +870,7 @@ class DatasetViewDownloaderStatus(
     permission_classes = [DatasetViewDetailAccessPermission]
 
     @swagger_auto_schema(
-        operation_id='fetch-download-job-status',
+        operation_id='fetch-download-view-job-status',
         tags=[DOWNLOAD_DATA_TAG],
         manual_parameters=[openapi.Parameter(
             'uuid', openapi.IN_PATH,

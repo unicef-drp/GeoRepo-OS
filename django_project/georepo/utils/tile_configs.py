@@ -72,6 +72,33 @@ def populate_view_tile_configs(view_id):
             )
 
 
+def get_dataset_tiling_configs(
+        dataset: Dataset,
+        zoom_level: int = None) -> Tuple[List[TilingConfigZoomLevels], bool]:
+    tiling_configs: List[TilingConfigZoomLevels] = []
+    dataset_tiling_conf = DatasetTilingConfig.objects.filter(
+        dataset=dataset
+    ).order_by('zoom_level')
+    if zoom_level is not None:
+        dataset_tiling_conf = dataset_tiling_conf.filter(
+            zoom_level=zoom_level
+        )
+    if dataset_tiling_conf.exists():
+        for conf in dataset_tiling_conf:
+            items = []
+            tiling_levels = conf.adminleveltilingconfig_set.all()
+            for item in tiling_levels:
+                items.append(
+                    TilingConfigItem(item.level, item.simplify_tolerance)
+                )
+            tiling_configs.append(
+                TilingConfigZoomLevels(conf.zoom_level, items)
+            )
+        return tiling_configs, False
+
+    return tiling_configs, False
+
+
 def get_view_tiling_configs(
         dataset_view: DatasetView,
         zoom_level: int = None,
@@ -108,30 +135,9 @@ def get_view_tiling_configs(
             )
         return tiling_configs, True
     # check for dataset tiling configs
-    dataset_tiling_conf = DatasetTilingConfig.objects.filter(
-        dataset=dataset_view.dataset
-    ).order_by('zoom_level')
-    if zoom_level is not None:
-        dataset_tiling_conf = dataset_tiling_conf.filter(
-            zoom_level=zoom_level
-        )
-    if dataset_tiling_conf.exists():
-        for conf in dataset_tiling_conf:
-            items = []
-            tiling_levels = conf.adminleveltilingconfig_set.all()
-            for item in tiling_levels:
-                items.append(
-                    TilingConfigItem(item.level, item.simplify_tolerance)
-                )
-            tiling_configs.append(
-                TilingConfigZoomLevels(conf.zoom_level, items)
-            )
-        end = time.time()
-        if kwargs.get('log_object'):
-            kwargs.get('log_object').add_log(
-                'get_view_tiling_configs',
-                end - start)
-        return tiling_configs, False
+    tiling_configs, _ = get_dataset_tiling_configs(
+        dataset_view.dataset, zoom_level
+    )
     end = time.time()
     if kwargs.get('log_object'):
         kwargs.get('log_object').add_log(

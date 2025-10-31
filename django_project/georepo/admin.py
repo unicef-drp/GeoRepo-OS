@@ -61,7 +61,8 @@ from georepo.models import (
     PENDING,
     EntityEditHistory,
     ExportRequest,
-    ExportRequestStatusText
+    ExportRequestStatusText,
+    DatasetExportRequest
 )
 from georepo.utils.admin import (
     get_deleted_objects,
@@ -1126,6 +1127,37 @@ class ExportRequestAdmin(admin.ModelAdmin):
     actions = [trigger_process_exporter]
 
 
+@admin.action(description='Trigger Dataset Process Exporter')
+def trigger_dataset_process_exporter(modeladmin, request, queryset):
+    from georepo.tasks.dataset import dataset_exporter
+    for req in queryset:
+        req.status = PENDING
+        req.status_text = str(ExportRequestStatusText.WAITING)
+        req.progress = 0
+        req.save(update_fields=['status', 'status_text', 'progress'])
+        celery_task = dataset_exporter.apply_async(
+            (req.id,), queue='exporter'
+        )
+        req.task_id = celery_task.id
+        req.save(update_fields=['task_id'])
+    modeladmin.message_user(
+        request,
+        'Exporter will be run in the background!',
+        messages.SUCCESS
+    )
+
+
+class DatasetExportRequestAdmin(admin.ModelAdmin):
+    list_display = ('dataset', 'format', 'status',
+                    'submitted_on', 'submitted_by',
+                    'status_text', 'progress',
+                    'download_link_expired_on')
+    list_filter = ['submitted_by', 'status', 'format']
+    search_fields = ['dataset__name', 'submitted_by__first_name',
+                     'task_id', 'uuid']
+    actions = [trigger_dataset_process_exporter]
+
+
 admin.site.register(GeographicalEntity, GeographicalEntityAdmin)
 admin.site.register(Language, LanguageAdmin)
 admin.site.register(EntityType)
@@ -1150,6 +1182,7 @@ admin.site.register(GeocodingRequest, GeocodingRequestAdmin)
 admin.site.register(SearchIdRequest, SearchIdRequestAdmin)
 admin.site.register(EntityEditHistory, EntityEditHistoryAdmin)
 admin.site.register(ExportRequest, ExportRequestAdmin)
+admin.site.register(DatasetExportRequest, DatasetExportRequestAdmin)
 
 
 # Define inline formset

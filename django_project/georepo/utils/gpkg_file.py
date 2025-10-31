@@ -1,7 +1,8 @@
 import os
 import logging
 from georepo.utils.geojson import (
-    GeojsonBasedExporter
+    GeojsonBasedExporter,
+    GeojsonDatasetBasedExporter
 )
 from georepo.utils.fiona_utils import open_collection_by_file
 
@@ -34,7 +35,7 @@ def get_gpkg_feature_count(layer_file):
     return feature_count
 
 
-class GPKGViewExporter(GeojsonBasedExporter):
+class GPKGBaseExporter:
 
     def get_env(self) -> dict:
         """Get env vars for GPKG ogr2ogr.
@@ -77,3 +78,15 @@ class GPKGViewExporter(GeojsonBasedExporter):
         )
         self.do_conversion(command_list)
         return gpkg_file
+
+
+class GPKGViewExporter(GPKGBaseExporter, GeojsonBasedExporter):
+
+    pass
+
+
+class GPKGDatasetExporter(
+    GPKGBaseExporter, GeojsonDatasetBasedExporter
+):
+
+    pass

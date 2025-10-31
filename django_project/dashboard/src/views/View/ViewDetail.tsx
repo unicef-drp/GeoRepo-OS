@@ -28,7 +28,7 @@ import {updateViewTabStatuses, resetViewTabStatuses} from "../../reducers/viewTa
 import { StatusAndProgress } from '../../models/syncStatus';
 import { fetchSyncStatusAPI } from '../../utils/api/TilingStatus';
 import StatusLoadingDialog from '../../components/StatusLoadingDialog';
-import ViewDownload from './ViewDownload';
+import RequestDownload from '../Export/ExportRequest';
 
 const QUERY_CHECK_URL = '/api/query-view-preview/'
 
@@ -258,7 +258,7 @@ export default function ViewDetail() {
                     }
                 </TabPanel>
                 <TabPanel value={tabSelected} index={2} noPadding>
-                    <ViewDownload view={view} />
+                    <RequestDownload requestObject={view} is_view={true} />
                 </TabPanel>
                 { view && view.permissions && view.permissions.includes('Manage') && (
                     <TabPanel value={tabSelected} index={3} noPadding>

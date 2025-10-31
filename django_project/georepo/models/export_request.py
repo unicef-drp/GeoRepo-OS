@@ -40,7 +40,7 @@ class ExportRequestStatusText(str, Enum):
         return self.value
 
 
-class ExportRequest(BaseTaskRequest):
+class ExportRequestBase(BaseTaskRequest):
 
     FORMAT_CHOICES = (
         (GEOJSON_EXPORT_TYPE, GEOJSON_EXPORT_TYPE),
@@ -48,11 +48,6 @@ class ExportRequest(BaseTaskRequest):
         (KML_EXPORT_TYPE, KML_EXPORT_TYPE),
         (TOPOJSON_EXPORT_TYPE, TOPOJSON_EXPORT_TYPE),
         (GEOPACKAGE_EXPORT_TYPE, GEOPACKAGE_EXPORT_TYPE)
-    )
-
-    dataset_view = models.ForeignKey(
-        'georepo.DatasetView',
-        on_delete=models.CASCADE
     )
 
     format = models.CharField(
@@ -114,6 +109,14 @@ class ExportRequest(BaseTaskRequest):
         return str(self.uuid)
 
     @property
+    def name(self):
+        raise NotImplementedError('ExportRequest.name')
+
+    @property
+    def resource_id(self):
+        raise NotImplementedError('ExportRequest.resource_id')
+
+    @property
     def download_time_remaining(self):
         if (
             self.status_text == ExportRequestStatusText.EXPIRED or
@@ -126,3 +129,41 @@ class ExportRequest(BaseTaskRequest):
         return human_readable.precise_delta(
             delta, suppress=["days"], minimum_unit='minutes',
             formatting='.0f')
+
+    class Meta:
+        """Meta class for abstract base task request."""
+        abstract = True
+
+
+class ExportRequest(ExportRequestBase):
+    """Export request model for DatasetView."""
+
+    dataset_view = models.ForeignKey(
+        'georepo.DatasetView',
+        on_delete=models.CASCADE
+    )
+
+    @property
+    def name(self):
+        return self.dataset_view.name
+
+    @property
+    def resource_id(self):
+        return self.dataset_view.id
+
+
+class DatasetExportRequest(ExportRequestBase):
+    """Export request model for Dataset."""
+
+    dataset = models.ForeignKey(
+        'georepo.Dataset',
+        on_delete=models.CASCADE
+    )
+
+    @property
+    def name(self):
+        return self.dataset.label
+
+    @property
+    def resource_id(self):
+        return self.dataset.id

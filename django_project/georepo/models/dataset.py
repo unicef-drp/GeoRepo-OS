@@ -5,6 +5,7 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.conf import settings
+from django.contrib.gis.db.models import Extent
 from django.utils.translation import gettext_lazy as _
 from guardian.models import UserObjectPermissionBase
 from guardian.models import GroupObjectPermissionBase
@@ -263,6 +264,23 @@ class Dataset(models.Model):
 
     def __str__(self):
         return self.label
+
+    @property
+    def name(self):
+        return self.label
+
+    @property
+    def bbox(self):
+        entities = self.geographicalentity_set.filter(
+            dataset=self,
+            is_approved=True,
+            geometry__isnull=False,
+            level=0
+        )
+        if not entities.exists():
+            return []
+        geom_qs = entities.aggregate(Extent('geometry'))
+        return list(geom_qs['geometry__extent'])
 
 
 class DatasetUserObjectPermission(UserObjectPermissionBase):

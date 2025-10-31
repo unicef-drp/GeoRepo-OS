@@ -13,7 +13,8 @@ from georepo.models import (
     GEOPACKAGE_EXPORT_TYPE
 )
 from georepo.utils.exporter_base import (
-    DatasetViewExporterBase
+    DatasetViewExporterBase,
+    DatasetExporterBase
 )
 from georepo.utils.fiona_utils import (
     open_collection_by_file
@@ -61,7 +62,7 @@ def json_serial(obj):
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-class GeojsonViewExporter(DatasetViewExporterBase):
+class GeojsonExporterWriter:
 
     def write_entities(self, entities, context,
                        exported_name, tmp_output_dir,
@@ -103,12 +104,24 @@ class GeojsonViewExporter(DatasetViewExporterBase):
         return geojson_file_path
 
 
-class GeojsonBasedExporter(DatasetViewExporterBase):
+class GeojsonViewExporter(GeojsonExporterWriter, DatasetViewExporterBase):
+    pass
+
+
+class GeojsonDatasetExporter(GeojsonExporterWriter, DatasetExporterBase):
+    pass
+
+
+class GeojsonResourceBasedExporter:
+
+    cls_exporter = None
 
     def init_exporter(self):
         super().init_exporter()
+        if self.cls_exporter is None:
+            raise RuntimeError('cls_exporter is not defined!')
         # create geojson exporter
-        self.geojson_exporter = GeojsonViewExporter(
+        self.geojson_exporter = self.cls_exporter(
             self.request, True, self
         )
         self.geojson_exporter.init_exporter()
@@ -168,6 +181,20 @@ class GeojsonBasedExporter(DatasetViewExporterBase):
         if result.returncode != 0:
             logger.error(result.stderr.decode())
             raise RuntimeError(result.stderr.decode())
+
+
+class GeojsonBasedExporter(
+    GeojsonResourceBasedExporter,
+    DatasetViewExporterBase
+):
+    cls_exporter = GeojsonViewExporter
+
+
+class GeojsonDatasetBasedExporter(
+    GeojsonResourceBasedExporter,
+    DatasetExporterBase
+):
+    cls_exporter = GeojsonDatasetExporter
 
 
 def validate_geojson(geojson: dict) -> bool:

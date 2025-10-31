@@ -4,6 +4,7 @@ import shutil
 import datetime
 import logging
 import zipfile
+from typing import Union
 from django.db import connection
 import xml.etree.ElementTree as ET
 from rest_framework.reverse import reverse
@@ -26,7 +27,7 @@ from django.conf import settings
 from django.utils import timezone
 from georepo.models import (
     EntityId, EntityName, GeographicalEntity,
-    DatasetView, DatasetViewResource
+    DatasetView, Dataset
 )
 from georepo.utils.custom_geo_functions import ForcePolygonCCW
 from core.settings.utils import absolute_path
@@ -45,13 +46,16 @@ from georepo.models.base_task_request import (
     ERROR
 )
 from georepo.models.export_request import (
+    ExportRequestBase,
     ExportRequest,
+    DatasetExportRequest,
     ExportRequestStatusText,
     GEOJSON_EXPORT_TYPE
 )
 from georepo.utils.tile_configs import (
     get_view_tiling_configs,
-    get_admin_level_tiling_config
+    get_admin_level_tiling_config,
+    get_dataset_tiling_configs
 )
 
 
@@ -90,29 +94,55 @@ def has_array_filter(filters, filter_key):
     return filter_key in filters and len(filters[filter_key]) > 0
 
 
-class DatasetViewExporterBase(object):
-    def __init__(self, request: ExportRequest,
+class ResourceExporterBase(object):
+    """Base class to export Dataset or DatasetView."""
+
+    def __init__(self, request: ExportRequestBase,
                  is_temp: bool = False,
                  ref = None) -> None:
         self.request = request
         self.is_temp = is_temp
         self.format = self.request.format if not is_temp else 'geojson'
-        self.dataset_view = request.dataset_view
+        self.dataset = (
+            request.dataset if isinstance(request, DatasetExportRequest) else
+            request.dataset_view.dataset
+        )
+        self.dataset_view = (
+            request.dataset_view if
+            isinstance(request, ExportRequest) else
+            None
+        )
         self.total_progress = 0
         self.progress_count = 0
         self.generated_files = []
         self.levels = []
         self.privacy_level = get_view_permission_privacy_level(
-            request.submitted_by, self.dataset_view.dataset,
+            request.submitted_by, self.dataset,
             self.dataset_view
         )
-        self.view_resource = DatasetViewResource.objects.filter(
-            dataset_view=self.dataset_view,
-            privacy_level=self.privacy_level
-        ).get()
+        # self.view_resource = DatasetViewResource.objects.filter(
+        #     dataset_view=self.dataset_view,
+        #     privacy_level=self.privacy_level
+        # ).get()
         self.tiling_configs = []
         self.has_custom_tiling_config = False
         self.exporter_ref = ref
+
+    @property
+    def data(self) -> Union[Dataset, DatasetView]:
+        """Return Dataset or DatasetView."""
+        return (
+            self.request.dataset_view if
+            isinstance(self.request, ExportRequest) else
+            self.request.dataset
+        )
+
+    @property
+    def data_type(self) -> str:
+        return 'DatasetView' if self.dataset_view else 'Dataset'
+
+    def find_bbox(self):
+        raise NotImplementedError('find_bbox')
 
     def get_exported_file_name(self, level: int):
         exported_name = f'adm{level}'
@@ -120,17 +150,20 @@ class DatasetViewExporterBase(object):
 
     def generate_queryset(self):
         entities = GeographicalEntity.objects.filter(
-            dataset=self.dataset_view.dataset,
+            dataset=self.dataset,
             is_approved=True,
             privacy_level__lte=self.privacy_level
         )
         # raw_sql to view to select id
-        raw_sql = (
-            'SELECT id from "{}"'
-        ).format(str(self.dataset_view.uuid))
-        entities = entities.filter(
-            id__in=RawSQL(raw_sql, [])
-        )
+        raw_sql = None
+        if self.dataset_view:
+            raw_sql = (
+                'SELECT id from "{}"'
+            ).format(str(self.dataset_view.uuid))
+            entities = entities.filter(
+                id__in=RawSQL(raw_sql, [])
+            )
+
         entities = entities.annotate(
             ucode_filter=Concat('unique_code', V('_V'), 'unique_code_version',
                                 output_field=CharField())
@@ -240,12 +273,19 @@ class DatasetViewExporterBase(object):
         self.tiling_configs = []
         self.has_custom_tiling_config = False
         if self.request.is_simplified_entities:
-            self.tiling_configs, self.has_custom_tiling_config = (
-                get_view_tiling_configs(
-                    self.request.dataset_view,
-                    self.request.simplification_zoom_level
+            if self.dataset_view:
+                self.tiling_configs, self.has_custom_tiling_config = (
+                    get_view_tiling_configs(
+                        self.dataset_view,
+                        self.request.simplification_zoom_level
+                    )
                 )
-            )
+            else:
+                self.tiling_configs, self.has_custom_tiling_config = (
+                    get_dataset_tiling_configs(
+                        self.dataset, self.request.simplification_zoom_level
+                    )
+                )
         # check if view at privacy level has data
         entities = self.generate_queryset()
         # count levels
@@ -348,14 +388,14 @@ class DatasetViewExporterBase(object):
 
     def run(self):
         logger.info(
-            f'Exporting {self.format} from View {self.dataset_view.name} '
+            f'Exporting {self.format} from {self.data_type} {self.data.name} '
         )
         tmp_output_dir = self.get_tmp_output_dir()
         # export for each admin level
         for level in self.levels:
             logger.info(
                 f'Exporting {self.format} of level {level} from '
-                f'{self.dataset_view.name} - {self.privacy_level} '
+                f'{self.data.name} - {self.privacy_level} '
                 f'({self.request.progress} %)'
             )
             self.do_export(level, tmp_output_dir)
@@ -366,7 +406,7 @@ class DatasetViewExporterBase(object):
             self.do_export_post_process()
         logger.info(
             f'Exporting {self.format} is finished '
-            f'from {self.dataset_view.name} '
+            f'from {self.data.name} '
         )
         logger.info(self.generated_files)
 
@@ -446,18 +486,21 @@ class DatasetViewExporterBase(object):
             values.append(f'{related}__level')
             values.append(f'{related}__type__label')
         # raw_sql to view to select id
-        raw_sql = (
-            'SELECT id from "{}"'
-        ).format(str(self.dataset_view.uuid))
+        raw_sql = None
+        if self.dataset_view:
+            raw_sql = (
+                'SELECT id from "{}"'
+            ).format(str(self.dataset_view.uuid))
         # retrieve all ids in current dataset
         ids = EntityId.objects.filter(
-            geographical_entity__dataset__id=self.dataset_view.dataset.id,
+            geographical_entity__dataset__id=self.dataset.id,
             geographical_entity__is_approved=True,
             geographical_entity__level=level
         )
-        ids = ids.filter(
-            geographical_entity__id__in=RawSQL(raw_sql, [])
-        )
+        if raw_sql:
+            ids = ids.filter(
+                geographical_entity__id__in=RawSQL(raw_sql, [])
+            )
         ids = ids.order_by('code').values(
             'code__id', 'code__name', 'default'
         ).distinct('code__id')
@@ -473,13 +516,14 @@ class DatasetViewExporterBase(object):
             entities = entities.annotate(**annotations)
             values.append(f'{field_key}__value')
         names = EntityName.objects.filter(
-            geographical_entity__dataset__id=self.dataset_view.dataset.id,
+            geographical_entity__dataset__id=self.dataset.id,
             geographical_entity__is_approved=True,
             geographical_entity__level=level
         )
-        names = names.filter(
-            geographical_entity__id__in=RawSQL(raw_sql, [])
-        )
+        if raw_sql:
+            names = names.filter(
+                geographical_entity__id__in=RawSQL(raw_sql, [])
+            )
         # get max idx in the names
         names_max_idx = names.aggregate(
             Max('idx')
@@ -504,25 +548,32 @@ class DatasetViewExporterBase(object):
 
     def export_readme(self, tmp_output_dir: str):
         logger.info('Generating readme file')
-        dataset = self.dataset_view.dataset
         simplification_zoom_level = (
             str(self.request.simplification_zoom_level) if
             self.request.is_simplified_entities else '-'
         )
         lines = [
             'Readme',
-            f'Dataset: {dataset.label}',
-            f'Description: {dataset.description}',
+            f'Dataset: {self.dataset.label}',
+            f'Description: {self.dataset.description}',
             f"Extracted on {self.get_extracted_on().strftime('%d-%m-%Y')}"
-            '',
-            f'View: {self.dataset_view.name}',
-            f'View Description: {self.dataset_view.description}',
-            f'View UUID: {self.dataset_view.uuid}',
-            f'View Query: {self.dataset_view.query_string}',
+        ]
+
+        if self.dataset_view:
+            lines = lines + [
+                '',
+                f'View: {self.dataset_view.name}',
+                f'View Description: {self.dataset_view.description}',
+                f'View UUID: {self.dataset_view.uuid}',
+                f'View Query: {self.dataset_view.query_string}',
+            ]
+
+        lines = lines + [
             '',
             f'Is Simplified Entities: {self.request.is_simplified_entities}',
             f'Simplification Zoom Level: {simplification_zoom_level}',
         ]
+
         if self.request.filters:
             lines.append('Filters:')
             for key, value in self.request.filters.items():
@@ -542,54 +593,13 @@ class DatasetViewExporterBase(object):
         self.generated_files.append(readme_filepath)
 
     def export_metadata(self, tmp_output_dir: str):
-        logger.info('Generating metadata file')
-        dataset = self.dataset_view.dataset
-        dataset_desc = (
-            dataset.description if dataset.description else '-'
+        raise NotImplementedError(
+            'ResourceExporterBase not implementing export_metadata'
         )
-        lines = [
-            f'Dataset: {dataset.label}',
-            f'Description: {dataset_desc}'
-        ]
-        if (
-            self.dataset_view.default_ancestor_code and
-            self.dataset_view.default_type ==
-            DatasetView.DefaultViewType.IS_LATEST
-        ):
-            # find versions in the dataset
-            entities = self.generate_queryset()
-            revisions = entities.order_by('unique_code_version').values_list(
-                'unique_code_version',
-                flat=True
-            ).distinct()
-            if revisions and len(revisions) == 1:
-                lines.append(f'Version: {revisions[0]}')
-        lines.append(f'UUID: {dataset.uuid}')
-        view_desc = (
-            self.dataset_view.description if
-            self.dataset_view.description else '-'
-        )
-        lines.extend([
-            '',
-            f'View: {self.dataset_view.name}',
-            f'Description: {view_desc}',
-            f'UUID: {self.dataset_view.uuid}',
-            f'Query: {self.dataset_view.query_string}',
-            '',
-            f"Extracted on {self.get_extracted_on().strftime('%d-%m-%Y')}"
-        ])
-        metadata_filepath = os.path.join(
-            tmp_output_dir,
-            'metadata.txt'
-        )
-        with open(metadata_filepath, 'w') as f:
-            for line in lines:
-                f.write(line)
-                f.write('\n')
 
     def export_metadata_level(self, level, tmp_output_dir: str):
         adm_name = self.get_exported_file_name(level)
-        view_name = f'{self.dataset_view.name} - {adm_name}'
+        view_name = f'{self.data.name} - {adm_name}'
         # read xml template
         tree = ET.parse(METADATA_TEMPLATE_PATH)
         root = tree.getroot()
@@ -606,7 +616,7 @@ class DatasetViewExporterBase(object):
         # replace view uuid
         xml_path = 'gmd:fileIdentifier/gco:CharacterString'
         xml_el = root.find(xml_path, nsmap)
-        xml_el.text = str(self.dataset_view.uuid)
+        xml_el.text = str(self.data.uuid)
         # replace contact name
         xml_path = (
             './/gmd:CI_ResponsibleParty/gmd:individualName/gco:CharacterString'
@@ -655,13 +665,13 @@ class DatasetViewExporterBase(object):
         )
         xml_el = root.find(xml_path, nsmap)
         view_desc = (
-            self.dataset_view.description + '\r\n' if
-            self.dataset_view.description else ''
+            self.data.description + '\r\n' if
+            self.data.description else ''
         )
         xml_el.text = (
             view_desc +
             'Query: ' + '\r\n' +
-            self.dataset_view.query_string
+            self.dataset_view.query_string if self.dataset_view else ''
         )
         # replace distribution URL
         xml_path = (
@@ -672,10 +682,14 @@ class DatasetViewExporterBase(object):
         xml_el = root.find(xml_path, nsmap)
         current_site = Site.objects.get_current()
         scheme = 'https://'
+        api_id = (
+            'search-view-entity-by-level' if self.dataset_view else
+            'search-entity-by-level'
+        )
         url = reverse(
-            f'{apiLatestVersion}:search-view-entity-by-level',
+            f'{apiLatestVersion}:{api_id}',
             kwargs={
-                'uuid': str(self.dataset_view.uuid),
+                'uuid': str(self.data.uuid),
                 'admin_level': level
             }
         )
@@ -699,27 +713,7 @@ class DatasetViewExporterBase(object):
         xml_el = root.find(xml_path, nsmap)
         xml_el.text = f'URL to {view_name}'
         # replace bbox if exists in view
-        bbox = []
-        if self.dataset_view.bbox:
-            _bbox = self.dataset_view.bbox.split(',')
-            for coord in _bbox:
-                bbox.append(str(round(float(coord), 5)))
-        else:
-            with connection.cursor() as cursor:
-                sql_view = str(self.dataset_view.uuid)
-                cursor.execute(
-                    f'SELECT ST_Extent(geometry) as bextent FROM "{sql_view}"'
-                )
-                extent = cursor.fetchone()
-                if extent:
-                    try:
-                        _bbox = (
-                            re.findall(r'[-+]?(?:\d*\.\d+|\d+)', extent[0])
-                        )
-                        for coord in _bbox:
-                            bbox.append(str(round(float(coord), 5)))
-                    except TypeError:
-                        pass
+        bbox = self.find_bbox()
         if bbox:
             # write bbox (west, south, east, north)
             xml_path = (
@@ -776,7 +770,7 @@ class DatasetViewExporterBase(object):
         # zip all files inside generated_files
         zip_file_path = os.path.join(
             tmp_output_dir,
-            f'{self.dataset_view.name}'
+            f'{self.data.name}'
         ) + '.zip'
         with zipfile.ZipFile(
                 zip_file_path, 'w', zipfile.ZIP_DEFLATED) as archive:
@@ -848,3 +842,105 @@ class DatasetViewExporterBase(object):
         tmp_output_dir = self.get_tmp_output_dir()
         if os.path.exists(tmp_output_dir):
             shutil.rmtree(tmp_output_dir)
+
+
+class DatasetViewExporterBase(ResourceExporterBase):
+    """Exporter for DatasetView."""
+
+    def find_bbox(self):
+        bbox = []
+        if self.dataset_view.bbox:
+            _bbox = self.dataset_view.bbox.split(',')
+            for coord in _bbox:
+                bbox.append(str(round(float(coord), 5)))
+        else:
+            with connection.cursor() as cursor:
+                sql_view = str(self.dataset_view.uuid)
+                cursor.execute(
+                    f'SELECT ST_Extent(geometry) as bextent FROM "{sql_view}"'
+                )
+                extent = cursor.fetchone()
+                if extent:
+                    try:
+                        _bbox = (
+                            re.findall(r'[-+]?(?:\d*\.\d+|\d+)', extent[0])
+                        )
+                        for coord in _bbox:
+                            bbox.append(str(round(float(coord), 5)))
+                    except TypeError:
+                        pass
+        return bbox
+
+    def export_metadata(self, tmp_output_dir: str):
+        logger.info('Generating metadata file')
+        dataset_desc = (
+            self.dataset.description if self.dataset.description else '-'
+        )
+        lines = [
+            f'Dataset: {self.dataset.label}',
+            f'Description: {dataset_desc}'
+        ]
+        if (
+            self.dataset_view.default_ancestor_code and
+            self.dataset_view.default_type ==
+            DatasetView.DefaultViewType.IS_LATEST
+        ):
+            # find versions in the dataset
+            entities = self.generate_queryset()
+            revisions = entities.order_by('unique_code_version').values_list(
+                'unique_code_version',
+                flat=True
+            ).distinct()
+            if revisions and len(revisions) == 1:
+                lines.append(f'Version: {revisions[0]}')
+        lines.append(f'UUID: {self.dataset.uuid}')
+        view_desc = (
+            self.dataset_view.description if
+            self.dataset_view.description else '-'
+        )
+        lines.extend([
+            '',
+            f'View: {self.dataset_view.name}',
+            f'Description: {view_desc}',
+            f'UUID: {self.dataset_view.uuid}',
+            f'Query: {self.dataset_view.query_string}',
+            '',
+            f"Extracted on {self.get_extracted_on().strftime('%d-%m-%Y')}"
+        ])
+        metadata_filepath = os.path.join(
+            tmp_output_dir,
+            'metadata.txt'
+        )
+        with open(metadata_filepath, 'w') as f:
+            for line in lines:
+                f.write(line)
+                f.write('\n')
+
+
+class DatasetExporterBase(ResourceExporterBase):
+    """Exporter for Dataset."""
+
+    def find_bbox(self):
+        return [str(round(coord, 5)) for coord in self.dataset.bbox]
+
+    def export_metadata(self, tmp_output_dir: str):
+        logger.info('Generating metadata file')
+        dataset_desc = (
+            self.dataset.description if self.dataset.description else '-'
+        )
+        lines = [
+            f'Dataset: {self.dataset.label}',
+            f'Description: {dataset_desc}'
+        ]
+        lines.append(f'UUID: {self.dataset.uuid}')
+        lines.append(
+            f"Extracted on {self.get_extracted_on().strftime('%d-%m-%Y')}"
+        )
+        metadata_filepath = os.path.join(
+            tmp_output_dir,
+            'metadata.txt'
+        )
+        with open(metadata_filepath, 'w') as f:
+            for line in lines:
+                f.write(line)
+                f.write('\n')

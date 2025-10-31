@@ -4,7 +4,6 @@ from django.urls.exceptions import NoReverseMatch
 from rest_framework import serializers
 from drf_yasg import openapi
 from rest_framework.reverse import reverse
-from django.contrib.gis.db.models import Extent
 from georepo.serializers.common import APIResponseModelSerializer
 from georepo.models import (
     Dataset,
@@ -14,7 +13,10 @@ from georepo.models import (
     BoundaryType,
     EntityType,
     EntityId,
-    DatasetTilingConfig
+    DatasetTilingConfig,
+    ExportRequestBase,
+    DatasetExportRequest,
+    ExportRequestStatusText
 )
 
 
@@ -349,17 +351,7 @@ class DetailedDatasetSerializer(APIResponseModelSerializer):
         return results
 
     def get_bbox(self, obj: Dataset):
-        entities = GeographicalEntity.objects.filter(
-            dataset=obj,
-            is_approved=True,
-            geometry__isnull=False,
-            level=0
-        )
-        if not entities.exists():
-            return []
-        # get the union of all geometries' bbox
-        geom_qs = entities.aggregate(Extent('geometry'))
-        return list(geom_qs['geometry__extent'])
+        return obj.bbox
 
     def get_max_zoom(self, obj: Dataset):
         tiling_configs = DatasetTilingConfig.objects.filter(
@@ -574,3 +566,214 @@ class DatasetBoundaryTypeSerializer(serializers.ModelSerializer):
             'value',
             'total_entities'
         ]
+
+
+class ExportRequestBaseStatusSerializer(APIResponseModelSerializer):
+    status_code = serializers.CharField(source='status_text')
+    request_timestamp = serializers.DateTimeField(source='submitted_on')
+    date_completed = serializers.DateTimeField(source='finished_at')
+    error_message = serializers.SerializerMethodField()
+    simplification_level = serializers.SerializerMethodField()
+    download_url = serializers.SerializerMethodField()
+
+    def get_error_message(self, obj: ExportRequestBase):
+        return obj.errors if obj.errors else None
+
+    def get_simplification_level(self, obj: ExportRequestBase):
+        return (
+            obj.simplification_zoom_level if
+            obj.is_simplified_entities else None
+        )
+
+    def get_download_url(self, obj: ExportRequestBase):
+        if obj.status_text == ExportRequestStatusText.EXPIRED:
+            return None
+        return obj.download_link
+
+    class Meta:
+        filters_schema_fields = {
+            'countries': openapi.Schema(
+                title='Country name list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'entity_types': openapi.Schema(
+                title='Entity type list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'names': openapi.Schema(
+                title='Entity name list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'ucodes': openapi.Schema(
+                title='Ucode list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'revisions': openapi.Schema(
+                title='Revision list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_NUMBER
+                )
+            ),
+            'levels': openapi.Schema(
+                title='Admin level list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_INTEGER
+                )
+            ),
+            'valid_on': openapi.Schema(
+                title='Date when there is revision of entity',
+                type=openapi.TYPE_STRING
+            ),
+            'admin_level_names': openapi.Schema(
+                title='Admin level name list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'sources': openapi.Schema(
+                title='Entity source list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_STRING
+                )
+            ),
+            'privacy_levels': openapi.Schema(
+                title='Privacy level list',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_INTEGER
+                )
+            ),
+            'search_text': openapi.Schema(
+                title='Search text',
+                type=openapi.TYPE_STRING
+            ),
+        }
+        swagger_schema_fields = {
+            'type': openapi.TYPE_OBJECT,
+            'title': 'Download Job Detail',
+            'properties': {
+                # 'view': openapi.Schema(
+                #     title='View Name',
+                #     type=openapi.TYPE_STRING
+                # ),
+                'uuid': openapi.Schema(
+                    title='Job UUID',
+                    type=openapi.TYPE_STRING,
+                ),
+                'status_code': openapi.Schema(
+                    title='Job status',
+                    type=openapi.TYPE_STRING,
+                ),
+                'format': openapi.Schema(
+                    title='Format of the exported product',
+                    type=openapi.TYPE_STRING,
+                ),
+                'request_timestamp': openapi.Schema(
+                    title='Request date time',
+                    type=openapi.TYPE_STRING,
+                ),
+                'date_completed': openapi.Schema(
+                    title='Job completed date time',
+                    type=openapi.TYPE_STRING,
+                ),
+                'error_message': openapi.Schema(
+                    title='Error message when job is stopped',
+                    type=openapi.TYPE_STRING,
+                ),
+                'simplification_level': openapi.Schema(
+                    title='Simplification zoom level',
+                    type=openapi.TYPE_STRING,
+                ),
+                'filters': openapi.Schema(
+                    title='Entities filter',
+                    type=openapi.TYPE_OBJECT,
+                    properties=filters_schema_fields
+                ),
+                'download_url': openapi.Schema(
+                    title='Download link for the zipped product',
+                    type=openapi.TYPE_STRING,
+                ),
+                'download_time_remaining': openapi.Schema(
+                    title='Remaining time before the download link is expired',
+                    type=openapi.TYPE_STRING,
+                ),
+            },
+            'required': ['uuid', 'status_code'],
+            'example': {
+                'uuid': 'b815c0da-e053-44da-b040-b620777ff7bc',
+                'status_code': 'ready',
+                'format': 'GEOJSON',
+                'request_timestamp': '2022-08-15T08:09:15.049806Z',
+                'date_completed': '2022-08-15T08:15:15.049806Z',
+                'error_message': None,
+                'simplification_level': None,
+                'filters': {
+                    'levels': [0, 1]
+                },
+                'download_url': '',
+                'download_time_remaining': '1 hour'
+            }
+        }
+        model = ExportRequestBase
+        fields = [
+            'uuid',
+            'status_code',
+            'format',
+            'request_timestamp',
+            'date_completed',
+            'error_message',
+            'simplification_level',
+            'filters',
+            'download_url',
+            'download_time_remaining'
+        ]
+
+
+class DatasetExportRequestStatusSerializer(
+    ExportRequestBaseStatusSerializer
+):
+    dataset = serializers.SerializerMethodField()
+
+    def get_dataset(self, obj: DatasetExportRequest):
+        return obj.dataset.name
+
+    class Meta:
+        model = DatasetExportRequest
+        fields = ['dataset'] + ExportRequestBaseStatusSerializer.Meta.fields
+        filters_schema_fields = (
+            ExportRequestBaseStatusSerializer.Meta.filters_schema_fields
+        )
+        swagger_schema_fields = {
+            'type': openapi.TYPE_OBJECT,
+            'title': 'Download Job Detail',
+            'properties': {
+                'dataset': openapi.Schema(
+                    title='Dataset Name',
+                    type=openapi.TYPE_STRING
+                ),
+                **ExportRequestBaseStatusSerializer.Meta.
+                swagger_schema_fields['properties']
+            },
+            'required': ['uuid', 'dataset', 'status_code'],
+            'example': {
+                'dataset': 'Ukraine Boundaries',
+                **ExportRequestBaseStatusSerializer.Meta.
+                swagger_schema_fields['example']
+            }
+        }

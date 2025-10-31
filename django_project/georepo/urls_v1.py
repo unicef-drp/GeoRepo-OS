@@ -5,7 +5,9 @@ from georepo.api_views.module import (
 from georepo.api_views.dataset import (
     DatasetList,
     DatasetDetail,
-    DatasetEntityListHierarchical
+    DatasetEntityListHierarchical,
+    DatasetDownloader,
+    DatasetDownloaderStatus
 )
 from georepo.api_views.dataset_view import (
     DatasetViewList,
@@ -309,6 +311,14 @@ operation_view_entity_urls = [
 ]
 
 download_urls = [
+    re_path(
+        r'download/dataset/(?P<uuid>[\da-f-]+)/status/?$',
+        DatasetDownloaderStatus.as_view(),
+        name='check-status-download-job'),
+    re_path(
+        r'download/dataset/(?P<uuid>[\da-f-]+)/?$',
+        DatasetDownloader.as_view(),
+        name='submit-download-job'),
     re_path(
         r'download/view/(?P<uuid>[\da-f-]+)/status/?$',
         DatasetViewDownloaderStatus.as_view(),
