@@ -570,16 +570,11 @@ class DatasetBoundaryTypeSerializer(serializers.ModelSerializer):
 
 class ExportRequestBaseStatusSerializer(APIResponseModelSerializer):
     status_code = serializers.CharField(source='status_text')
-    view = serializers.SerializerMethodField()
     request_timestamp = serializers.DateTimeField(source='submitted_on')
     date_completed = serializers.DateTimeField(source='finished_at')
     error_message = serializers.SerializerMethodField()
     simplification_level = serializers.SerializerMethodField()
     download_url = serializers.SerializerMethodField()
-
-    def get_view(self, obj: ExportRequestBase):
-        # return obj.dataset_view.name
-        raise NotImplementedError
 
     def get_error_message(self, obj: ExportRequestBase):
         return obj.errors if obj.errors else None
@@ -673,10 +668,10 @@ class ExportRequestBaseStatusSerializer(APIResponseModelSerializer):
             'type': openapi.TYPE_OBJECT,
             'title': 'Download Job Detail',
             'properties': {
-                'view': openapi.Schema(
-                    title='View Name',
-                    type=openapi.TYPE_STRING
-                ),
+                # 'view': openapi.Schema(
+                #     title='View Name',
+                #     type=openapi.TYPE_STRING
+                # ),
                 'uuid': openapi.Schema(
                     title='Job UUID',
                     type=openapi.TYPE_STRING,
@@ -719,9 +714,8 @@ class ExportRequestBaseStatusSerializer(APIResponseModelSerializer):
                     type=openapi.TYPE_STRING,
                 ),
             },
-            'required': ['uuid', 'view', 'status_code'],
+            'required': ['uuid', 'status_code'],
             'example': {
-                'view': 'World (Latest)',
                 'uuid': 'b815c0da-e053-44da-b040-b620777ff7bc',
                 'status_code': 'ready',
                 'format': 'GEOJSON',
@@ -740,7 +734,6 @@ class ExportRequestBaseStatusSerializer(APIResponseModelSerializer):
         fields = [
             'uuid',
             'status_code',
-            'view',
             'format',
             'request_timestamp',
             'date_completed',
@@ -755,15 +748,32 @@ class ExportRequestBaseStatusSerializer(APIResponseModelSerializer):
 class DatasetExportRequestStatusSerializer(
     ExportRequestBaseStatusSerializer
 ):
-    def get_view(self, obj: DatasetExportRequest):
+    dataset = serializers.SerializerMethodField()
+
+    def get_dataset(self, obj: DatasetExportRequest):
         return obj.dataset.name
 
     class Meta:
         model = DatasetExportRequest
-        fields = ExportRequestBaseStatusSerializer.Meta.fields
+        fields = ['dataset'] + ExportRequestBaseStatusSerializer.Meta.fields
         filters_schema_fields = (
             ExportRequestBaseStatusSerializer.Meta.filters_schema_fields
         )
-        swagger_schema_fields = (
-            ExportRequestBaseStatusSerializer.Meta.swagger_schema_fields
-        )
+        swagger_schema_fields = {
+            'type': openapi.TYPE_OBJECT,
+            'title': 'Download Job Detail',
+            'properties': {
+                'dataset': openapi.Schema(
+                    title='Dataset Name',
+                    type=openapi.TYPE_STRING
+                ),
+                **ExportRequestBaseStatusSerializer.Meta.
+                swagger_schema_fields['properties']
+            },
+            'required': ['uuid', 'dataset', 'status_code'],
+            'example': {
+                'dataset': 'Ukraine Boundaries',
+                **ExportRequestBaseStatusSerializer.Meta.
+                swagger_schema_fields['example']
+            }
+        }

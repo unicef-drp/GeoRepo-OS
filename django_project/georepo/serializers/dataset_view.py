@@ -686,12 +686,32 @@ class DatasetViewDetailSerializer(TaggitSerializer,
 
 class ExportRequestStatusSerializer(ExportRequestBaseStatusSerializer):
 
+    view = serializers.SerializerMethodField()
+
+    def get_view(self, obj: ExportRequest):
+        return obj.dataset_view.name
+
     class Meta:
         model = ExportRequest
-        fields = ExportRequestBaseStatusSerializer.Meta.fields
+        fields = ['view'] + ExportRequestBaseStatusSerializer.Meta.fields
         filters_schema_fields = (
             ExportRequestBaseStatusSerializer.Meta.filters_schema_fields
         )
-        swagger_schema_fields = (
-            ExportRequestBaseStatusSerializer.Meta.swagger_schema_fields
-        )
+        swagger_schema_fields = swagger_schema_fields = {
+            'type': openapi.TYPE_OBJECT,
+            'title': 'Download Job Detail',
+            'properties': {
+                'view': openapi.Schema(
+                    title='View Name',
+                    type=openapi.TYPE_STRING
+                ),
+                **ExportRequestBaseStatusSerializer.Meta.
+                swagger_schema_fields['properties']
+            },
+            'required': ['uuid', 'view', 'status_code'],
+            'example': {
+                'view': 'Ukraine Boundaries Latest',
+                **ExportRequestBaseStatusSerializer.Meta.
+                swagger_schema_fields['example']
+            }
+        }
