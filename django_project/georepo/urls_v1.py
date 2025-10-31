@@ -58,7 +58,8 @@ from georepo.api_views.entity import (
     FindEntityVersionsByUCode,
     EntityListByAdminLevel0,
     EntityTraverseHierarchyByUCode,
-    EntityTraverseChildrenHierarchyByUCode
+    EntityTraverseChildrenHierarchyByUCode,
+    EntityListByAdminLevelAndConceptUCode
 )
 module_urls = [
     path(
@@ -101,6 +102,11 @@ entity_urls = [
         r'(?P<admin_level>[\d]+)/?$',
         EntityListByAdminLevel.as_view(),
         name='search-entity-by-level'),
+    re_path(
+        r'search/dataset/(?P<uuid>[\da-f-]+)/entity/level/'
+        r'(?P<admin_level>[\d]+)/(?P<concept_ucode>#[^/]+)/?$',
+        EntityListByAdminLevelAndConceptUCode.as_view(),
+        name='search-entity-by-level-and-concept-ucode'),
     re_path(
         r'search/dataset/(?P<uuid>[\da-f-]+)/entity/list/?$',
         EntityListByAdminLevel0.as_view(),
