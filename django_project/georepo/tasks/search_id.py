@@ -8,6 +8,7 @@ from django.db.models.functions import Concat
 from django.db.models import Value as V, CharField
 from django.utils import timezone
 from django.core.files.base import ContentFile
+from georepo.models.dataset import Dataset
 from georepo.models.dataset_view import DatasetView
 from georepo.models.id_type import IdType
 from georepo.models.entity import (
@@ -21,7 +22,7 @@ from georepo.models.base_task_request import (
     PROCESSING, DONE, ERROR
 )
 from georepo.models.search_id_request import (
-    SearchIdRequest
+    SearchIdRequest, SearchIdRequestType
 )
 from georepo.utils.permission import (
     get_view_permission_privacy_level
@@ -90,22 +91,29 @@ def get_id_value(entity, input_type: IdType | str):
     return entity.get(field_key, None)
 
 
-def do_search_id(view: DatasetView,
+def do_search_id(request_object: Dataset | DatasetView,
                  input_type: IdType | str,
                  max_privacy_level: int,
                  input_list):
-    dataset = view.dataset
+    dataset = request_object
+    if isinstance(request_object, DatasetView):
+        dataset = request_object.dataset
+
     entities = GeographicalEntity.objects.filter(
         dataset=dataset,
         is_approved=True,
         privacy_level__lte=max_privacy_level
     )
-    raw_sql = (
-        'SELECT id from "{}"'
-    ).format(str(view.uuid))
-    entities = entities.filter(
-        id__in=RawSQL(raw_sql, [])
-    )
+
+    # filter by view if applicable
+    if isinstance(request_object, DatasetView):
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(request_object.uuid))
+        entities = entities.filter(
+            id__in=RawSQL(raw_sql, [])
+        )
+
     entities, values, max_level, ids, names_max_idx = (
         do_generate_entity_query(entities, dataset.id)
     )
@@ -133,11 +141,24 @@ def process_search_id_request(request_id):
             request, False, None,
             f'Invalid search id request parameters! {params}')
         return
-    # retrieve datasetView
-    view = DatasetView.objects.get(id=params[0])
+
+    dataset = None
+    view = None
+    request_object = None
+    search_type = (
+        params[1] if len(params) >= 2 else SearchIdRequestType.DATASET_VIEW
+    )
+    if search_type == SearchIdRequestType.DATASET:
+        dataset = Dataset.objects.get(id=params[0])
+        request_object = dataset
+    elif search_type == SearchIdRequestType.DATASET_VIEW:
+        view = DatasetView.objects.get(id=params[0])
+        dataset = view.dataset
+        request_object = view
+
     max_privacy_level = get_view_permission_privacy_level(
         request.submitted_by,
-        view.dataset,
+        dataset,
         dataset_view=view
     )
     return_type = None
@@ -170,7 +191,9 @@ def process_search_id_request(request_id):
     try:
         sanitized_inputs = [str(id_input) for id_input in request.input]
         entities, max_level, ids, names = do_search_id(
-            view, input_type, max_privacy_level, sanitized_inputs)
+            request_object, input_type, max_privacy_level,
+            sanitized_inputs
+        )
         for entity in entities:
             id_input = get_id_value(entity, input_type)
             if id_input is None:

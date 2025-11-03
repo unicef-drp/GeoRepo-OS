@@ -37,7 +37,10 @@ from georepo.api_views.entity import (
     FindEntityVersionsByUCode,
     EntityGeometryFuzzySearch,
     EntityContainmentCheck,
-    EntityTraverseHierarchyByUCode
+    EntityTraverseHierarchyByUCode,
+    EntityBatchSearchId,
+    EntityBatchSearchIdStatus,
+    EntityBatchSearchIdResult
 )
 from georepo.models.dataset import Dataset
 from georepo.models.entity import (
@@ -53,7 +56,9 @@ from georepo.models.entity import (
 from georepo.models.id_type import IdType
 from georepo.models.dataset_view import DatasetView
 from georepo.models.base_task_request import PENDING, COMPLETED_STATUS, DONE
-from georepo.models.search_id_request import SearchIdRequest
+from georepo.models.search_id_request import (
+    SearchIdRequestType
+)
 from georepo.models.geocoding_request import (
     GeocodingRequest,
     GEOJSON,
@@ -85,12 +90,8 @@ from georepo.utils.api_parameters import (
 )
 from georepo.utils.entity_query import (
     GeomReturnType,
-    validate_return_type,
     do_generate_fuzzy_query,
     do_generate_entity_query
-)
-from georepo.tasks.search_id import (
-    process_search_id_request
 )
 from georepo.tasks.geocoding import (
     process_geocoding_request
@@ -2346,7 +2347,7 @@ class ViewEntityTraverseChildrenHierarchyByUCode(
 
 
 class ViewEntityBatchSearchId(
-    APILoggingMixin, APIView, DatasetViewDetailCheckPermission
+    EntityBatchSearchId, DatasetViewDetailCheckPermission
 ):
     """
     Batch search to find geographical entities in view by one of ID
@@ -2363,6 +2364,12 @@ class ViewEntityBatchSearchId(
         ```
     """
     permission_classes = [DatasetViewDetailAccessPermission]
+    request_type = SearchIdRequestType.DATASET_VIEW
+    status_url = 'v1:batch-status-search-view-by-id'
+
+    def get_request_object(self, request, kwargs):
+        view, _ = self.get_dataset_view_obj(request, kwargs.get('uuid', None))
+        return view.id, view.uuid
 
     @swagger_auto_schema(
         operation_id='batch-search-view-by-id',
@@ -2421,65 +2428,8 @@ class ViewEntityBatchSearchId(
         }
     )
     def post(self, request, *args, **kwargs):
-        dataset_view, _ = self.get_dataset_view_obj(
-            request, kwargs.get('uuid', None)
-        )
-        input_type_str = kwargs.get('input_type')
-        input_type = validate_return_type(input_type_str)
-        if input_type is None:
-            return Response(
-                status=400,
-                data=APIErrorSerializer({
-                    'detail': f'Invalid Input Type {input_type_str}.'
-                }).data
-            )
-        return_type_str = request.GET.get('return_type', None)
-        if return_type_str:
-            return_type = validate_return_type(return_type_str)
-            if return_type is None:
-                return Response(
-                    status=400,
-                    data=APIErrorSerializer({
-                        'detail': f'Invalid Return Type {return_type_str}.'
-                    }).data
-                )
-        id_value_list = request.data
-        if id_value_list is None or len(id_value_list) == 0:
-            return Response(
-                status=400,
-                data=APIErrorSerializer({
-                    'detail': 'Invalid ID List in request body.'
-                }).data
-            )
-        id_request = SearchIdRequest.objects.create(
-            status=PENDING,
-            submitted_on=timezone.now(),
-            submitted_by=request.user,
-            parameters=f'({str(dataset_view.id)},)',
-            input_id_type=input_type_str,
-            output_id_type=return_type_str,
-            input=id_value_list
-        )
-        task = process_search_id_request.delay(id_request.id)
-        id_request.task_id = task.id
-        id_request.save(update_fields=['task_id'])
-        status_kwargs = {
-            'uuid': str(dataset_view.uuid),
-            'request_id': str(id_request.uuid)
-        }
-        status_url = reverse('v1:batch-status-search-view-by-id',
-                             kwargs=status_kwargs,
-                             request=request)
-        status_url = request.build_absolute_uri(status_url)
-        if not settings.DEBUG:
-            # if not dev env, then replace with https
-            status_url = status_url.replace('http://', 'https://')
-        return Response(
-            status=200,
-            data={
-                'request_id': str(id_request.uuid),
-                'status_url': status_url
-            }
+        return super(ViewEntityBatchSearchId, self).post(
+            request, *args, **kwargs
         )
 
 
@@ -2724,7 +2674,7 @@ class ViewEntityBatchGeocoding(ViewEntityContainmentCheck,
 
 
 class ViewEntityBatchSearchIdStatus(
-    APILoggingMixin, APIView, DatasetViewDetailCheckPermission
+    EntityBatchSearchIdStatus, DatasetViewDetailCheckPermission
 ):
     """
     Check status of batch search by id
@@ -2732,6 +2682,8 @@ class ViewEntityBatchSearchIdStatus(
     Task is completed when status is one of DONE, ERROR, or CANCELLED.
     """
     permission_classes = [DatasetViewDetailAccessPermission]
+    request_type = SearchIdRequestType.DATASET_VIEW
+    result_url = 'v1:batch-result-search-view-by-id'
 
     @swagger_auto_schema(
         operation_id='check-batch-status-search-view-by-id',
@@ -2792,47 +2744,13 @@ class ViewEntityBatchSearchIdStatus(
         }
     )
     def get(self, request, *args, **kwargs):
-        dataset_view, _ = self.get_dataset_view_obj(
-            request, kwargs.get('uuid', None)
-        )
-        request_uuid = kwargs.get('request_id')
-        id_request = get_object_or_404(SearchIdRequest, uuid=request_uuid)
-        if id_request.status in COMPLETED_STATUS:
-            output_url = None
-            if id_request.status == DONE:
-                output_kwargs = {
-                    'uuid': str(dataset_view.uuid),
-                    'request_id': str(id_request.uuid)
-                }
-                output_url = reverse('v1:batch-result-search-view-by-id',
-                                     kwargs=output_kwargs,
-                                     request=request)
-                output_url = request.build_absolute_uri(output_url)
-                if not settings.DEBUG:
-                    # if not dev env, then replace with https
-                    output_url = output_url.replace('http://', 'https://')
-            return Response(
-                status=200,
-                data={
-                    'request_id': str(id_request.uuid),
-                    'status': id_request.status,
-                    'error': id_request.errors,
-                    'output_url': output_url
-                }
-            )
-        return Response(
-            status=200,
-            data={
-                'request_id': str(id_request.uuid),
-                'status': id_request.status,
-                'error': id_request.errors,
-                'output_url': None
-            }
+        return super(ViewEntityBatchSearchIdStatus, self).get(
+            request, *args, **kwargs
         )
 
 
 class ViewEntityBatchSearchIdResult(
-    APILoggingMixin, APIView, DatasetViewDetailCheckPermission
+    EntityBatchSearchIdResult, DatasetViewDetailCheckPermission
 ):
     """
     Fetch output results of batch search by id
@@ -2870,6 +2788,7 @@ class ViewEntityBatchSearchIdResult(
         | bbox | Bounding box of this geographical entity |
     """
     permission_classes = [DatasetViewDetailAccessPermission]
+    request_type = SearchIdRequestType.DATASET_VIEW
 
     @swagger_auto_schema(
         operation_id='get-result-batch-search-view-by-id',
@@ -2900,22 +2819,8 @@ class ViewEntityBatchSearchIdResult(
         }
     )
     def get(self, request, *args, **kwargs):
-        self.get_dataset_view_obj(
-            request, kwargs.get('uuid', None)
-        )
-        request_uuid = kwargs.get('request_id')
-        id_request = get_object_or_404(SearchIdRequest,
-                                       uuid=request_uuid)
-        if id_request.status == DONE and id_request.output_file:
-            return FileResponse(
-                id_request.output_file,
-                as_attachment=True
-            )
-        return Response(
-            status=404,
-            data={
-                'detail': 'Batch search id process is not completed yet.'
-            }
+        return super(ViewEntityBatchSearchIdResult, self).get(
+            request, *args, **kwargs
         )
 
 

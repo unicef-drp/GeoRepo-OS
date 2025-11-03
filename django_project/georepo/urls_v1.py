@@ -59,7 +59,10 @@ from georepo.api_views.entity import (
     EntityListByAdminLevel0,
     EntityTraverseHierarchyByUCode,
     EntityTraverseChildrenHierarchyByUCode,
-    EntityListByAdminLevelAndConceptUCode
+    EntityListByAdminLevelAndConceptUCode,
+    EntityBatchSearchId,
+    EntityBatchSearchIdStatus,
+    EntityBatchSearchIdResult
 )
 module_urls = [
     path(
@@ -152,6 +155,24 @@ entity_urls = [
         '<path:ucode>/children/',
         EntityTraverseChildrenHierarchyByUCode.as_view(),
         name='search-entity-children-by-ucode'),
+    path(
+        'search/dataset/<uuid:uuid>/entity/batch/identifier/'
+        '<str:input_type>/',
+        EntityBatchSearchId.as_view(),
+        name='batch-search-entity-by-id'
+    ),
+    path(
+        'search/dataset/<uuid:uuid>/entity/batch/identifier/'
+        'status/<uuid:request_id>/',
+        EntityBatchSearchIdStatus.as_view(),
+        name='batch-status-search-entity-by-id'
+    ),
+    path(
+        'search/dataset/<uuid:uuid>/entity/batch/identifier/'
+        'result/<uuid:request_id>/',
+        EntityBatchSearchIdResult.as_view(),
+        name='batch-result-search-entity-by-id'
+    ),
 ]
 
 operation_entity_urls = [

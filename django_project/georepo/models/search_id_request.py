@@ -2,6 +2,12 @@ from django.db import models
 from georepo.models.base_task_request import BaseTaskRequest
 
 
+class SearchIdRequestType:
+
+    DATASET = 0
+    DATASET_VIEW = 1
+
+
 class SearchIdRequest(BaseTaskRequest):
 
     input_id_type = models.CharField(
