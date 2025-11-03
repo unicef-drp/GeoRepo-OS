@@ -50,7 +50,7 @@ RUN apt-get install -y --no-install-recommends gdal-bin
 RUN npm install -g topojson-server
 
 # mapshaper
-RUN npm install -g mapshaper
+RUN npm install -g mapshaper@0.6.113
 
 ADD django_project /home/web/django_project
 
