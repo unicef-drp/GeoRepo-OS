@@ -427,6 +427,50 @@ def handle_task_interrupted(task: BackgroundTask):
         else:
             request.errors = 'Job is interrupted!'
         request.save(update_fields=['status_text', 'status', 'errors'])
+    elif task_name == 'view_simplification_task':
+        if len(task_param) == 0:
+            raise ValueError(
+                'Invalid parameter view_simplification_task')
+
+        view_id = task_param[0]
+        view = DatasetView.objects.filter(id=view_id).first()
+        if view is None:
+            return
+        has_custom_tiling_config = (
+            view.datasetviewtilingconfig_set.exists()
+        )
+        if has_custom_tiling_config:
+            if (
+                view.simplification_sync_status ==
+                DatasetView.SyncStatus.SYNCING
+            ):
+                view.simplification_task_id = ''
+                view.simplification_progress = 'Simplification interrupted'
+                view.simplification_current_task = None
+                view.simplification_sync_status = (
+                    DatasetView.SyncStatus.ERROR
+                )
+                view.save(update_fields=[
+                    'simplification_task_id',
+                    'simplification_progress',
+                    'simplification_current_task',
+                    'simplification_sync_status'
+                ])
+        else:
+            # update dataset simplification status
+            dataset = view.dataset
+            if (
+                dataset.simplification_sync_status ==
+                Dataset.SyncStatus.SYNCING
+            ):
+                dataset.simplification_progress = 'Simplification interrupted'
+                dataset.simplification_sync_status = Dataset.SyncStatus.ERROR
+                dataset.simplification_task_id = ''
+                dataset.save(update_fields=[
+                    'simplification_progress',
+                    'simplification_sync_status',
+                    'simplification_task_id'
+                ])
 
 
 @shared_task(name="remove_old_background_tasks")
