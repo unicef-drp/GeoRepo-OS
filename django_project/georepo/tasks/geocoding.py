@@ -11,12 +11,15 @@ from django.db import connection
 from django.conf import settings
 from django.contrib.gis.geos import Polygon, MultiPolygon
 from django.utils import timezone
+from georepo.models.dataset import Dataset
 from georepo.models.dataset_view import DatasetView
 from georepo.models.id_type import IdType
 from georepo.models.base_task_request import (
     PROCESSING, DONE, ERROR
 )
-from georepo.models.geocoding_request import GeocodingRequest
+from georepo.models.geocoding_request import (
+    GeocodingRequest, GeocodingRequestType
+)
 from georepo.utils.fiona_utils import (
     open_collection_by_file,
     delete_tmp_shapefile
@@ -124,19 +127,19 @@ def get_spatial_join(spatial_query: str, dwithin_distance: int):
     return spatial_params
 
 
-def get_containment_check_query(view: DatasetView,
-                                table_name: str,
-                                spatial_query: str,
-                                dwithin_distance: int,
-                                max_privacy_level,
-                                return_type: IdType | str,
-                                admin_level: int,
-                                find_nearest: bool = False):
+def get_containment_check_query(
+    request_object: Dataset | DatasetView, table_name: str,
+    spatial_query: str, dwithin_distance: int,
+    max_privacy_level, return_type: IdType | str,
+    admin_level: int, find_nearest: bool = False
+):
     other_joins = []
     sql_conds = [
         'gg.dataset_id = %s'
     ]
-    query_values = [view.dataset.id]
+    query_values = [request_object.id]
+    if isinstance(request_object, DatasetView):
+        query_values = [request_object.dataset.id]
 
     if isinstance(return_type, IdType):
         other_joins.append(
@@ -151,9 +154,12 @@ def get_containment_check_query(view: DatasetView,
     sql_conds.append('gg.is_approved = true')
     sql_conds.append('gg.privacy_level <= %s')
     query_values.append(max_privacy_level)
-    sql_conds.append(
-        "gg.id IN (SELECT id from \"{}\")".format(str(view.uuid))
-    )
+    if isinstance(request_object, DatasetView):
+        sql_conds.append(
+            "gg.id IN (SELECT id from \"{}\")".format(
+                str(request_object.uuid)
+            )
+        )
 
     where_sql = ' AND '.join(sql_conds)
     select_values = [
@@ -163,7 +169,10 @@ def get_containment_check_query(view: DatasetView,
     if find_nearest:
         select_values.append('nearest.entity_id')
         select_values.append('nearest.dist')
-        query_values.append(view.dataset.id)
+        if isinstance(request_object, Dataset):
+            query_values.append(request_object.id)
+        else:
+            query_values.append(request_object.dataset.id)
         query_values.append(admin_level)
         query_values.append(max_privacy_level)
     format_sql = (
@@ -203,17 +212,15 @@ def get_containment_check_query(view: DatasetView,
     return sql, query_values
 
 
-def do_containment_check(geocoding_request: GeocodingRequest,
-                         view: DatasetView,
-                         table_name: str,
-                         spatial_query: str,
-                         dwithin_distance: int,
-                         max_privacy_level,
-                         return_type: IdType | str,
-                         admin_level: int,
-                         find_nearest: bool = False):
+def do_containment_check(
+    geocoding_request: GeocodingRequest,
+    request_object: Dataset | DatasetView,
+    table_name: str, spatial_query: str, dwithin_distance: int,
+    max_privacy_level, return_type: IdType | str,
+    admin_level: int, find_nearest: bool = False
+):
     sql, query_values = get_containment_check_query(
-        view, table_name, spatial_query, dwithin_distance,
+        request_object, table_name, spatial_query, dwithin_distance,
         max_privacy_level, return_type, admin_level, find_nearest
     )
     suffix = '.geojson'
@@ -363,11 +370,25 @@ def process_geocoding_request(request_id):
             geocoding_request, False, None, 0,
             f'Invalid geocoding request parameters! {params}')
         return
-    # retrieve datasetView
-    view = DatasetView.objects.get(id=params[0])
+
+    dataset = None
+    view = None
+    request_object = None
+    search_type = (
+        params[1] if len(params) >= 2 else GeocodingRequestType.DATASET_VIEW
+    )
+
+    if search_type == GeocodingRequestType.DATASET:
+        dataset = Dataset.objects.get(id=params[0])
+        request_object = dataset
+    elif search_type == GeocodingRequestType.DATASET_VIEW:
+        view = DatasetView.objects.get(id=params[0])
+        dataset = view.dataset
+        request_object = view
+
     max_privacy_level = get_view_permission_privacy_level(
         geocoding_request.submitted_by,
-        view.dataset,
+        dataset,
         dataset_view=view
     )
     spatial_query = params[1]
@@ -418,7 +439,8 @@ def process_geocoding_request(request_id):
     errors = None
     try:
         output_file = do_containment_check(
-            geocoding_request, view, geocoding_request.table_name(TEMP_SCHEMA),
+            geocoding_request, request_object,
+            geocoding_request.table_name(TEMP_SCHEMA),
             spatial_query, dwithin_distance, max_privacy_level,
             return_type, admin_level, find_nearest
         )
