@@ -62,7 +62,10 @@ from georepo.api_views.entity import (
     EntityListByAdminLevelAndConceptUCode,
     EntityBatchSearchId,
     EntityBatchSearchIdStatus,
-    EntityBatchSearchIdResult
+    EntityBatchSearchIdResult,
+    EntityBatchGeocoding,
+    EntityBatchGeocodingStatus,
+    EntityBatchGeocodingResult
 )
 module_urls = [
     path(
@@ -188,6 +191,25 @@ operation_entity_urls = [
         r'(?P<id_type>[^/]+)/?$',
         EntityContainmentCheck.as_view(),
         name='entity-containment-check'
+    ),
+    path(
+        'operation/dataset/<uuid:uuid>/batch-containment-check/'
+        'status/<uuid:request_id>/',
+        EntityBatchGeocodingStatus.as_view(),
+        name='entity-check-status-batch-geocoding'
+    ),
+    path(
+        'operation/dataset/<uuid:uuid>/batch-containment-check/'
+        'result/<uuid:request_id>/',
+        EntityBatchGeocodingResult.as_view(),
+        name='entity-get-result-batch-geocoding'
+    ),
+    re_path(
+        r'operation/dataset/(?P<uuid>[\da-f-]+)/batch-containment-check/'
+        r'(?P<spatial_query>[^/]+)/(?P<distance>[\d]+)/'
+        r'(?P<admin_level>[\d]+)/(?P<id_type>[^/]+)/?$',
+        EntityBatchGeocoding.as_view(),
+        name='entity-batch-geocoding'
     ),
 ]
 

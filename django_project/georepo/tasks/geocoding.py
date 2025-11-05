@@ -374,8 +374,9 @@ def process_geocoding_request(request_id):
     dataset = None
     view = None
     request_object = None
+    # request type is at index 5 (last parameter)
     search_type = (
-        params[1] if len(params) >= 2 else GeocodingRequestType.DATASET_VIEW
+        params[5] if len(params) == 6 else GeocodingRequestType.DATASET_VIEW
     )
 
     if search_type == GeocodingRequestType.DATASET:

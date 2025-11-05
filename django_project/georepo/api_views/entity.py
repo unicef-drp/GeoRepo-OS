@@ -1,3 +1,4 @@
+import os
 import json
 import math
 from typing import Tuple
@@ -8,6 +9,7 @@ from django.http import Http404, FileResponse
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from django.conf import settings
+from django.core.files.uploadedfile import TemporaryUploadedFile
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from django.utils.decorators import method_decorator
@@ -16,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
+from rest_framework.parsers import MultiPartParser
 from django.contrib.gis.geos import GEOSGeometry
 from core.models.preferences import SitePreferences
 from django.db.models import FilteredRelation, Q, Value, F, IntegerField
@@ -87,6 +90,20 @@ from georepo.utils.entity_query import (
 )
 from georepo.tasks.search_id import (
     process_search_id_request
+)
+from georepo.models.geocoding_request import (
+    GeocodingRequestType,
+    GeocodingRequest,
+    GEOJSON,
+    SHAPEFILE,
+    GEOPACKAGE
+)
+from georepo.tasks.geocoding import process_geocoding_request
+from georepo.utils.shapefile import (
+    validate_shapefile_zip
+)
+from georepo.utils.layers import (
+    validate_layer_file_metadata
 )
 
 
@@ -3337,5 +3354,422 @@ class EntityBatchSearchIdResult(
             status=404,
             data={
                 'detail': 'Batch search id process is not completed yet.'
+            }
+        )
+
+
+class EntityBatchGeocoding(EntityContainmentCheck):
+    permission_classes = [DatasetDetailAccessPermission]
+    parser_classes = (MultiPartParser,)
+    uuid_param = openapi.Parameter(
+        'uuid', openapi.IN_PATH,
+        description='Dataset UUID',
+        type=openapi.TYPE_STRING
+    )
+    squery_param = openapi.Parameter(
+        'spatial_query', openapi.IN_PATH,
+        description=(
+            'Spatial Query, e.g. ST_Intersects, ST_Within, '
+            'ST_Within(ST_Centroid), ST_DWithin'
+        ),
+        type=openapi.TYPE_STRING
+    )
+    squeryd_param = openapi.Parameter(
+        'distance', openapi.IN_PATH,
+        description='Distance for ST_DWithin',
+        type=openapi.TYPE_NUMBER,
+        default=0
+    )
+    admin_level_param = openapi.Parameter(
+        'admin_level', openapi.IN_PATH,
+        description=(
+            'Admin level. Example: 0'
+        ),
+        type=openapi.TYPE_INTEGER
+    )
+    id_type_param = openapi.Parameter(
+        'id_type', openapi.IN_PATH,
+        description=(
+            'ID Type; The list is available from '
+            'id-type-list API. Example: PCode'
+        ),
+        type=openapi.TYPE_STRING
+    )
+    find_nearest_param = openapi.Parameter(
+        'find_nearest', openapi.IN_QUERY,
+        description=(
+            'Return the nearest entity when the input geometry '
+            'does not fall into any of the boundaries. Default to False'
+        ),
+        default=False,
+        type=openapi.TYPE_BOOLEAN
+    )
+    post_body = openapi.Parameter(
+        'file', openapi.IN_FORM,
+        description=(
+            'Geometry data (SRID 4326) in one of the format: '
+            'geojson, shapefile, GPKG'
+        ),
+        type=openapi.TYPE_FILE
+    )
+
+    request_type = GeocodingRequestType.DATASET
+    status_url = 'v1:entity-check-status-batch-geocoding'
+
+    def get_request_object(self, request, kwargs):
+        dataset, _ = self.get_dataset_obj(request, kwargs)
+        return dataset.id, dataset.uuid
+
+    def check_layer_type(self, filename: str) -> str:
+        if (filename.lower().endswith('.geojson') or
+                filename.lower().endswith('.json')):
+            return GEOJSON
+        elif filename.lower().endswith('.zip'):
+            return SHAPEFILE
+        elif filename.lower().endswith('.gpkg'):
+            return GEOPACKAGE
+        return ''
+
+    def check_shapefile_zip(self, file_obj: any) -> str:
+        _, error = validate_shapefile_zip(file_obj)
+        if error:
+            return ('Missing required file(s) inside zip file: \n- ' +
+                    '\n- '.join(error)
+                    )
+        return ''
+
+    def remove_temp_file(self, file_obj: any) -> None:
+        if isinstance(file_obj, TemporaryUploadedFile):
+            if os.path.exists(file_obj.temporary_file_path()):
+                os.remove(file_obj.temporary_file_path())
+
+    def validate_crs_type(self, file_obj: any, type: any):
+        is_valid_crs, crs, _, _ = (
+            validate_layer_file_metadata(file_obj, type)
+        )
+        return is_valid_crs, crs
+
+    @swagger_auto_schema(
+        operation_id='entity-batch-geocoding',
+        tags=[OPERATION_ENTITY_TAG],
+        manual_parameters=[
+            uuid_param,
+            squery_param,
+            squeryd_param,
+            admin_level_param,
+            id_type_param,
+            find_nearest_param,
+            post_body
+        ],
+        # request_body=post_body,
+        responses={
+            200: openapi.Schema(
+                title='Batch Task Item',
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'request_id': openapi.Schema(
+                        title='Task Request ID',
+                        type=openapi.TYPE_STRING
+                    ),
+                    'status_url': openapi.Schema(
+                        title='URL to Batch Task Status API',
+                        type=openapi.TYPE_STRING
+                    ),
+                },
+                example={
+                    'request_id': 'af9c24a0-02cf-4a12-beb2-fac126a9c709',
+                    'status_url': (
+                        '{base_url}/api/v1/operation/dataset/'
+                        'cd20c26b-ac26-47c3-8b73-a998cb1efff7/'
+                        'batch-containment-check/status/'
+                        'af9c24a0-02cf-4a12-beb2-fac126a9c709/'
+                    )
+                }
+            ),
+            400: APIErrorSerializer
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        request_obj_id, request_obj_uuid = self.get_request_object(
+            request, kwargs
+        )
+
+        spatial_query = kwargs.get('spatial_query', None)
+        if not spatial_query or not self.validate_query_type(spatial_query):
+            return Response(
+                status=400,
+                data=APIErrorSerializer({
+                    'detail': 'Invalid Spatial Query.'
+                }).data
+            )
+        dwithin_distance = kwargs.get('distance', None)
+        if (spatial_query == 'ST_DWithin' and
+                dwithin_distance is None):
+            return Response(
+                status=400,
+                data=APIErrorSerializer({
+                    'detail': 'Invalid Distance in DWithin Spatial Query.'
+                }).data
+            )
+        elif spatial_query != 'ST_DWithin':
+            dwithin_distance = 0
+        return_type_str = kwargs.get('id_type', None)
+        return_type_str = return_type_str.lower() if return_type_str else None
+        return_type = self.validate_return_type(return_type_str)
+        if not return_type:
+            return Response(
+                status=400,
+                data=APIErrorSerializer({
+                    'detail': f'Invalid Type {return_type_str}.'
+                }).data
+            )
+        admin_level = kwargs.get('admin_level', 0)
+        file_obj = request.data['file']
+        layer_type = self.check_layer_type(file_obj.name)
+        if layer_type == '':
+            self.remove_temp_file(file_obj)
+            return Response(
+                status=400,
+                data=APIErrorSerializer({
+                    'detail': 'Unrecognized file type!'
+                }).data
+            )
+        if layer_type == SHAPEFILE:
+            validate_shp_file = self.check_shapefile_zip(file_obj)
+            if validate_shp_file != '':
+                self.remove_temp_file(file_obj)
+                return Response(
+                    status=400,
+                    data=APIErrorSerializer({
+                        'detail': validate_shp_file
+                    }).data
+                )
+        is_valid_crs, crs = self.validate_crs_type(file_obj, layer_type)
+        if not is_valid_crs:
+            self.remove_temp_file(file_obj)
+            return Response(
+                status=400,
+                data=APIErrorSerializer({
+                    'detail': f'Incorrect CRS type: {crs}!'
+                }).data
+            )
+        try:
+            find_nearest = self.request.GET.get('find_nearest', 'false')
+            find_nearest = find_nearest.lower() == 'true'
+            geocoding_request = GeocodingRequest.objects.create(
+                status=PENDING,
+                submitted_on=timezone.now(),
+                submitted_by=request.user,
+                file_type=layer_type,
+                parameters=(
+                    f'({str(request_obj_id.id)},\'{spatial_query}\','
+                    f'{dwithin_distance},\'{return_type_str}\',{admin_level},'
+                    f'{str(find_nearest)},{self.request_type})'
+                )
+            )
+            geocoding_request.file = file_obj
+            geocoding_request.save(update_fields=['file'])
+        except Exception as ex:
+            # if fail to upload, remove the file
+            geocoding_request.delete()
+            return Response(
+                status=400,
+                data=APIErrorSerializer({
+                    'detail': f'Unable to save the file: {str(ex)}'
+                }).data
+            )
+        finally:
+            self.remove_temp_file(file_obj)
+
+        task = process_geocoding_request.delay(geocoding_request.id)
+        geocoding_request.task_id = task.id
+        geocoding_request.save(update_fields=['task_id'])
+        status_kwargs = {
+            'uuid': str(request_obj_uuid),
+            'request_id': str(geocoding_request.uuid)
+        }
+        status_url = reverse(self.status_url,
+                             kwargs=status_kwargs,
+                             request=request)
+        status_url = request.build_absolute_uri(status_url)
+        if not settings.DEBUG:
+            # if not dev env, then replace with https
+            status_url = status_url.replace('http://', 'https://')
+        return Response(
+            status=200,
+            data={
+                'request_id': str(geocoding_request.uuid),
+                'status_url': status_url
+            }
+        )
+
+
+class EntityBatchGeocodingStatus(
+    APILoggingMixin, APIView, DatasetDetailCheckPermission
+):
+    """
+    Check status of batch geocoding
+
+    Task is completed when status is one of DONE, ERROR, or CANCELLED.
+    """
+    permission_classes = [DatasetDetailAccessPermission]
+    request_type = GeocodingRequestType.DATASET
+    result_url = 'v1:entity-get-result-batch-geocoding'
+
+    def get_request_object(self, request, kwargs):
+        dataset, _ = self.get_dataset_obj(request, kwargs)
+        return dataset.id, dataset.uuid
+
+    @swagger_auto_schema(
+        operation_id='entity-check-status-batch-geocoding',
+        tags=[OPERATION_ENTITY_TAG],
+        manual_parameters=[
+            openapi.Parameter(
+                'uuid', openapi.IN_PATH,
+                description='Dataset UUID', type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'request_id', openapi.IN_PATH,
+                description=(
+                    'Task Request ID'
+                ),
+                type=openapi.TYPE_STRING
+            )
+        ],
+        responses={
+            200: openapi.Schema(
+                title='Geocoding Batch Task Status',
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'request_id': openapi.Schema(
+                        title='Request ID',
+                        type=openapi.TYPE_STRING
+                    ),
+                    'status': openapi.Schema(
+                        title=(
+                            'Task Status. One of PENDING, PROCESSING, DONE, '
+                            'ERROR, CANCELLED'
+                        ),
+                        type=openapi.TYPE_STRING
+                    ),
+                    'error': openapi.Schema(
+                        title=(
+                            'Error when batch job is failed'
+                        ),
+                        type=openapi.TYPE_STRING
+                    ),
+                    'output_url': openapi.Schema(
+                        title='URL to download output GeoJSON File',
+                        type=openapi.TYPE_STRING
+                    ),
+                },
+                example={
+                    'request_id': 'af9c24a0-02cf-4a12-beb2-fac126a9c709',
+                    'status': 'DONE',
+                    'error': None,
+                    'output_url': (
+                        '{base_url}/api/v1/search/dataset/'
+                        'cd20c26b-ac26-47c3-8b73-a998cb1efff7/'
+                        'batch-containment-check/result/'
+                        'af9c24a0-02cf-4a12-beb2-fac126a9c709/'
+                    )
+                }
+            ),
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        _, request_obj_uuid = self.get_request_object(
+            request, kwargs
+        )
+        request_uuid = kwargs.get('request_id')
+        geocoding_request = get_object_or_404(GeocodingRequest,
+                                              uuid=request_uuid)
+        if geocoding_request.status in COMPLETED_STATUS:
+            output_kwargs = {
+                'uuid': str(request_obj_uuid),
+                'request_id': str(geocoding_request.uuid)
+            }
+            output_url = reverse(self.result_url,
+                                 kwargs=output_kwargs,
+                                 request=request)
+            output_url = request.build_absolute_uri(output_url)
+            if not settings.DEBUG:
+                # if not dev env, then replace with https
+                output_url = output_url.replace('http://', 'https://')
+            return Response(
+                status=200,
+                data={
+                    'request_id': str(geocoding_request.uuid),
+                    'status': geocoding_request.status,
+                    'error': geocoding_request.errors,
+                    'output_url': output_url
+                }
+            )
+        return Response(
+            status=200,
+            data={
+                'request_id': str(geocoding_request.uuid),
+                'status': geocoding_request.status,
+                'error': geocoding_request.errors,
+                'output_url': None
+            }
+        )
+
+
+class EntityBatchGeocodingResult(
+    APILoggingMixin, APIView, DatasetDetailCheckPermission
+):
+    """
+    Fetch geojson output of batch geocoding
+
+    Return the geojson that contains geocoding output in one of the properties.
+    """
+    permission_classes = [DatasetDetailAccessPermission]
+
+    @swagger_auto_schema(
+        operation_id='entity-get-result-batch-geocoding',
+        tags=[OPERATION_ENTITY_TAG],
+        manual_parameters=[
+            openapi.Parameter(
+                'uuid', openapi.IN_PATH,
+                description='Dataset UUID', type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'request_id', openapi.IN_PATH,
+                description=(
+                    'Task Request ID'
+                ),
+                type=openapi.TYPE_STRING
+            )
+        ],
+        responses={
+            200: openapi.Schema(
+                title='Geojson file',
+                description=(
+                    'Geojson that contains geocoding output in '
+                    'the properties.'
+                ),
+                type=openapi.TYPE_FILE,
+            ),
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        self.get_request_object(
+            request, kwargs
+        )
+        request_uuid = kwargs.get('request_id')
+        geocoding_request = get_object_or_404(GeocodingRequest,
+                                              uuid=request_uuid)
+        if geocoding_request.status == DONE and geocoding_request.output_file:
+            return FileResponse(
+                geocoding_request.output_file,
+                as_attachment=True
+            )
+        return Response(
+            status=404,
+            data={
+                'detail': 'Geocoding process is not completed yet.'
             }
         )
