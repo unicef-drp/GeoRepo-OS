@@ -1,6 +1,10 @@
 
 # ordering API
 API_ORDERS = {
+    "00-search-entity": [
+        "search-entity-by-ucode",
+        "search-entity-by-concept-ucode"
+    ],
     "01-search-module": [],
     "02-search-dataset": [
         "search-dataset-list",
@@ -9,8 +13,6 @@ API_ORDERS = {
     "03-search-dataset-entity": [],
     "04-search-view": [],
     "05-search-view-entity": [
-        "search-entity-by-ucode",
-        "search-entity-by-concept-ucode",
         "search-view-entity-by-id",
         "search-view-entity-by-level",
         "search-view-entity-by-level-and-ucode",
