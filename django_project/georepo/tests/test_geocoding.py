@@ -41,7 +41,7 @@ class TestProcessGeocodingRequest(BaseDatasetViewTest):
         self.assertIn(self.dataset.id, query_values)
         self.assertIn(4, query_values)
 
-    @mock.patch('georepo.api_views.entity_view.'
+    @mock.patch('georepo.api_views.entity.'
                 'process_geocoding_request.delay')
     def test_submit_batch_geocoding(self, mocked_task):
         mocked_task.side_effect = mocked_process
@@ -86,7 +86,7 @@ class TestProcessGeocodingRequest(BaseDatasetViewTest):
         self.assertTrue(geocoding_request.file)
         params = (
             f'({str(self.dataset_view.id)},\'ST_Intersects\','
-            f'0,\'ucode\',0,False)'
+            f'0,\'ucode\',0,False,1)'
         )
         self.assertEqual(geocoding_request.parameters, params)
         self.assertTrue(geocoding_request.task_id)
@@ -142,7 +142,7 @@ class TestProcessGeocodingRequest(BaseDatasetViewTest):
             self.assertIn('ucode', feat_3['properties'])
             self.assertEqual(len(feat_3['properties']['ucode']), 0)
 
-    @mock.patch('georepo.api_views.entity_view.'
+    @mock.patch('georepo.api_views.entity.'
                 'process_geocoding_request.delay')
     def test_submit_batch_geocoding_nearest(self, mocked_task):
         mocked_task.side_effect = mocked_process
@@ -187,7 +187,7 @@ class TestProcessGeocodingRequest(BaseDatasetViewTest):
         self.assertTrue(geocoding_request.file)
         params = (
             f'({str(self.dataset_view.id)},\'ST_Intersects\','
-            f'0,\'ucode\',0,True)'
+            f'0,\'ucode\',0,True,1)'
         )
         self.assertEqual(geocoding_request.parameters, params)
         self.assertTrue(geocoding_request.task_id)
@@ -216,7 +216,7 @@ class TestProcessGeocodingRequest(BaseDatasetViewTest):
             self.assertEqual(feat_3['properties']['ucode'][0],
                              self.pak0_2.ucode)
 
-    @mock.patch('georepo.api_views.entity_view.'
+    @mock.patch('georepo.api_views.entity.'
                 'process_geocoding_request.delay')
     def test_submit_batch_geocoding_nearest_concept_uuid(self, mocked_task):
         mocked_task.side_effect = mocked_process
@@ -261,7 +261,7 @@ class TestProcessGeocodingRequest(BaseDatasetViewTest):
         self.assertTrue(geocoding_request.file)
         params = (
             f'({str(self.dataset_view.id)},\'ST_Intersects\','
-            f'0,\'concept_uuid\',0,True)'
+            f'0,\'concept_uuid\',0,True,1)'
         )
         self.assertEqual(geocoding_request.parameters, params)
         self.assertTrue(geocoding_request.task_id)

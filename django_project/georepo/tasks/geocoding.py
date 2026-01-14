@@ -374,9 +374,9 @@ def process_geocoding_request(request_id):
     dataset = None
     view = None
     request_object = None
-    # request type is at index 5 (last parameter)
+    # request type is at index 6 (last parameter)
     search_type = (
-        params[5] if len(params) == 6 else GeocodingRequestType.DATASET_VIEW
+        params[6] if len(params) == 7 else GeocodingRequestType.DATASET_VIEW
     )
 
     if search_type == GeocodingRequestType.DATASET:
@@ -396,7 +396,7 @@ def process_geocoding_request(request_id):
     dwithin_distance = int(params[2])
     return_type_str = params[3]
     admin_level = int(params[4])
-    find_nearest = params[5] if len(params) == 6 else False
+    find_nearest = params[5]
     return_type = validate_return_type(return_type_str)
     if return_type is None:
         logger.error(

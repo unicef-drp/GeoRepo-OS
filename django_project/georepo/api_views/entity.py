@@ -3553,6 +3553,7 @@ class EntityBatchGeocoding(EntityContainmentCheck):
                     'detail': f'Incorrect CRS type: {crs}!'
                 }).data
             )
+        geocoding_request = None
         try:
             find_nearest = self.request.GET.get('find_nearest', 'false')
             find_nearest = find_nearest.lower() == 'true'
@@ -3562,7 +3563,7 @@ class EntityBatchGeocoding(EntityContainmentCheck):
                 submitted_by=request.user,
                 file_type=layer_type,
                 parameters=(
-                    f'({str(request_obj_id.id)},\'{spatial_query}\','
+                    f'({str(request_obj_id)},\'{spatial_query}\','
                     f'{dwithin_distance},\'{return_type_str}\',{admin_level},'
                     f'{str(find_nearest)},{self.request_type})'
                 )
@@ -3570,8 +3571,9 @@ class EntityBatchGeocoding(EntityContainmentCheck):
             geocoding_request.file = file_obj
             geocoding_request.save(update_fields=['file'])
         except Exception as ex:
-            # if fail to upload, remove the file
-            geocoding_request.delete()
+            if geocoding_request:
+                # if fail to upload, remove the file
+                geocoding_request.delete()
             return Response(
                 status=400,
                 data=APIErrorSerializer({
@@ -3726,6 +3728,10 @@ class EntityBatchGeocodingResult(
     Return the geojson that contains geocoding output in one of the properties.
     """
     permission_classes = [DatasetDetailAccessPermission]
+
+    def get_request_object(self, request, kwargs):
+        dataset, _ = self.get_dataset_obj(request, kwargs)
+        return dataset.id, dataset.uuid
 
     @swagger_auto_schema(
         operation_id='entity-get-result-batch-geocoding',

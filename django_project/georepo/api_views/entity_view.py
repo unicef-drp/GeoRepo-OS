@@ -2477,6 +2477,10 @@ class ViewEntityBatchGeocoding(
         type=openapi.TYPE_FILE
     )
 
+    def get_request_object(self, request, kwargs):
+        view, _ = self.get_dataset_view_obj(request, kwargs.get('uuid', None))
+        return view.id, view.uuid
+
     @swagger_auto_schema(
         operation_id='batch-geocoding',
         tags=[OPERATION_VIEW_ENTITY_TAG],
@@ -2534,6 +2538,10 @@ class ViewEntityBatchSearchIdStatus(
     permission_classes = [DatasetViewDetailAccessPermission]
     request_type = SearchIdRequestType.DATASET_VIEW
     result_url = 'v1:batch-result-search-view-by-id'
+
+    def get_request_object(self, request, kwargs):
+        view, _ = self.get_dataset_view_obj(request, kwargs.get('uuid', None))
+        return view.id, view.uuid
 
     @swagger_auto_schema(
         operation_id='check-batch-status-search-view-by-id',
@@ -2640,6 +2648,10 @@ class ViewEntityBatchSearchIdResult(
     permission_classes = [DatasetViewDetailAccessPermission]
     request_type = SearchIdRequestType.DATASET_VIEW
 
+    def get_request_object(self, request, kwargs):
+        view, _ = self.get_dataset_view_obj(request, kwargs.get('uuid', None))
+        return view.id, view.uuid
+
     @swagger_auto_schema(
         operation_id='get-result-batch-search-view-by-id',
         tags=[SEARCH_VIEW_ENTITY_TAG],
@@ -2685,6 +2697,10 @@ class ViewEntityBatchGeocodingStatus(
     permission_classes = [DatasetViewDetailAccessPermission]
     request_type = GeocodingRequestType.DATASET_VIEW
     result_url = 'v1:get-result-batch-geocoding'
+
+    def get_request_object(self, request, kwargs):
+        view, _ = self.get_dataset_view_obj(request, kwargs.get('uuid', None))
+        return view.id, view.uuid
 
     @swagger_auto_schema(
         operation_id='check-status-batch-geocoding',
@@ -2760,6 +2776,10 @@ class ViewEntityBatchGeocodingResult(
     """
     permission_classes = [DatasetViewDetailAccessPermission]
     request_type = GeocodingRequestType.DATASET_VIEW
+
+    def get_request_object(self, request, kwargs):
+        view, _ = self.get_dataset_view_obj(request, kwargs.get('uuid', None))
+        return view.id, view.uuid
 
     @swagger_auto_schema(
         operation_id='get-result-batch-geocoding',

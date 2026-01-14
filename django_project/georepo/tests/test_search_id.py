@@ -73,7 +73,7 @@ class TestSearchId(BaseDatasetViewTest):
         f.close()
         id_request.delete()
 
-    @mock.patch('georepo.api_views.entity_view.'
+    @mock.patch('georepo.api_views.entity.'
                 'process_search_id_request.delay')
     def test_submit_search_id_request(self, mocked_task):
         mocked_task.side_effect = mocked_process
