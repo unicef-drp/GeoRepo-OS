@@ -1,4 +1,5 @@
 # NOTE: change in tag, please also change API_ORDERS
+SEARCH_ENTITY_BASE_TAG = '00-search-entity'
 SEARCH_MODULE_TAG = '01-search-module'
 SEARCH_DATASET_TAG = '02-search-dataset'
 SEARCH_DATASET_ENTITY_TAG = '03-search-dataset-entity'
