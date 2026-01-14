@@ -1,7 +1,7 @@
 import os
 import re
 import mimetypes
-from datetime import datetime
+from datetime import datetime, timezone
 from django.contrib import admin, messages
 from django.contrib.admin.widgets import AdminFileWidget
 from django.db.models.fields.files import FileField
@@ -352,24 +352,36 @@ class StorageLogAdmin(admin.ModelAdmin):
     list_display = ('date_time',)
 
 
-def list_log_files(parent_dir):
+def list_log_files(parent_dir, max_depth=2):
     """Get list of log files from parent_dir."""
     log_files = []
-    files_to_save = ['.log', '.txt', '.status']
-    for root, dirs, files in os.walk(parent_dir):
-        for file in files:
-            should_save = False
-            for file_ext in files_to_save:
-                if file_ext in file:
-                    should_save = True
-                    break
-            if should_save:
-                file_path = os.path.join(root, file)
-                file_size = os.path.getsize(file_path)
-                created_on = datetime.fromtimestamp(
-                    os.path.getctime(file_path)
-                ).strftime('%Y-%m-%d %H:%M:%S')
-                log_files.append((file_path, file_size, created_on))
+    file_extensions = {'.log', '.txt', '.status'}
+
+    try:
+        # Use scandir for better performance than os.walk
+        for entry in os.scandir(parent_dir):
+            if entry.is_file():
+                if any(entry.name.endswith(ext) for ext in file_extensions):
+                    try:
+                        stat = entry.stat()
+                        file_size = stat.st_size
+                        created_on = datetime.fromtimestamp(
+                            stat.st_ctime,
+                            tz=timezone.utc
+                        )
+                        log_files.append((entry.path, file_size, created_on))
+                    except (OSError, PermissionError):
+                        continue
+            elif entry.is_dir() and max_depth > 0:
+                # Recursively scan subdirectories with depth limit
+                try:
+                    log_files.extend(list_log_files(entry.path, max_depth - 1))
+                except (OSError, PermissionError):
+                    continue
+
+    except (OSError, PermissionError):
+        # Handle permission errors on parent directory
+        pass
     return log_files
 
 

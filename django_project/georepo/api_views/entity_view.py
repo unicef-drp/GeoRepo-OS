@@ -74,7 +74,8 @@ from georepo.utils.uuid_helper import get_uuid_value
 from georepo.utils.geojson import validate_geojson
 from georepo.api_views.api_collections import (
     SEARCH_VIEW_ENTITY_TAG,
-    OPERATION_VIEW_ENTITY_TAG
+    OPERATION_VIEW_ENTITY_TAG,
+    SEARCH_ENTITY_BASE_TAG
 )
 from georepo.utils.api_parameters import (
     common_api_params,
@@ -2950,7 +2951,7 @@ class FindEntityByUCode(APILoggingMixin, APIView):
 
     @swagger_auto_schema(
         operation_id='search-entity-by-ucode',
-        tags=[SEARCH_VIEW_ENTITY_TAG],
+        tags=[SEARCH_ENTITY_BASE_TAG],
         manual_parameters=[openapi.Parameter(
             'ucode', openapi.IN_PATH,
             description='Entity UCode',
@@ -3064,7 +3065,7 @@ class FindEntityByCUCode(FindEntityByUCode):
 
     @swagger_auto_schema(
         operation_id='search-entity-by-concept-ucode',
-        tags=[SEARCH_VIEW_ENTITY_TAG],
+        tags=[SEARCH_ENTITY_BASE_TAG],
         manual_parameters=[openapi.Parameter(
             'concept_ucode', openapi.IN_PATH,
             description='Entity Concept UCode',

@@ -1252,7 +1252,7 @@ class EntityFuzzySearch(EntitySearchBase):
 
 class EntityGeometryFuzzySearch(EntitySearchBase):
     """
-    Find closest geographical entity
+    Find closest geographical entities
 
     Search top 10 Geographical Entity that has closest match with \
         given geometry
