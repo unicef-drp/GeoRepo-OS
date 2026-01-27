@@ -23,7 +23,13 @@ STORAGE_PATHS = {
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def readiness_probe(request):
-    """Readiness probe - checks if the application is ready."""
+    """Readiness probe - checks if the application is ready.
+
+    :param request: HTTP request
+    :type request: Request
+    :return: HTTP response with readiness status
+    :rtype: Response
+    """
     checks = {
         "database": check_database(),
         "redis": check_redis(),
@@ -53,7 +59,11 @@ def readiness_probe(request):
 
 
 def check_database():
-    """Check database connectivity."""
+    """Check database connectivity.
+
+    :return: True if database is reachable, False otherwise
+    :rtype: bool
+    """
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
@@ -64,7 +74,11 @@ def check_database():
 
 
 def check_redis():
-    """Check Redis connectivity."""
+    """Check Redis connectivity.
+
+    :return: True if Redis is reachable, False otherwise
+    :rtype: bool
+    """
     try:
         cache.set('health_check', 'ok', 10)
         result = cache.get('health_check')
@@ -83,7 +97,11 @@ def check_redis():
 
 
 def check_storage():
-    """Check storage disk space - fail if usage > 98%."""
+    """Check storage disk space - fail if usage > 98%.
+
+    :return: True if storage usage is below threshold, False otherwise
+    :rtype: bool
+    """
     try:
         critical_threshold = getattr(
             settings, 'STORAGE_CRITICAL_THRESHOLD', 98
@@ -115,7 +133,11 @@ def check_storage():
 
 
 def get_storage_info():
-    """Get detailed info for all storage locations."""
+    """Get detailed info for all storage locations.
+
+    :return: Dictionary with storage info or None if no paths available
+    :rtype: dict or None
+    """
     storage_info = {}
     for name, path in STORAGE_PATHS.items():
         if not path or not os.path.exists(path):

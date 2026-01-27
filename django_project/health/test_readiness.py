@@ -52,7 +52,11 @@ class ReadinessProbeTest(TestCase):
 
     @patch('health.views.connection')
     def test_database_check_fails(self, mock_connection):
-        """Test readiness probe fails when database is down."""
+        """Test readiness probe fails when database is down.
+
+        :param mock_connection: Mocked database connection
+        :type mock_connection: MagicMock
+        """
         # Mock database connection failure
         mock_cursor = MagicMock()
         mock_cursor.execute.side_effect = Exception(
@@ -74,7 +78,11 @@ class ReadinessProbeTest(TestCase):
 
     @patch('health.views.cache')
     def test_redis_check_fails_on_set(self, mock_cache):
-        """Test readiness probe fails when Redis set operation fails."""
+        """Test readiness probe fails when Redis set operation fails.
+
+        :param mock_cache: Mocked cache object
+        :type mock_cache: MagicMock
+        """
         mock_cache.set.side_effect = Exception("Redis connection failed")
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 503)
@@ -83,7 +91,11 @@ class ReadinessProbeTest(TestCase):
 
     @patch('health.views.cache')
     def test_redis_check_fails_on_get(self, mock_cache):
-        """Test readiness probe fails when Redis get returns wrong value."""
+        """Test readiness probe fails when Redis get returns wrong value.
+
+        :param mock_cache: Mocked cache object
+        :type mock_cache: MagicMock
+        """
         mock_cache.set.return_value = None
         mock_cache.get.return_value = 'wrong_value'
         response = self.client.get(self.url)
@@ -107,7 +119,11 @@ class ReadinessProbeTest(TestCase):
     def test_storage_check_fails_when_usage_exceeds_threshold(
         self, mock_disk_usage
     ):
-        """Test storage check fails when disk usage exceeds 98%."""
+        """Test storage check fails when disk usage exceeds 98%.
+
+        :param mock_disk_usage: Mocked disk usage function
+        :type mock_disk_usage: MagicMock
+        """
         # Mock disk usage at 99% (exceeds 98% threshold)
         mock_disk_usage.return_value = MagicMock(
             total=10 * 1024**3,  # 10GB total
@@ -126,7 +142,11 @@ class ReadinessProbeTest(TestCase):
 
     @patch('health.views.shutil.disk_usage')
     def test_storage_check_passes_at_threshold_boundary(self, mock_disk_usage):
-        """Test storage check passes when exactly at 98% (not exceeding)."""
+        """Test storage check passes when exactly at 98% (not exceeding).
+
+        :param mock_disk_usage: Mocked disk usage function
+        :type mock_disk_usage: MagicMock
+        """
         # Mock disk usage at exactly 98%
         mock_disk_usage.return_value = MagicMock(
             total=10 * 1024**3,  # 10GB total
@@ -139,7 +159,11 @@ class ReadinessProbeTest(TestCase):
 
     @patch('health.views.shutil.disk_usage')
     def test_storage_check_with_custom_threshold(self, mock_disk_usage):
-        """Test storage check respects custom threshold setting."""
+        """Test storage check respects custom threshold setting.
+
+        :param mock_disk_usage: Mocked disk usage function
+        :type mock_disk_usage: MagicMock
+        """
         # Mock disk usage at 91%
         mock_disk_usage.return_value = MagicMock(
             total=10 * 1024**3,
@@ -159,7 +183,13 @@ class ReadinessProbeTest(TestCase):
     @patch('health.views.connection')
     @patch('health.views.cache')
     def test_multiple_checks_fail(self, mock_cache, mock_connection):
-        """Test readiness probe when multiple checks fail."""
+        """Test readiness probe when multiple checks fail.
+
+        :param mock_cache: Mocked cache object
+        :type mock_cache: MagicMock
+        :param mock_connection: Mocked database connection
+        :type mock_connection: MagicMock
+        """
         # Mock both database and Redis failures
         mock_cursor = MagicMock()
         mock_cursor.execute.side_effect = Exception("Database failed")
