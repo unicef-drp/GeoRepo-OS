@@ -385,10 +385,29 @@ def list_log_files(parent_dir, max_depth=2):
     return log_files
 
 
+@admin.action(description='Delete logs files from filesystem')
+def delete_selected_logs_file(modeladmin, request, queryset):
+    """Delete selected log files from filesystem.
+
+    :param modeladmin: The ModelAdmin instance
+    :type modeladmin: ModelAdmin
+    :param request: The HttpRequest object
+    :type request: HttpRequest
+    :param queryset: QuerySet of selected LogFile instances
+    :type queryset: QuerySet
+    """
+    for instance in queryset:
+        if instance.path and os.path.exists(instance.path):
+            try:
+                os.remove(instance.path)
+            except OSError:
+                pass
+
+
 class LogFileAdmin(admin.ModelAdmin):
     list_display = (
         'filename', 'get_total_size', 'created_on', 'download_link')
-    actions = ['refresh_log_files']
+    actions = ['refresh_log_files', delete_selected_logs_file]
 
     def download_link(self, obj):
         return format_html(
