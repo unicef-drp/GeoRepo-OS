@@ -22,7 +22,7 @@ python -u initialize.py
 python manage.py migrate
 
 echo "-----------------------------------------------------"
-echo "FINISHED DJANGO ENTRYPOINT --------------------------"
+echo "FINISHED DJANGO ENTRYPOINT $(date)"
 echo "-----------------------------------------------------"
 
 # Run the CMD

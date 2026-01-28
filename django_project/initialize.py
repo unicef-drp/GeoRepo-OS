@@ -14,6 +14,7 @@ from django.db.utils import OperationalError
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 import os
+import shutil
 import time
 
 import django
@@ -92,10 +93,26 @@ if os.getenv('AZURE_B2C_CLIENT_ID', '') == '':
 # if _load_initial_fixtures:
 #     call_command('load_fixtures')
 
+
 #########################################################
 # 4. Collecting static files
 #########################################################
 
 print("-----------------------------------------------------")
 print("4. Collecting static files")
+folder = '/home/web/static'
+try:
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception:
+            pass
+except Exception:
+    pass
 call_command('collectstatic', '--noinput', verbosity=0)
+print("Static files collected")
+print("-----------------------------------------------------")
