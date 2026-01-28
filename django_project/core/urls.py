@@ -94,6 +94,7 @@ schema_view_v1 = get_schema_view(
 admin.autodiscover()
 
 urlpatterns = [
+    path('', include('health.urls')),
     re_path(r'^api/v1/docs/$', schema_view_v1.with_ui(
                 'swagger', cache_timeout=0),
             name='schema-swagger-ui'),

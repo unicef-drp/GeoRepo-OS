@@ -51,6 +51,7 @@ LOCALE_PATHS = (absolute_path('locale'),)
 
 # Extra installed apps
 INSTALLED_APPS = INSTALLED_APPS + (
+    'health',
     'azure_auth',
     'core',
     'georepo',
