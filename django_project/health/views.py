@@ -97,14 +97,14 @@ def check_redis():
 
 
 def check_storage():
-    """Check storage disk space - fail if usage > 98%.
+    """Check storage disk space - fail if usage > 90%.
 
     :return: True if storage usage is below threshold, False otherwise
     :rtype: bool
     """
     try:
         critical_threshold = getattr(
-            settings, 'STORAGE_CRITICAL_THRESHOLD', 98
+            settings, 'STORAGE_CRITICAL_THRESHOLD', 90
         )
         all_healthy = True
 
