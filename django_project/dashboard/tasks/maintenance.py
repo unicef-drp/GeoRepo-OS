@@ -188,14 +188,19 @@ def delete_numbered_log_files(parent_dir, max_depth=2, dry_run=True):
 
 
 @shared_task(name="cleanup_tmp_directory")
-def cleanup_tmp_directory():
+def cleanup_tmp_directory(threshold_override=None):
     """Cleanup task for /tmp directory to remove old numbered log files.
 
+    :param threshold_override: Override the critical threshold percentage.
+        If None, uses STORAGE_CRITICAL_THRESHOLD from settings (default 90).
+    :type threshold_override: int or float or None
     :return: Dict with total deleted file count and total size freed in bytes.
     :rtype: dict
     """
-    critical_threshold = getattr(
-        settings, 'STORAGE_CRITICAL_THRESHOLD', 90
+    critical_threshold = (
+        threshold_override
+        if threshold_override is not None
+        else getattr(settings, 'STORAGE_CRITICAL_THRESHOLD', 90)
     )
     storage_paths = ['/tmp']
     total_deleted_count = 0

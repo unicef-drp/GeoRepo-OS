@@ -274,6 +274,20 @@ class TestCleanupTmpDirectory(unittest.TestCase):
         self.assertEqual(result, {'deleted_count': 0, 'freed_size_bytes': 0})
 
     @patch('dashboard.tasks.maintenance.delete_numbered_log_files')
+    @patch('dashboard.tasks.maintenance.shutil.disk_usage')
+    def test_threshold_override(self, mock_disk_usage, mock_delete):
+        """threshold_override takes precedence over the settings value."""
+        mock_disk_usage.return_value = self._make_disk_usage(50)
+        mock_delete.return_value = (3, 512, [])
+
+        # Without override, 50% usage would not trigger cleanup (threshold=90)
+        # With override of 40, it should trigger
+        result = cleanup_tmp_directory(threshold_override=40)
+
+        mock_delete.assert_called_once_with('/tmp', max_depth=2, dry_run=False)
+        self.assertEqual(result, {'deleted_count': 3, 'freed_size_bytes': 512})
+
+    @patch('dashboard.tasks.maintenance.delete_numbered_log_files')
     @patch('dashboard.tasks.maintenance.os.path.exists')
     def test_nonexistent_path_skipped(self, mock_exists, mock_delete):
         """Paths that do not exist are skipped without calling delete."""
