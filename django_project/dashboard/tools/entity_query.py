@@ -122,7 +122,10 @@ def generate_query_condition(
                 sql + 'AND parent_0.uuid_revision IN %s ')
             query_values.append(tuple(filter.filters['ancestor']))
     if 'is_latest' in filter.filters and len(filter.filters['is_latest']) > 0:
-        if 'True' in filter.filters['is_latest'] and 'False' in filter.filters['is_latest']:
+        if (
+            'True' in filter.filters['is_latest'] and
+            'False' in filter.filters['is_latest']
+        ):
             # ignore since true and false are contradict
             pass
         elif 'True' in filter.filters['is_latest']:
