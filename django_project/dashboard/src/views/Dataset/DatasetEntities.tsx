@@ -158,6 +158,12 @@ export default function DatasetEntities(props: DatasetEntitiesInterface) {
                 valid_to: data.date_to,
                 updated_at: new Date()
             })
+        } else if (data.type === 'boolean') {
+            setFilter({
+                ...filter,
+                [data.criteria]: data.values,
+                updated_at: new Date()
+            })
         }
     }
 
@@ -171,6 +177,8 @@ export default function DatasetEntities(props: DatasetEntitiesInterface) {
             } else if (data.type === 'date_range') {
                 updated_filters.valid_from = data.date_from
                 updated_filters.valid_to = data.date_to
+            } else if (data.type === 'boolean') {
+                updated_filters[data.criteria] = data.values
             }
         }
         setFilter({
