@@ -361,7 +361,7 @@ def list_log_files(parent_dir, max_depth=2):
         # Use scandir for better performance than os.walk
         for entry in os.scandir(parent_dir):
             if entry.is_file():
-                if any(entry.name.endswith(ext) for ext in file_extensions):
+                if any(ext in entry.name for ext in file_extensions):
                     try:
                         stat = entry.stat()
                         file_size = stat.st_size
