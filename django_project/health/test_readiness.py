@@ -109,7 +109,7 @@ class ReadinessProbeTest(TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             with override_settings(
                 LOGS_DIRECTORY=temp_dir,
-                STORAGE_CRITICAL_THRESHOLD=98
+                STORAGE_CRITICAL_THRESHOLD=90
             ):
                 response = self.client.get(self.url)
                 self.assertEqual(response.status_code, 200)
@@ -119,12 +119,12 @@ class ReadinessProbeTest(TestCase):
     def test_storage_check_fails_when_usage_exceeds_threshold(
         self, mock_disk_usage
     ):
-        """Test storage check fails when disk usage exceeds 98%.
+        """Test storage check fails when disk usage exceeds 90%.
 
         :param mock_disk_usage: Mocked disk usage function
         :type mock_disk_usage: MagicMock
         """
-        # Mock disk usage at 99% (exceeds 98% threshold)
+        # Mock disk usage at 99% (exceeds 90% threshold)
         mock_disk_usage.return_value = MagicMock(
             total=10 * 1024**3,  # 10GB total
             used=9.9 * 1024**3,  # 9.9GB used (99%)
@@ -133,7 +133,7 @@ class ReadinessProbeTest(TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             with override_settings(
                 LOGS_DIRECTORY=temp_dir,
-                STORAGE_CRITICAL_THRESHOLD=98
+                STORAGE_CRITICAL_THRESHOLD=90
             ):
                 response = self.client.get(self.url)
                 self.assertEqual(response.status_code, 503)
@@ -142,16 +142,16 @@ class ReadinessProbeTest(TestCase):
 
     @patch('health.views.shutil.disk_usage')
     def test_storage_check_passes_at_threshold_boundary(self, mock_disk_usage):
-        """Test storage check passes when exactly at 98% (not exceeding).
+        """Test storage check passes when exactly at 90% (not exceeding).
 
         :param mock_disk_usage: Mocked disk usage function
         :type mock_disk_usage: MagicMock
         """
-        # Mock disk usage at exactly 98%
+        # Mock disk usage at exactly 90%
         mock_disk_usage.return_value = MagicMock(
             total=10 * 1024**3,  # 10GB total
-            used=9.8 * 1024**3,  # 9.8GB used (98%)
-            free=0.2 * 1024**3   # 0.2GB free
+            used=9.0 * 1024**3,  # 9GB used (90%)
+            free=1.0 * 1024**3   # 1GB free
         )
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
