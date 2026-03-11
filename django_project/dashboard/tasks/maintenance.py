@@ -5,7 +5,6 @@ import tempfile
 import shutil
 from uwsgi_tools.curl import curl
 from celery import shared_task
-from pathlib import Path
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
@@ -136,7 +135,8 @@ def delete_numbered_log_files(parent_dir, max_depth=2, dry_run=True):
     deleted_count = 0
 
     # Pattern to match numbered log files: .log.1, .log.2, .txt.1, etc.
-    # Limit to 1-3 digits to avoid matching year-suffixed files (e.g. .log.2024)
+    # Limit to 1-3 digits to avoid matching year-suffixed
+    # files (e.g. .log.2024)
     numbered_pattern = re.compile(r'\.(log|txt|status)\.\d{1,3}$')
 
     try:
