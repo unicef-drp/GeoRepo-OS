@@ -6,6 +6,8 @@ import {
     FormGroup,
     TextField,
     FormLabel,
+    FormControlLabel,
+    Checkbox
 } from "@mui/material";
 import axios from "axios";
 import {EntitiesFilterInterface, EntitiesFilterUpdateInterface} from "./EntitiesFilter"
@@ -57,10 +59,10 @@ const ALL_COLUMNS = [
     'unique_code_version',
     'level',
     'end_date',
-    'is_latest',
     'approved_date',
     'source',
     'admin_level_name',
+    'is_latest',
     'dataset',
     'approved_by',
     'other_name',
@@ -77,7 +79,8 @@ const FILTER_ENABLED_COLUMNS = [
     'rev',
     'status',
     'privacy_level',
-    'centroid'
+    'centroid',
+    'is_latest'
 ]
 
 interface EntityTableRowInterface {
@@ -309,8 +312,51 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                                     handleCountriesOnClear()
                                     return filterList;
                                 }
-                            }                        
+                            }
                         }  
+                    } else if (column_name === 'is_latest') {
+                        options.label = 'Is Latest'
+                        options.options = {
+                            searchable: false,
+                            display: initialColumns.includes(column_name),
+                            filter: true,
+                            filterType: 'custom',
+                            filterList: getExistingFilterValue(column_name),
+                            filterOptions: {
+                                logic: (value: any, filters: any) => {
+                                    if (filters.length === 0) return false; // no filter = show all
+                                    return !(value === true || value === 'true'); // hide rows where is_latest is false
+                                },
+                                display: (filterList: any, onChange: any, index: any, column: any) => (
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                            checked={filterList[index].includes('True')}
+                                            onChange={(e) => {
+                                                filterList[index] = e.target.checked ? ['True'] : [];
+                                                onChange(filterList[index], index, column);
+                                            }}
+                                            />
+                                        }
+                                        label="Is Latest"
+                                        />
+                                )
+                            },
+                            customFilterListOptions: {
+                                render: (vals:any) => {
+                                    let result:string[] = []
+                                    if (vals.length >= 1 && vals.includes('True')) {
+                                        result.push(`Entity must be latest revision`)
+                                    }
+                                    return result
+                                },
+                                update: (filterList:any, filterPos:any, index:any) => {
+                                    filterList[index] = []
+                                    handleIsLatestOnClear()
+                                    return filterList;
+                                }
+                            }
+                        }
                     } else {
                         options.options = {
                             searchable: false,
@@ -459,6 +505,12 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                     filter.values = filterList[idx]
                 } else if (col.data_type === 'date_range') {
                     filter.date_from = filterList[idx][0]
+                } else if (col.data_type === 'boolean') {
+                    if (filterList[idx] && filterList[idx].length > 0 && filterList[idx].includes('True')) {
+                        filter.values = filterList[idx]
+                    } else {
+                        filter.values = []
+                    }
                 }
             }
             filters.push(filter)
@@ -511,6 +563,17 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
         })
     }
 
+    const handleIsLatestOnClear = () => {
+        if (!props.onSingleFilterUpdated) return;
+        props.onSingleFilterUpdated({
+            criteria: 'is_latest',
+            type: 'boolean',
+            values: [],
+            date_from: null,
+            date_to: null
+        })
+    }
+
     const getCriteriaFromColumnName = (col_name: string): string => {
         let val = col_name;
         if (col_name === 'rev')
@@ -546,6 +609,11 @@ export default function EntitiesTable(props: EntitiesTableInterface) {
                 break;
             case 'privacy_level':
                 values = props.filter.privacy_level
+                break;
+            case 'is_latest':
+                if (props.filter.is_latest && props.filter.is_latest.length > 0 && props.filter.is_latest.includes('True')) {
+                    values = ['True']
+                }
                 break;
             default:
                 break;

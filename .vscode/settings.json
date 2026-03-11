@@ -7,5 +7,7 @@
         "${workspaceFolder}/django_project/pytest.ini"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "python.defaultInterpreterPath": "/usr/local/bin/python",
+    "python-envs.defaultEnvManager": "ms-python.python:system"
 }
