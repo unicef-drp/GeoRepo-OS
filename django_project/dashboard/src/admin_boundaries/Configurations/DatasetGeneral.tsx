@@ -14,6 +14,11 @@ import axios from "axios";
 import AlertDialog from '../../components/AlertDialog';
 import AlertMessage from '../../components/AlertMessage';
 import Dataset from '../../models/dataset';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import HtmlTooltip from "../../components/HtmlTooltip";
 import Loading from "../../components/Loading";
 import {postData} from "../../utils/Requests";
@@ -32,6 +37,7 @@ const FETCH_PRIVACY_LEVEL_LABELS = '/api/permission/privacy-levels/'
 export default function DatasetGeneral(props: DatasetGeneralInterface) {
     const [loading, setLoading] = useState(false)
     const [datasetName, setDatasetName] = useState('')
+    const [datasetUUID, setDatasetUUID] = useState('')
     const [datasetShortCode, setDatasetShortCode] = useState('')
     const [thresholdNew, setThresholdNew] = useState(0)
     const [thresholdOld, setThresholdOld] = useState(0)
@@ -47,6 +53,7 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
     const [privacyLevelLabels, setPrivacyLevelLabels] = useState<PrivacyLevel>({})
     const [updateDatasetTaskId, setUpdateDatasetTaskId] = useState('')
     const [isPreferred, setIsPreferred] = useState<boolean>(false)
+    const [copySnackbarOpen, setCopySnackbarOpen] = useState(false)
 
     const updateDatasetDetail = (name: string, thresholdNew: number, thresholdOld: number, generateAdm0DefaultViews: boolean, isActive: boolean, isPreferred: boolean) => {
         setLoading(true)
@@ -99,6 +106,7 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
             setMinPrivacyLevel(props.dataset.min_privacy_level)
             setDatasetShortCode(props.dataset.short_code)
             setIsPreferred(props.dataset.is_preferred)
+            setDatasetUUID(props.dataset.uuid)
         }
         fetchPrivacyLevelLabels()
     }, [props.dataset])
@@ -136,6 +144,7 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
     }
 
     return (
+        <React.Fragment>
         <Scrollable>
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
             <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
@@ -169,6 +178,32 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
                                     onChange={val => setDatasetName(val.target.value)}
                                     value={datasetName}
                                     sx={{ width: '100%' }}
+                                />
+                            </Grid>
+                            <Grid className={'form-label'} item md={4} xl={4} xs={12}>
+                                <Typography variant={'subtitle1'}>UUID</Typography>
+                            </Grid>
+                            <Grid item md={8} xs={12} sx={{ display: 'flex' }}>
+                                <TextField
+                                    disabled={true}
+                                    id="input_datasetuuid"
+                                    hiddenLabel={true}
+                                    type={"text"}
+                                    value={datasetUUID}
+                                    sx={{ width: '100%' }}
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    onClick={() => { navigator.clipboard.writeText(datasetUUID); setCopySnackbarOpen(true); }}
+                                                    size="small"
+                                                    title="Copy to clipboard"
+                                                >
+                                                    <ContentCopyIcon fontSize="small" />
+                                                </IconButton>
+                                            </InputAdornment>
+                                        )
+                                    }}
                                 />
                             </Grid>
                             <Grid className={'form-label'} item md={4} xl={4} xs={12}>
@@ -375,5 +410,16 @@ export default function DatasetGeneral(props: DatasetGeneralInterface) {
             </Box>
         </Box>
         </Scrollable>
+        <Snackbar
+            open={copySnackbarOpen}
+            anchorOrigin={{vertical:'top', horizontal:'center'}}
+            autoHideDuration={2000}
+            onClose={() => setCopySnackbarOpen(false)}
+        >
+            <Alert onClose={()=>setCopySnackbarOpen(false)} severity="success" sx={{ width: '100%' }}>
+                UUID copied to clipboard!
+            </Alert>
+        </Snackbar>
+        </React.Fragment>
     )
 }
