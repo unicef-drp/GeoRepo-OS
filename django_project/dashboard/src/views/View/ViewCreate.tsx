@@ -33,6 +33,11 @@ import {
   SQLAutocomplete,
   SQLDialect
 } from 'sql-autocomplete';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import '../../styles/ViewCreate.scss';
 import ListItemButton from "@mui/material/ListItemButton";
 import Scrollable from "../../components/Scrollable";
@@ -85,6 +90,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
   const [mode, setMode] = useState<string>('')
   const [datasets, setDatasets] = useState<any[]>([])
   const [dataset, setDataset] = useState<string>('')
+  const [viewUuid, setViewUuid] = useState<string>('')
   const [datasetUuid, setDatasetUuid] = useState<string>('')
   const [query, setQuery] = useState<string>(`<span class="keyword">SELECT * FROM geographicalentity WHERE </span>`)
   const [queryChanged, setQueryChanged] = useState<boolean>(false)
@@ -107,6 +113,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
   })
   const isAdminUser = (window as any).is_admin
   const [editView, setEditView] = useState<View>(null)
+  const [copySnackbarOpen, setCopySnackbarOpen] = useState(false)
 
   useEffect(() => {
     if (datasets.length > 0 && props.tempData) {
@@ -139,6 +146,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
           }
           setDataset(view.dataset)
           setDatasetUuid(view.dataset_uuid)
+          setViewUuid(view.uuid)
           setMode(view.mode)
           if (props.onViewLoaded) {
             props.onViewLoaded(view)
@@ -403,6 +411,7 @@ export default function ViewCreate(props: ViewCreateInterface) {
   }
 
   return (
+    <React.Fragment>
     <Scrollable>
     <div className="FormContainer">
       <Popover
@@ -449,6 +458,36 @@ export default function ViewCreate(props: ViewCreateInterface) {
               sx={{ width: '100%' }}
             />
           </Grid>
+          { isUpdating && viewUuid && (
+            <Grid className={'form-label'} item md={2} xl={2} xs={12}>
+                <Typography variant={'subtitle1'}>UUID</Typography>
+            </Grid>
+          )}
+          { isUpdating && viewUuid && (
+            <Grid item md={10} xs={12} sx={{ display: 'flex' }}>
+                <TextField
+                    disabled={true}
+                    id="input_viewuuid"
+                    hiddenLabel={true}
+                    type={"text"}
+                    value={viewUuid}
+                    sx={{ width: '100%' }}
+                    InputProps={{
+                        endAdornment: (
+                            <InputAdornment position="end">
+                                <IconButton
+                                    onClick={() => { navigator.clipboard.writeText(viewUuid); setCopySnackbarOpen(true); }}
+                                    size="small"
+                                    title="Copy to clipboard"
+                                >
+                                    <ContentCopyIcon fontSize="small" />
+                                </IconButton>
+                            </InputAdornment>
+                        )
+                    }}
+                />
+            </Grid>
+          )}
           <Grid className={'form-label'} item md={2} xl={2} xs={12}>
             <Typography variant={'subtitle1'}>Description</Typography>
           </Grid>
@@ -615,5 +654,16 @@ export default function ViewCreate(props: ViewCreateInterface) {
       </FormControl>
     </div>
     </Scrollable>
+    <Snackbar
+        open={copySnackbarOpen}
+        anchorOrigin={{vertical:'top', horizontal:'center'}}
+        autoHideDuration={2000}
+        onClose={() => setCopySnackbarOpen(false)}
+    >
+        <Alert onClose={()=>setCopySnackbarOpen(false)} severity="success" sx={{ width: '100%' }}>
+            UUID copied to clipboard!
+        </Alert>
+    </Snackbar>
+    </React.Fragment>
   )
 }
