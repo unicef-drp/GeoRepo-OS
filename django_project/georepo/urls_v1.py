@@ -28,6 +28,7 @@ from georepo.api_views.entity_view import (
     ViewFindEntityFuzzySearch,
     ViewFindEntityGeometryFuzzySearch,
     ViewEntityBoundingBox,
+    ViewEntityListBoundingBox,
     ViewEntityContainmentCheck,
     ViewEntityTraverseHierarchyByUCode,
     ViewEntityTraverseChildrenHierarchyByUCode,
@@ -44,6 +45,7 @@ from georepo.api_views.entity_view import (
 )
 from georepo.api_views.entity import (
     EntityBoundingBox,
+    EntityListBoundingBox,
     EntityTypeList,
     EntityIdList,
     EntityContainmentCheck,
@@ -160,6 +162,11 @@ operation_entity_urls = [
         '<path:id>/',
         EntityBoundingBox.as_view(),
         name='entity-bounding-box'
+    ),
+    path(
+        'operation/dataset/<uuid:uuid>/bbox/<id_type>/',
+        EntityListBoundingBox.as_view(),
+        name='entity-list-bounding-box'
     ),
     re_path(
         r'operation/dataset/(?P<uuid>[\da-f-]+)/containment-check/'
@@ -287,6 +294,11 @@ operation_view_entity_urls = [
         '<path:id>/',
         ViewEntityBoundingBox.as_view(),
         name='view-entity-bounding-box'
+    ),
+    path(
+        'operation/view/<uuid:uuid>/bbox/<id_type>/',
+        ViewEntityListBoundingBox.as_view(),
+        name='view-entity-list-bounding-box'
     ),
     re_path(
         r'operation/view/(?P<uuid>[\da-f-]+)/containment-check/'

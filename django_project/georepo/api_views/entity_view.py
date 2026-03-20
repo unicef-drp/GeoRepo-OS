@@ -37,7 +37,8 @@ from georepo.api_views.entity import (
     FindEntityVersionsByUCode,
     EntityGeometryFuzzySearch,
     EntityContainmentCheck,
-    EntityTraverseHierarchyByUCode
+    EntityTraverseHierarchyByUCode,
+    EntityListBoundingBox
 )
 from georepo.models.dataset import Dataset
 from georepo.models.entity import (
@@ -1673,6 +1674,83 @@ class ViewEntityBoundingBox(
             raise Http404('No GeographicalEntity matches the given query.')
         return Response(
             geom.extent
+        )
+
+
+class ViewEntityListBoundingBox(
+    EntityListBoundingBox, DatasetViewDetailCheckPermission
+):
+    """
+    Find bounding box of geographical entities
+
+    Search Geographical Entity by id_type and its identifier values \
+    and return its bounding box. id_type can be ucode or concept_uuid.
+
+    Example usage:
+    id_type=ucode
+    ```
+    POST /operation/view/{uuid}/bbox/ucode/
+
+    Request body:
+        ["PAK_V1", "IND_V1"]
+    ```
+    """
+    permission_classes = [DatasetViewDetailAccessPermission]
+    uuid_param = openapi.Parameter(
+        'uuid', openapi.IN_PATH,
+        description='View UUID',
+        type=openapi.TYPE_STRING
+    )
+    id_type_param = openapi.Parameter(
+        'id_type', openapi.IN_PATH,
+        description=(
+            'Entity ID Type; ucode or concept_uuid. '
+            'Example: ucode'
+        ),
+        type=openapi.TYPE_STRING
+    )
+
+    def _get_entities_query(self, request, kwargs):
+        dataset_view, max_privacy_level = self.get_dataset_view_obj(
+            request, kwargs.get('uuid', None)
+        )
+        # raw_sql to view to select id
+        raw_sql = (
+            'SELECT id from "{}"'
+        ).format(str(dataset_view.uuid))
+
+        entities = GeographicalEntity.objects.filter(
+            is_approved=True,
+            dataset=dataset_view.dataset,
+            privacy_level__lte=max_privacy_level
+        )
+        entities = entities.filter(
+            id__in=RawSQL(raw_sql, [])
+        )
+        return entities
+
+    @swagger_auto_schema(
+        operation_id='operation-view-bbox-post',
+        tags=[OPERATION_VIEW_ENTITY_TAG],
+        manual_parameters=[uuid_param, id_type_param],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_ARRAY,
+            items=openapi.Items(type=openapi.TYPE_STRING),
+            example=["PAK_V1", "IND_V1"]
+        ),
+        responses={
+            200: openapi.Schema(
+                description='Bounding Box',
+                type=openapi.TYPE_OBJECT,
+                example='[-121.5, 47.25, -120.4, 47.8]'
+            ),
+            400: APIErrorSerializer,
+            404: APIErrorSerializer
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        return super(ViewEntityListBoundingBox, self).post(
+            request, *args, **kwargs
         )
 
 

@@ -26,6 +26,7 @@ from georepo.api_views.entity_view import (
     ViewFindEntityVersionsByConceptUCode,
     ViewFindEntityVersionsByUCode,
     ViewEntityBoundingBox,
+    ViewEntityListBoundingBox,
     ViewEntityContainmentCheck,
     ViewFindEntityFuzzySearch,
     ViewFindEntityGeometryFuzzySearch,
@@ -960,6 +961,49 @@ class EntityViewTestSuite(EntityResponseChecker):
             reverse('v1:view-entity-bounding-box', kwargs=kwargs)
         )
         self._run_test_permission(request, view, **kwargs)
+
+    def run_test_view_entity_list_bbox(self):
+        expected_extent = self.pak0_1.geometry.union(
+            self.pak0_2.geometry
+        ).extent
+        # by ucode
+        kwargs = {
+            'uuid': str(self.dataset_view.uuid),
+            'id_type': 'ucode'
+        }
+        request = self.factory.post(
+            reverse('v1:view-entity-list-bounding-box', kwargs=kwargs),
+            data=[self.pak0_1.ucode, self.pak0_2.ucode],
+            format='json'
+        )
+        request.user = self.superuser
+        view = ViewEntityListBoundingBox.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 4)
+        self.assertEqual(response.data[0], expected_extent[0])
+        self.assertEqual(response.data[1], expected_extent[1])
+        self.assertEqual(response.data[2], expected_extent[2])
+        self.assertEqual(response.data[3], expected_extent[3])
+        # by concept_uuid
+        kwargs = {
+            'uuid': str(self.dataset_view.uuid),
+            'id_type': 'concept_uuid'
+        }
+        request = self.factory.post(
+            reverse('v1:view-entity-list-bounding-box', kwargs=kwargs),
+            data=[self.pak0_1.uuid, self.pak0_2.uuid],
+            format='json'
+        )
+        request.user = self.superuser
+        view = ViewEntityListBoundingBox.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 4)
+        self.assertEqual(response.data[0], expected_extent[0])
+        self.assertEqual(response.data[1], expected_extent[1])
+        self.assertEqual(response.data[2], expected_extent[2])
+        self.assertEqual(response.data[3], expected_extent[3])
 
     def run_test_view_entity_containment_check(self):
         # geojson data
@@ -2039,6 +2083,9 @@ class TestApiEntityAllVersionsView(EntityViewTestSuite, TestCase):
 
     def test_view_entity_bbox(self):
         self.run_test_view_entity_bbox()
+
+    def test_view_entity_list_bbox(self):
+        self.run_test_view_entity_list_bbox()
 
     def test_view_entity_containment_check(self):
         self.run_test_view_entity_containment_check()
