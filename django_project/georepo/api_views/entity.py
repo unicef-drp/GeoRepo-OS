@@ -17,9 +17,9 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.db.models import Extent
 from core.models.preferences import SitePreferences
 from django.db.models import (
-    FilteredRelation, Q, Value, F, IntegerField, CharField
+    FilteredRelation, Q, Value, F, IntegerField
 )
-from django.db.models.functions import Replace, Greatest, Upper, Concat
+from django.db.models.functions import Replace, Greatest
 from django.contrib.postgres.search import TrigramWordSimilarity
 from django.core.paginator import Paginator
 from rest_framework.renderers import JSONRenderer
