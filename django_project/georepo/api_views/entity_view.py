@@ -1704,7 +1704,7 @@ class ViewEntityListBoundingBox(
     id_type_param = openapi.Parameter(
         'id_type', openapi.IN_PATH,
         description=(
-            'Entity ID Type; ucode or concept_uuid.'
+            'Entity ID Type; ucode or concept_uuid. '
             'Example: ucode'
         ),
         type=openapi.TYPE_STRING
@@ -1733,6 +1733,11 @@ class ViewEntityListBoundingBox(
         operation_id='operation-view-bbox-post',
         tags=[OPERATION_VIEW_ENTITY_TAG],
         manual_parameters=[uuid_param, id_type_param],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_ARRAY,
+            items=openapi.Items(type=openapi.TYPE_STRING),
+            example=["PAK_V1", "IND_V1"]
+        ),
         responses={
             200: openapi.Schema(
                 description='Bounding Box',
