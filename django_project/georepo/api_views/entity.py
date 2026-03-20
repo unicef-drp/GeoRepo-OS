@@ -14,9 +14,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
 from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.db.models import Extent
 from core.models.preferences import SitePreferences
-from django.db.models import FilteredRelation, Q, Value, F, IntegerField
-from django.db.models.functions import Replace, Greatest
+from django.db.models import (
+    FilteredRelation, Q, Value, F, IntegerField, CharField
+)
+from django.db.models.functions import Replace, Greatest, Upper, Concat
 from django.contrib.postgres.search import TrigramWordSimilarity
 from django.core.paginator import Paginator
 from rest_framework.renderers import JSONRenderer
@@ -208,26 +211,25 @@ class EntityBoundingBox(
         )
         req_label = kwargs.get('id_type', '').lower()
         req_id = kwargs.get('id', '')
-        geom = None
+        bbox = None
         if req_label in MAIN_ENTITY_ID_LIST:
-            entity = GeographicalEntity.objects.filter(
-                is_latest=True,
+            entities = GeographicalEntity.objects.filter(
                 is_approved=True,
                 dataset=dataset,
                 privacy_level__lte=max_privacy_level
             )
             if req_label == UUID_ENTITY_ID:
                 uuid_val = get_uuid_value(req_id)
-                entity = entity.filter(
+                entities = entities.filter(
                     uuid_revision=uuid_val
                 )
             elif req_label == CONCEPT_UUID_ENTITY_ID:
                 uuid_val = get_uuid_value(req_id)
-                entity = entity.filter(
+                entities = entities.filter(
                     uuid=uuid_val
                 )
             elif req_label == CODE_ENTITY_ID:
-                entity = entity.filter(
+                entities = entities.filter(
                     internal_code=req_id
                 )
             elif req_label == UCODE_ENTITY_ID:
@@ -240,34 +242,141 @@ class EntityBoundingBox(
                             'detail': f'Invalid Unique Code {req_id}'
                         }
                     )
-                entity = entity.filter(
+                entities = entities.filter(
                     unique_code=ucode,
                     unique_code_version=version
                 )
             elif req_label == CONCEPT_UCODE_ENTITY_ID:
-                entity = entity.filter(
+                entities = entities.filter(
                     concept_ucode=req_id
                 )
-            entity = entity.last()
-            if entity:
-                geom = entity.geometry
+            if entities.exists():
+                bbox = entities.aggregate(
+                    Extent('geometry')
+                )['geometry__extent']
         else:
             entity_id = EntityId.objects.filter(
                 code__name__iexact=req_label,
                 value=req_id,
-                geographical_entity__is_latest=True,
                 geographical_entity__is_approved=True,
                 geographical_entity__dataset=dataset,
                 geographical_entity__privacy_level__lte=max_privacy_level
             ).select_related(
                 'geographical_entity'
-            ).order_by('geographical_entity__id').last()
-            if entity_id:
-                geom = entity_id.geographical_entity.geometry
-        if not geom:
+            ).order_by('geographical_entity__id')
+            if entity_id.exists():
+                bbox = entity_id.aggregate(
+                    Extent('geographical_entity__geometry')
+                )['geographical_entity__geometry__extent']
+        if not bbox:
+            raise Http404('No GeographicalEntity matches the given query.')
+        return Response(bbox)
+
+
+class EntityListBoundingBox(
+    APILoggingMixin, APIView, DatasetDetailCheckPermission
+):
+    """
+    Find bounding box of geographical entities
+
+    Search Geographical Entity by id_type and its identifier values \
+    and return its bounding box. id_type can be ucode or concept_uuid.
+
+    Example usage:
+    id_type=ucode
+    ```
+    POST /operation/dataset/{uuid}/bbox/ucode/
+
+    Request body:
+        ["PAK_V1", "IND_V1"]
+    ```
+    """
+    permission_classes = [DatasetDetailAccessPermission]
+    # [Dataset, View]
+    search_source = 'Dataset'
+    uuid_param = openapi.Parameter(
+        'uuid', openapi.IN_PATH,
+        description='Dataset UUID',
+        type=openapi.TYPE_STRING
+    )
+    id_type_param = openapi.Parameter(
+        'id_type', openapi.IN_PATH,
+        description=(
+            'Entity ID Type; ucode or concept_uuid.'
+            'Example: ucode'
+        ),
+        type=openapi.TYPE_STRING
+    )
+
+    def _get_entities_query(self, request, kwargs):
+        dataset, max_privacy_level = self.get_dataset_obj(
+            request, kwargs
+        )
+
+        entities = GeographicalEntity.objects.filter(
+            is_approved=True,
+            dataset=dataset,
+            privacy_level__lte=max_privacy_level
+        )
+        return entities
+
+    @swagger_auto_schema(
+        operation_id='operation-bbox-post',
+        tags=[OPERATION_ENTITY_TAG],
+        manual_parameters=[uuid_param, id_type_param],
+        responses={
+            200: openapi.Schema(
+                description='Bounding Box',
+                type=openapi.TYPE_OBJECT,
+                example='[-121.5, 47.25, -120.4, 47.8]'
+            ),
+            400: APIErrorSerializer,
+            404: APIErrorSerializer
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        req_label = kwargs.get('id_type', '').lower()
+        if req_label not in [UCODE_ENTITY_ID, CONCEPT_UUID_ENTITY_ID]:
+            return Response(
+                status=400,
+                data={
+                    'detail': (
+                        'Invalid id_type. Only ucode and concept_uuid '
+                        'are allowed.'
+                    )
+                }
+            )
+        id_values = request.data
+
+        entities = self._get_entities_query(request, kwargs)
+        if req_label == CONCEPT_UUID_ENTITY_ID:
+            uuid_vals = [get_uuid_value(id_value) for id_value in id_values]
+            entities = entities.filter(
+                uuid__in=uuid_vals
+            )
+        elif req_label == UCODE_ENTITY_ID:
+            q = Q()
+            for id_value in id_values:
+                try:
+                    ucode, version = parse_unique_code(id_value.upper())
+                    q |= Q(
+                        unique_code__iexact=ucode,
+                        unique_code_version=version
+                    )
+                except ValueError:
+                    pass
+            entities = entities.filter(q)
+
+        bbox = None
+        if entities.exists():
+            bbox = entities.aggregate(
+                Extent('geometry')
+            )['geometry__extent']
+
+        if not bbox:
             raise Http404('No GeographicalEntity matches the given query.')
         return Response(
-            geom.extent
+            bbox
         )
 
 
