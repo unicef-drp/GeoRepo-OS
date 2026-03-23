@@ -286,7 +286,9 @@ class TestCleanupTmpDirectory(unittest.TestCase):
     @patch('dashboard.tasks.maintenance.CleanupDirectoryLog')
     @patch('dashboard.tasks.maintenance.delete_numbered_log_files')
     @patch('dashboard.tasks.maintenance.shutil.disk_usage')
-    def test_threshold_override(self, mock_disk_usage, mock_delete, mock_log_model):
+    def test_threshold_override(
+        self, mock_disk_usage, mock_delete, mock_log_model
+    ):
         """threshold_override takes precedence over the settings value."""
         mock_disk_usage.return_value = self._make_disk_usage(50)
         mock_delete.return_value = (3, 512, [])
