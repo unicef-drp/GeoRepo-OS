@@ -10,7 +10,7 @@ from django.utils import timezone
 from datetime import timedelta
 from core.models.preferences import SitePreferences
 from georepo.models.base_task_request import PROCESSING, DONE, ERROR
-from dashboard.models.maintenance import StorageLog
+from dashboard.models.maintenance import StorageLog, CleanupDirectoryLog
 from dashboard.models.blob_export import BlobExportRequest
 from georepo.utils.azure_blob_storage import StorageContainerClient
 
@@ -230,6 +230,14 @@ def cleanup_tmp_directory(threshold_override=None):
             logger.info(
                 f"Deleted {deleted_count} numbered log files, "
                 f"freed {freed_size / (1024*1024):.2f} MB in '{path}'"
+            )
+            CleanupDirectoryLog.objects.create(
+                storage_path=path,
+                usage_percentage=usage_percent,
+                critical_threshold=critical_threshold,
+                deleted_files_count=deleted_count,
+                freed_space_bytes=freed_size,
+                deleted_files=deleted_files
             )
 
     return {

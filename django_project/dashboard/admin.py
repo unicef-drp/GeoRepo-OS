@@ -37,7 +37,8 @@ from dashboard.models import (
     BatchEntityEdit,
     StorageLog,
     LogFile,
-    BlobExportRequest
+    BlobExportRequest,
+    CleanupDirectoryLog
 )
 from georepo.models import TemporaryTilingConfig
 from georepo.utils.layers import fetch_layer_file_metadata
@@ -562,6 +563,12 @@ class BlobExportRequestAdmin(admin.ModelAdmin):
     trigger_blob_export.short_description = "Trigger Export Task"
 
 
+class CleanupDirectoryLogAdmin(admin.ModelAdmin):
+    list_display = (
+        'date_time', 'storage_path', 'usage_percentage', 'deleted_files_count'
+    )
+
+
 admin.site.register(LayerFile, LayerFileAdmin)
 admin.site.register(LayerUploadSession, LayerUploadSessionAdmin)
 admin.site.register(EntityUploadStatus, EntityUploadAdmin)
@@ -581,3 +588,4 @@ admin.site.register(BatchEntityEdit, BatchEntityEditAdmin)
 admin.site.register(StorageLog, StorageLogAdmin)
 admin.site.register(LogFile, LogFileAdmin)
 admin.site.register(BlobExportRequest, BlobExportRequestAdmin)
+admin.site.register(CleanupDirectoryLog, CleanupDirectoryLogAdmin)
