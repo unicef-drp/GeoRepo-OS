@@ -104,3 +104,13 @@ print("4. Collecting static files to " + settings.STATIC_ROOT)
 call_command('collectstatic', '--noinput', verbosity=0)
 print("Static files collected")
 print("-----------------------------------------------------")
+
+
+#########################################################
+# 5. Pruning old static file versions
+#########################################################
+
+print("-----------------------------------------------------")
+call_command('prune_static_versions')
+print("Old static file versions pruned")
+print("-----------------------------------------------------")
