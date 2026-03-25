@@ -7,7 +7,7 @@ from unittest import TestCase
 from core.management.commands.prune_static_versions import prune
 
 
-class PruneTest(TestCase):
+class TestPruneStaticVersions(TestCase):
     """Tests for prune function."""
 
     def setUp(self):
