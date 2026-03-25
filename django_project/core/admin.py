@@ -17,7 +17,9 @@ from core.models import (
 )
 
 # Append code version to admin header
-admin.site.site_header = f'Django administration {settings.CODE_RELEASE_VERSION}'
+admin.site.site_header = (
+    f'Django administration {settings.CODE_RELEASE_VERSION}'
+)
 
 # Unregister the default APIRequestLog admin
 admin.site.unregister(BaseAPIRequestLog)

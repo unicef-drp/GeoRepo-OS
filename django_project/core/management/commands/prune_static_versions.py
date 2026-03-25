@@ -1,6 +1,7 @@
 """Prune old static files versions."""
 
-import os, shutil
+import os
+import shutil
 from django.conf import settings
 from django.core.management.base import BaseCommand
 

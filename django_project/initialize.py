@@ -14,7 +14,6 @@ from django.db.utils import OperationalError
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 import os
-import shutil
 import time
 
 import django
@@ -99,7 +98,7 @@ if os.getenv('AZURE_B2C_CLIENT_ID', '') == '':
 #########################################################
 
 print("-----------------------------------------------------")
-from django.conf import settings
+from django.conf import settings  # noqa: E402
 print("4. Collecting static files to " + settings.STATIC_ROOT)
 call_command('collectstatic', '--noinput', verbosity=0)
 print("Static files collected")
