@@ -99,20 +99,8 @@ if os.getenv('AZURE_B2C_CLIENT_ID', '') == '':
 #########################################################
 
 print("-----------------------------------------------------")
-print("4. Collecting static files")
-folder = '/home/web/static'
-try:
-    for filename in os.listdir(folder):
-        file_path = os.path.join(folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception:
-            pass
-except Exception:
-    pass
+from django.conf import settings
+print("4. Collecting static files to " + settings.STATIC_ROOT)
 call_command('collectstatic', '--noinput', verbosity=0)
 print("Static files collected")
 print("-----------------------------------------------------")
