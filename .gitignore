@@ -39,3 +39,6 @@ scripts/export_var*.sh
 scripts/data.plt
 # ignore benchmark results
 scripts/*/
+
+# locust auth files
+locust_auth.json
