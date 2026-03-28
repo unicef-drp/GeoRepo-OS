@@ -10,6 +10,12 @@ SHAPEFILE = 'SHAPEFILE'
 GEOPACKAGE = 'GEOPACKAGE'
 
 
+class GeocodingRequestType:
+
+    DATASET = 0
+    DATASET_VIEW = 1
+
+
 class GeocodingRequest(BaseTaskRequest):
 
     FILE_TYPE_CHOICES = (

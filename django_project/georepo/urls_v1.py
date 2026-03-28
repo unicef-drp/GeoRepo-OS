@@ -61,7 +61,13 @@ from georepo.api_views.entity import (
     EntityListByAdminLevel0,
     EntityTraverseHierarchyByUCode,
     EntityTraverseChildrenHierarchyByUCode,
-    EntityListByAdminLevelAndConceptUCode
+    EntityListByAdminLevelAndConceptUCode,
+    EntityBatchSearchId,
+    EntityBatchSearchIdStatus,
+    EntityBatchSearchIdResult,
+    EntityBatchGeocoding,
+    EntityBatchGeocodingStatus,
+    EntityBatchGeocodingResult
 )
 module_urls = [
     path(
@@ -139,21 +145,41 @@ entity_urls = [
         name='entity-fuzzy-search-by-geometry'
     ),
     path(
-        'search/dataset/<uuid:uuid>/entity/'
-        '<path:search_text>/',
-        EntityFuzzySearch.as_view(),
-        name='entity-fuzzy-search-by-name'
+        'search/dataset/<uuid:uuid>/entity/batch/identifier/'
+        '<str:input_type>/',
+        EntityBatchSearchId.as_view(),
+        name='batch-search-entity-by-id'
     ),
     path(
         'search/dataset/<uuid:uuid>/entity/'
         '<path:ucode>/parent/',
         EntityTraverseHierarchyByUCode.as_view(),
-        name='search-entity-parent-by-ucode'),
+        name='search-entity-parent-by-ucode'
+    ),
     path(
         'search/dataset/<uuid:uuid>/entity/'
         '<path:ucode>/children/',
         EntityTraverseChildrenHierarchyByUCode.as_view(),
-        name='search-entity-children-by-ucode'),
+        name='search-entity-children-by-ucode'
+    ),
+    path(
+        'search/dataset/<uuid:uuid>/entity/batch/identifier/'
+        'status/<uuid:request_id>/',
+        EntityBatchSearchIdStatus.as_view(),
+        name='batch-status-search-entity-by-id'
+    ),
+    path(
+        'search/dataset/<uuid:uuid>/entity/batch/identifier/'
+        'result/<uuid:request_id>/',
+        EntityBatchSearchIdResult.as_view(),
+        name='batch-result-search-entity-by-id'
+    ),
+    path(
+        'search/dataset/<uuid:uuid>/entity/'
+        '<path:search_text>/',
+        EntityFuzzySearch.as_view(),
+        name='entity-fuzzy-search-by-name'
+    ),
 ]
 
 operation_entity_urls = [
@@ -174,6 +200,25 @@ operation_entity_urls = [
         r'(?P<id_type>[^/]+)/?$',
         EntityContainmentCheck.as_view(),
         name='entity-containment-check'
+    ),
+    path(
+        'operation/dataset/<uuid:uuid>/batch-containment-check/'
+        'status/<uuid:request_id>/',
+        EntityBatchGeocodingStatus.as_view(),
+        name='entity-check-status-batch-geocoding'
+    ),
+    path(
+        'operation/dataset/<uuid:uuid>/batch-containment-check/'
+        'result/<uuid:request_id>/',
+        EntityBatchGeocodingResult.as_view(),
+        name='entity-get-result-batch-geocoding'
+    ),
+    re_path(
+        r'operation/dataset/(?P<uuid>[\da-f-]+)/batch-containment-check/'
+        r'(?P<spatial_query>[^/]+)/(?P<distance>[\d]+)/'
+        r'(?P<admin_level>[\d]+)/(?P<id_type>[^/]+)/?$',
+        EntityBatchGeocoding.as_view(),
+        name='entity-batch-geocoding'
     ),
 ]
 
