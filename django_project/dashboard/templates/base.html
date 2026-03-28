@@ -5,7 +5,7 @@
     <title>GeoRepo</title>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
     <title>{% block head_title %}{% endblock %}</title>
     <style>
         :root {
@@ -39,6 +39,7 @@
   window.uploadSessionUpdateStep = "{% url 'upload-session-update-step' %}";
   window.entityRevisions = "{% url 'entity-revisions' %}";
   window.georepoCodeVersion = "{{ georepo_code_version }}";
+  window.staticUrl = "{% get_static_prefix %}";
   {% if user.is_authenticated %}
     window.user_name = "{{ user.username }}";
     window.user_id = "{{ user.id }}";
