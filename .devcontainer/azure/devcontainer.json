@@ -1,6 +1,7 @@
 {
     "name": "Azure Env",
     "remoteUser": "root",
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
     "dockerComposeFile": [
       "../../deployment/docker-compose.yml",
       "../../deployment/docker-compose.azure.override.devcontainer.yml"
@@ -14,11 +15,17 @@
         "onAutoForward": "notify"
       }
     },
+    "mounts": [
+      "source=${localWorkspaceFolder}/.claude_vscode,target=/home/web/.claude,type=bind,consistency=cached"
+    ],
+    "remoteEnv": {
+      "CLAUDE_CONFIG_DIR": "/home/web/.claude"
+    },
     "forwardPorts": [8000, 9000, 51102],
     "shutdownAction": "stopCompose",
     "customizations": {
       "vscode": {
-        "extensions": ["ms-python.python", "ms-python.pylance", "ms-azuretools.vscode-docker"],
+        "extensions": ["ms-python.python", "ms-python.pylance", "ms-azuretools.vscode-docker", "anthropic.claude-code"],
         "settings": {
           "terminal.integrated.shell.linux": "/bin/bash",
           "python.defaultInterpreterPath": "/usr/local/bin/python"

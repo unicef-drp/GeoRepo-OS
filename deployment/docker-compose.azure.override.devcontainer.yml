@@ -51,6 +51,8 @@ services:
       dockerfile: deployment/docker/Dockerfile
       target: dev
     env_file: .azure.env
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     volumes:
       - ../:/home/web/project
       - ../django_project:/home/web/django_project
