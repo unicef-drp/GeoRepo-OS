@@ -161,7 +161,7 @@ entity_urls = [
         '<path:ucode>/children/',
         EntityTraverseChildrenHierarchyByUCode.as_view(),
         name='search-entity-children-by-ucode'
-    ),    
+    ),
     path(
         'search/dataset/<uuid:uuid>/entity/batch/identifier/'
         'status/<uuid:request_id>/',
