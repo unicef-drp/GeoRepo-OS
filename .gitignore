@@ -39,3 +39,5 @@ scripts/export_var*.sh
 scripts/data.plt
 # ignore benchmark results
 scripts/*/
+
+.claude_vscode

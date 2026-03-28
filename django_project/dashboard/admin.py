@@ -37,7 +37,8 @@ from dashboard.models import (
     BatchEntityEdit,
     StorageLog,
     LogFile,
-    BlobExportRequest
+    BlobExportRequest,
+    CleanupDirectoryLog
 )
 from georepo.models import TemporaryTilingConfig
 from georepo.utils.layers import fetch_layer_file_metadata
@@ -361,7 +362,7 @@ def list_log_files(parent_dir, max_depth=2):
         # Use scandir for better performance than os.walk
         for entry in os.scandir(parent_dir):
             if entry.is_file():
-                if any(entry.name.endswith(ext) for ext in file_extensions):
+                if any(ext in entry.name for ext in file_extensions):
                     try:
                         stat = entry.stat()
                         file_size = stat.st_size
@@ -385,10 +386,29 @@ def list_log_files(parent_dir, max_depth=2):
     return log_files
 
 
+@admin.action(description='Delete logs files from filesystem')
+def delete_selected_logs_file(modeladmin, request, queryset):
+    """Delete selected log files from filesystem.
+
+    :param modeladmin: The ModelAdmin instance
+    :type modeladmin: ModelAdmin
+    :param request: The HttpRequest object
+    :type request: HttpRequest
+    :param queryset: QuerySet of selected LogFile instances
+    :type queryset: QuerySet
+    """
+    for instance in queryset:
+        if instance.path and os.path.exists(instance.path):
+            try:
+                os.remove(instance.path)
+            except OSError:
+                pass
+
+
 class LogFileAdmin(admin.ModelAdmin):
     list_display = (
         'filename', 'get_total_size', 'created_on', 'download_link')
-    actions = ['refresh_log_files']
+    actions = ['refresh_log_files', delete_selected_logs_file]
 
     def download_link(self, obj):
         return format_html(
@@ -543,6 +563,12 @@ class BlobExportRequestAdmin(admin.ModelAdmin):
     trigger_blob_export.short_description = "Trigger Export Task"
 
 
+class CleanupDirectoryLogAdmin(admin.ModelAdmin):
+    list_display = (
+        'date_time', 'storage_path', 'usage_percentage', 'deleted_files_count'
+    )
+
+
 admin.site.register(LayerFile, LayerFileAdmin)
 admin.site.register(LayerUploadSession, LayerUploadSessionAdmin)
 admin.site.register(EntityUploadStatus, EntityUploadAdmin)
@@ -562,3 +588,4 @@ admin.site.register(BatchEntityEdit, BatchEntityEditAdmin)
 admin.site.register(StorageLog, StorageLogAdmin)
 admin.site.register(LogFile, LogFileAdmin)
 admin.site.register(BlobExportRequest, BlobExportRequestAdmin)
+admin.site.register(CleanupDirectoryLog, CleanupDirectoryLogAdmin)

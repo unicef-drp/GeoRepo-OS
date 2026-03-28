@@ -92,10 +92,24 @@ if os.getenv('AZURE_B2C_CLIENT_ID', '') == '':
 # if _load_initial_fixtures:
 #     call_command('load_fixtures')
 
+
 #########################################################
 # 4. Collecting static files
 #########################################################
 
 print("-----------------------------------------------------")
-print("4. Collecting static files")
+from django.conf import settings  # noqa: E402
+print("4. Collecting static files to " + settings.STATIC_ROOT)
 call_command('collectstatic', '--noinput', verbosity=0)
+print("Static files collected")
+print("-----------------------------------------------------")
+
+
+#########################################################
+# 5. Pruning old static file versions
+#########################################################
+
+print("-----------------------------------------------------")
+call_command('prune_static_versions')
+print("Old static file versions pruned")
+print("-----------------------------------------------------")

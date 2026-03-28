@@ -51,6 +51,7 @@ LOCALE_PATHS = (absolute_path('locale'),)
 
 # Extra installed apps
 INSTALLED_APPS = INSTALLED_APPS + (
+    'health',
     'azure_auth',
     'core',
     'georepo',
@@ -132,7 +133,6 @@ if USE_AZURE:
     if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
         os.makedirs(FILE_UPLOAD_TEMP_DIR)
 
-CODE_RELEASE_VERSION = code_release_version()
 CODE_COMMIT_HASH = code_commit_release_version()
 EXPORT_DATA_EXPIRY_IN_HOURS = int(os.environ.get(
     'EXPORT_DATA_EXPIRY_IN_HOURS', '48'

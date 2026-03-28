@@ -18,6 +18,7 @@ from georepo.tests.model_factories import (
 )
 from georepo.api_views.entity import (
     EntityBoundingBox,
+    EntityListBoundingBox,
     EntityIdList,
     EntityContainmentCheck,
     EntityFuzzySearch,
@@ -83,6 +84,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
                 revision_number=1,
                 label='Pakistan',
                 unique_code='PAK',
+                unique_code_version=1,
                 start_date=isoparse('2023-01-01T06:16:13Z'),
                 concept_ucode='#PAK_1',
                 centroid=geom.point_on_surface.wkt,
@@ -445,7 +447,7 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(len(response.data), 1)
-        # pcode has multiple records, should get the recent one
+        # pcode has multiple records, should get the combined bbox
         geojson_0_1_path = absolute_path(
             'georepo', 'tests',
             'geojson_dataset', 'level_0_1.geojson')
@@ -487,16 +489,12 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         response = view(request, **kwargs)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 4)
-        self.assertEqual(response.data[0], entity.geometry.extent[0])
-        self.assertEqual(response.data[3], entity.geometry.extent[3])
-        self.assertNotEqual(
-            response.data[0],
-            self.geographical_entity.geometry.extent[0]
-        )
-        self.assertNotEqual(
-            response.data[3],
-            self.geographical_entity.geometry.extent[3]
-        )
+        combined = entity.geometry.union(self.geographical_entity.geometry)
+        expected_extent = combined.extent
+        self.assertEqual(response.data[0], expected_extent[0])
+        self.assertEqual(response.data[1], expected_extent[1])
+        self.assertEqual(response.data[2], expected_extent[2])
+        self.assertEqual(response.data[3], expected_extent[3])
         # search using UUID
         kwargs = {
             'uuid': str(self.dataset.uuid),
@@ -513,6 +511,77 @@ class TestApiEntity(EntityResponseChecker, TestCase):
         self.assertEqual(len(response.data), 4)
         self.assertEqual(response.data[0], entity.geometry.extent[0])
         self.assertEqual(response.data[3], entity.geometry.extent[3])
+
+    def test_entity_list_bounding_box(self):
+        """Test the bounding box for a list of entities."""
+        # ucode has multiple records
+        geojson_0_1_path = absolute_path(
+            'georepo', 'tests',
+            'geojson_dataset', 'level_0_1.geojson')
+        with open(geojson_0_1_path) as geojson:
+            data = json.load(geojson)
+        geom_str = json.dumps(data['features'][0]['geometry'])
+        geom = GEOSGeometry(geom_str)
+        entity = GeographicalEntityF.create(
+            level=0,
+            uuid=str(uuid.uuid4()),
+            uuid_revision=str(uuid.uuid4()),
+            dataset=self.dataset,
+            is_validated=True,
+            is_approved=True,
+            is_latest=True,
+            geometry=geom,
+            internal_code='PAK',
+            revision_number=2,
+            concept_ucode='#PAK_1',
+            label='Pakistan',
+            unique_code='PAK',
+            unique_code_version=2,
+            centroid=geom.point_on_surface.wkt,
+            bbox='[' + ','.join(map(str, geom.extent)) + ']'
+        )
+        combined = self.geographical_entity.geometry.union(entity.geometry)
+        expected_extent = combined.extent
+
+        # search by ucode
+        kwargs = {
+            'uuid': str(self.dataset.uuid),
+            'id_type': 'ucode'
+        }
+        request = self.factory.post(
+            reverse('v1:entity-list-bounding-box', kwargs=kwargs),
+            data=[entity.ucode, self.geographical_entity.ucode],
+            format='json'
+        )
+        request.user = self.superuser
+        view = EntityListBoundingBox.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 4)
+        self.assertEqual(response.data[0], expected_extent[0])
+        self.assertEqual(response.data[1], expected_extent[1])
+        self.assertEqual(response.data[2], expected_extent[2])
+        self.assertEqual(response.data[3], expected_extent[3])
+
+        # search by concept_uuid
+        kwargs = {
+            'uuid': str(self.dataset.uuid),
+            'id_type': 'concept_uuid'
+        }
+        request = self.factory.post(
+            reverse('v1:entity-list-bounding-box', kwargs=kwargs),
+            data=[entity.uuid, self.geographical_entity.uuid],
+            format='json'
+        )
+        request.user = self.superuser
+        view = EntityListBoundingBox.as_view()
+        response = view(request, **kwargs)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 4)
+        self.assertEqual(response.data[0], expected_extent[0])
+        self.assertEqual(response.data[1], expected_extent[1])
+        self.assertEqual(response.data[2], expected_extent[2])
+        self.assertEqual(response.data[3], expected_extent[3])
 
     def test_containment_check(self):
         # geojson data

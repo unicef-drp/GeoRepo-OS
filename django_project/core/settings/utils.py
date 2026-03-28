@@ -35,7 +35,11 @@ def code_release_version():
     """ Read code release version from file."""
     version = absolute_path('version', 'version.txt')
     if os.path.exists(version):
-        version = (open(version, 'rb').read()).decode("utf-8")
+        try:
+            with open(version, 'rb') as f:
+                version = f.read().decode("utf-8")
+        except Exception:
+            version = None
         if version:
             return version
     return '0.0.1'

@@ -1,5 +1,6 @@
 """Core admin."""
 from django.contrib import admin
+from django.conf import settings
 from django.db.models import Count
 from django.db.models.functions import TruncDay
 from rest_framework.authtoken.models import TokenProxy
@@ -13,6 +14,11 @@ from core.models import (
     SitePreferencesImage,
     ApiKey,
     APIRequestLog
+)
+
+# Append code version to admin header
+admin.site.site_header = (
+    f'Django administration {settings.CODE_RELEASE_VERSION}'
 )
 
 # Unregister the default APIRequestLog admin

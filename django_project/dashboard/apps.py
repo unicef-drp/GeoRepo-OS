@@ -27,6 +27,10 @@ def create_clear_dashboard_session_periodic_task():
             every=14,
             period=IntervalSchedule.DAYS
         )
+        sched_tmp_cleanup, _ = IntervalSchedule.objects.get_or_create(
+            every=12,
+            period=IntervalSchedule.HOURS
+        )
     except Exception as e:
         print(e)
         return
@@ -51,6 +55,13 @@ def create_clear_dashboard_session_periodic_task():
             defaults={
                 'name': 'Clean storage log',
                 'interval': sched_log_cleaner
+            }
+        )
+        PeriodicTask.objects.update_or_create(
+            task='cleanup_tmp_directory',
+            defaults={
+                'name': 'Clean temporary directory when disk usage is high',
+                'interval': sched_tmp_cleanup
             }
         )
     except ValidationError as e:

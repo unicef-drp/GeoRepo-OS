@@ -9,7 +9,7 @@ echo "STARTING WORKER COMMAND $(date)"
 echo "-----------------------------------------------------"
 
 # cleanup any pymp- directories
-rm -rf /tmp/pymp-*
+rm -rf /tmp/pymp-* || true
 
 # remove pids
 rm -f /var/run/celery/tile.pid
