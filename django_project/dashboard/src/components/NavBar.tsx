@@ -20,7 +20,7 @@ export default function NavBar(props: NavBarInterface) {
               title={'Homepage'}
               className='nav-header-link'
             >
-                <img src='/static/unicef_logo.png' alt="Logo"/>
+                <img src={`${window.staticUrl}unicef_logo.png`} alt="Logo"/>
             </a>
           </Grid>
           <Grid item className="NavHeaderSeparator" sx={{display:{xs:'none', sm: 'flex'}}}>
