@@ -2,7 +2,7 @@
 """Django settings for georepo project."""
 
 import os
-from .utils import absolute_path, ensure_secret_key_file, code_release_version
+from .utils import absolute_path, ensure_secret_key_file, generate_secret_key, code_release_version  # noqa
 ensure_secret_key_file()
 
 # Read code release version from file
@@ -87,7 +87,10 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 # import SECRET_KEY into current namespace
 # noinspection PyUnresolvedReferences
-from .secret import SECRET_KEY  # noqa
+try:
+    from .secret import SECRET_KEY  # noqa
+except ImportError:
+    SECRET_KEY = generate_secret_key()
 
 # New django 1.8 templates settings
 TEMPLATES = [
