@@ -39,9 +39,7 @@ from georepo.api_views.entity_view import (
     ViewEntityBatchSearchIdStatus,
     ViewEntityBatchSearchIdResult,
     ViewEntityBatchGeocodingResult,
-    ViewEntityBatchGeocodingStatus,
-    FindEntityByUCode,
-    FindEntityByCUCode
+    ViewEntityBatchGeocodingStatus
 )
 from georepo.api_views.entity import (
     EntityBoundingBox,
@@ -67,8 +65,26 @@ from georepo.api_views.entity import (
     EntityBatchSearchIdResult,
     EntityBatchGeocoding,
     EntityBatchGeocodingStatus,
-    EntityBatchGeocodingResult
+    EntityBatchGeocodingResult,
+    FindEntityByUCode,
+    FindEntityByCUCode,
+    FindEntityByUCodeDataset,
+    FindEntityByCUCodeDataset
 )
+
+
+search_entity_base_urls = [
+    path(
+        'search/entity/ucode/<path:ucode>/',
+        FindEntityByUCode.as_view(),
+        name='search-entity-by-ucode'),
+    path(
+        'search/entity/concept_ucode/<path:concept_ucode>/',
+        FindEntityByCUCode.as_view(),
+        name='search-entity-by-concept-ucode'),
+]
+
+
 module_urls = [
     path(
         'search/module/list/',
@@ -89,11 +105,19 @@ dataset_urls = [
 ]
 
 entity_urls = [
+    path(
+        'search/dataset/<uuid:uuid>/entity/ucode/<path:ucode>/',
+        FindEntityByUCodeDataset.as_view(),
+        name='search-dataset-entity-by-ucode'),
+    path(
+        'search/dataset/<uuid:uuid>/entity/concept_ucode/<path:concept_ucode>/',
+        FindEntityByCUCodeDataset.as_view(),
+        name='search-dataset-entity-by-concept-ucode'),
     re_path(
         r'search/dataset/(?P<uuid>[\da-f-]+)/entity/hierarchy'
         r'/(?P<concept_uuid>[\da-f-]+)/?$',
         DatasetEntityListHierarchical.as_view(),
-        name='dataset-entity-hierarchy'
+        name='search-dataset-hierarchical'
     ),
     re_path(
         r'search/dataset/(?P<uuid>[\da-f-]+)/entity/type/'
@@ -264,14 +288,6 @@ view_entity_urls = [
         ViewEntityListByAdminLevel0.as_view(),
         name='search-view-entity-list'),
     path(
-        'search/entity/ucode/<str:ucode>/',
-        FindEntityByUCode.as_view(),
-        name='search-entity-by-ucode'),
-    path(
-        'search/entity/concept_ucode/<str:concept_ucode>/',
-        FindEntityByCUCode.as_view(),
-        name='search-entity-by-concept-ucode'),
-    path(
         'search/view/<uuid:uuid>/entity/identifier/<str:id_type>/<str:id>/',
         FindViewEntityById.as_view(),
         name='search-view-entity-by-id'),
@@ -377,15 +393,15 @@ download_urls = [
     re_path(
         r'download/dataset/(?P<uuid>[\da-f-]+)/status/?$',
         DatasetDownloaderStatus.as_view(),
-        name='check-status-download-job'),
+        name='fetch-download-dataset-job-status'),
     re_path(
         r'download/dataset/(?P<uuid>[\da-f-]+)/?$',
         DatasetDownloader.as_view(),
-        name='submit-download-job'),
+        name='submit-download-dataset-job'),
     re_path(
         r'download/view/(?P<uuid>[\da-f-]+)/status/?$',
         DatasetViewDownloaderStatus.as_view(),
-        name='check-status-download-view-job'),
+        name='fetch-download-view-job-status'),
     re_path(
         r'download/view/(?P<uuid>[\da-f-]+)/?$',
         DatasetViewDownloader.as_view(),
@@ -418,6 +434,7 @@ urlpatterns += dataset_urls
 #         name='search-entity-by-level'
 #     )
 # ]
+urlpatterns += search_entity_base_urls
 urlpatterns += entity_urls
 urlpatterns += operation_entity_urls
 urlpatterns += view_entity_urls

@@ -10,9 +10,42 @@ API_ORDERS = {
         "search-dataset-list",
         "search-dataset-detail"
     ],
-    "03-search-dataset-entity": [],
-    "04-search-view": [],
-    "05-search-view-entity": [
+    "03-search-dataset-entity": [
+        "search-entity-by-id",
+        "search-entity-by-level",
+        "search-entity-by-level-and-ucode",
+        "search-entity-by-level-and-concept-ucode",
+        "search-entity-by-level-0",
+        "search-entity-by-type",
+        "search-entity-by-type-and-ucode",
+        "search-dataset-entity-by-ucode",
+        "search-dataset-entity-by-concept-ucode",
+        "search-entity-versions-by-ucode",
+        "search-entity-versions-by-concept-ucode",
+        "search-entity-by-name",
+        "search-entity-children-by-ucode",
+        "search-entity-parents-by-ucode",
+        "search-entity-by-geometry",
+        "search-dataset-hierarchical",
+        "batch-search-entity-by-id",
+        "batch-status-search-entity-by-id",
+        "batch-result-search-entity-by-id",
+    ],
+    "04-operation-dataset-entity": [
+        "operation-bbox",
+        "operation-bbox-post",
+        "operation-containment-check",
+        "entity-batch-geocoding",
+        "entity-check-status-batch-geocoding",
+        "entity-get-result-batch-geocoding"
+    ],
+    "05-search-view": [
+        "search-view-list",
+        "search-view-list-by-dataset",
+        "search-view-detail",
+        "search-view-centroid"
+    ],
+    "06-search-view-entity": [
         "search-view-entity-by-id",
         "search-view-entity-by-level",
         "search-view-entity-by-level-and-ucode",
@@ -27,21 +60,24 @@ API_ORDERS = {
         "search-view-entity-parents-by-ucode",
         "search-view-entity-by-geometry",
         "batch-search-view-by-id",
-        "check-batch-status-search-view-by-id",
-        "get-result-batch-search-view-by-id",
+        "batch-status-search-view-by-id",
+        "batch-result-search-view-by-id",
     ],
-    "06-operation-view-entity": [
+    "07-operation-view-entity": [
         "operation-view-bbox",
+        "operation-view-bbox-post",
         "operation-view-containment-check",
         "batch-geocoding",
         "check-status-batch-geocoding",
         "get-result-batch-geocoding"
     ],
-    "07-download": [
-        "submit-download-job",
-        "fetch-download-job-status"
+    "08-download": [
+        "submit-download-dataset-job",
+        "fetch-download-dataset-job-status",
+        "submit-download-view-job",
+        "fetch-download-view-job-status"
     ],
-    "08-controlled-list": []
+    "09-controlled-list": []
 }
 
 
