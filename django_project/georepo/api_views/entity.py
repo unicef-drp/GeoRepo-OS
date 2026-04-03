@@ -3922,17 +3922,6 @@ class FindEntityByUCode(APILoggingMixin, APIView):
             unique_code_version=version
         )
 
-        if dataset:
-            qs = qs.filter(dataset=dataset)
-        if dataset_view:
-            raw_sql = (
-                'SELECT id from "{}"'
-            ).format(str(dataset_view.uuid))
-            qs = qs.filter(
-                dataset=dataset_view.dataset,
-                id__in=RawSQL(raw_sql, [])
-            )
-
         return qs
 
     def get_serializer(self):
@@ -4055,30 +4044,64 @@ class FindEntityByUCode(APILoggingMixin, APIView):
         results = {}
         for entity in entity_qs.iterator(chunk_size=1):
             view_list = []
-            view_list.extend(self.find_default_views(entity))
-            view_list.extend(self.find_custom_views(entity))
             if not has_dataset_permission:
                 # check for external permission for each view
                 view_list = [
                     view for view in view_list if
                     self.check_external_permission_in_view(entity, view)
                 ]
+            else:
+                view_list.extend(self.find_default_views(entity))
+                view_list.extend(self.find_custom_views(entity))
+
             if len(view_list) > 0:
                 view_list.sort(key=lambda x: x.name)
                 results[entity.id] = view_list
         return results
 
-    def find_dataset(self, entity_qs, request, kwargs):
+    def find_parent_resource(self, entity_qs, request, kwargs):
         """Find dataset from the entity queryset or request object."""
         dataset = None
+        dataset_view = None
+        max_privacy_level = None
         if isinstance(self, DatasetDetailCheckPermission):
-            dataset, _ = self.get_dataset_obj(
-                request, kwargs
+            dataset, max_privacy_level = self.get_dataset_obj(
+                request, kwargs, search_source="Dataset"
             )
         else:
             dataset = entity_qs.first().dataset
-        
-        return dataset
+            max_privacy_level = get_view_permission_privacy_level(
+                request.user,
+                dataset
+            )
+
+        return dataset, dataset_view, max_privacy_level
+
+    def find_resources(self, entity_qs, request, kwargs):
+        """Find dataset from the entity queryset or request object."""
+        dataset, dataset_view, max_privacy_level = self.find_parent_resource(
+            entity_qs, request, kwargs
+        )
+
+        if dataset:
+            qs = qs.filter(dataset=dataset)
+        if dataset_view:
+            raw_sql = (
+                'SELECT id from "{}"'
+            ).format(str(dataset_view.uuid))
+            qs = qs.filter(
+                dataset=dataset_view.dataset,
+                id__in=RawSQL(raw_sql, [])
+            )
+
+        if max_privacy_level > 0:
+            entity_qs = entity_qs.filter(
+                privacy_level__lte=max_privacy_level
+            )
+            if not entity_qs.exists():
+                return entity_qs, None, None
+
+        return entity_qs, dataset, max_privacy_level
 
     @swagger_auto_schema(
         operation_id='search-entity-by-ucode',
@@ -4123,18 +4146,15 @@ class FindEntityByUCode(APILoggingMixin, APIView):
             )
         if not entity_qs.exists():
             return self.not_found_response()
-        dataset = self.find_dataset(entity_qs, request, kwargs)
-        dataset_privacy_level = get_view_permission_privacy_level(
-            request.user,
-            dataset
+
+        entity_qs, dataset, max_privacy_level = (
+            self.find_resources(entity_qs, request, kwargs)
         )
-        if dataset_privacy_level > 0:
-            entity_qs = entity_qs.filter(
-                privacy_level__lte=dataset_privacy_level
-            )
-            if not entity_qs.exists():
-                return self.not_found_response()
-        view_dict = self.get_views_dict(entity_qs, dataset_privacy_level > 0)
+
+        if not dataset:
+            return self.not_found_response()
+
+        view_dict = self.get_views_dict(entity_qs, max_privacy_level > 0)
         if len(view_dict) == 0:
             return self.not_found_response()
         entity_qs = entity_qs.filter(id__in=view_dict.keys())
@@ -4171,7 +4191,7 @@ class FindEntityByCUCode(FindEntityByUCode):
     renderer_classes = [JSONRenderer, GeojsonRenderer]
     id_type = 'concept_ucode'
 
-    def get_queryset(self, id_raw):
+    def get_queryset(self, id_raw, dataset=None, dataset_view=None):
         return GeographicalEntity.objects.select_related(
             'dataset', 'ancestor'
         ).filter(

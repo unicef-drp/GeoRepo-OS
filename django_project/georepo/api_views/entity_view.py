@@ -1,19 +1,16 @@
 import math
 import json
-from typing import Tuple
 from rest_framework.views import APIView
 from django.db import connection
 from django.db.models.expressions import RawSQL
 from django.db.models import FilteredRelation, Q
 from django.http import Http404
 from django.core.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.generics import get_object_or_404
 from django.contrib.gis.geos import GEOSGeometry
-from rest_framework.renderers import JSONRenderer
 
 from core.mixins import APILoggingMixin
 from core.models.preferences import SitePreferences
@@ -38,7 +35,9 @@ from georepo.api_views.entity import (
     EntityBatchGeocoding,
     EntityBatchGeocodingStatus,
     EntityBatchGeocodingResult,
-    EntityListBoundingBox
+    EntityListBoundingBox,
+    FindEntityByUCode,
+    FindEntityByCUCode
 )
 from georepo.models.dataset import Dataset
 from georepo.models.entity import (
@@ -64,8 +63,7 @@ from georepo.serializers.entity import (
     GeographicalEntitySerializer,
     SearchGeometrySerializer,
     FuzzySearchEntitySerializer,
-    FindEntityByUCodeSerializer,
-    FindEntityByUcodeGeojsonSerializer
+    FindEntityByUCodeSerializer
 )
 from georepo.utils.unique_code import (
     parse_unique_code,
@@ -75,8 +73,7 @@ from georepo.utils.uuid_helper import get_uuid_value
 from georepo.utils.geojson import validate_geojson
 from georepo.api_views.api_collections import (
     SEARCH_VIEW_ENTITY_TAG,
-    OPERATION_VIEW_ENTITY_TAG,
-    SEARCH_ENTITY_BASE_TAG
+    OPERATION_VIEW_ENTITY_TAG
 )
 from georepo.utils.api_parameters import (
     common_api_params,
@@ -84,16 +81,9 @@ from georepo.utils.api_parameters import (
     search_type_param
 )
 from georepo.utils.entity_query import (
-    GeomReturnType,
-    do_generate_fuzzy_query,
-    do_generate_entity_query
+    do_generate_fuzzy_query
 )
 from georepo.utils.url_helper import get_page_size
-from georepo.utils.dataset_view import check_entity_in_view
-from georepo.utils.renderers import GeojsonRenderer
-from georepo.utils.permission import (
-    get_external_view_permission_privacy_level
-)
 
 
 class DatasetViewDetailCheckPermission(object):
@@ -2892,3 +2882,134 @@ class ViewEntityBatchGeocodingResult(
             request, *args, **kwargs
         )
 
+
+class ViewFindEntityByUCode(
+    FindEntityByUCode, DatasetViewDetailCheckPermission
+):
+    """
+    Find entity by ucode within a view.
+
+    Return single entity with its metadata and
+    list of views that the entity belongs to.
+    """
+    permission_classes = [DatasetViewDetailAccessPermission]
+
+    def find_parent_resource(self, entity_qs, request, kwargs):
+        """Find dataset from the entity queryset or request object."""
+        dataset_view, max_privacy_level = self.get_dataset_view_obj(
+            request, kwargs, search_source="Dataset"
+        )
+        dataset = dataset_view.dataset
+
+        return dataset, dataset_view, max_privacy_level
+
+    @swagger_auto_schema(
+        operation_id='search-view-entity-by-ucode',
+        tags=[SEARCH_VIEW_ENTITY_TAG],
+        manual_parameters=[openapi.Parameter(
+            'uuid', openapi.IN_PATH,
+            description='View UUID', type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'ucode', openapi.IN_PATH,
+            description='Entity UCode',
+            type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'geom', openapi.IN_QUERY,
+            description=(
+                'Geometry format: '
+                '[no_geom, centroid, full_geom]'
+            ),
+            type=openapi.TYPE_STRING,
+            default='no_geom',
+            required=False
+        ), openapi.Parameter(
+            'format', openapi.IN_QUERY,
+            description='Output format: [json, geojson]',
+            type=openapi.TYPE_STRING,
+            default='json',
+            required=False
+        )],
+        responses={
+            200: FindEntityByUCodeSerializer,
+            400: APIErrorSerializer,
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        return super(ViewFindEntityByUCode, self).get(
+            request, *args, **kwargs
+        )
+
+
+class ViewFindEntityByCUCode(
+    FindEntityByCUCode, DatasetViewDetailCheckPermission
+):
+    """
+    Find entity by concept ucode within a view.
+
+    Return single entity with its metadata and
+    list of views that the entity belongs to.
+    """
+    permission_classes = [DatasetViewDetailAccessPermission]
+
+    def find_parent_resource(self, entity_qs, request, kwargs):
+        """Find dataset from the entity queryset or request object."""
+        dataset_view, max_privacy_level = self.get_dataset_view_obj(
+            request, kwargs, search_source="Dataset"
+        )
+        dataset = dataset_view.dataset
+
+        return dataset, dataset_view, max_privacy_level
+
+    @swagger_auto_schema(
+        operation_id='search-view-entity-by-concept-ucode',
+        tags=[SEARCH_VIEW_ENTITY_TAG],
+        manual_parameters=[openapi.Parameter(
+            'uuid', openapi.IN_PATH,
+            description='View UUID', type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'concept_ucode', openapi.IN_PATH,
+            description='Entity Concept UCode',
+            type=openapi.TYPE_STRING
+        ), openapi.Parameter(
+            'geom', openapi.IN_QUERY,
+            description=(
+                'Geometry format: '
+                '[no_geom, centroid, full_geom]'
+            ),
+            type=openapi.TYPE_STRING,
+            default='no_geom',
+            required=False
+        ), openapi.Parameter(
+            'format', openapi.IN_QUERY,
+            description='Output format: [json, geojson]',
+            type=openapi.TYPE_STRING,
+            default='json',
+            required=False
+        )],
+        responses={
+            200: openapi.Schema(
+                title='Entity List',
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(
+                    type=openapi.TYPE_OBJECT,
+                    properties=(
+                        FindEntityByUCodeSerializer.Meta.
+                        swagger_schema_fields['properties']
+                    )
+                ),
+                example=[
+                    (
+                        FindEntityByUCodeSerializer.Meta.
+                        swagger_schema_fields['example']
+                    )
+                ]
+            ),
+            400: APIErrorSerializer,
+            404: APIErrorSerializer
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        return super(ViewFindEntityByCUCode, self).get(
+            request, *args, **kwargs
+        )

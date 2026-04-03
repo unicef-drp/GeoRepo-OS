@@ -39,7 +39,9 @@ from georepo.api_views.entity_view import (
     ViewEntityBatchSearchIdStatus,
     ViewEntityBatchSearchIdResult,
     ViewEntityBatchGeocodingResult,
-    ViewEntityBatchGeocodingStatus
+    ViewEntityBatchGeocodingStatus,
+    ViewFindEntityByUCode,
+    ViewFindEntityByCUCode
 )
 from georepo.api_views.entity import (
     EntityBoundingBox,
@@ -266,6 +268,14 @@ view_urls = [
 ]
 
 view_entity_urls = [
+    path(
+        'search/view/<uuid:uuid>/entity/ucode/<path:ucode>/',
+        ViewFindEntityByUCode.as_view(),
+        name='search-view-entity-by-ucode'),
+    path(
+        'search/view/<uuid:uuid>/entity/concept_ucode/<path:concept_ucode>/',
+        ViewFindEntityByCUCode.as_view(),
+        name='search-view-entity-by-concept-ucode'),
     path(
         'search/view/<uuid:uuid>/entity/batch/identifier/<str:input_type>/',
         ViewEntityBatchSearchId.as_view(),
