@@ -267,7 +267,7 @@ class TestApiDataset(TestCase):
             'concept_uuid': geo.uuid,
         }
         request = self.factory.get(
-            reverse('v1:dataset-entity-hierarchy', kwargs=kwargs)
+            reverse('v1:search-dataset-hierarchical', kwargs=kwargs)
         )
         request.user = self.superuser
         view = DatasetEntityListHierarchical.as_view()
