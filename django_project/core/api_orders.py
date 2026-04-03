@@ -53,6 +53,8 @@ API_ORDERS = {
         "search-view-entity-by-level-0",
         "search-view-entity-by-type",
         "search-view-entity-by-type-and-ucode",
+        "search-view-entity-by-ucode",
+        "search-view-entity-by-concept-ucode",
         "search-view-entity-versions-by-ucode",
         "search-view-entity-versions-by-concept-ucode",
         "search-view-entity-by-name",

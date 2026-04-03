@@ -2897,7 +2897,7 @@ class ViewFindEntityByUCode(
     def find_parent_resource(self, entity_qs, request, kwargs):
         """Find dataset from the entity queryset or request object."""
         dataset_view, max_privacy_level = self.get_dataset_view_obj(
-            request, kwargs, search_source="Dataset"
+            request, kwargs.get('uuid', None)
         )
         dataset = dataset_view.dataset
 
@@ -2955,7 +2955,7 @@ class ViewFindEntityByCUCode(
     def find_parent_resource(self, entity_qs, request, kwargs):
         """Find dataset from the entity queryset or request object."""
         dataset_view, max_privacy_level = self.get_dataset_view_obj(
-            request, kwargs, search_source="Dataset"
+            request, kwargs.get('uuid', None)
         )
         dataset = dataset_view.dataset
 

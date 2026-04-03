@@ -112,7 +112,10 @@ entity_urls = [
         FindEntityByUCodeDataset.as_view(),
         name='search-dataset-entity-by-ucode'),
     path(
-        'search/dataset/<uuid:uuid>/entity/concept_ucode/<path:concept_ucode>/',
+        (
+            'search/dataset/<uuid:uuid>/entity/concept_ucode/'
+            '<path:concept_ucode>/'
+        ),
         FindEntityByCUCodeDataset.as_view(),
         name='search-dataset-entity-by-concept-ucode'),
     re_path(

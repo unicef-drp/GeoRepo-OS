@@ -4084,12 +4084,12 @@ class FindEntityByUCode(APILoggingMixin, APIView):
         )
 
         if dataset:
-            qs = qs.filter(dataset=dataset)
+            entity_qs = entity_qs.filter(dataset=dataset)
         if dataset_view:
             raw_sql = (
                 'SELECT id from "{}"'
             ).format(str(dataset_view.uuid))
-            qs = qs.filter(
+            entity_qs = entity_qs.filter(
                 dataset=dataset_view.dataset,
                 id__in=RawSQL(raw_sql, [])
             )
@@ -4265,7 +4265,9 @@ class FindEntityByCUCode(FindEntityByUCode):
         )
 
 
-class FindEntityByUCodeDataset(FindEntityByUCode, DatasetDetailCheckPermission):
+class FindEntityByUCodeDataset(
+    FindEntityByUCode, DatasetDetailCheckPermission
+):
     """
     Find entity by ucode within a dataset.
 
@@ -4312,7 +4314,9 @@ class FindEntityByUCodeDataset(FindEntityByUCode, DatasetDetailCheckPermission):
         )
 
 
-class FindEntityByCUCodeDataset(FindEntityByCUCode, DatasetDetailCheckPermission):
+class FindEntityByCUCodeDataset(
+    FindEntityByCUCode, DatasetDetailCheckPermission
+):
     """
     Find entity by concept ucode within a dataset.
 
