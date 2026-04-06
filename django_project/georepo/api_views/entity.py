@@ -4044,16 +4044,14 @@ class FindEntityByUCode(APILoggingMixin, APIView):
         results = {}
         for entity in entity_qs.iterator(chunk_size=1):
             view_list = []
+            view_list.extend(self.find_default_views(entity))
+            view_list.extend(self.find_custom_views(entity))
             if not has_dataset_permission:
                 # check for external permission for each view
                 view_list = [
                     view for view in view_list if
                     self.check_external_permission_in_view(entity, view)
                 ]
-            else:
-                view_list.extend(self.find_default_views(entity))
-                view_list.extend(self.find_custom_views(entity))
-
             if len(view_list) > 0:
                 view_list.sort(key=lambda x: x.name)
                 results[entity.id] = view_list
