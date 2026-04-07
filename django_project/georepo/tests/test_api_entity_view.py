@@ -17,6 +17,10 @@ from georepo.tests.model_factories import (
     GeographicalEntityF, EntityTypeF, DatasetF, EntityIdF,
     EntityNameF, LanguageF, UserF, GroupF
 )
+from georepo.api_views.entity import (
+    FindEntityByUCode,
+    FindEntityByCUCode
+)
 from georepo.api_views.entity_view import (
     FindViewEntityById,
     ViewEntityListByAdminLevel,
@@ -32,9 +36,7 @@ from georepo.api_views.entity_view import (
     ViewFindEntityGeometryFuzzySearch,
     ViewEntityTraverseHierarchyByUCode,
     ViewEntityTraverseChildrenHierarchyByUCode,
-    ViewEntityListByAdminLevel0,
-    FindEntityByUCode,
-    FindEntityByCUCode
+    ViewEntityListByAdminLevel0
 )
 from georepo.tests.common import EntityResponseChecker, BaseDatasetViewTest
 from georepo.utils.dataset_view import (

@@ -364,7 +364,7 @@ class TestExporter(BaseDatasetViewTest):
             'uuid': str(self.dataset_view.uuid)
         }
         request = self.factory.get(
-            reverse('v1:check-status-download-view-job',
+            reverse('v1:fetch-download-view-job-status',
                     kwargs=kwargs) + f'?job_uuid={str(export_request.uuid)}'
         )
         request.resolver_match = FakeResolverMatchV1
