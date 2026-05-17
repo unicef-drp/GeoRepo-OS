@@ -78,7 +78,8 @@ from georepo.api_views.api_collections import (
 from georepo.utils.api_parameters import (
     common_api_params,
     search_param,
-    search_type_param
+    search_type_param,
+    sort_param
 )
 from georepo.utils.entity_query import (
     do_generate_fuzzy_query
@@ -337,7 +338,7 @@ class ViewEntityListByAdminLevel0(DatasetViewSearchBase,
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        ), search_param, search_type_param],
+        ), sort_param, search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -454,7 +455,7 @@ class ViewEntityListByAdminLevel(DatasetViewSearchBase,
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        ), search_param, search_type_param],
+        ), sort_param, search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -570,7 +571,7 @@ class ViewEntityListByAdminLevelAndUCode(
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        ), search_param, search_type_param],
+        ), sort_param, search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -687,7 +688,7 @@ class ViewEntityListByAdminLevelAndConceptUCode(
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        ), search_param, search_type_param],
+        ), sort_param, search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -802,7 +803,7 @@ class ViewEntityListByEntityType(
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        ), search_param, search_type_param],
+        ), sort_param, search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
@@ -922,7 +923,7 @@ class ViewEntityListByEntityTypeAndUcode(
             type=openapi.TYPE_STRING,
             default='json',
             required=False
-        ), search_param, search_type_param],
+        ), sort_param, search_param, search_type_param],
         responses={
             200: openapi.Schema(
                 title='Entity List',
