@@ -448,13 +448,8 @@ def run_validation(entity_upload: EntityUploadStatus, **kwargs) -> bool:
         not entity_upload.revised_geographical_entity and
             entity_upload.original_geographical_entity
     ):
-        # cloned admin level 0 to new revision
-        revised = entity_upload.original_geographical_entity
-        revised.pk = None
-        revised.save()
-        revised.is_validated = False
-        revised.is_approved = None
-        revised.approved_by = None
+        # clone admin level 0 to new revision
+        revised = entity_upload.original_geographical_entity.clone()
         if entity_upload.upload_session.is_historical_upload:
             revised.start_date = (
                 entity_upload.upload_session.historical_start_date
