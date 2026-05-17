@@ -77,6 +77,7 @@ def mapshaper_commands(
         ])
     if keep_shapes:
         command_list.append('keep-shapes')
+    command_list.append('stats')
     command_list.extend([
         '-o',
         output_path
@@ -148,13 +149,16 @@ def do_simplify(input_file_path, tolerance, level):
     logger.info(commands)
     result = subprocess.run(commands, capture_output=True)
     output = result.stdout.decode()
-    logger.info(output)
+    if output:
+        logger.info(output)
+    stderr_output = result.stderr.decode()
     if result.returncode != 0:
-        error = result.stderr.decode()
         logger.error('Failed to simplify with commands')
         logger.error(commands)
-        logger.error(error)
-        raise RuntimeError(error)
+        logger.error(stderr_output)
+        raise RuntimeError(stderr_output)
+    if stderr_output:
+        logger.info(stderr_output)
     file_size = os.path.getsize(output_file.name)
     logger.info(f'Entities level {level} are simplified '
                 f'to {output_file.name} with size {convert_size(file_size)}')
