@@ -98,10 +98,18 @@ export default function EntityNamesInput(props: EntityNamesInterface) {
 
     const deleteEntityNames = (deletedName: EntityName) => {
         let _data:EntityName[] = names.reduce((res, name) => {
-            if (name.id !== deletedName.id) {
-                res.push({
-                    ...name
-                })
+            if (deletedName.uuid) {
+                if (name.uuid !== deletedName.uuid) {
+                    res.push({
+                        ...name
+                    })
+                }    
+            } else {
+                if (name.id !== deletedName.id) {
+                    res.push({
+                        ...name
+                    })
+                }
             }
             return res
         }, [] as EntityName[])
