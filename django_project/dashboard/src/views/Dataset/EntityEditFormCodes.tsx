@@ -18,6 +18,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import {EntityCode} from '../../models/entity'
 import Select, {SelectChangeEvent} from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
+import Radio from '@mui/material/Radio';
 import {v4 as uuidv4} from 'uuid';
 
 const FETCH_ID_TYPE_URL = '/api/id-type/list/'
@@ -25,6 +26,7 @@ const FETCH_ID_TYPE_URL = '/api/id-type/list/'
 interface EntityCodesInterface {
     codes: EntityCode[],
     onUpdate: (codes:EntityCode[]) => void;
+    hasDefaultCode: boolean;
 }
 
 interface CodeType {
@@ -72,11 +74,20 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
 
     const deleteEntityCodes = (deletedCode: EntityCode) => {
         let _data:EntityCode[] = codes.reduce((res, code) => {
-            if (code.id !== deletedCode.id) {
-                res.push({
-                    ...code, uuid: uuidv4()
-                })
+            if (deletedCode.uuid) {
+                if (code.uuid !== deletedCode.uuid) {
+                    res.push({
+                        ...code, uuid: uuidv4()
+                    })
+                }
+            } else {
+                if (code.id !== deletedCode.id) {
+                    res.push({
+                        ...code, uuid: uuidv4()
+                    })
+                }
             }
+            
             return res
         }, [] as EntityCode[])
          props.onUpdate(_data)
@@ -125,6 +136,22 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
             }
         }
     }
+    
+    const onSetDefault = (editedId: EntityCode) => {
+        let _data:EntityCode[] = codes.reduce((res: EntityCode[], code: EntityCode) => {
+            if (code.uuid === editedId.uuid) {
+                res.push({
+                    ...editedId, default: true
+                })
+            } else {
+                res.push({
+                    ...code, default: false
+                })
+            }
+            return res
+        }, [] as EntityCode[])
+        props.onUpdate(_data)
+    }
 
     return (
         <Grid container flexDirection={'row'}  sx={{alignItems: 'flex-start'}}>
@@ -143,7 +170,17 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
                             {codes && codes.length ? codes.map((code, index) => (
                                 <TableRow key={index}>
                                     <TableCell>
-                                        {code.default ? 'Default': ''}
+                                        {index === editableIdx && !props.hasDefaultCode ? (
+                                            <Radio
+                                                checked={code.default}
+                                                value={code.value}
+                                                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                                                    onSetDefault(code)
+                                                }}
+                                                name="radio-buttons"
+                                                inputProps={{ 'aria-label': code.value }}
+                                            />
+                                        ) : code.default ? 'Default': ''}
                                     </TableCell>
                                     <TableCell>
                                         {index === editableIdx ? (
@@ -190,7 +227,7 @@ export default function EntityCodesInput(props: EntityCodesInterface) {
                                                       aria-label="edit"
                                                       title='edit'
                                                       onClick={() => setEditableIdx(index)}
-                                                      disabled={code.default}
+                                                      disabled={code.default && props.hasDefaultCode}
                                                     >
                                                         <EditIcon fontSize='small' />
                                                     </IconButton>

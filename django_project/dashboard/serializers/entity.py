@@ -301,7 +301,7 @@ class EntityNameSerializer(serializers.ModelSerializer):
                 if default:
                     entity.label = name_value
                     entity.save()
-            except EntityId.DoesNotExist:
+            except EntityName.DoesNotExist:
                 entity_name = None
         else:
             # get max value
@@ -309,7 +309,7 @@ class EntityNameSerializer(serializers.ModelSerializer):
             max_idx_res = EntityName.objects.filter(
                 geographical_entity=entity
             ).aggregate(Max('idx'))
-            if max_idx_res:
+            if max_idx_res and max_idx_res['idx__max'] is not None:
                 idx = max_idx_res['idx__max'] + 1
             entity_name = EntityName(
                 name=name_value,

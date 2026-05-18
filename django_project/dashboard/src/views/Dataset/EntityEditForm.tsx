@@ -51,6 +51,7 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
     const [alertMessage, setAlertMessage] = useState<string>('')
     const [alertLoading, setAlertLoading] = useState<boolean>(false)
     const [alertOpen, setAlertOpen] = useState(false)
+    const hasDefaultCode = props.entity.codes.filter(code => code.default).length > 0
 
     const navigate = useNavigate()
 
@@ -71,8 +72,8 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
         ).then(
             response => {
               setAlertLoading(false)
-                setAlertMessage('Successfully update Entity!')
-                setAlertOpen(false)
+              setAlertMessage('Successfully update Entity!')
+              setAlertOpen(false)
             }
         ).catch(error => {
           setAlertLoading(false)
@@ -81,6 +82,10 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                 if (error.response.status == 403) {
                   // TODO: use better way to handle 403
                   navigate('/invalid_permission')
+                } else if (error.response.status == 400) {
+                  setAlertMessage('Error updating Entity!')
+                } else {
+                  setAlertMessage('Error updating Entity!')
                 }
             } else {
                 alert('Error updating Entity!')
@@ -211,7 +216,7 @@ export default function EntityEditForm(props: EntityDetailGeneralInterface) {
                               <EntityCodesInput codes={codes} onUpdate={(val) =>{
                                 setIsDirty(true)
                                 setCodes(val)
-                              }} />
+                              }} hasDefaultCode={hasDefaultCode} />
                             </Grid>
                         </Grid>
                         <Grid container columnSpacing={2} rowSpacing={2}>
