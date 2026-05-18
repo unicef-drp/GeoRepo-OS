@@ -329,6 +329,48 @@ class GeographicalEntity(models.Model):
         )
         history._raw_delete(history.db)
 
+    def clone(self):
+        """Clone the entity, used for creating new revision."""
+        original_pk = self.pk
+
+        clone = self
+        clone.pk = None
+        clone.id = None
+        clone.is_validated = False
+        clone.is_approved = None
+        clone.approved_by = None
+        clone.save()
+
+        # copy entity names
+        entity_names = []
+        for name in EntityName.objects.filter(
+            geographical_entity_id=original_pk
+        ):
+            entity_names.append(EntityName(
+                geographical_entity=clone,
+                name=name.name,
+                language=name.language,
+                default=name.default,
+                label=name.label,
+                idx=name.idx
+            ))
+        EntityName.objects.bulk_create(entity_names)
+
+        # copy entity ids
+        entity_ids = []
+        for eid in EntityId.objects.filter(
+            geographical_entity_id=original_pk
+        ):
+            entity_ids.append(EntityId(
+                geographical_entity=clone,
+                code=eid.code,
+                value=eid.value,
+                default=eid.default
+            ))
+        EntityId.objects.bulk_create(entity_ids)
+
+        return clone
+
 
 class EntityName(models.Model):
     id = models.AutoField(primary_key=True)
