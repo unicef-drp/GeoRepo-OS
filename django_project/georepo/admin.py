@@ -36,6 +36,7 @@ from georepo.models import (
     Language,
     EntityType,
     EntityName,
+    EntityId,
     Dataset,
     CodeCL,
     EntityCode,
@@ -702,6 +703,11 @@ class EntityNameAdmin(admin.ModelAdmin):
     list_display = ('name', 'geographical_entity', 'language')
 
 
+class EntityIdAdmin(admin.ModelAdmin):
+    raw_id_fields = ('geographical_entity',)
+    list_display = ('value', 'geographical_entity', 'code')
+
+
 class TaggedRecordInline(admin.StackedInline):
     model = TaggedRecord
 
@@ -1162,6 +1168,7 @@ admin.site.register(GeographicalEntity, GeographicalEntityAdmin)
 admin.site.register(Language, LanguageAdmin)
 admin.site.register(EntityType)
 admin.site.register(EntityName, EntityNameAdmin)
+admin.site.register(EntityId, EntityIdAdmin)
 admin.site.register(CodeCL)
 admin.site.register(EntityCode)
 admin.site.register(Dataset, DatasetAdmin)
