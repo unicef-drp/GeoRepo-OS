@@ -16,6 +16,7 @@ from django.http import HttpResponseNotFound
 import json
 from core.models.preferences import SitePreferences
 from core.api_orders import API_ORDERS, find_api_method, find_api_idx
+from core.views import worker_health
 
 
 class CustomSchemaGenerator(OpenAPISchemaGenerator):
@@ -105,6 +106,11 @@ urlpatterns = [
             permanent=False
         ),
         name='site-preferences'
+    ),
+    path(
+        'admin/worker-health/',
+        worker_health,
+        name='worker-health'
     ),
     re_path(r'^admin/', admin.site.urls),
 ]
