@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.db.models import Count
 from django.db.models.functions import TruncDay
+from django.utils.html import format_html
 from rest_framework.authtoken.models import TokenProxy
 from knox.models import AuthToken
 from rest_framework_tracking.admin import (
@@ -13,8 +14,10 @@ from core.models import (
     SitePreferences,
     SitePreferencesImage,
     ApiKey,
-    APIRequestLog
+    APIRequestLog,
+    CommandExecution
 )
+from core.tasks import execute_django_command
 
 # Append code version to admin header
 admin.site.site_header = (
@@ -214,8 +217,164 @@ class APIRequestLogAdmin(BaseAPIRequestLogAdmin):
         )
 
 
+@admin.action(description='Duplicate selected command executions')
+def duplicate_command_executions(modeladmin, request, queryset):
+    """Duplicate command executions with execution state reset to pending.
+
+    :param modeladmin: The current ModelAdmin instance.
+    :type modeladmin: admin.ModelAdmin
+    :param request: The current HTTP request.
+    :type request: HttpRequest
+    :param queryset: Selected CommandExecution queryset.
+    :type queryset: QuerySet
+    """
+    for execution in queryset:
+        CommandExecution.objects.create(
+            command_name=execution.command_name,
+            command_args=execution.command_args,
+            command_kwargs=execution.command_kwargs,
+            triggered_by=execution.triggered_by,
+            status='pending',
+        )
+        modeladmin.message_user(
+            request,
+            (
+                f'Duplicated "{execution.command_name}" as '
+                'a new pending execution.'
+            ),
+            level='success',
+        )
+
+
+@admin.action(description='Re-run selected command executions')
+def rerun_command_executions(modeladmin, request, queryset):
+    """Re-run command executions by creating new execution records.
+
+    :param modeladmin: The current ModelAdmin instance.
+    :type modeladmin: admin.ModelAdmin
+    :param request: The current HTTP request.
+    :type request: HttpRequest
+    :param queryset: Selected CommandExecution queryset.
+    :type queryset: QuerySet
+    """
+    for execution in queryset:
+        # Execute the command as background task
+        execute_django_command.delay(execution_id=execution.id)
+
+        modeladmin.message_user(
+            request,
+            (
+                f'Command "{execution.command_name}" has been queued '
+                f'for re-execution (New Execution ID: {execution.id})'
+            ),
+            level='success',
+        )
+
+
+class CommandExecutionAdmin(admin.ModelAdmin):
+    """Admin class for CommandExecution model."""
+
+    list_display = [
+        'id',
+        'command_name',
+        'status_badge',
+        'duration_display',
+        'triggered_by',
+        'started_at',
+        'retry_count',
+    ]
+    list_filter = ['status', 'command_name', 'created_at']
+    search_fields = ['command_name', 'celery_task_id', 'triggered_by']
+    readonly_fields = [
+        'celery_task_id',
+        'created_at',
+        'started_at',
+        'completed_at',
+        'duration_display',
+        'stdout_display',
+        'stderr_display',
+    ]
+    actions = [duplicate_command_executions, rerun_command_executions]
+
+    fieldsets = (
+        (
+            'Command Details',
+            {'fields': ('command_name', 'command_args', 'command_kwargs')},
+        ),
+        (
+            'Execution Info',
+            {
+                'fields': (
+                    'status',
+                    'celery_task_id',
+                    'triggered_by',
+                    'retry_count',
+                )
+            },
+        ),
+        (
+            'Timing',
+            {
+                'fields': (
+                    'created_at',
+                    'started_at',
+                    'completed_at',
+                    'duration_display',
+                )
+            },
+        ),
+        (
+            'Output',
+            {
+                'fields': (
+                    'stdout_display',
+                    'stderr_display',
+                    'error_message',
+                ),
+                'classes': ('collapse',),
+            },
+        ),
+    )
+
+    def status_badge(self, obj):
+        """Return HTML badge for status."""
+        colors = {
+            'pending': 'gray',
+            'running': 'blue',
+            'success': 'green',
+            'failed': 'red',
+            'retrying': 'orange',
+        }
+        color = colors.get(obj.status, 'gray')
+        return format_html(
+            '<span style="background-color: {}; color: white; '
+            'padding: 3px 10px; border-radius: 3px;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+    status_badge.short_description = 'Status'
+
+    def stdout_display(self, obj):
+        """Return formatted standard output."""
+        if not obj.stdout:
+            return 'No output'
+        return format_html('<pre>{}</pre>', obj.stdout)
+
+    stdout_display.short_description = 'Standard Output'
+
+    def stderr_display(self, obj):
+        """Return formatted standard error."""
+        if not obj.stderr:
+            return 'No errors'
+        return format_html('<pre style="color: red;">{}</pre>', obj.stderr)
+
+    stderr_display.short_description = 'Standard Error'
+
+
 admin.site.register(SitePreferences, SitePreferencesAdmin)
 admin.site.unregister(TokenProxy)
 admin.site.unregister(AuthToken)
 admin.site.register(ApiKey, APIKeyAdmin)
 admin.site.register(APIRequestLog, APIRequestLogAdmin)
+admin.site.register(CommandExecution, CommandExecutionAdmin)

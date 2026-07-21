@@ -27,5 +27,46 @@
       <a href="{% url 'admin:logout' %}">{% trans 'Log out' %}</a>
     {% endblock %}
     <a href="/flower" target="_blank" style="margin-left: 15px;">Flower</a>
+    <span id="worker-health-badge"
+          title="Checking worker status…"
+          style="margin-left: 15px;">⏳ checking…</span>
   </div>
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var badge = document.getElementById('worker-health-badge');
+      if (!badge) {
+        return;
+      }
+      fetch('{% url "worker-health" %}', {credentials: 'same-origin'})
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (data.healthy) {
+            badge.textContent = '🟢 System Healthy';
+            badge.style.color = '#ffffff';
+            badge.title = 'Online: ' + data.online.join(', ');
+          } else if (data.error && data.error.indexOf('Redis is down') === 0) {
+            badge.textContent = '🔴 Redis is down';
+            badge.style.color = '#c62828';
+            badge.title = data.error;
+          } else {
+            var missing = (data.missing || []).join(', ') || 'unknown';
+            badge.textContent = '🔴 ' + missing + ' worker down';
+            badge.style.color = '#c62828';
+            badge.title = (
+              'Missing: ' + missing + '\n' +
+              'Online: ' + (data.online || []).join(', ') +
+              (data.error ? '\nError: ' + data.error : '')
+            );
+          }
+        })
+        .catch(function () {
+          badge.textContent = '⚪ status unknown';
+          badge.title = 'Could not reach worker health endpoint.';
+        });
+    });
+  </script>
 {% endblock %}
